@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
+import { getSimulationSeasonArchive } from "@/application/queries/get-simulation-season-archive";
 import { PageFrame } from "@/components/league/page-frame";
+import { SeasonArchiveStandings } from "@/components/season/archive-views";
 import { Stage1StandingsView } from "@/components/stage1/live-views";
 
 export const metadata: Metadata = { title: "Official standings" };
@@ -13,7 +15,11 @@ export default async function StandingsPage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
-  const live = await getLiveStage1League(leagueSlug);
+  const [live, archive] = await Promise.all([
+    getLiveStage1League(leagueSlug),
+    getSimulationSeasonArchive(leagueSlug),
+  ]);
+  if (archive) return <SeasonArchiveStandings archive={archive} />;
   if (live) return <Stage1StandingsView state={live} />;
   const league = getSimulationLeague(leagueSlug);
   if (!league) notFound();

@@ -45,12 +45,13 @@ function FormationPanel({ state }: { state: Stage1StateDto }) {
         League formation
       </p>
       <h2 className="mt-2 text-xl font-bold">
-        {state.league.memberCount} of 8 members joined
+        {state.league.memberCount} members joined
       </h2>
       <p className="text-graphite mt-3 max-w-2xl leading-7">
-        Week 1 publishes only at exactly eight entries. Until then there is no
-        schedule, slate, card, opponent readiness, or hidden competitive state
-        to infer.
+        A full season can publish with any even roster from 4 through 16; the
+        interactive Week 1 demo publishes at exactly eight. Until a path is
+        chosen, there is no schedule, slate, card, opponent readiness, or hidden
+        competitive state to infer.
       </p>
       {state.commissioner.isCommissioner ? (
         <Link
@@ -532,6 +533,7 @@ export function Stage1CommissionerView({ state }: { state: Stage1StateDto }) {
               id: state.league.id,
               slug: state.league.slug,
               memberCount: state.league.memberCount,
+              lifecycle: state.league.lifecycle,
             },
             week: state.week
               ? {
@@ -556,7 +558,7 @@ export function Stage1CommissionerView({ state }: { state: Stage1StateDto }) {
             <dl className="mt-4 space-y-3 text-sm">
               <div className="flex justify-between">
                 <dt>Members</dt>
-                <dd>{state.league.memberCount}/8</dd>
+                <dd>{state.league.memberCount}/16 maximum</dd>
               </div>
               <div className="flex justify-between">
                 <dt>Week</dt>

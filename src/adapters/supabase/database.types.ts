@@ -111,6 +111,10 @@ export type Database = {
         Args: { p_league_slug: string };
         Returns: Json;
       };
+      get_simulation_season_archive: {
+        Args: { p_league_slug: string };
+        Returns: Json | null;
+      };
       initialize_stage1_week: {
         Args: {
           p_fixture: Json;
@@ -140,6 +144,14 @@ export type Database = {
           p_actual_started_at: string;
           p_event_id: string;
           p_idempotency_key: string;
+        };
+        Returns: Json;
+      };
+      publish_simulation_season_archive: {
+        Args: {
+          p_archive_json: Json;
+          p_idempotency_key: string;
+          p_league_id: string;
         };
         Returns: Json;
       };

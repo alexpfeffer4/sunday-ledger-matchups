@@ -65,7 +65,7 @@ export async function createLeagueAction(
     return {
       status: "success",
       message:
-        "League created. Invite seven members to unlock the Stage 1 week.",
+        "League created. Invite members, then choose a full simulated season or the eight-member interactive Week 1 demo.",
       href: `/l/${result.data[0].league_slug}/commissioner`,
       hrefLabel: "Open commissioner setup",
     };

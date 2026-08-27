@@ -17,13 +17,19 @@ ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
   eight-entry formation, four stored matchups, 1,000-credit grants, sealed
   receipts, reliable event reveal, centicredit settlement, standings,
   correction replay, and finalization
+- Stage 2 full-season Simulation path for every approved even roster from 4–16:
+  a balanced 14-week schedule, immutable weekly cards and receipts, cumulative
+  standings, third-miss playoff ineligibility, the roster-size-specific playoff
+  bracket, champion and placement results, and exhibition-only Week 18 history
+- Commissioner-only, idempotent season publication into an append-only,
+  member-scoped Supabase archive with per-viewer history projection
 - Deterministic provider-fixture ports for healthy, stale, outlier, suspended,
   provider-degraded, live, final, void, and corrected states
 - Vitest unit/property coverage and Playwright configuration
 
 The simulation adapter is visibly labeled and never mixes with live data.
-Hosted Supabase and Vercel resources are connected only at their documented
-implementation checkpoints.
+Stage 1 is the Production baseline. Stage 2 remains isolated on its feature
+branch and Vercel Preview until it is explicitly approved for promotion.
 
 ## Local development
 
@@ -60,10 +66,11 @@ npm run test:e2e
 ## Supabase
 
 Migrations and pgTAP assertions live in `supabase/`. The Stage 1 suite executes
-the complete lifecycle inside a rollback transaction, including all four
-matchup-completion cases and correction immutability. The `api` schema is the
-reviewed Data API boundary; base relations live in the non-exposed `private`
-schema and remain protected by grants and Row Level Security.
+the complete interactive lifecycle; the Stage 2 suite publishes, reads, and
+rejects mutation of a full-season archive. Both run inside rollback
+transactions. The `api` schema is the reviewed Data API boundary; base
+relations live in the non-exposed `private` schema and remain protected by
+grants and Row Level Security.
 
 After authorization, link the intended Supabase development project, apply the
 migrations, expose only the `api` schema, generate project types, and run the
@@ -71,7 +78,8 @@ database tests. See `supabase/README.md` for the checkpoint sequence.
 
 ## Deployment
 
-Vercel is the only application deployment target. Automatic deployment for the
-`implementation` branch is intentionally disabled in `vercel.json` until the
-full local and hosted security gates pass. The release plan permits one Preview
-and one Production deployment.
+Vercel is the only application deployment target. `main` is Production.
+Feature branches such as `stage-2-full-simulation-season` create Preview
+deployments through the connected Git integration; the obsolete
+`implementation` branch remains disabled. Stage 2 is not merged or promoted by
+its Preview deployment.

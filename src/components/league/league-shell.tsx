@@ -10,6 +10,13 @@ function NavigationFallback() {
   return <div className="bg-subtle mt-8 h-72 rounded-lg" aria-hidden="true" />;
 }
 
+function initials(displayName: string): string {
+  const parts = displayName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "SL";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? ""}${parts.at(-1)?.[0] ?? ""}`.toUpperCase();
+}
+
 export function LeagueShell({
   children,
   leagueSlug,
@@ -21,6 +28,7 @@ export function LeagueShell({
   memberName,
   memberRole,
   allocatedCredits,
+  archiveMode = false,
 }: {
   children: ReactNode;
   leagueSlug: string;
@@ -32,6 +40,7 @@ export function LeagueShell({
   memberName: string;
   memberRole: string;
   allocatedCredits: number;
+  archiveMode?: boolean;
 }) {
   return (
     <div className="bg-canvas min-h-screen lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
@@ -53,12 +62,12 @@ export function LeagueShell({
           </div>
         </div>
         <Suspense fallback={<NavigationFallback />}>
-          <LeagueDesktopNav leagueSlug={leagueSlug} />
+          <LeagueDesktopNav leagueSlug={leagueSlug} archiveMode={archiveMode} />
         </Suspense>
         <div className="border-boundary absolute right-4 bottom-5 left-4 border-t pt-4">
           <div className="flex items-center gap-3 px-2">
             <span className="border-registry bg-subtle text-registry flex h-8 w-8 items-center justify-center rounded-full border text-xs font-bold">
-              AP
+              {initials(memberName)}
             </span>
             <div>
               <p className="text-sm font-semibold">{memberName}</p>
@@ -90,12 +99,18 @@ export function LeagueShell({
               </p>
               <p className="text-muted text-xs">{dataLabel}</p>
             </div>
-            <Link
-              href={`/l/${leagueSlug}/card`}
-              className="text-registry hover:bg-subtle inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold"
-            >
-              {allocatedCredits} / 1,000 allocated
-            </Link>
+            {archiveMode ? (
+              <span className="text-positive inline-flex min-h-11 items-center px-3 text-sm font-semibold">
+                Season final
+              </span>
+            ) : (
+              <Link
+                href={`/l/${leagueSlug}/card`}
+                className="text-registry hover:bg-subtle inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold"
+              >
+                {allocatedCredits} / 1,000 allocated
+              </Link>
+            )}
           </div>
         </header>
         <div className="border-pending/20 bg-pending/10 text-pending border-b px-4 py-2 text-center text-xs font-semibold">
@@ -106,7 +121,7 @@ export function LeagueShell({
       </div>
 
       <Suspense fallback={null}>
-        <LeagueMobileNav leagueSlug={leagueSlug} />
+        <LeagueMobileNav leagueSlug={leagueSlug} archiveMode={archiveMode} />
       </Suspense>
     </div>
   );

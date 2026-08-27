@@ -256,17 +256,19 @@ values (
   '00000000-0000-4000-8000-000000000009',
   'Stage 1 Member 9'
 );
-select throws_ok(
+select lives_ok(
   $$insert into private.league_memberships (league_id, user_id, role)
     values (
       '10000000-0000-4000-8000-000000000001',
       '00000000-0000-4000-8000-000000000009',
       'MEMBER'
     )$$,
-  '22023',
-  'Stage 1 supports exactly eight members.',
-  'the database serializes joins and caps Stage 1 at eight members'
+  'Stage 2 permits a ninth member before roster lock'
 );
+
+delete from private.league_memberships
+where league_id = '10000000-0000-4000-8000-000000000001'
+  and user_id = '00000000-0000-4000-8000-000000000009';
 
 select set_config(
   'request.jwt.claims',

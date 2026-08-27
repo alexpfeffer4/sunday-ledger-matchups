@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
+import { fullSeasonSimulationSlug } from "@/adapters/simulation/full-season";
 import { LeagueSetupForms } from "@/components/league/league-setup-forms";
 import { BrandLockup } from "@/components/ui/register-mark";
 
@@ -29,8 +30,9 @@ export default async function LeaguesPage() {
             Your leagues
           </h1>
           <p className="text-graphite mt-3 max-w-2xl leading-7">
-            Authenticated Supabase memberships. Stage 1 leagues remain private
-            and use the deterministic provider fixture.
+            Authenticated Supabase memberships. Simulation leagues remain
+            private and can publish either the interactive Week 1 demo or a
+            complete deterministic season archive.
           </p>
         </div>
 
@@ -79,6 +81,28 @@ export default async function LeaguesPage() {
               className="border-registry bg-registry hover:bg-registry-hover inline-flex min-h-11 items-center justify-center rounded-lg border px-5 text-sm font-semibold text-white"
             >
               Open preview
+            </Link>
+          </div>
+        </section>
+
+        <section className="border-champion bg-archive mt-4 rounded-xl border p-6">
+          <p className="text-champion text-xs font-bold tracking-[0.09em] uppercase">
+            Stage 2 · deterministic archive
+          </p>
+          <div className="mt-3 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-xl font-bold">
+                West 21st Ledger · full season
+              </h2>
+              <p className="text-graphite mt-2 text-sm">
+                Weeks 1–18 · final standings · playoffs · champion · history
+              </p>
+            </div>
+            <Link
+              href={`/l/${fullSeasonSimulationSlug}/matchup`}
+              className="border-champion bg-champion inline-flex min-h-11 items-center justify-center rounded-lg border px-5 text-sm font-semibold text-white hover:opacity-90"
+            >
+              Open season archive
             </Link>
           </div>
         </section>

@@ -3,7 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
+import { getSimulationSeasonArchive } from "@/application/queries/get-simulation-season-archive";
 import { PageFrame } from "@/components/league/page-frame";
+import { SeasonArchiveHistory } from "@/components/season/archive-views";
 import { Stage1DeferredView } from "@/components/stage1/live-views";
 import { StatusBadge } from "@/components/ui/status-badge";
 
@@ -21,7 +23,11 @@ export default async function HistoryPage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
-  const live = await getLiveStage1League(leagueSlug);
+  const [live, archive] = await Promise.all([
+    getLiveStage1League(leagueSlug),
+    getSimulationSeasonArchive(leagueSlug),
+  ]);
+  if (archive) return <SeasonArchiveHistory archive={archive} />;
   if (live) {
     return (
       <Stage1DeferredView

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
+import { getSimulationSeasonArchive } from "@/application/queries/get-simulation-season-archive";
 import { PageFrame } from "@/components/league/page-frame";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { hashRuleset } from "@/rulesets/canonicalize";
@@ -15,11 +16,15 @@ export default async function LeagueRulesPage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
-  const live = await getLiveStage1League(leagueSlug);
+  const [live, archive] = await Promise.all([
+    getLiveStage1League(leagueSlug),
+    getSimulationSeasonArchive(leagueSlug),
+  ]);
   const league = getSimulationLeague(leagueSlug);
-  if (!live && !league) notFound();
+  if (!live && !league && !archive) notFound();
   const rulesetHash = await hashRuleset(simulationSeason1Ruleset);
-  const qualifierCount = live && live.members.length <= 8 ? 4 : 6;
+  const rosterSize = archive?.members.length ?? live?.members.length ?? 10;
+  const qualifierCount = rosterSize <= 8 ? 4 : 6;
 
   const rules = [
     {
@@ -50,7 +55,7 @@ export default async function LeagueRulesPage({
 
   return (
     <PageFrame
-      eyebrow={`${live?.league.name ?? "West 21st Ledger"} · participant rulebook`}
+      eyebrow={`${live?.league.name ?? (archive ? "West 21st Ledger Archive" : "West 21st Ledger")} · participant rulebook`}
       title="Frozen simulation rules"
       description="The canonical snapshot is visible to every member and remains linked to receipts, results, standings, brackets, corrections, and history."
       aside={<StatusBadge tone="positive">Frozen</StatusBadge>}

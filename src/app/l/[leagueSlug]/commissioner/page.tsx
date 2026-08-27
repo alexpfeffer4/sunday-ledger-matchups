@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
+import { getSimulationSeasonArchive } from "@/application/queries/get-simulation-season-archive";
 import { PageFrame } from "@/components/league/page-frame";
 import { Stage1CommissionerView } from "@/components/stage1/live-views";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -37,7 +38,11 @@ export default async function CommissionerPage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
-  const live = await getLiveStage1League(leagueSlug);
+  const [archive, live] = await Promise.all([
+    getSimulationSeasonArchive(leagueSlug),
+    getLiveStage1League(leagueSlug),
+  ]);
+  if (archive) redirect(`/l/${leagueSlug}/matchup`);
   if (live) return <Stage1CommissionerView state={live} />;
   const league = getSimulationLeague(leagueSlug);
   if (!league) notFound();

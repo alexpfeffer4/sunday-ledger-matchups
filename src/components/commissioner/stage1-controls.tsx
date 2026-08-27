@@ -8,6 +8,7 @@ import {
   finalizeStage1WeekAction,
   initializeStage1WeekAction,
   lockStage1WeekAction,
+  publishSimulationSeasonArchiveAction,
   recordStage1ResultAction,
   setStage1EventLiveAction,
 } from "@/app/l/[leagueSlug]/actions";
@@ -16,7 +17,10 @@ import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import { ActionFeedback } from "@/components/forms/action-feedback";
 
 export type Stage1CommissionerControlState = {
-  league: Pick<Stage1StateDto["league"], "id" | "slug" | "memberCount">;
+  league: Pick<
+    Stage1StateDto["league"],
+    "id" | "slug" | "memberCount" | "lifecycle"
+  >;
   week: Pick<
     NonNullable<Stage1StateDto["week"]>,
     "state" | "commonLockAt" | "correctionWindowClosesAt"
@@ -54,6 +58,10 @@ export function Stage1CommissionerControls({
     initializeStage1WeekAction,
     initialAppActionState,
   );
+  const [archiveState, archiveAction, publishingArchive] = useActionState(
+    publishSimulationSeasonArchiveAction,
+    initialAppActionState,
+  );
   const [clockState, clockAction, advancing] = useActionState(
     advanceStage1ClockAction,
     initialAppActionState,
@@ -85,39 +93,75 @@ export function Stage1CommissionerControls({
       <section className="border-boundary bg-surface rounded-xl border p-5">
         <h2 className="font-bold">Private invitation</h2>
         <p className="text-graphite mt-2 text-sm leading-6">
-          One code admits up to seven members and expires in seven days.
+          One code admits up to 15 members and expires in seven days. The
+          database stops the roster at 16 total members.
         </p>
         <form action={inviteAction} className="mt-4">
           <ContextFields state={state} />
           <button className={buttonClass} disabled={inviting} type="submit">
-            {inviting ? "Creating…" : "Create seven-use invite"}
+            {inviting ? "Creating…" : "Create 15-use invite"}
           </button>
         </form>
         <ActionFeedback state={inviteState} />
       </section>
 
       {!state.week ? (
-        <section className="border-registry bg-surface rounded-xl border p-5">
-          <h2 className="font-bold">Publish deterministic Week 1</h2>
-          <p className="text-graphite mt-2 text-sm leading-6">
-            Requires exactly eight members. This freezes the Simulation rules,
-            stores the public schedule seed, publishes four matchups, and grants
-            1,000 credits to every entry.
-          </p>
-          <form action={initializeAction} className="mt-4">
-            <ContextFields state={state} />
-            <button
-              className={buttonClass}
-              disabled={initializing || state.league.memberCount !== 8}
-              type="submit"
-            >
-              {initializing
-                ? "Publishing…"
-                : `Publish Week 1 · ${state.league.memberCount}/8 members`}
-            </button>
-          </form>
-          <ActionFeedback state={initializeState} />
-        </section>
+        <>
+          <section className="border-registry bg-surface rounded-xl border p-5">
+            <h2 className="font-bold">Publish full simulated season</h2>
+            <p className="text-graphite mt-2 text-sm leading-6">
+              Requires an even roster from 4 through 16. This one-time command
+              deterministically settles Weeks 1–14, applies attendance
+              eligibility, completes the correct playoff bracket, records the
+              champion, and publishes Week 18 as exhibition-only history.
+            </p>
+            <p className="text-negative mt-3 text-sm leading-6 font-semibold">
+              Publishing freezes the roster and rules, finalizes the season, and
+              cannot be undone.
+            </p>
+            <form action={archiveAction} className="mt-4">
+              <ContextFields state={state} />
+              <button
+                className={buttonClass}
+                disabled={
+                  publishingArchive ||
+                  state.league.lifecycle !== "DRAFT" ||
+                  state.league.memberCount < 4 ||
+                  state.league.memberCount > 16 ||
+                  state.league.memberCount % 2 !== 0
+                }
+                type="submit"
+              >
+                {publishingArchive
+                  ? "Publishing full season…"
+                  : `Publish full season · ${state.league.memberCount} members`}
+              </button>
+            </form>
+            <ActionFeedback state={archiveState} />
+          </section>
+
+          <section className="border-boundary bg-surface rounded-xl border p-5">
+            <h2 className="font-bold">Or publish interactive Week 1</h2>
+            <p className="text-graphite mt-2 text-sm leading-6">
+              The original Stage 1 path requires exactly eight members. It
+              freezes the Simulation rules, publishes four matchups, and grants
+              1,000 credits to every entry for hands-on play.
+            </p>
+            <form action={initializeAction} className="mt-4">
+              <ContextFields state={state} />
+              <button
+                className={buttonClass}
+                disabled={initializing || state.league.memberCount !== 8}
+                type="submit"
+              >
+                {initializing
+                  ? "Publishing…"
+                  : `Publish Week 1 · ${state.league.memberCount}/8 members`}
+              </button>
+            </form>
+            <ActionFeedback state={initializeState} />
+          </section>
+        </>
       ) : (
         <>
           <section className="border-boundary bg-surface rounded-xl border p-5">

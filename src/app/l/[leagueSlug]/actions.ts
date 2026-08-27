@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
@@ -12,6 +13,10 @@ import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import type { AppActionState } from "@/application/actions/action-state";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { validateProposedPosition } from "@/domain/cards/validate-position";
+import {
+  simulateSeason,
+  type SimulationMember,
+} from "@/domain/season/simulate";
 import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
 
 const contextSchema = z.object({
@@ -45,6 +50,20 @@ function mutationError(message: string): AppActionState {
         "Stage 1 starts when exactly eight members have joined this league.",
     };
   }
+  if (message.includes("even roster") || message.includes("4 through 16")) {
+    return {
+      status: "error",
+      message:
+        "A full-season simulation requires an even roster from 4 through 16 members.",
+    };
+  }
+  if (message.includes("before interactive play begins")) {
+    return {
+      status: "error",
+      message:
+        "The full-season simulation can publish only before interactive Week 1 begins.",
+    };
+  }
   if (message.includes("Common lock has not arrived")) {
     return {
       status: "error",
@@ -62,6 +81,101 @@ function mutationError(message: string): AppActionState {
   return {
     status: "error",
     message: "The command was rejected without changing competitive history.",
+  };
+}
+
+function initials(displayName: string): string {
+  const parts = displayName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "SL";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? ""}${parts.at(-1)?.[0] ?? ""}`.toUpperCase();
+}
+
+export async function publishSimulationSeasonArchiveAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  if (!context.success) return mutationError("invalid context");
+
+  const state = await getLiveStage1League(context.data.leagueSlug);
+  if (
+    !state ||
+    state.league.id !== context.data.leagueId ||
+    !state.commissioner.isCommissioner
+  ) {
+    return mutationError("Commissioner membership required.");
+  }
+  if (state.league.lifecycle !== "DRAFT" || state.week) {
+    return mutationError(
+      "A simulation archive must publish before interactive play begins.",
+    );
+  }
+  if (
+    state.league.memberCount < 4 ||
+    state.league.memberCount > 16 ||
+    state.league.memberCount % 2 !== 0
+  ) {
+    return mutationError(
+      "A simulation archive requires an even roster from 4 through 16.",
+    );
+  }
+  if (state.members.some((member) => member.entryId === null)) {
+    return mutationError("The season roster is not ready.");
+  }
+
+  const members: SimulationMember[] = state.members.map((member) => {
+    const entryId = member.entryId as string;
+    return {
+      entryId,
+      displayName: member.displayName,
+      initials: initials(member.displayName),
+      deterministicTiebreak: createHash("sha256")
+        .update(`${state.season.scheduleSeed}:${entryId}:standings`)
+        .digest("hex"),
+    };
+  });
+  const archive = simulateSeason({
+    members,
+    scheduleSeed: state.season.scheduleSeed,
+    nflYear: state.league.nflYear,
+    viewerEntryId: state.viewer.entryId,
+  });
+  const archiveHash = createHash("sha256")
+    .update(JSON.stringify(archive))
+    .digest("hex");
+
+  const supabase = await createSupabaseServerClient();
+  const result = await supabase
+    .schema("api")
+    .rpc("publish_simulation_season_archive", {
+      p_league_id: context.data.leagueId,
+      p_archive_json: archive as unknown as Json,
+      p_idempotency_key: `publish-season:${archiveHash}`,
+    });
+  if (result.error) return mutationError(result.error.message);
+
+  for (const path of [
+    `/l/${context.data.leagueSlug}`,
+    `/l/${context.data.leagueSlug}/matchup`,
+    `/l/${context.data.leagueSlug}/schedule`,
+    `/l/${context.data.leagueSlug}/standings`,
+    `/l/${context.data.leagueSlug}/playoffs`,
+    `/l/${context.data.leagueSlug}/history`,
+    `/l/${context.data.leagueSlug}/commissioner`,
+    "/leagues",
+  ]) {
+    revalidatePath(path);
+  }
+
+  const champion = members.find(
+    (member) => member.entryId === archive.playoffs.championEntryId,
+  );
+  return {
+    status: "success",
+    message: `The 14-week season, playoffs, and Week 18 exhibitions are final. ${champion?.displayName ?? "The champion"} won the league.`,
+    href: `/l/${context.data.leagueSlug}/matchup`,
+    hrefLabel: "Open the completed season",
   };
 }
 
@@ -89,14 +203,14 @@ export async function createLeagueInviteAction(
   const result = await supabase.schema("api").rpc("create_league_invite", {
     p_league_id: context.data.leagueId,
     p_expires_at: expiresAt,
-    p_max_uses: 7,
+    p_max_uses: 15,
   });
   if (result.error) return mutationError(result.error.message);
 
   return {
     status: "success",
     message:
-      "Invitation created. Share this code privately; it expires in seven days.",
+      "Invitation created for up to 15 joins. Share it privately; it expires in seven days.",
     value: result.data,
   };
 }

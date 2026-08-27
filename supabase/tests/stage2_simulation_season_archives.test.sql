@@ -1,0 +1,320 @@
+begin;
+
+create extension if not exists pgtap with schema extensions;
+select no_plan();
+
+select has_table(
+  'private',
+  'simulation_season_archives',
+  'full-season Simulation archives are stored'
+);
+select has_function(
+  'api',
+  'publish_simulation_season_archive',
+  array['uuid', 'jsonb', 'text'],
+  'the guarded archive publication command is exposed'
+);
+select has_function(
+  'api',
+  'get_simulation_season_archive',
+  array['text'],
+  'the member-scoped archive read model is exposed'
+);
+select policies_are(
+  'private',
+  'simulation_season_archives',
+  array['simulation_season_archives_select_member'],
+  'the archive has only the league-member read policy'
+);
+select table_privs_are(
+  'private',
+  'simulation_season_archives',
+  'authenticated',
+  array['SELECT'],
+  'participants cannot mutate the archive directly'
+);
+select function_privs_are(
+  'api',
+  'publish_simulation_season_archive',
+  array['uuid', 'jsonb', 'text'],
+  'anon',
+  array[]::text[],
+  'anonymous callers cannot publish an archive'
+);
+select function_privs_are(
+  'api',
+  'publish_simulation_season_archive',
+  array['uuid', 'jsonb', 'text'],
+  'authenticated',
+  array['EXECUTE'],
+  'authenticated callers can invoke the guarded command'
+);
+
+insert into auth.users (id, email)
+select
+  ('51000000-0000-4000-8000-' || lpad(member_number::text, 12, '0'))::uuid,
+  format('stage2-member-%s@example.test', member_number)
+from generate_series(1, 5) as member_number;
+
+insert into private.profiles (id, display_name)
+select
+  ('51000000-0000-4000-8000-' || lpad(member_number::text, 12, '0'))::uuid,
+  format('Stage 2 Member %s', member_number)
+from generate_series(1, 5) as member_number;
+
+insert into private.leagues (id, name, slug, created_by)
+values (
+  '52000000-0000-4000-8000-000000000001',
+  'Stage 2 Database Test',
+  'stage2-database-test',
+  '51000000-0000-4000-8000-000000000001'
+);
+
+insert into private.league_memberships (league_id, user_id, role)
+select
+  '52000000-0000-4000-8000-000000000001',
+  ('51000000-0000-4000-8000-' || lpad(member_number::text, 12, '0'))::uuid,
+  case when member_number = 1 then 'COMMISSIONER' else 'MEMBER' end
+from generate_series(1, 4) as member_number;
+
+insert into private.season_ruleset_snapshots (
+  id,
+  ruleset_id,
+  ruleset_version,
+  product_bible_id,
+  product_bible_version,
+  mode,
+  canonical_json,
+  sha256_hash
+)
+values (
+  '53000000-0000-4000-8000-000000000001',
+  'SUNDAY-LEDGER-SIMULATION-SEASON-RULESET-V1',
+  '1.0',
+  'SUNDAY-LEDGER-PRODUCT-BIBLE-V3',
+  '3.0',
+  'SIMULATION',
+  '{"mode":"SIMULATION"}',
+  repeat('a', 64)
+);
+
+insert into private.seasons (
+  id,
+  league_id,
+  ruleset_snapshot_id,
+  mode,
+  nfl_year,
+  roster_seed,
+  schedule_seed,
+  simulated_now
+)
+values (
+  '54000000-0000-4000-8000-000000000001',
+  '52000000-0000-4000-8000-000000000001',
+  '53000000-0000-4000-8000-000000000001',
+  'SIMULATION',
+  2026,
+  repeat('b', 64),
+  repeat('c', 64),
+  '2026-09-01T10:00:00Z'
+);
+
+insert into private.season_entries (
+  id,
+  season_id,
+  league_id,
+  user_id,
+  standing_tiebreak
+)
+select
+  ('55000000-0000-4000-8000-' || lpad(member_number::text, 12, '0'))::uuid,
+  '54000000-0000-4000-8000-000000000001',
+  '52000000-0000-4000-8000-000000000001',
+  ('51000000-0000-4000-8000-' || lpad(member_number::text, 12, '0'))::uuid,
+  lpad(member_number::text, 64, '0')
+from generate_series(1, 4) as member_number;
+
+create or replace function pg_temp.stage2_archive()
+returns jsonb
+language sql
+stable
+as $$
+  with members as (
+    select jsonb_agg(
+      jsonb_build_object(
+        'entryId', ('55000000-0000-4000-8000-' || lpad(member_number::text, 12, '0'))::uuid,
+        'displayName', format('Stage 2 Member %s', member_number),
+        'initials', format('M%s', member_number),
+        'deterministicTiebreak', lpad(member_number::text, 64, '0')
+      ) order by member_number
+    ) as value
+    from generate_series(1, 4) as member_number
+  ), week_matchups as (
+    select
+      week_number,
+      jsonb_build_array(
+        jsonb_build_object(
+          'id', format('week-%s-game-1', week_number),
+          'week', week_number,
+          'scope', 'REGULAR',
+          'label', format('Week %s', week_number),
+          'sideAEntryId', '55000000-0000-4000-8000-000000000001',
+          'sideBEntryId', '55000000-0000-4000-8000-000000000002'
+        ),
+        jsonb_build_object(
+          'id', format('week-%s-game-2', week_number),
+          'week', week_number,
+          'scope', 'REGULAR',
+          'label', format('Week %s', week_number),
+          'sideAEntryId', '55000000-0000-4000-8000-000000000003',
+          'sideBEntryId', '55000000-0000-4000-8000-000000000004'
+        )
+      ) as matchups
+    from generate_series(1, 14) as week_number
+  ), weeks as (
+    select jsonb_agg(
+      jsonb_build_object(
+        'week', week_number,
+        'matchups', matchups,
+        'standings', '[]'::jsonb
+      ) order by week_number
+    ) as value
+    from week_matchups
+  ), schedule_matchups as (
+    select jsonb_agg(matchup order by week_number, matchup ->> 'id') as value
+    from week_matchups
+    cross join lateral jsonb_array_elements(matchups) as matchup
+  ), final_standings as (
+    select jsonb_agg(
+      jsonb_build_object(
+        'seed', member_number,
+        'entryId', ('55000000-0000-4000-8000-' || lpad(member_number::text, 12, '0'))::uuid
+      ) order by member_number
+    ) as value
+    from generate_series(1, 4) as member_number
+  )
+  select jsonb_build_object(
+    'schemaVersion', 1,
+    'mode', 'SIMULATION',
+    'seasonLabel', '2026 Full-Season Simulation',
+    'nflYear', 2026,
+    'members', members.value,
+    'ruleset', jsonb_build_object(
+      'id', 'SUNDAY-LEDGER-SIMULATION-SEASON-RULESET-V1',
+      'version', '1.0'
+    ),
+    'schedule', jsonb_build_object(
+      'algorithmVersion', 'circle-v1',
+      'outputHash', repeat('d', 64),
+      'matchups', schedule_matchups.value
+    ),
+    'regularSeason', jsonb_build_object(
+      'weeks', weeks.value,
+      'finalStandings', final_standings.value
+    ),
+    'playoffs', jsonb_build_object(
+      'championEntryId', '55000000-0000-4000-8000-000000000001'
+    )
+  )
+  from members, weeks, schedule_matchups, final_standings;
+$$;
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"51000000-0000-4000-8000-000000000001","role":"authenticated"}',
+  true
+);
+
+select lives_ok(
+  $$select api.publish_simulation_season_archive(
+    '52000000-0000-4000-8000-000000000001',
+    pg_temp.stage2_archive(),
+    'publish-stage2-archive'
+  )$$,
+  'the commissioner can publish a complete full-season Simulation archive'
+);
+
+select is(
+  (select count(*) from private.simulation_season_archives),
+  1::bigint,
+  'exactly one immutable archive is stored'
+);
+select is(
+  (
+    select roster_size
+    from private.simulation_season_archives
+    where season_id = '54000000-0000-4000-8000-000000000001'
+  ),
+  4,
+  'the frozen archive records the supported roster size'
+);
+select is(
+  (
+    select lifecycle
+    from private.seasons
+    where id = '54000000-0000-4000-8000-000000000001'
+  ),
+  'FINAL',
+  'archive publication finalizes the simulated season'
+);
+select ok(
+  (
+    select frozen_at is not null
+    from private.season_ruleset_snapshots
+    where id = '53000000-0000-4000-8000-000000000001'
+  ),
+  'archive publication freezes the attached ruleset'
+);
+
+select lives_ok(
+  $$select api.publish_simulation_season_archive(
+    '52000000-0000-4000-8000-000000000001',
+    pg_temp.stage2_archive(),
+    'publish-stage2-archive'
+  )$$,
+  'the exact publication command replays idempotently'
+);
+select is(
+  (select count(*) from private.simulation_season_archives),
+  1::bigint,
+  'idempotent replay does not duplicate the archive'
+);
+
+select throws_ok(
+  $$update private.simulation_season_archives
+    set archive_json = archive_json || '{"tampered":true}'::jsonb$$,
+  '55000',
+  'simulation_season_archives is append-only.',
+  'the archive cannot be rewritten'
+);
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"51000000-0000-4000-8000-000000000002","role":"authenticated"}',
+  true
+);
+select is(
+  api.get_simulation_season_archive('stage2-database-test') ->> 'mode',
+  'SIMULATION',
+  'a league member can read the completed archive'
+);
+select is(
+  api.get_simulation_season_archive('stage2-database-test') ->> 'viewerEntryId',
+  '55000000-0000-4000-8000-000000000002',
+  'the archive read model scopes personal history to the current member'
+);
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"51000000-0000-4000-8000-000000000005","role":"authenticated"}',
+  true
+);
+select throws_ok(
+  $$select api.get_simulation_season_archive('stage2-database-test')$$,
+  '42501',
+  'League membership required.',
+  'a nonmember cannot read the archive'
+);
+
+select * from finish();
+rollback;
