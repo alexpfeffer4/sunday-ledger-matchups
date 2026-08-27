@@ -28,8 +28,9 @@ ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
 - Vitest unit/property coverage and Playwright configuration
 
 The simulation adapter is visibly labeled and never mixes with live data.
-Stage 1 is the Production baseline. Stage 2 remains isolated on its feature
-branch and Vercel Preview until it is explicitly approved for promotion.
+Stages 1 and 2 are the Production baseline. Stage 3 begins on the isolated
+`stage-3-live-season` branch with a server-only The Odds API boundary; no live
+provider request is made unless the environment has an authorized API key.
 
 ## Local development
 
