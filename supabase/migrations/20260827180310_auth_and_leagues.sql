@@ -3,6 +3,11 @@ create extension if not exists pgcrypto with schema extensions;
 create schema if not exists private;
 create schema if not exists api;
 
+-- Keep the Data API surface explicit and reproducible. Application tables stay
+-- in private; only reviewed views and RPCs in api are addressable by PostgREST.
+alter role authenticator set pgrst.db_schemas = 'api';
+notify pgrst, 'reload config';
+
 revoke all on schema private from public, anon, authenticated;
 revoke all on schema api from public, anon, authenticated;
 grant usage on schema private to authenticated;

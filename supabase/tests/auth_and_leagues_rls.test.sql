@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(15);
 
 select has_table('private', 'profiles', 'profiles table exists');
 select has_table('private', 'league_memberships', 'memberships table exists');
@@ -20,6 +20,13 @@ select has_index(
   'league_invites',
   'league_invites_created_by_idx',
   'invite ownership foreign key is indexed'
+);
+
+select has_index(
+  'private',
+  'season_entries',
+  'season_entries_season_league_idx',
+  'season and league foreign key is indexed'
 );
 
 select policies_are(

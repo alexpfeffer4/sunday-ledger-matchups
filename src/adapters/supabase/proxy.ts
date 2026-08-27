@@ -4,6 +4,7 @@ import {
   getSupabasePublicConfig,
   isSupabaseConfigured,
 } from "@/adapters/supabase/config";
+import type { Database } from "@/adapters/supabase/database.types";
 
 const protectedPrefixes = ["/l/", "/join/", "/leagues"];
 
@@ -12,7 +13,8 @@ export async function updateSupabaseSession(request: NextRequest) {
 
   let response = NextResponse.next({ request });
   const { url, publishableKey } = getSupabasePublicConfig();
-  const supabase = createServerClient(url, publishableKey, {
+  const supabase = createServerClient<Database, "api">(url, publishableKey, {
+    db: { schema: "api" },
     cookies: {
       getAll() {
         return request.cookies.getAll();
