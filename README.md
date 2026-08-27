@@ -1,0 +1,65 @@
+# Sunday Ledger Matchups
+
+A conventional Next.js App Router application for private, head-to-head NFL
+pick-em leagues. The deployment target is Vercel. Authentication and relational
+data use Supabase Auth and Supabase Postgres. This repository does not use
+ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
+
+## Current implementation
+
+- Typed POC Season 1 and Simulation ruleset snapshots
+- Pure TypeScript odds, card-completion, settlement, matchup, schedule,
+  standings, reveal, and playoff modules
+- Deterministic Week 6 simulation across the participant and commissioner UI
+- Supabase SSR magic-link Auth boundary
+- Reproducible profile, league, membership, invite, season, and RLS migration
+- Vitest unit/property coverage and Playwright configuration
+
+The simulation adapter is visibly labeled and never mixes with live data.
+Hosted Supabase and Vercel resources are connected only at their documented
+implementation checkpoints.
+
+## Local development
+
+Requirements: Node.js 24 and npm 11.
+
+```bash
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+Without Supabase variables, the deterministic simulation remains available and
+Auth forms fail safely without sending a request. After an authorized project
+connection, set the browser-safe URL and publishable key in `.env.local`. Never
+commit `.env.local` or expose the server-only Supabase secret key.
+
+## Quality gate
+
+```bash
+npm run verify
+```
+
+The gate checks formatting, lint, strict TypeScript, unit/property tests, and a
+production Next.js build. Browser tests run separately with:
+
+```bash
+npm run test:e2e
+```
+
+## Supabase
+
+Migrations and pgTAP assertions live in `supabase/`. The `api` schema is the
+reviewed Data API boundary; base relations live in the non-exposed `private`
+schema and remain protected by grants and Row Level Security.
+
+After authorization, link the intended Supabase development project, apply the
+migrations, expose only the `api` schema, generate project types, and run the
+database tests. See `supabase/README.md` for the checkpoint sequence.
+
+## Deployment
+
+Vercel is the only application deployment target. Automatic deployment for the
+`implementation` branch is intentionally disabled in `vercel.json` until the
+full local and hosted security gates pass. The release plan permits one Preview
+and one Production deployment.
