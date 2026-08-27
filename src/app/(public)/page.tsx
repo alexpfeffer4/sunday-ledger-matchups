@@ -1,7 +1,21 @@
 import Link from "next/link";
+import { createSupabaseServerClient } from "@/adapters/supabase/server";
+import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { ButtonLink } from "@/components/ui/button-link";
 import { BrandLockup } from "@/components/ui/register-mark";
 import { StatusBadge } from "@/components/ui/status-badge";
+
+async function isAuthenticated(): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase.auth.getClaims();
+    return Boolean(data?.claims?.sub);
+  } catch {
+    return false;
+  }
+}
 
 function MatchupPreview() {
   return (
@@ -70,7 +84,10 @@ function MatchupPreview() {
   );
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const authenticated = await isAuthenticated();
+  const accountHref = authenticated ? "/leagues" : "/auth/sign-in";
+
   return (
     <main className="bg-canvas min-h-screen">
       <header className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
@@ -93,8 +110,8 @@ export default function HomePage() {
           >
             Rules
           </Link>
-          <ButtonLink href="/auth/sign-in" variant="secondary">
-            Sign in
+          <ButtonLink href={accountHref} variant="secondary">
+            {authenticated ? "Your leagues" : "Sign in"}
           </ButtonLink>
         </nav>
       </header>
@@ -113,8 +130,8 @@ export default function HomePage() {
             playoff race.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <ButtonLink href="/auth/sign-in" className="sm:min-w-48">
-              Start an NFL league
+            <ButtonLink href={accountHref} className="sm:min-w-48">
+              {authenticated ? "Open your leagues" : "Start an NFL league"}
             </ButtonLink>
             <ButtonLink
               href="/l/west-21st-ledger/matchup"

@@ -1,17 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { isSupabaseConfigured } from "@/adapters/supabase/config";
+import { safeInternalPath } from "@/adapters/supabase/redirect";
+import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import { MagicLinkForm } from "@/components/auth/magic-link-form";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Sign in" };
-
-function safeNext(value: string | string[] | undefined): string {
-  const candidate = Array.isArray(value) ? value[0] : value;
-  if (!candidate || !candidate.startsWith("/") || candidate.startsWith("//")) {
-    return "/leagues";
-  }
-  return candidate;
-}
 
 export default async function SignInPage({
   searchParams,
@@ -22,6 +18,20 @@ export default async function SignInPage({
   }>;
 }) {
   const query = await searchParams;
+  const next = safeInternalPath(
+    Array.isArray(query.next) ? query.next[0] : query.next,
+  );
+
+  let authenticated = false;
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = await createSupabaseServerClient();
+      const { data } = await supabase.auth.getClaims();
+      authenticated = Boolean(data?.claims?.sub);
+    } catch {}
+  }
+  if (authenticated) redirect(next);
+
   const hasLinkError = Boolean(query.error);
 
   return (
@@ -46,7 +56,7 @@ export default async function SignInPage({
               below.
             </p>
           ) : null}
-          <MagicLinkForm next={safeNext(query.next)} />
+          <MagicLinkForm next={next} />
         </section>
         <p className="text-muted mt-5 text-center text-xs leading-5">
           Authentication is provided by Supabase Auth. League data remains in
