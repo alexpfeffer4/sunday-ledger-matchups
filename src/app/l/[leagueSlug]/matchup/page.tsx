@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
 import { PageFrame } from "@/components/league/page-frame";
 import { MatchupCard } from "@/components/matchup/matchup-card";
+import { Stage1MatchupView } from "@/components/stage1/live-views";
 import { ButtonLink } from "@/components/ui/button-link";
 
 export const metadata: Metadata = { title: "Week 6 matchup" };
@@ -14,6 +16,8 @@ export default async function MatchupPage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
+  const live = await getLiveStage1League(leagueSlug);
+  if (live) return <Stage1MatchupView state={live} />;
   const league = getSimulationLeague(leagueSlug);
   if (!league) notFound();
   const matchup = league.matchup;

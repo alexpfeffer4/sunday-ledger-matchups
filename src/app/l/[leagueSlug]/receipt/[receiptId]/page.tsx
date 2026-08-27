@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
 import { PageFrame } from "@/components/league/page-frame";
+import { Stage1ReceiptView } from "@/components/stage1/live-views";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
 
@@ -18,6 +20,14 @@ export default async function ReceiptPage({
   params: Promise<{ leagueSlug: string; receiptId: string }>;
 }) {
   const { leagueSlug, receiptId } = await params;
+  const live = await getLiveStage1League(leagueSlug);
+  if (live) {
+    if (
+      !live.ownerCard?.positions.some((position) => position.id === receiptId)
+    )
+      notFound();
+    return <Stage1ReceiptView state={live} receiptId={receiptId} />;
+  }
   const league = getSimulationLeague(leagueSlug);
   if (!league) notFound();
   const receipt = league.cardPositions.find((item) => item.id === receiptId);

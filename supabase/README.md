@@ -13,6 +13,13 @@ After an authorized Supabase project is connected:
 4. Configure the Auth Site URL, allowed redirect URLs, and PKCE magic-link
    template for `/auth/confirm`.
 
+`tests/stage1_vertical_slice.test.sql` contains 58 assertions covering the
+eight-member roster cap, deterministic fixture publication, four Week 1
+pairings, owner-only sealed receipts, common lock, reliable reveal, all matchup
+completion cases, win/loss/push/void settlement, half-up rounding, correction
+supersession, finalization, and append-only/RLS boundaries. The test rolls back
+all fixture identities and competitive records.
+
 The server-only Supabase secret key is intentionally absent from general Auth
 and participant data helpers.
 

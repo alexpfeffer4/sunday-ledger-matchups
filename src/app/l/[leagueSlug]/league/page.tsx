@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
 import { PageFrame } from "@/components/league/page-frame";
+import { Stage1LeagueView } from "@/components/stage1/live-views";
 import { StatusBadge } from "@/components/ui/status-badge";
 
 export const metadata: Metadata = { title: "Week 6 league" };
@@ -31,6 +33,8 @@ export default async function LeaguePage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
+  const live = await getLiveStage1League(leagueSlug);
+  if (live) return <Stage1LeagueView state={live} />;
   const league = getSimulationLeague(leagueSlug);
   if (!league) notFound();
 

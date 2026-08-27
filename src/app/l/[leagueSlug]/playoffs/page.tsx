@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
 import { PageFrame } from "@/components/league/page-frame";
+import { Stage1DeferredView } from "@/components/stage1/live-views";
 
 export const metadata: Metadata = { title: "Playoff race" };
 
@@ -29,6 +31,16 @@ export default async function PlayoffsPage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
+  const live = await getLiveStage1League(leagueSlug);
+  if (live) {
+    return (
+      <Stage1DeferredView
+        state={live}
+        title="The playoff race has not opened"
+        description="An eight-entry league will use the frozen small-league qualifier rule, but Stage 1 publishes no qualification claims from a single week."
+      />
+    );
+  }
   const league = getSimulationLeague(leagueSlug);
   if (!league) notFound();
   const currentField = league.standings.slice(0, 6);

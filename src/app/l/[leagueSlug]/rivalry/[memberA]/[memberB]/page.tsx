@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
 import { PageFrame } from "@/components/league/page-frame";
+import { Stage1DeferredView } from "@/components/stage1/live-views";
 
 export const metadata: Metadata = { title: "Rivalry record" };
 
@@ -15,6 +17,16 @@ export default async function RivalryPage({
   }>;
 }) {
   const { leagueSlug, memberA, memberB } = await params;
+  const live = await getLiveStage1League(leagueSlug);
+  if (live) {
+    return (
+      <Stage1DeferredView
+        state={live}
+        title="No official rivalry record yet"
+        description="Rivalry facts begin only after final matchup versions exist; member names in this URL do not create a record."
+      />
+    );
+  }
   const league = getSimulationLeague(leagueSlug);
   if (!league || memberA !== "pfeff" || memberB !== "mia") notFound();
   const firstMeeting = league.historyMeetings.find(

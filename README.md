@@ -13,6 +13,12 @@ ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
 - Deterministic Week 6 simulation across the participant and commissioner UI
 - Supabase SSR magic-link Auth boundary
 - Reproducible profile, league, membership, invite, season, and RLS migration
+- Production-shaped Stage 1 Week 1 lifecycle backed by Supabase Postgres:
+  eight-entry formation, four stored matchups, 1,000-credit grants, sealed
+  receipts, reliable event reveal, centicredit settlement, standings,
+  correction replay, and finalization
+- Deterministic provider-fixture ports for healthy, stale, outlier, suspended,
+  provider-degraded, live, final, void, and corrected states
 - Vitest unit/property coverage and Playwright configuration
 
 The simulation adapter is visibly labeled and never mixes with live data.
@@ -53,7 +59,9 @@ npm run test:e2e
 
 ## Supabase
 
-Migrations and pgTAP assertions live in `supabase/`. The `api` schema is the
+Migrations and pgTAP assertions live in `supabase/`. The Stage 1 suite executes
+the complete lifecycle inside a rollback transaction, including all four
+matchup-completion cases and correction immutability. The `api` schema is the
 reviewed Data API boundary; base relations live in the non-exposed `private`
 schema and remain protected by grants and Row Level Security.
 

@@ -15,11 +15,23 @@ export function LeagueShell({
   leagueSlug,
   leagueName,
   week,
+  nflYear,
+  mode,
+  dataLabel,
+  memberName,
+  memberRole,
+  allocatedCredits,
 }: {
   children: ReactNode;
   leagueSlug: string;
   leagueName: string;
   week: number;
+  nflYear: number;
+  mode: "LIVE" | "SIMULATION";
+  dataLabel: string;
+  memberName: string;
+  memberRole: string;
+  allocatedCredits: number;
 }) {
   return (
     <div className="bg-canvas min-h-screen lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
@@ -35,7 +47,7 @@ export function LeagueShell({
             <div className="min-w-0">
               <p className="truncate text-sm font-bold">{leagueName}</p>
               <p className="text-muted mt-0.5 text-xs">
-                NFL · 2026 · Week {week}
+                NFL · {nflYear} · Week {week}
               </p>
             </div>
           </div>
@@ -49,8 +61,8 @@ export function LeagueShell({
               AP
             </span>
             <div>
-              <p className="text-sm font-semibold">Pfeff</p>
-              <p className="text-muted text-xs">Simulation member</p>
+              <p className="text-sm font-semibold">{memberName}</p>
+              <p className="text-muted text-xs">{memberRole}</p>
             </div>
           </div>
         </div>
@@ -73,20 +85,22 @@ export function LeagueShell({
               </div>
             </div>
             <div className="hidden lg:block">
-              <p className="text-sm font-semibold">{leagueName} / 2026</p>
-              <p className="text-muted text-xs">Simulation preview</p>
+              <p className="text-sm font-semibold">
+                {leagueName} / {nflYear}
+              </p>
+              <p className="text-muted text-xs">{dataLabel}</p>
             </div>
             <Link
               href={`/l/${leagueSlug}/card`}
               className="text-registry hover:bg-subtle inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold"
             >
-              650 / 1,000 allocated
+              {allocatedCredits} / 1,000 allocated
             </Link>
           </div>
         </header>
         <div className="border-pending/20 bg-pending/10 text-pending border-b px-4 py-2 text-center text-xs font-semibold">
-          Simulation mode · deterministic local fixture · no live or simulated
-          data is mixed
+          {mode === "SIMULATION" ? "Simulation mode" : "Live mode"} ·{" "}
+          {dataLabel} · no live or simulated data is mixed
         </div>
         {children}
       </div>

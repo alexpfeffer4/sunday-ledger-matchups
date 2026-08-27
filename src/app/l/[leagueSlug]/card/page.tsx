@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
 import { CardPositionRow } from "@/components/card/card-position-row";
 import { AllocationMeter } from "@/components/matchup/allocation-meter";
 import { PageFrame } from "@/components/league/page-frame";
+import { Stage1CardView } from "@/components/stage1/live-views";
 import { ButtonLink } from "@/components/ui/button-link";
 
 export const metadata: Metadata = { title: "Week 6 card" };
@@ -14,6 +16,8 @@ export default async function CardPage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
+  const live = await getLiveStage1League(leagueSlug);
+  if (live) return <Stage1CardView state={live} />;
   const league = getSimulationLeague(leagueSlug);
   if (!league) notFound();
   const allocation = league.matchup.allocation;

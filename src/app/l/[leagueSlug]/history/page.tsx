@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
 import { PageFrame } from "@/components/league/page-frame";
+import { Stage1DeferredView } from "@/components/stage1/live-views";
 import { StatusBadge } from "@/components/ui/status-badge";
 
 export const metadata: Metadata = { title: "League history" };
@@ -19,6 +21,16 @@ export default async function HistoryPage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
+  const live = await getLiveStage1League(leagueSlug);
+  if (live) {
+    return (
+      <Stage1DeferredView
+        state={live}
+        title="League history begins after Week 1 finalizes"
+        description="Stage 1 stores immutable Week 1 evidence; the season archive is not populated from provisional results."
+      />
+    );
+  }
   const league = getSimulationLeague(leagueSlug);
   if (!league) notFound();
 

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
 import { PositionPreview } from "@/components/card/position-preview";
 import { PageFrame } from "@/components/league/page-frame";
+import { Stage1EventView } from "@/components/stage1/live-views";
 
 export const metadata: Metadata = { title: "Position preview" };
 
@@ -15,6 +17,12 @@ export default async function EventPage({
   searchParams: Promise<{ outcome?: string }>;
 }) {
   const { leagueSlug, eventId } = await params;
+  const live = await getLiveStage1League(leagueSlug);
+  if (live) {
+    const view = <Stage1EventView state={live} eventId={eventId} />;
+    if (!live.slate.some((event) => event.id === eventId)) notFound();
+    return view;
+  }
   const { outcome: selectedOutcomeId } = await searchParams;
   const league = getSimulationLeague(leagueSlug);
   const game = league?.slate.find((candidate) => candidate.id === eventId);

@@ -85,6 +85,64 @@ export type Database = {
           league_slug: string;
         }[];
       };
+      accept_stage1_position: {
+        Args: {
+          p_expected_payload_hash: string;
+          p_idempotency_key: string;
+          p_league_slug: string;
+          p_market_snapshot_id: string;
+          p_stake_credits: number;
+        };
+        Returns: Json;
+      };
+      advance_stage1_clock: {
+        Args: {
+          p_idempotency_key: string;
+          p_league_id: string;
+          p_target: string;
+        };
+        Returns: Json;
+      };
+      finalize_stage1_week: {
+        Args: { p_idempotency_key: string; p_league_id: string };
+        Returns: Json;
+      };
+      get_stage1_state: {
+        Args: { p_league_slug: string };
+        Returns: Json;
+      };
+      initialize_stage1_week: {
+        Args: {
+          p_fixture: Json;
+          p_idempotency_key: string;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
+      lock_stage1_week: {
+        Args: { p_idempotency_key: string; p_league_id: string };
+        Returns: Json;
+      };
+      record_stage1_result: {
+        Args: {
+          p_away_score: number | null;
+          p_event_id: string;
+          p_home_score: number | null;
+          p_idempotency_key: string;
+          p_reason: string;
+          p_source: string;
+          p_status: string;
+        };
+        Returns: Json;
+      };
+      set_stage1_event_live: {
+        Args: {
+          p_actual_started_at: string;
+          p_event_id: string;
+          p_idempotency_key: string;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       [_ in never]: never;

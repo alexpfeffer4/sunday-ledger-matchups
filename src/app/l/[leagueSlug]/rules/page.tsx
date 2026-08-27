@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
 import { PageFrame } from "@/components/league/page-frame";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -14,9 +15,11 @@ export default async function LeagueRulesPage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
+  const live = await getLiveStage1League(leagueSlug);
   const league = getSimulationLeague(leagueSlug);
-  if (!league) notFound();
+  if (!live && !league) notFound();
   const rulesetHash = await hashRuleset(simulationSeason1Ruleset);
+  const qualifierCount = live && live.members.length <= 8 ? 4 : 6;
 
   const rules = [
     {
@@ -41,13 +44,13 @@ export default async function LeagueRulesPage({
     },
     {
       title: "Season and playoffs",
-      body: "The regular season is Weeks 1–14. This ten-member league qualifies the top six eligible entries; Nos. 1 and 2 receive Week 15 byes. Week 17 decides the champion and Week 18 is exhibition only.",
+      body: `The regular season is Weeks 1–14. This league qualifies the top ${qualifierCount} eligible entries under its frozen roster-size rule. Week 17 decides the champion and Week 18 is exhibition only.`,
     },
   ];
 
   return (
     <PageFrame
-      eyebrow="West 21st Ledger · participant rulebook"
+      eyebrow={`${live?.league.name ?? "West 21st Ledger"} · participant rulebook`}
       title="Frozen simulation rules"
       description="The canonical snapshot is visible to every member and remains linked to receipts, results, standings, brackets, corrections, and history."
       aside={<StatusBadge tone="positive">Frozen</StatusBadge>}
