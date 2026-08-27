@@ -6,11 +6,15 @@ import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import { liveProviderEventSchema } from "@/application/providers/live-odds";
 
+const databaseTimestampSchema = z.iso
+  .datetime({ offset: true })
+  .transform((value) => new Date(value).toISOString());
+
 export const liveOddsImportReviewSchema = z.object({
   importId: z.uuid(),
   source: z.literal("THE_ODDS_API"),
-  fetchedAt: z.iso.datetime(),
-  importedAt: z.iso.datetime(),
+  fetchedAt: databaseTimestampSchema,
+  importedAt: databaseTimestampSchema,
   eventCount: z.number().int().positive(),
   payloadHash: z.string().regex(/^[0-9a-f]{64}$/),
   events: z.array(liveProviderEventSchema).min(1),
