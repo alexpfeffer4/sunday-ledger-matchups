@@ -14,7 +14,7 @@ export class OddsProviderRequestError extends Error {
 }
 
 export function isOddsProviderConfigured(): boolean {
-  return Boolean(process.env.THE_ODDS_API_KEY);
+  return Boolean(process.env.ODDS_API_KEY);
 }
 
 export async function fetchNflOdds(options?: {
@@ -22,7 +22,7 @@ export async function fetchNflOdds(options?: {
   fetchImpl?: typeof fetch;
   fetchedAt?: string;
 }): Promise<LiveOddsImport> {
-  const apiKey = options?.apiKey ?? process.env.THE_ODDS_API_KEY;
+  const apiKey = options?.apiKey ?? process.env.ODDS_API_KEY;
   if (!apiKey) {
     throw new OddsProviderRequestError(
       "The Odds API is not configured for this environment.",
