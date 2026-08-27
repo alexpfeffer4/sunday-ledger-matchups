@@ -57,6 +57,7 @@ async function fetchProviderJson(
 
 export async function fetchNflOdds(options?: {
   apiKey?: string;
+  eventIds?: string[];
   fetchImpl?: typeof fetch;
   fetchedAt?: string;
 }): Promise<LiveOddsImport> {
@@ -68,11 +69,27 @@ export async function fetchNflOdds(options?: {
   }
 
   const fetchImpl = options?.fetchImpl ?? fetch;
-  const eventsUrl = new URL(nflEventsUrl);
-  eventsUrl.searchParams.set("apiKey", apiKey);
-  eventsUrl.searchParams.set("dateFormat", "iso");
-  const discoveryPayload = await fetchProviderJson(eventsUrl, fetchImpl);
-  const eventIds = selectNearestNflSlateEventIds(discoveryPayload);
+  const requestedEventIds = options?.eventIds;
+  if (
+    requestedEventIds &&
+    (requestedEventIds.length < 1 ||
+      requestedEventIds.length > 32 ||
+      new Set(requestedEventIds).size !== requestedEventIds.length ||
+      requestedEventIds.some((eventId) => eventId.trim().length === 0))
+  ) {
+    throw new OddsProviderRequestError(
+      "A quote refresh requires 1 through 32 unique event identifiers.",
+    );
+  }
+
+  let eventIds = requestedEventIds;
+  if (!eventIds) {
+    const eventsUrl = new URL(nflEventsUrl);
+    eventsUrl.searchParams.set("apiKey", apiKey);
+    eventsUrl.searchParams.set("dateFormat", "iso");
+    const discoveryPayload = await fetchProviderJson(eventsUrl, fetchImpl);
+    eventIds = selectNearestNflSlateEventIds(discoveryPayload);
+  }
 
   const oddsUrl = new URL(nflOddsUrl);
   oddsUrl.searchParams.set("apiKey", apiKey);
@@ -95,6 +112,20 @@ export async function fetchNflOdds(options?: {
   ) {
     throw new OddsProviderPayloadError(
       "The Odds API returned an event outside the selected NFL slate.",
+    );
+  }
+  if (
+    requestedEventIds &&
+    (liveImport.events.length !== requestedEventIds.length ||
+      requestedEventIds.some(
+        (eventId) =>
+          !liveImport.events.some(
+            (providerEvent) => providerEvent.externalEventId === eventId,
+          ),
+      ))
+  ) {
+    throw new OddsProviderPayloadError(
+      "The Odds API did not return the complete published NFL slate.",
     );
   }
   return liveImport;

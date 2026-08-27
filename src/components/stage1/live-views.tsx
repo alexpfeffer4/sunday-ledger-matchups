@@ -552,6 +552,11 @@ export function Stage1CommissionerView({
               scheduledStartAt: event.scheduledStartAt,
               awayTeam: event.awayTeam,
               homeTeam: event.homeTeam,
+              latestObservedAt: event.markets.reduce(
+                (latest, market) =>
+                  market.observedAt > latest ? market.observedAt : latest,
+                event.markets[0]?.observedAt ?? event.scheduledStartAt,
+              ),
             })),
           }}
         />

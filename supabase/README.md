@@ -26,11 +26,12 @@ ruleset and roster freezing, final season state, append-only protection,
 member-only reads, and current-viewer history scoping. These suites roll back
 all fixture identities and competitive records.
 
-`tests/stage3_live_odds_imports.test.sql` contains 41 assertions for guarded
+`tests/stage3_live_odds_imports.test.sql` contains 62 assertions for guarded
 provider imports, exact main-market validation, commissioner-selected immutable
-slate publication, five-minute common-lock derivation, idempotent replay,
-append-only history, zero-card solo publication, least-privilege grants, and
-commissioner-only RLS. It also runs inside a rollback transaction.
+slate publication, five-minute common-lock derivation, event-set-preserving
+quote refresh, current-head enforcement, idempotent replay, append-only history,
+zero-card solo publication, least-privilege grants, and commissioner-only RLS.
+It also runs inside a rollback transaction.
 
 The hosted Stage 2 migrations are:
 
@@ -42,6 +43,8 @@ The hosted Stage 3 import migrations are:
 - `stage3_live_odds_imports`
 - `stage3_live_odds_import_fk_indexes`
 - `stage3_live_slate_publication`
+- `stage3_live_quote_refresh`
+- `stage3_live_quote_heads_fk_index`
 
 After application, the security advisor reports no Stage 2 or Stage 3 issue and
 the performance advisor reports no unindexed Stage 2 or Stage 3 foreign key.

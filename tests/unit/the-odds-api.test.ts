@@ -97,6 +97,44 @@ describe("The Odds API normalization", () => {
     expect(result.events).toHaveLength(1);
   });
 
+  it("refreshes only explicit published event ids without rediscovery", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify([event()])));
+
+    const result = await fetchNflOdds({
+      apiKey: "test-key",
+      eventIds: ["event-buf-nyj"],
+      fetchedAt: observedAt,
+      fetchImpl,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const oddsUrl = new URL(String(fetchImpl.mock.calls[0][0]));
+    expect(oddsUrl.pathname.endsWith("/sports/americanfootball_nfl/odds")).toBe(
+      true,
+    );
+    expect(oddsUrl.searchParams.get("eventIds")).toBe("event-buf-nyj");
+    expect(result.events.map((item) => item.externalEventId)).toEqual([
+      "event-buf-nyj",
+    ]);
+  });
+
+  it("fails closed when a published event is missing from refresh", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify([event()])));
+
+    await expect(
+      fetchNflOdds({
+        apiKey: "test-key",
+        eventIds: ["event-buf-nyj", "event-missing"],
+        fetchedAt: observedAt,
+        fetchImpl,
+      }),
+    ).rejects.toThrow("complete published NFL slate");
+  });
+
   it("selects only the nearest Thursday-through-Monday NFL slate", () => {
     const result = selectNearestNflSlateEventIds([
       discoveredEvent("next-thursday", "2026-09-17T00:20:00.000Z"),

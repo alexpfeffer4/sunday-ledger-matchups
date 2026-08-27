@@ -40,11 +40,54 @@ select has_function(
   array['uuid', 'uuid', 'text[]', 'text'],
   'the guarded live slate publication command is exposed'
 );
+select has_table('private', 'live_quote_heads', 'current live quotes have explicit heads');
+select has_index(
+  'private',
+  'live_quote_heads',
+  'live_quote_heads_week_id_idx',
+  'current quote reads have a week index'
+);
+select has_index(
+  'private',
+  'live_quote_heads',
+  'live_quote_heads_event_week_league_fk_idx',
+  'the event ownership foreign key has a covering index'
+);
+select has_function(
+  'api',
+  'refresh_live_week_quotes',
+  array['uuid', 'uuid', 'text'],
+  'the guarded quote refresh command is exposed'
+);
+select has_function(
+  'api',
+  'get_live_quote_heads',
+  array['text'],
+  'the member current-quote read model is exposed'
+);
+select has_trigger(
+  'private',
+  'position_receipts',
+  'position_receipts_enforce_live_current_quote',
+  'Live receipts enforce the current quote head'
+);
+select has_trigger(
+  'private',
+  'slate_items',
+  'slate_items_set_initial_live_quote_head',
+  'new Live slate observations initialize quote heads'
+);
 select policies_are(
   'private',
   'live_odds_imports',
   array['live_odds_imports_select_commissioner'],
   'imports have only the commissioner read policy'
+);
+select policies_are(
+  'private',
+  'live_quote_heads',
+  array['live_quote_heads_no_direct_access'],
+  'quote pointers have an explicit deny policy'
 );
 select table_privs_are(
   'private',
@@ -84,6 +127,29 @@ select function_privs_are(
   'authenticated',
   array['EXECUTE'],
   'authenticated callers can invoke the guarded publication command'
+);
+select function_privs_are(
+  'api',
+  'refresh_live_week_quotes',
+  array['uuid', 'uuid', 'text'],
+  'anon',
+  array[]::text[],
+  'anonymous callers cannot refresh live quotes'
+);
+select function_privs_are(
+  'api',
+  'refresh_live_week_quotes',
+  array['uuid', 'uuid', 'text'],
+  'authenticated',
+  array['EXECUTE'],
+  'authenticated callers can invoke the guarded refresh command'
+);
+select table_privs_are(
+  'private',
+  'live_quote_heads',
+  'authenticated',
+  array[]::text[],
+  'participants cannot access quote pointers directly'
 );
 
 create or replace function pg_temp.stage3_live_import()
@@ -359,6 +425,103 @@ select is(
 );
 select is(
   (
+    select count(*) from private.live_quote_heads
+    where league_id = '62000000-0000-4000-8000-000000000001'
+  ),
+  6::bigint,
+  'publication snapshots are backfilled as the current quote heads'
+);
+select is(
+  jsonb_array_length(
+    api.get_live_quote_heads('stage3-live-import-test') -> 0 -> 'markets'
+  ),
+  6,
+  'members receive one current observation for each main-market outcome'
+);
+select lives_ok(
+  $$select api.store_live_odds_import(
+    '62000000-0000-4000-8000-000000000001',
+    jsonb_set(
+      pg_temp.stage3_live_import(),
+      '{events,0,markets,0,americanOdds}',
+      '-170'::jsonb
+    ),
+    'store-stage3-live-refresh'
+  )$$,
+  'the commissioner can store a fresh observation set'
+);
+select lives_ok(
+  $$select api.refresh_live_week_quotes(
+    '62000000-0000-4000-8000-000000000001',
+    (
+      select id from private.live_odds_imports
+      where season_id = '64000000-0000-4000-8000-000000000001'
+      order by created_at desc, id desc
+      limit 1
+    ),
+    'refresh-stage3-live-quotes'
+  )$$,
+  'the commissioner can refresh only the published event set'
+);
+select is(
+  (
+    select count(*) from private.market_snapshots
+    where league_id = '62000000-0000-4000-8000-000000000001'
+  ),
+  7::bigint,
+  'refresh appends only the changed immutable observation'
+);
+select is(
+  (
+    select count(*) from private.slate_items
+    where league_id = '62000000-0000-4000-8000-000000000001'
+  ),
+  7::bigint,
+  'the changed observation is appended to the immutable slate ledger'
+);
+select is(
+  (
+    select count(*) from private.live_quote_heads
+    where league_id = '62000000-0000-4000-8000-000000000001'
+  ),
+  6::bigint,
+  'refresh moves pointers without duplicating current outcomes'
+);
+select is(
+  (
+    select (market ->> 'americanOdds')::integer
+    from jsonb_array_elements(
+      api.get_live_quote_heads('stage3-live-import-test') -> 0 -> 'markets'
+    ) as market
+    where market ->> 'marketType' = 'MONEYLINE'
+      and market ->> 'outcomeKey' = 'AWAY'
+  ),
+  -170,
+  'the current read model returns the refreshed price'
+);
+select lives_ok(
+  $$select api.refresh_live_week_quotes(
+    '62000000-0000-4000-8000-000000000001',
+    (
+      select id from private.live_odds_imports
+      where season_id = '64000000-0000-4000-8000-000000000001'
+      order by created_at desc, id desc
+      limit 1
+    ),
+    'refresh-stage3-live-quotes'
+  )$$,
+  'the exact quote refresh replays idempotently'
+);
+select is(
+  (
+    select count(*) from private.market_snapshots
+    where league_id = '62000000-0000-4000-8000-000000000001'
+  ),
+  7::bigint,
+  'idempotent refresh does not append observations again'
+);
+select is(
+  (
     select count(*) from private.weekly_cards
     where league_id = '62000000-0000-4000-8000-000000000001'
   ),
@@ -449,8 +612,8 @@ select is(
     select count(*) from private.live_odds_imports
     where season_id = '64000000-0000-4000-8000-000000000001'
   ),
-  1::bigint,
-  'RLS exposes the import to the signed-in commissioner'
+  2::bigint,
+  'RLS exposes the import history to the signed-in commissioner'
 );
 reset role;
 

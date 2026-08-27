@@ -4,6 +4,7 @@ import { cache } from "react";
 import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import {
+  liveQuoteHeadsSchema,
   stage1StateSchema,
   type Stage1StateDto,
 } from "@/application/queries/stage1-dtos";
@@ -27,6 +28,29 @@ export const getLiveStage1League = cache(
       throw new Error("The league could not be loaded.");
     }
 
-    return stage1StateSchema.parse(result.data);
+    const state = stage1StateSchema.parse(result.data);
+    if (state.league.mode !== "LIVE" || !state.week) return state;
+
+    const currentQuotes = await supabase
+      .schema("api")
+      .rpc("get_live_quote_heads", { p_league_slug: leagueSlug });
+    if (currentQuotes.error) {
+      if (currentQuotes.error.code === "PGRST202") return state;
+      throw new Error("The current NFL quotes could not be loaded.");
+    }
+
+    const heads = liveQuoteHeadsSchema.parse(currentQuotes.data);
+    if (heads.length === 0) return state;
+    const marketsByEvent = new Map(
+      heads.map((event) => [event.eventId, event.markets] as const),
+    );
+
+    return {
+      ...state,
+      slate: state.slate.map((event) => ({
+        ...event,
+        markets: marketsByEvent.get(event.id) ?? event.markets,
+      })),
+    };
   },
 );

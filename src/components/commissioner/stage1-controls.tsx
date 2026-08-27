@@ -12,6 +12,7 @@ import {
   publishLiveWeekSlateAction,
   publishSimulationSeasonArchiveAction,
   recordStage1ResultAction,
+  refreshLiveWeekQuotesAction,
   setStage1EventLiveAction,
 } from "@/app/l/[leagueSlug]/actions";
 import { initialAppActionState } from "@/application/actions/action-state";
@@ -33,7 +34,7 @@ export type Stage1CommissionerControlState = {
     Pick<
       Stage1StateDto["slate"][number],
       "id" | "key" | "state" | "scheduledStartAt" | "awayTeam" | "homeTeam"
-    >
+    > & { latestObservedAt: string }
   >;
 };
 
@@ -91,6 +92,8 @@ export function Stage1CommissionerControls({
   );
   const [publishLiveSlateState, publishLiveSlateAction, publishingLiveSlate] =
     useActionState(publishLiveWeekSlateAction, initialAppActionState);
+  const [refreshQuotesState, refreshQuotesAction, refreshingQuotes] =
+    useActionState(refreshLiveWeekQuotesAction, initialAppActionState);
   const [clockState, clockAction, advancing] = useActionState(
     advanceStage1ClockAction,
     initialAppActionState,
@@ -331,6 +334,24 @@ export function Stage1CommissionerControls({
               </dd>
             </div>
             <div className="flex justify-between gap-4">
+              <dt className="text-graphite">Current quotes</dt>
+              <dd className="text-right font-semibold">
+                {importTimestampFormatter.format(
+                  new Date(
+                    state.slate.reduce(
+                      (latest, event) =>
+                        event.latestObservedAt > latest
+                          ? event.latestObservedAt
+                          : latest,
+                      state.slate[0]?.latestObservedAt ??
+                        state.week.commonLockAt,
+                    ),
+                  ),
+                )}{" "}
+                ET
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4">
               <dt className="text-graphite">Cards</dt>
               <dd className="font-semibold">Closed</dd>
             </div>
@@ -339,9 +360,39 @@ export function Stage1CommissionerControls({
               <dd className="font-semibold">Not started</dd>
             </div>
           </dl>
+          <form action={refreshQuotesAction} className="mt-4">
+            <ContextFields state={state} />
+            <button
+              className={buttonClass}
+              disabled={!providerConfigured || refreshingQuotes}
+              type="submit"
+            >
+              {refreshingQuotes
+                ? "Refreshing published quotes…"
+                : "Refresh current odds"}
+            </button>
+          </form>
+          {!providerConfigured ? (
+            <p className="text-pending mt-3 text-xs leading-5 font-semibold">
+              The server-side provider key is not configured in this
+              environment.
+            </p>
+          ) : null}
+          <ActionFeedback state={refreshQuotesState} />
+          <div className="border-boundary mt-5 border-t pt-4">
+            <p className="text-sm font-bold">
+              Roster readiness · {state.league.memberCount}/4 minimum
+            </p>
+            <p className="text-muted mt-1 text-xs leading-5">
+              Opening cards remains unavailable until the roster has an even
+              4–16 members. Refreshing odds never bypasses that competitive
+              rule.
+            </p>
+          </div>
           <p className="text-muted mt-4 text-xs leading-5">
-            The next Stage 3 command will lock an even roster of 4–16, publish
-            the balanced schedule, refresh eligible quotes, and open cards.
+            The next irreversible Stage 3 command will lock the valid roster,
+            publish the balanced schedule, and open cards using the current
+            quote heads.
           </p>
         </section>
       ) : (

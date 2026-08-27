@@ -130,6 +130,33 @@ function mutationError(message: string): AppActionState {
         "A newer NFL market import is available. Refresh the commissioner page and review it before publishing.",
     };
   }
+  if (message.includes("exactly the published event set")) {
+    return {
+      status: "error",
+      message:
+        "The provider did not return every published game. The existing quotes remain current and unchanged.",
+    };
+  }
+  if (message.includes("cannot change a published event")) {
+    return {
+      status: "error",
+      message:
+        "The provider changed a published game identity or kickoff. No quote was refreshed.",
+    };
+  }
+  if (message.includes("cannot move an observation backward")) {
+    return {
+      status: "error",
+      message:
+        "The provider returned an older observation. The newer stored quotes remain current.",
+    };
+  }
+  if (message.includes("reached common lock")) {
+    return {
+      status: "error",
+      message: "Odds cannot refresh after the published common lock.",
+    };
+  }
   return {
     status: "error",
     message: "The command was rejected without changing competitive history.",
@@ -384,6 +411,97 @@ export async function publishLiveWeekSlateAction(
     href: `/l/${context.data.leagueSlug}/slate`,
     hrefLabel: "Review the published slate",
   };
+}
+
+const storedLiveImportSchema = z.object({ importId: z.uuid() });
+
+export async function refreshLiveWeekQuotesAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  if (!context.success) return mutationError("invalid context");
+
+  const state = await getLiveStage1League(context.data.leagueSlug);
+  if (
+    !state ||
+    state.league.id !== context.data.leagueId ||
+    !state.commissioner.isCommissioner ||
+    state.league.mode !== "LIVE" ||
+    !state.week ||
+    !["PLANNED", "OPEN"].includes(state.week.state) ||
+    state.slate.length === 0
+  ) {
+    return mutationError("A published Live slate is required.");
+  }
+
+  try {
+    const liveImport = await fetchNflOdds({
+      eventIds: state.slate.map((event) => event.key),
+    });
+    const payloadHash = createHash("sha256")
+      .update(JSON.stringify(liveImport))
+      .digest("hex");
+    const supabase = await createSupabaseServerClient();
+    const stored = await supabase.schema("api").rpc("store_live_odds_import", {
+      p_league_id: context.data.leagueId,
+      p_import: liveImport as unknown as Json,
+      p_idempotency_key: `live-odds:${payloadHash}`,
+    });
+    if (stored.error) return mutationError(stored.error.message);
+
+    const importReceipt = storedLiveImportSchema.safeParse(stored.data);
+    if (!importReceipt.success) {
+      return mutationError("The stored import receipt is invalid.");
+    }
+    const refreshed = await supabase
+      .schema("api")
+      .rpc("refresh_live_week_quotes", {
+        p_league_id: context.data.leagueId,
+        p_import_id: importReceipt.data.importId,
+        p_idempotency_key: `refresh-live:${payloadHash}`,
+      });
+    if (refreshed.error) {
+      console.error(
+        JSON.stringify({
+          level: "error",
+          message: "Live quote refresh rejected",
+          code: refreshed.error.code,
+          databaseMessage: refreshed.error.message,
+        }),
+      );
+      return mutationError(refreshed.error.message);
+    }
+
+    revalidatePath(`/l/${context.data.leagueSlug}`);
+    revalidatePath(`/l/${context.data.leagueSlug}/slate`);
+    revalidatePath(`/l/${context.data.leagueSlug}/card`);
+    revalidatePath(`/l/${context.data.leagueSlug}/commissioner`);
+    return {
+      status: "success",
+      message: `${liveImport.events.length} published games refreshed. The eligible games and common lock did not change.`,
+    };
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        level: "error",
+        message: "Live quote refresh failed",
+        errorName: error instanceof Error ? error.name : "UnknownError",
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
+      }),
+    );
+    if (error instanceof OddsProviderRequestError) {
+      return { status: "error", message: error.message };
+    }
+    if (error instanceof OddsProviderPayloadError) {
+      return {
+        status: "error",
+        message:
+          "The provider did not return a complete valid quote set. Existing published quotes were not changed.",
+      };
+    }
+    return mutationError("The live quote refresh failed.");
+  }
 }
 
 export async function initializeStage1WeekAction(

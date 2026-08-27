@@ -30,6 +30,9 @@ ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
   selection, an immutable eligible-event set, six stored main-market outcomes
   per event, and a derived five-minute common lock; solo publication creates no
   cards, schedule, matchups, or credit grants
+- Current-odds refresh for exactly the published event set: every observation
+  remains append-only, one explicit quote head drives the UI, and receipt
+  insertion rejects superseded prices without changing games or common lock
 - Deterministic provider-fixture ports for healthy, stale, outlier, suspended,
   provider-degraded, live, final, void, and corrected states
 - Vitest unit/property coverage and Playwright configuration
@@ -80,8 +83,8 @@ Migrations and pgTAP assertions live in `supabase/`. The Stage 1 suite executes
 the complete interactive lifecycle; the Stage 2 suite publishes, reads, and
 rejects mutation of a full-season archive; the Stage 3 suite verifies guarded
 live imports, immutable event selection, noncompetitive solo publication,
-idempotency, append-only storage, and commissioner-only RLS. All run inside
-rollback transactions. The `api` schema is the reviewed Data API
+current-quote refresh, idempotency, append-only storage, and commissioner-only
+RLS. All run inside rollback transactions. The `api` schema is the reviewed Data API
 boundary; base relations live in the non-exposed `private` schema and remain
 protected by grants and Row Level Security.
 

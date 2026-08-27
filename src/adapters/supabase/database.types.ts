@@ -89,6 +89,18 @@ export type Database = {
         Args: { p_league_slug: string };
         Returns: Json | null;
       };
+      get_live_quote_heads: {
+        Args: { p_league_slug: string };
+        Returns: Json;
+      };
+      refresh_live_week_quotes: {
+        Args: {
+          p_idempotency_key: string;
+          p_import_id: string;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
       store_live_odds_import: {
         Args: {
           p_idempotency_key: string;
