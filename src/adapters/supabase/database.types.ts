@@ -175,6 +175,15 @@ export type Database = {
         };
         Returns: Json;
       };
+      publish_live_week_slate: {
+        Args: {
+          p_external_event_ids: string[];
+          p_idempotency_key: string;
+          p_import_id: string;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       [_ in never]: never;

@@ -26,6 +26,10 @@ ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
 - Stage 3 Live-mode foundation: mode-aware league creation, a server-only The
   Odds API client, strict DraftKings main-market normalization, and an
   append-only commissioner review ledger protected from regular members by RLS
+- Commissioner-selected Live Week 1 publication with rules-aware default event
+  selection, an immutable eligible-event set, six stored main-market outcomes
+  per event, and a derived five-minute common lock; solo publication creates no
+  cards, schedule, matchups, or credit grants
 - Deterministic provider-fixture ports for healthy, stale, outlier, suspended,
   provider-degraded, live, final, void, and corrected states
 - Vitest unit/property coverage and Playwright configuration
@@ -34,7 +38,9 @@ The simulation adapter is visibly labeled and never mixes with live data.
 Stages 1 and 2 are the Production baseline. Stage 3 begins on the isolated
 `stage-3-live-season` branch with a server-only The Odds API boundary and
 private import review; no live provider request is made unless the environment
-has an authorized API key, and an import alone cannot publish a member slate.
+has an authorized API key. Imports remain noncompetitive until the commissioner
+publishes selected events, and that publication keeps cards closed until a
+valid even roster is locked.
 
 ## Local development
 
@@ -73,8 +79,9 @@ npm run test:e2e
 Migrations and pgTAP assertions live in `supabase/`. The Stage 1 suite executes
 the complete interactive lifecycle; the Stage 2 suite publishes, reads, and
 rejects mutation of a full-season archive; the Stage 3 suite verifies guarded
-live imports, idempotency, append-only storage, and commissioner-only RLS. All
-run inside rollback transactions. The `api` schema is the reviewed Data API
+live imports, immutable event selection, noncompetitive solo publication,
+idempotency, append-only storage, and commissioner-only RLS. All run inside
+rollback transactions. The `api` schema is the reviewed Data API
 boundary; base relations live in the non-exposed `private` schema and remain
 protected by grants and Row Level Security.
 

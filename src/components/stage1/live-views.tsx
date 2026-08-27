@@ -30,6 +30,8 @@ function formatScore(value: number): string {
 
 function liveStatus(state: Stage1StateDto): ReactNode {
   if (!state.week) return <StatusBadge tone="pending">Forming</StatusBadge>;
+  if (state.week.state === "PLANNED")
+    return <StatusBadge tone="sealed">Slate published</StatusBadge>;
   if (state.week.state === "FINAL")
     return <StatusBadge tone="positive">Final</StatusBadge>;
   if (state.week.state === "PROVISIONAL")
@@ -40,19 +42,22 @@ function liveStatus(state: Stage1StateDto): ReactNode {
 }
 
 function FormationPanel({ state }: { state: Stage1StateDto }) {
+  const liveSlatePublished =
+    state.league.mode === "LIVE" && state.week?.state === "PLANNED";
   return (
     <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">
       <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
         League formation
       </p>
       <h2 className="mt-2 text-xl font-bold">
-        {state.league.memberCount} members joined
+        {liveSlatePublished
+          ? `Week 1 slate published · ${state.league.memberCount} members joined`
+          : `${state.league.memberCount} members joined`}
       </h2>
       <p className="text-graphite mt-3 max-w-2xl leading-7">
-        A full season can publish with any even roster from 4 through 16; the
-        interactive Week 1 demo publishes at exactly eight. Until a path is
-        chosen, there is no schedule, slate, card, opponent readiness, or hidden
-        competitive state to infer.
+        {liveSlatePublished
+          ? "The eligible NFL events and common lock are fixed. Competitive play remains closed until an even roster of 4–16 locks and the balanced schedule, matchups, and weekly cards publish."
+          : "A full season can publish with any even roster from 4 through 16; the interactive Week 1 demo publishes at exactly eight. Until a path is chosen, there is no schedule, slate, card, opponent readiness, or hidden competitive state to infer."}
       </p>
       {state.commissioner.isCommissioner ? (
         <Link
@@ -147,6 +152,55 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
 }
 
 export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
+  if (
+    state.league.mode === "LIVE" &&
+    state.week?.state === "PLANNED" &&
+    state.slate.length > 0 &&
+    !state.ownerCard
+  ) {
+    return (
+      <PageFrame
+        eyebrow={`${state.league.name} · Live Week 1`}
+        title="Published NFL slate"
+        description={`The eligible event set is immutable. Common lock ${formatDate(state.week.commonLockAt)}; cards stay closed until the roster and schedule publish.`}
+        aside={liveStatus(state)}
+      >
+        <div className="mt-7 grid gap-4">
+          {state.slate.map((event) => (
+            <article
+              className="border-boundary bg-surface rounded-xl border p-5"
+              key={event.id}
+            >
+              <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
+                <div>
+                  <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+                    {formatDate(event.scheduledStartAt)}
+                  </p>
+                  <h2 className="mt-2 text-lg font-bold">
+                    {event.awayTeam} at {event.homeTeam}
+                  </h2>
+                </div>
+                <StatusBadge tone="positive">6 outcomes stored</StatusBadge>
+              </div>
+              <ul className="border-boundary mt-4 grid gap-2 border-t pt-4 sm:grid-cols-2 lg:grid-cols-3">
+                {event.markets.map((market) => (
+                  <li
+                    className="bg-subtle flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm"
+                    key={market.id}
+                  >
+                    <span className="truncate">{market.proposition}</span>
+                    <span className="shrink-0 font-mono font-semibold">
+                      {formatOdds(market.americanOdds)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </PageFrame>
+    );
+  }
   if (!state.week || !state.ownerCard) {
     return (
       <PageFrame

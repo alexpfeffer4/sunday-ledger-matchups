@@ -104,6 +104,32 @@ function mutationError(message: string): AppActionState {
         "The provider returned too many games for one weekly import. No odds were stored.",
     };
   }
+  if (message.includes("Select between one and 32")) {
+    return {
+      status: "error",
+      message: "Select at least one imported NFL event before publishing.",
+    };
+  }
+  if (message.includes("already reached common lock")) {
+    return {
+      status: "error",
+      message:
+        "At least one selected event has reached common lock. Import current markets and review a future slate.",
+    };
+  }
+  if (message.includes("already published")) {
+    return {
+      status: "error",
+      message: "This season already has a published weekly slate.",
+    };
+  }
+  if (message.includes("newer reviewed import")) {
+    return {
+      status: "error",
+      message:
+        "A newer NFL market import is available. Refresh the commissioner page and review it before publishing.",
+    };
+  }
   return {
     status: "error",
     message: "The command was rejected without changing competitive history.",
@@ -308,6 +334,56 @@ export async function importLiveOddsAction(
     }
     return mutationError("The live odds import failed.");
   }
+}
+
+export async function publishLiveWeekSlateAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  const selection = z
+    .object({
+      importId: z.uuid(),
+      externalEventIds: z.array(z.string().min(1).max(160)).min(1).max(32),
+    })
+    .safeParse({
+      importId: formData.get("importId"),
+      externalEventIds: formData.getAll("externalEventId"),
+    });
+  if (!context.success || !selection.success) {
+    return mutationError("Select between one and 32 imported events.");
+  }
+
+  const state = await getLiveStage1League(context.data.leagueSlug);
+  if (
+    !state ||
+    state.league.id !== context.data.leagueId ||
+    !state.commissioner.isCommissioner ||
+    state.league.mode !== "LIVE" ||
+    state.league.lifecycle !== "DRAFT" ||
+    state.week
+  ) {
+    return mutationError("A Draft Live season without a slate is required.");
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const result = await supabase.schema("api").rpc("publish_live_week_slate", {
+    p_league_id: context.data.leagueId,
+    p_import_id: selection.data.importId,
+    p_external_event_ids: selection.data.externalEventIds,
+    p_idempotency_key: idempotencyKey("publish-live-slate"),
+  });
+  if (result.error) return mutationError(result.error.message);
+
+  revalidatePath(`/l/${context.data.leagueSlug}`);
+  revalidatePath(`/l/${context.data.leagueSlug}/slate`);
+  revalidatePath(`/l/${context.data.leagueSlug}/commissioner`);
+  return {
+    status: "success",
+    message: `${selection.data.externalEventIds.length} NFL events published to the immutable Week 1 slate. Cards remain closed until the roster and schedule are locked.`,
+    href: `/l/${context.data.leagueSlug}/slate`,
+    hrefLabel: "Review the published slate",
+  };
 }
 
 export async function initializeStage1WeekAction(

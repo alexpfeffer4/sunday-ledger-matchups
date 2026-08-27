@@ -34,6 +34,12 @@ select has_function(
   array['text'],
   'the commissioner review read model is exposed'
 );
+select has_function(
+  'api',
+  'publish_live_week_slate',
+  array['uuid', 'uuid', 'text[]', 'text'],
+  'the guarded live slate publication command is exposed'
+);
 select policies_are(
   'private',
   'live_odds_imports',
@@ -62,6 +68,22 @@ select function_privs_are(
   'authenticated',
   array['EXECUTE'],
   'authenticated callers can invoke the guarded import command'
+);
+select function_privs_are(
+  'api',
+  'publish_live_week_slate',
+  array['uuid', 'uuid', 'text[]', 'text'],
+  'anon',
+  array[]::text[],
+  'anonymous callers cannot publish a live slate'
+);
+select function_privs_are(
+  'api',
+  'publish_live_week_slate',
+  array['uuid', 'uuid', 'text[]', 'text'],
+  'authenticated',
+  array['EXECUTE'],
+  'authenticated callers can invoke the guarded publication command'
 );
 
 create or replace function pg_temp.stage3_live_import()
@@ -188,6 +210,29 @@ values (
   repeat('f', 64)
 );
 
+insert into private.season_entries (
+  id,
+  season_id,
+  league_id,
+  user_id,
+  standing_tiebreak
+)
+values
+  (
+    '65000000-0000-4000-8000-000000000001',
+    '64000000-0000-4000-8000-000000000001',
+    '62000000-0000-4000-8000-000000000001',
+    '61000000-0000-4000-8000-000000000001',
+    repeat('1', 64)
+  ),
+  (
+    '65000000-0000-4000-8000-000000000002',
+    '64000000-0000-4000-8000-000000000001',
+    '62000000-0000-4000-8000-000000000001',
+    '61000000-0000-4000-8000-000000000002',
+    repeat('2', 64)
+  );
+
 select set_config(
   'request.jwt.claims',
   '{"sub":"61000000-0000-4000-8000-000000000001","role":"authenticated"}',
@@ -203,7 +248,10 @@ select lives_ok(
   'the commissioner can store a normalized live import'
 );
 select is(
-  (select count(*) from private.live_odds_imports),
+  (
+    select count(*) from private.live_odds_imports
+    where season_id = '64000000-0000-4000-8000-000000000001'
+  ),
   1::bigint,
   'one append-only import is stored'
 );
@@ -228,9 +276,153 @@ select lives_ok(
   'the exact import command replays idempotently'
 );
 select is(
-  (select count(*) from private.live_odds_imports),
+  (
+    select count(*) from private.live_odds_imports
+    where season_id = '64000000-0000-4000-8000-000000000001'
+  ),
   1::bigint,
   'idempotent replay does not duplicate an import'
+);
+select throws_ok(
+  $$select api.publish_live_week_slate(
+    '62000000-0000-4000-8000-000000000001',
+    (
+      select id from private.live_odds_imports
+      where season_id = '64000000-0000-4000-8000-000000000001'
+      limit 1
+    ),
+    array['unknown-provider-event'],
+    'publish-invalid-event'
+  )$$,
+  '22023',
+  'Every selected event must belong to the reviewed import.',
+  'publication rejects an event outside the reviewed import'
+);
+select is(
+  (
+    select count(*) from private.season_weeks
+    where season_id = '64000000-0000-4000-8000-000000000001'
+  ),
+  0::bigint,
+  'a rejected publication creates no week'
+);
+select lives_ok(
+  $$select api.publish_live_week_slate(
+    '62000000-0000-4000-8000-000000000001',
+    (
+      select id from private.live_odds_imports
+      where season_id = '64000000-0000-4000-8000-000000000001'
+      limit 1
+    ),
+    array['provider-event-buf-nyj'],
+    'publish-stage3-live-slate'
+  )$$,
+  'the commissioner can publish selected imported events'
+);
+select is(
+  (
+    select state from private.season_weeks
+    where season_id = '64000000-0000-4000-8000-000000000001'
+    limit 1
+  ),
+  'PLANNED',
+  'slate publication leaves the week planned'
+);
+select is(
+  (select lifecycle from private.seasons where id = '64000000-0000-4000-8000-000000000001'),
+  'DRAFT',
+  'slate publication does not lock the roster'
+);
+select is(
+  (
+    select count(*) from private.sports_events
+    where league_id = '62000000-0000-4000-8000-000000000001'
+  ),
+  1::bigint,
+  'the selected event is published once'
+);
+select is(
+  (
+    select count(*) from private.market_snapshots
+    where league_id = '62000000-0000-4000-8000-000000000001'
+  ),
+  6::bigint,
+  'the complete main-market snapshot set is published'
+);
+select is(
+  (
+    select count(*) from private.slate_items
+    where league_id = '62000000-0000-4000-8000-000000000001'
+  ),
+  6::bigint,
+  'all six market outcomes belong to the slate'
+);
+select is(
+  (
+    select count(*) from private.weekly_cards
+    where league_id = '62000000-0000-4000-8000-000000000001'
+  ),
+  0::bigint,
+  'publishing eligibility does not open cards or grant credits'
+);
+select is(
+  (
+    select count(*) from private.schedule_publications
+    where season_id = '64000000-0000-4000-8000-000000000001'
+  ),
+  0::bigint,
+  'publishing eligibility does not publish a competitive schedule'
+);
+select is(
+  (
+    select common_lock_at = '2026-09-13T16:55:00.000Z'::timestamptz
+    from private.season_weeks
+    where season_id = '64000000-0000-4000-8000-000000000001'
+    limit 1
+  ),
+  true,
+  'common lock is five minutes before the first selected event'
+);
+select is(
+  jsonb_array_length(api.get_stage1_state('stage3-live-import-test') -> 'slate'),
+  1,
+  'the member-scoped read model projects the published slate'
+);
+select lives_ok(
+  $$select api.publish_live_week_slate(
+    '62000000-0000-4000-8000-000000000001',
+    (
+      select id from private.live_odds_imports
+      where season_id = '64000000-0000-4000-8000-000000000001'
+      limit 1
+    ),
+    array['provider-event-buf-nyj'],
+    'publish-stage3-live-slate'
+  )$$,
+  'the exact publication command replays idempotently'
+);
+select is(
+  (
+    select count(*) from private.season_weeks
+    where season_id = '64000000-0000-4000-8000-000000000001'
+  ),
+  1::bigint,
+  'idempotent replay does not duplicate the week'
+);
+select throws_ok(
+  $$select api.publish_live_week_slate(
+    '62000000-0000-4000-8000-000000000001',
+    (
+      select id from private.live_odds_imports
+      where season_id = '64000000-0000-4000-8000-000000000001'
+      limit 1
+    ),
+    array['provider-event-buf-nyj'],
+    'publish-stage3-live-slate-again'
+  )$$,
+  '55000',
+  'A weekly slate is already published for this season.',
+  'a second publication command cannot replace the slate'
 );
 select throws_ok(
   $$select api.store_live_odds_import(
@@ -244,7 +436,8 @@ select throws_ok(
 );
 select throws_ok(
   $$update private.live_odds_imports
-    set normalized_json = normalized_json || '{"tampered":true}'::jsonb$$,
+    set normalized_json = normalized_json || '{"tampered":true}'::jsonb
+    where season_id = '64000000-0000-4000-8000-000000000001'$$,
   '55000',
   'live_odds_imports is append-only.',
   'stored imports cannot be rewritten'
@@ -252,7 +445,10 @@ select throws_ok(
 
 set local role authenticated;
 select is(
-  (select count(*) from private.live_odds_imports),
+  (
+    select count(*) from private.live_odds_imports
+    where season_id = '64000000-0000-4000-8000-000000000001'
+  ),
   1::bigint,
   'RLS exposes the import to the signed-in commissioner'
 );
@@ -279,9 +475,27 @@ select throws_ok(
   'Commissioner membership required.',
   'a regular member cannot store an import'
 );
+select throws_ok(
+  $$select api.publish_live_week_slate(
+    '62000000-0000-4000-8000-000000000001',
+    (
+      select id from private.live_odds_imports
+      where season_id = '64000000-0000-4000-8000-000000000001'
+      limit 1
+    ),
+    array['provider-event-buf-nyj'],
+    'member-publish-live-slate'
+  )$$,
+  '42501',
+  'Commissioner membership required.',
+  'a regular member cannot publish a live slate'
+);
 set local role authenticated;
 select is(
-  (select count(*) from private.live_odds_imports),
+  (
+    select count(*) from private.live_odds_imports
+    where season_id = '64000000-0000-4000-8000-000000000001'
+  ),
   0::bigint,
   'RLS hides private import rows from regular members'
 );

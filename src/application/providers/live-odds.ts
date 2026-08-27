@@ -30,3 +30,4 @@ export const liveOddsImportSchema = z.object({
 });
 
 export type LiveOddsImport = z.infer<typeof liveOddsImportSchema>;
+export type LiveProviderEvent = z.infer<typeof liveProviderEventSchema>;

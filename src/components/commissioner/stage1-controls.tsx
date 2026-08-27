@@ -9,11 +9,13 @@ import {
   importLiveOddsAction,
   initializeStage1WeekAction,
   lockStage1WeekAction,
+  publishLiveWeekSlateAction,
   publishSimulationSeasonArchiveAction,
   recordStage1ResultAction,
   setStage1EventLiveAction,
 } from "@/app/l/[leagueSlug]/actions";
 import { initialAppActionState } from "@/application/actions/action-state";
+import { isStandardLiveSlateEvent } from "@/application/providers/select-standard-live-slate";
 import type { LiveOddsImportReview } from "@/application/queries/get-live-odds-import";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import { ActionFeedback } from "@/components/forms/action-feedback";
@@ -55,6 +57,8 @@ const importTimestampFormatter = new Intl.DateTimeFormat("en-US", {
 
 const eventTimestampFormatter = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
+  month: "short",
+  day: "numeric",
   hour: "numeric",
   minute: "2-digit",
   timeZone: "America/New_York",
@@ -85,6 +89,8 @@ export function Stage1CommissionerControls({
     importLiveOddsAction,
     initialAppActionState,
   );
+  const [publishLiveSlateState, publishLiveSlateAction, publishingLiveSlate] =
+    useActionState(publishLiveWeekSlateAction, initialAppActionState);
   const [clockState, clockAction, advancing] = useActionState(
     advanceStage1ClockAction,
     initialAppActionState,
@@ -178,25 +184,66 @@ export function Stage1CommissionerControls({
                   Stored · not published
                 </span>
               </div>
-              <div className="divide-boundary mt-4 divide-y">
-                {latestLiveImport.events.map((event) => (
-                  <div
-                    className="py-3 first:pt-0 last:pb-0"
-                    key={event.externalEventId}
-                  >
-                    <p className="text-sm font-semibold">
-                      {event.awayTeam} at {event.homeTeam}
-                    </p>
-                    <p className="text-muted mt-1 text-xs">
-                      {event.markets.length} main-market outcomes ·{" "}
-                      {eventTimestampFormatter.format(
-                        new Date(event.scheduledStartAt),
-                      )}{" "}
-                      ET
-                    </p>
+              <form action={publishLiveSlateAction} className="mt-4">
+                <ContextFields state={state} />
+                <input
+                  type="hidden"
+                  name="importId"
+                  value={latestLiveImport.importId}
+                />
+                <fieldset>
+                  <legend className="text-sm font-bold">
+                    Select the eligible Week 1 games
+                  </legend>
+                  <p className="text-muted mt-1 text-xs leading-5">
+                    Standard Sunday games at 1:00 p.m. ET or later and Monday
+                    games start selected. Checking an earlier or Thursday game
+                    affirmatively includes it under the Season 1 rules.
+                  </p>
+                  <div className="divide-boundary mt-3 divide-y">
+                    {latestLiveImport.events.map((event) => (
+                      <label
+                        className="flex min-h-14 cursor-pointer items-start gap-3 py-3 first:pt-0 last:pb-0"
+                        key={event.externalEventId}
+                      >
+                        <input
+                          className="border-control text-registry mt-1 size-4 rounded"
+                          defaultChecked={isStandardLiveSlateEvent(event)}
+                          name="externalEventId"
+                          type="checkbox"
+                          value={event.externalEventId}
+                        />
+                        <span>
+                          <span className="block text-sm font-semibold">
+                            {event.awayTeam} at {event.homeTeam}
+                          </span>
+                          <span className="text-muted mt-1 block text-xs">
+                            {event.markets.length} main-market outcomes ·{" "}
+                            {eventTimestampFormatter.format(
+                              new Date(event.scheduledStartAt),
+                            )}{" "}
+                            ET
+                          </span>
+                        </span>
+                      </label>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </fieldset>
+                <p className="text-negative mt-4 text-sm leading-6 font-semibold">
+                  Publication fixes the eligible event set and common lock. It
+                  cannot be replaced; cards and credits remain closed.
+                </p>
+                <button
+                  className={`${buttonClass} mt-4`}
+                  disabled={publishingLiveSlate}
+                  type="submit"
+                >
+                  {publishingLiveSlate
+                    ? "Publishing slate…"
+                    : "Publish selected Week 1 slate"}
+                </button>
+              </form>
+              <ActionFeedback state={publishLiveSlateState} />
             </div>
           ) : (
             <p className="text-muted mt-5 text-sm">
@@ -261,6 +308,42 @@ export function Stage1CommissionerControls({
             <ActionFeedback state={initializeState} />
           </section>
         </>
+      ) : state.league.mode === "LIVE" && state.week.state === "PLANNED" ? (
+        <section className="border-registry bg-surface rounded-xl border p-5">
+          <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+            Week 1 · eligible slate published
+          </p>
+          <h2 className="mt-2 font-bold">
+            {state.slate.length} NFL events are fixed
+          </h2>
+          <p className="text-graphite mt-2 text-sm leading-6">
+            The selected event set and common lock are member-visible and cannot
+            be replaced. No schedule, matchup, card, or credit grant exists yet.
+          </p>
+          <dl className="border-boundary mt-4 space-y-3 border-t pt-4 text-sm">
+            <div className="flex justify-between gap-4">
+              <dt className="text-graphite">Common lock</dt>
+              <dd className="text-right font-semibold">
+                {importTimestampFormatter.format(
+                  new Date(state.week.commonLockAt),
+                )}{" "}
+                ET
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-graphite">Cards</dt>
+              <dd className="font-semibold">Closed</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-graphite">Roster lock</dt>
+              <dd className="font-semibold">Not started</dd>
+            </div>
+          </dl>
+          <p className="text-muted mt-4 text-xs leading-5">
+            The next Stage 3 command will lock an even roster of 4–16, publish
+            the balanced schedule, refresh eligible quotes, and open cards.
+          </p>
+        </section>
       ) : (
         <>
           <section className="border-boundary bg-surface rounded-xl border p-5">
