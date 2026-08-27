@@ -12,7 +12,8 @@ import type { Json } from "@/adapters/supabase/database.types";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import type { AppActionState } from "@/application/actions/action-state";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
-import { validateProposedPosition } from "@/domain/cards/validate-position";
+import { validateDraftCard } from "@/domain/cards/validate-card-draft";
+import { maximumStakeForOdds } from "@/domain/cards/validate-position";
 import {
   simulateSeason,
   type SimulationMember,
@@ -76,6 +77,19 @@ function mutationError(message: string): AppActionState {
       status: "error",
       message:
         "Advance the simulation clock beyond the correction window first.",
+    };
+  }
+  if (message.includes("stale")) {
+    return {
+      status: "error",
+      message:
+        "At least one quote expired. Review the current card terms again.",
+    };
+  }
+  if (message.includes("exactly 1,000")) {
+    return {
+      status: "error",
+      message: "Allocate exactly 1,000 credits before sealing the card.",
     };
   }
   return {
@@ -235,55 +249,109 @@ export async function initializeStage1WeekAction(
   );
 }
 
-export async function acceptStage1PositionAction(
+const cardDraftPositionSchema = z.object({
+  marketSnapshotId: z.uuid(),
+  payloadHash: z.string().regex(/^[0-9a-f]{64}$/),
+  stakeCredits: z.number().int().min(50).max(1_000),
+});
+
+export async function acceptStage1CardAction(
   _state: AppActionState,
   formData: FormData,
 ): Promise<AppActionState> {
-  const parsed = z
+  const context = z
     .object({
-      leagueSlug: z.string(),
-      marketSnapshotId: z.uuid(),
-      payloadHash: z.string().length(64),
-      stakeCredits: z.coerce.number().int(),
+      leagueSlug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+      positions: z.array(cardDraftPositionSchema).min(1).max(20),
     })
     .safeParse({
       leagueSlug: formData.get("leagueSlug"),
-      marketSnapshotId: formData.get("marketSnapshotId"),
-      payloadHash: formData.get("payloadHash"),
-      stakeCredits: formData.get("stakeCredits"),
+      positions: (() => {
+        try {
+          return JSON.parse(String(formData.get("positions")));
+        } catch {
+          return null;
+        }
+      })(),
     });
-  if (!parsed.success) {
-    return { status: "error", message: "Enter a whole-credit position." };
+  if (!context.success) {
+    return {
+      status: "error",
+      message: "The card draft is invalid. Refresh the slate and try again.",
+    };
   }
 
-  const state = await getLiveStage1League(parsed.data.leagueSlug);
-  const selected = state?.slate
-    .flatMap((event) => event.markets.map((market) => ({ event, market })))
-    .find(({ market }) => market.id === parsed.data.marketSnapshotId);
-  if (!state?.ownerCard || !selected) return mutationError("missing card");
+  const state = await getLiveStage1League(context.data.leagueSlug);
+  if (!state?.week || !state.ownerCard || state.week.state !== "OPEN") {
+    return mutationError("The Week 1 card is not open.");
+  }
 
-  const validation = validateProposedPosition({
+  const snapshots = new Map(
+    state.slate.flatMap((event) =>
+      event.markets.map((market) => [market.id, { event, market }] as const),
+    ),
+  );
+  const selected = context.data.positions.flatMap((position) => {
+    const snapshot = snapshots.get(position.marketSnapshotId);
+    return snapshot ? [{ ...position, ...snapshot }] : [];
+  });
+  if (selected.length !== context.data.positions.length) {
+    return {
+      status: "error",
+      message: "A selected quote is no longer on this slate. Review the card.",
+    };
+  }
+  if (
+    selected.some(
+      ({ market, payloadHash }) =>
+        market.qualityStatus !== "HEALTHY" ||
+        market.payloadHash !== payloadHash,
+    )
+  ) {
+    return mutationError("QUOTE_CHANGED");
+  }
+
+  const eligibleByMarket = new Map<
+    string,
+    {
+      eventId: string;
+      marketType: "MONEYLINE" | "SPREAD" | "TOTAL";
+      americanOdds: number;
+    }
+  >();
+  for (const event of state.slate) {
+    for (const market of event.markets) {
+      if (market.qualityStatus !== "HEALTHY") continue;
+      const key = `${event.id}:${market.marketType}`;
+      const current = eligibleByMarket.get(key);
+      if (
+        !current ||
+        maximumStakeForOdds(market.americanOdds, simulationSeason1Ruleset) >
+          maximumStakeForOdds(current.americanOdds, simulationSeason1Ruleset)
+      ) {
+        eligibleByMarket.set(key, {
+          eventId: event.id,
+          marketType: market.marketType,
+          americanOdds: market.americanOdds,
+        });
+      }
+    }
+  }
+
+  const validation = validateDraftCard({
     acceptedPositions: state.ownerCard.positions.map((position) => ({
       eventId: position.eventId,
       marketType: position.marketType,
       stakeCredits: position.stakeCredits,
       americanOdds: position.americanOdds,
     })),
-    proposedPosition: {
-      eventId: selected.event.id,
-      marketType: selected.market.marketType,
-      stakeCredits: parsed.data.stakeCredits,
-      americanOdds: selected.market.americanOdds,
-    },
-    eligibleOpportunities: state.slate.flatMap((event) =>
-      event.markets
-        .filter((market) => market.qualityStatus === "HEALTHY")
-        .map((market) => ({
-          eventId: event.id,
-          marketType: market.marketType,
-          americanOdds: market.americanOdds,
-        })),
-    ),
+    draftPositions: selected.map(({ event, market, stakeCredits }) => ({
+      eventId: event.id,
+      marketType: market.marketType,
+      stakeCredits,
+      americanOdds: market.americanOdds,
+    })),
+    eligibleOpportunities: [...eligibleByMarket.values()],
     ruleset: simulationSeason1Ruleset,
   });
   if (!validation.accepted) {
@@ -291,17 +359,15 @@ export async function acceptStage1PositionAction(
   }
 
   const supabase = await createSupabaseServerClient();
-  const result = await supabase.schema("api").rpc("accept_stage1_position", {
-    p_league_slug: parsed.data.leagueSlug,
-    p_market_snapshot_id: parsed.data.marketSnapshotId,
-    p_stake_credits: parsed.data.stakeCredits,
-    p_expected_payload_hash: parsed.data.payloadHash,
-    p_idempotency_key: idempotencyKey("position"),
+  const result = await supabase.schema("api").rpc("accept_stage1_card", {
+    p_league_slug: context.data.leagueSlug,
+    p_positions: context.data.positions as unknown as Json,
+    p_idempotency_key: idempotencyKey("card"),
   });
   if (result.error) return mutationError(result.error.message);
   return finish(
-    parsed.data.leagueSlug,
-    "Position accepted and sealed with an immutable receipt.",
+    context.data.leagueSlug,
+    `${context.data.positions.length} positions accepted together. Your complete card is now sealed.`,
   );
 }
 

@@ -20,6 +20,12 @@ select has_function(
 );
 select has_function(
   'api',
+  'accept_stage1_card',
+  array['text', 'jsonb', 'text'],
+  'the atomic full-card acceptance command is exposed'
+);
+select has_function(
+  'api',
   'get_stage1_state',
   array['text'],
   'the sealed Stage 1 read model is exposed'
@@ -58,6 +64,30 @@ select function_privs_are(
   'authenticated',
   array['EXECUTE'],
   'authenticated callers can invoke the guarded command'
+);
+select function_privs_are(
+  'api',
+  'accept_stage1_card',
+  array['text', 'jsonb', 'text'],
+  'anon',
+  array[]::text[],
+  'anonymous callers cannot seal a card'
+);
+select function_privs_are(
+  'api',
+  'accept_stage1_card',
+  array['text', 'jsonb', 'text'],
+  'authenticated',
+  array['EXECUTE'],
+  'authenticated callers can invoke atomic card acceptance'
+);
+select function_privs_are(
+  'api',
+  'accept_stage1_position',
+  array['text', 'uuid', 'integer', 'text', 'text'],
+  'authenticated',
+  array[]::text[],
+  'participants cannot invoke the legacy piecemeal acceptance command'
 );
 
 create or replace function pg_temp.stage1_fixture()
@@ -377,13 +407,62 @@ begin
 end;
 $$;
 
+create or replace function pg_temp.accept_card(
+  p_user_number integer,
+  p_selections jsonb,
+  p_idempotency_key text
+)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_user_id uuid := (
+    '00000000-0000-4000-8000-' || lpad(p_user_number::text, 12, '0')
+  )::uuid;
+  v_positions jsonb;
+  v_response jsonb;
+begin
+  perform set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub', v_user_id, 'role', 'authenticated')::text,
+    true
+  );
+
+  select jsonb_agg(
+    jsonb_build_object(
+      'marketSnapshotId', snapshot.id,
+      'payloadHash', snapshot.payload_hash,
+      'stakeCredits', (selection.value ->> 'stakeCredits')::integer
+    ) order by selection.ordinality
+  ) into v_positions
+  from jsonb_array_elements(p_selections) with ordinality as selection(value, ordinality)
+  join private.sports_events as event
+    on event.fixture_event_key = selection.value ->> 'eventKey'
+  join private.market_snapshots as snapshot
+    on snapshot.event_id = event.id
+   and snapshot.market_type = selection.value ->> 'marketType'
+   and snapshot.outcome_key = selection.value ->> 'outcomeKey'
+   and snapshot.book_key = 'draftkings';
+
+  select api.accept_stage1_card(
+    'stage1-database-test',
+    v_positions,
+    p_idempotency_key
+  ) into v_response;
+  return v_response;
+end;
+$$;
+
 select lives_ok(
-  $$select pg_temp.accept_market(1, 'buf-nyj', 'MONEYLINE', 'AWAY', 51, 'accept-user1-buf')$$,
-  'a 51-credit position is accepted for half-up evidence'
-);
-select lives_ok(
-  $$select pg_temp.accept_market(1, 'bal-cle', 'SPREAD', 'AWAY', 949, 'accept-user1-bal')$$,
-  'the first completed card reaches exactly 1,000 credits'
+  $$select pg_temp.accept_card(
+    1,
+    '[
+      {"eventKey":"buf-nyj","marketType":"MONEYLINE","outcomeKey":"AWAY","stakeCredits":51},
+      {"eventKey":"bal-cle","marketType":"SPREAD","outcomeKey":"AWAY","stakeCredits":949}
+    ]'::jsonb,
+    'accept-user1-card'
+  )$$,
+  'two positions are accepted together as one complete card'
 );
 select lives_ok(
   $$select pg_temp.accept_market(8, 'buf-nyj', 'TOTAL', 'OVER', 1000, 'accept-user8-push')$$,

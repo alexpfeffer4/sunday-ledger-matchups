@@ -95,6 +95,14 @@ export type Database = {
         };
         Returns: Json;
       };
+      accept_stage1_card: {
+        Args: {
+          p_idempotency_key: string;
+          p_league_slug: string;
+          p_positions: Json;
+        };
+        Returns: Json;
+      };
       advance_stage1_clock: {
         Args: {
           p_idempotency_key: string;

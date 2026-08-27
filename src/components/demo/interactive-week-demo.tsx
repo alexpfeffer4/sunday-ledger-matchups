@@ -17,9 +17,9 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import {
   cardCompliance,
   maximumStakeForOdds,
-  validateProposedPosition,
   type AcceptedCardPosition,
 } from "@/domain/cards/validate-position";
+import { validateDraftCard } from "@/domain/cards/validate-card-draft";
 import { decideRegularSeasonMatchup } from "@/domain/matchups/decide";
 import { formatCenticredits } from "@/domain/odds/american";
 import { weeklyScore } from "@/domain/settlement/settle";
@@ -33,7 +33,7 @@ type DraftPosition = {
 };
 
 type Feedback = {
-  marketKey: string;
+  marketKey?: string;
   tone: "positive" | "negative";
   message: string;
 } | null;
@@ -77,8 +77,10 @@ function acceptedCardPositions(
 
 function AcceptedPositions({
   positions,
+  label = "Receipt",
 }: {
   positions: readonly InteractiveDemoPosition[];
+  label?: "Draft" | "Receipt";
 }) {
   return positions.length === 0 ? (
     <p className="text-muted text-sm">No positions accepted yet.</p>
@@ -92,7 +94,7 @@ function AcceptedPositions({
         return (
           <article className="py-3 first:pt-0 last:pb-0" key={position.id}>
             <p className="text-muted text-xs">
-              Receipt {String(index + 1).padStart(2, "0")} ·{" "}
+              {label} {String(index + 1).padStart(2, "0")} ·{" "}
               {opportunity.marketType}
             </p>
             <div className="mt-1 flex justify-between gap-4 text-sm">
@@ -111,58 +113,42 @@ function AcceptedPositions({
 function DemoMarketCard({
   eventId,
   market,
-  acceptedPosition,
   draft,
   feedback,
-  remainingCredits,
+  isInCard,
   onDraftChange,
-  onAccept,
+  onToggleCard,
 }: {
   eventId: string;
   market: InteractiveDemoMarket;
-  acceptedPosition?: InteractiveDemoPosition;
   draft: DraftPosition;
   feedback: Feedback;
-  remainingCredits: number;
+  isInCard: boolean;
   onDraftChange: (draft: DraftPosition) => void;
-  onAccept: () => void;
+  onToggleCard: () => void;
 }) {
   const key = marketKey(eventId, market.marketType);
   const selectedOpportunity =
     market.opportunities.find(
       (opportunity) => opportunity.id === draft.opportunityId,
     ) ?? market.opportunities[0];
-  const acceptedOpportunity = acceptedPosition
-    ? getInteractiveDemoOpportunity(acceptedPosition.opportunityId)
-    : null;
   const maximumStakeCredits = maximumStakeForOdds(
     selectedOpportunity.americanOdds,
     simulationSeason1Ruleset,
   );
 
-  if (acceptedPosition && acceptedOpportunity) {
-    return (
-      <article className="border-positive/30 bg-positive/5 rounded-lg border p-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
-            {market.label}
-          </p>
-          <StatusBadge tone="sealed">Sealed</StatusBadge>
-        </div>
-        <p className="mt-3 font-semibold">{acceptedOpportunity.displayLine}</p>
-        <p className="text-graphite mt-1 font-mono text-sm">
-          {acceptedPosition.stakeCredits} credits @{" "}
-          {formatOdds(acceptedOpportunity.americanOdds)}
-        </p>
-      </article>
-    );
-  }
-
   return (
-    <article className="border-boundary bg-subtle rounded-lg border p-4">
-      <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
-        {market.label}
-      </p>
+    <article
+      className={`rounded-lg border p-4 ${
+        isInCard ? "border-registry bg-registry/5" : "border-boundary bg-subtle"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
+          {market.label}
+        </p>
+        {isInCard ? <StatusBadge tone="positive">In card</StatusBadge> : null}
+      </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
         {market.opportunities.map((opportunity) => (
           <button
@@ -203,7 +189,7 @@ function DemoMarketCard({
           id={`demo-${key}`}
           inputMode="numeric"
           min={simulationSeason1Ruleset.card.minimumStakeCredits}
-          max={Math.min(remainingCredits, maximumStakeCredits)}
+          max={maximumStakeCredits}
           onChange={(event) =>
             onDraftChange({
               ...draft,
@@ -215,12 +201,15 @@ function DemoMarketCard({
           value={draft.stakeCredits}
         />
         <button
-          className="bg-registry hover:bg-registry-hover min-h-11 rounded-lg px-4 text-sm font-semibold text-white disabled:opacity-50"
-          disabled={remainingCredits < 50}
-          onClick={onAccept}
+          className={
+            isInCard
+              ? "border-registry text-registry hover:bg-surface min-h-11 rounded-lg border px-4 text-sm font-semibold"
+              : "bg-registry hover:bg-registry-hover min-h-11 rounded-lg px-4 text-sm font-semibold text-white"
+          }
+          onClick={onToggleCard}
           type="button"
         >
-          Confirm &amp; seal
+          {isInCard ? "Remove" : "Add to card"}
         </button>
       </div>
       <p className="text-muted mt-2 text-xs">
@@ -292,23 +281,45 @@ export function InteractiveWeekDemo() {
   const [positions, setPositions] = useState<InteractiveDemoPosition[]>([]);
   const [drafts, setDrafts] =
     useState<Record<string, DraftPosition>>(createInitialDrafts);
+  const [draftMarketKeys, setDraftMarketKeys] = useState<string[]>([]);
+  const [reviewing, setReviewing] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
   const accepted = acceptedCardPositions(positions);
-  const allocatedCredits = accepted.reduce(
+  const draftItems = draftMarketKeys.flatMap((key, index) => {
+    const draft = drafts[key];
+    const opportunity = draft
+      ? getInteractiveDemoOpportunity(draft.opportunityId)
+      : null;
+    return draft && opportunity
+      ? [
+          {
+            key,
+            draft,
+            opportunity,
+            preview: {
+              id: `demo-draft-${String(index + 1).padStart(2, "0")}`,
+              opportunityId: opportunity.id,
+              stakeCredits: Number(draft.stakeCredits),
+            } satisfies InteractiveDemoPosition,
+          },
+        ]
+      : [];
+  });
+  const draftCardPositions: AcceptedCardPosition[] = draftItems.map(
+    ({ draft, opportunity }) => ({
+      eventId: opportunity.eventId,
+      marketType: opportunity.marketType,
+      stakeCredits: Number(draft.stakeCredits),
+      americanOdds: opportunity.americanOdds,
+    }),
+  );
+  const allocatedCredits = draftCardPositions.reduce(
     (total, position) => total + position.stakeCredits,
     0,
   );
   const remainingCredits =
     simulationSeason1Ruleset.card.weeklyAllocationCredits - allocatedCredits;
-  const acceptedByMarket = new Map(
-    positions.map((position) => {
-      const opportunity = getInteractiveDemoOpportunity(position.opportunityId);
-      if (!opportunity)
-        throw new Error("The accepted demo position is missing.");
-      return [marketKey(opportunity.eventId, opportunity.marketType), position];
-    }),
-  );
 
   const selfSettled = settleInteractiveDemoPositions(positions);
   const opponentSettled = settleInteractiveDemoPositions(
@@ -339,26 +350,33 @@ export function InteractiveWeekDemo() {
     setFeedback(null);
   }
 
-  function acceptPosition(market: InteractiveDemoMarket, eventId: string) {
+  function toggleDraftPosition(market: InteractiveDemoMarket, eventId: string) {
     const key = marketKey(eventId, market.marketType);
+    if (draftMarketKeys.includes(key)) {
+      setDraftMarketKeys((current) => current.filter((item) => item !== key));
+      setFeedback(null);
+      return;
+    }
     const draft = drafts[key];
     if (!draft) return;
     const opportunity = getInteractiveDemoOpportunity(draft.opportunityId);
     if (!opportunity) return;
-    const stakeCredits = Number(draft.stakeCredits);
-    const validation = validateProposedPosition({
-      acceptedPositions: accepted,
-      proposedPosition: {
+    const proposedPositions = [
+      ...draftCardPositions,
+      {
         eventId: opportunity.eventId,
         marketType: opportunity.marketType,
-        stakeCredits,
+        stakeCredits: Number(draft.stakeCredits),
         americanOdds: opportunity.americanOdds,
       },
+    ];
+    const validation = validateDraftCard({
+      draftPositions: proposedPositions,
       eligibleOpportunities: interactiveDemoEligibleOpportunities,
       ruleset: simulationSeason1Ruleset,
     });
 
-    if (!validation.accepted) {
+    if (!validation.accepted && validation.code !== "INCOMPLETE_CARD") {
       setFeedback({
         marketKey: key,
         tone: "negative",
@@ -367,25 +385,59 @@ export function InteractiveWeekDemo() {
       return;
     }
 
-    setPositions((current) => [
-      ...current,
-      {
-        id: `demo-receipt-${String(current.length + 1).padStart(2, "0")}`,
-        opportunityId: opportunity.id,
-        stakeCredits,
-      },
-    ]);
-    setFeedback({
-      marketKey: key,
-      tone: "positive",
-      message: `${stakeCredits} credits accepted. This demo receipt is now immutable.`,
+    setDraftMarketKeys((current) => [...current, key]);
+    setFeedback(null);
+  }
+
+  function validateCurrentDraft() {
+    const validation = validateDraftCard({
+      draftPositions: draftCardPositions,
+      eligibleOpportunities: interactiveDemoEligibleOpportunities,
+      ruleset: simulationSeason1Ruleset,
     });
+    if (!validation.accepted) {
+      setFeedback({
+        marketKey:
+          validation.positionIndex === undefined
+            ? undefined
+            : draftItems[validation.positionIndex]?.key,
+        tone: "negative",
+        message: validation.message,
+      });
+      return false;
+    }
+    return true;
+  }
+
+  function reviewCard() {
+    if (!validateCurrentDraft()) return;
+    setFeedback(null);
+    setReviewing(true);
+  }
+
+  function sealCard() {
+    if (!validateCurrentDraft()) {
+      setReviewing(false);
+      return;
+    }
+    setPositions(
+      draftItems.map(({ draft }, index) => ({
+        id: `demo-receipt-${String(index + 1).padStart(2, "0")}`,
+        opportunityId: draft.opportunityId,
+        stakeCredits: Number(draft.stakeCredits),
+      })),
+    );
+    setFeedback(null);
+    setReviewing(false);
+    setPhase("LOCKED");
   }
 
   function resetDemo() {
     setPhase("BUILDING");
     setPositions([]);
     setDrafts(createInitialDrafts());
+    setDraftMarketKeys([]);
+    setReviewing(false);
     setFeedback(null);
   }
 
@@ -473,6 +525,68 @@ export function InteractiveWeekDemo() {
     );
   }
 
+  if (phase === "BUILDING" && reviewing) {
+    return (
+      <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="border-registry bg-surface rounded-xl border p-6 shadow-[var(--shadow-card)]">
+          <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
+            Final review
+          </p>
+          <h2 className="mt-2 text-2xl font-bold">Review your complete card</h2>
+          <p className="text-graphite mt-3 leading-7">
+            Nothing has been accepted yet. Confirming below seals every listed
+            position together; if any validation fails, none of them are
+            accepted.
+          </p>
+          <div className="mt-6">
+            <AcceptedPositions
+              label="Draft"
+              positions={draftItems.map((item) => item.preview)}
+            />
+          </div>
+        </section>
+        <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
+          <section className="border-boundary bg-subtle rounded-xl border p-5">
+            <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
+              Card total
+            </p>
+            <p className="mt-2 font-mono text-3xl font-bold">
+              {allocatedCredits.toLocaleString()} / 1,000
+            </p>
+            <p className="text-graphite mt-2 text-sm">
+              {draftItems.length} positions · one atomic acceptance
+            </p>
+          </section>
+          {feedback ? (
+            <p
+              className="border-negative text-negative border-l-2 pl-3 text-sm font-semibold"
+              role="alert"
+            >
+              {feedback.message}
+            </p>
+          ) : null}
+          <button
+            className="bg-registry hover:bg-registry-hover min-h-12 w-full rounded-lg px-5 font-semibold text-white"
+            onClick={sealCard}
+            type="button"
+          >
+            Confirm &amp; seal entire card
+          </button>
+          <button
+            className="border-registry text-registry hover:bg-subtle min-h-11 w-full rounded-lg border px-5 text-sm font-semibold"
+            onClick={() => {
+              setFeedback(null);
+              setReviewing(false);
+            }}
+            type="button"
+          >
+            Back to edit
+          </button>
+        </aside>
+      </div>
+    );
+  }
+
   if (phase === "LOCKED") {
     return (
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -480,9 +594,11 @@ export function InteractiveWeekDemo() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-                Common lock passed
+                Atomic acceptance complete
               </p>
-              <h2 className="mt-2 text-xl font-bold">Your card is compliant</h2>
+              <h2 className="mt-2 text-xl font-bold">
+                Your complete card is sealed
+              </h2>
             </div>
             <StatusBadge tone="sealed">Locked</StatusBadge>
           </div>
@@ -503,7 +619,7 @@ export function InteractiveWeekDemo() {
             onClick={() => setPhase("FINAL")}
             type="button"
           >
-            Start games, reveal &amp; settle
+            Advance to kickoff, reveal &amp; settle
           </button>
           <button
             className="text-action min-h-11 w-full text-sm font-semibold hover:underline"
@@ -532,8 +648,9 @@ export function InteractiveWeekDemo() {
             }
           />
           <p className="text-graphite mt-4 text-sm leading-6">
-            Allocate exactly 1,000 whole credits. Every confirmation is final;
-            use <strong>Reset test data</strong> if you want a fresh run.
+            Add draft positions until exactly 1,000 whole credits are allocated.
+            You can switch sides, edit stakes, or remove drafts until the final
+            card confirmation.
           </p>
         </section>
 
@@ -554,15 +671,14 @@ export function InteractiveWeekDemo() {
                 };
                 return (
                   <DemoMarketCard
-                    acceptedPosition={acceptedByMarket.get(key)}
                     draft={draft}
                     eventId={event.id}
                     feedback={feedback}
+                    isInCard={draftMarketKeys.includes(key)}
                     key={market.marketType}
                     market={market}
-                    onAccept={() => acceptPosition(market, event.id)}
                     onDraftChange={(nextDraft) => updateDraft(key, nextDraft)}
-                    remainingCredits={remainingCredits}
+                    onToggleCard={() => toggleDraftPosition(market, event.id)}
                   />
                 );
               })}
@@ -574,11 +690,27 @@ export function InteractiveWeekDemo() {
       <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
         <section className="border-boundary bg-surface rounded-xl border p-5">
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-            Your private card
+            Card Builder
           </p>
           <div className="mt-4">
-            <AcceptedPositions positions={positions} />
+            {draftItems.length === 0 ? (
+              <p className="text-muted text-sm">
+                Add a position from the slate. Nothing is sealed until final
+                confirmation.
+              </p>
+            ) : (
+              <AcceptedPositions
+                label="Draft"
+                positions={draftItems.map((item) => item.preview)}
+              />
+            )}
           </div>
+          <p className="border-boundary text-graphite mt-4 border-t pt-4 text-sm font-semibold">
+            {allocatedCredits.toLocaleString()} allocated ·{" "}
+            {remainingCredits >= 0
+              ? `${remainingCredits.toLocaleString()} remaining`
+              : `${Math.abs(remainingCredits).toLocaleString()} over`}
+          </p>
         </section>
 
         <section className="border-boundary bg-subtle rounded-xl border p-5">
@@ -590,19 +722,22 @@ export function InteractiveWeekDemo() {
             <li>
               Try leaving 1–49 credits; legal completion should reject it.
             </li>
-            <li>After sealing one market, its opposite side disappears too.</li>
+            <li>Switch any side or stake before the final confirmation.</li>
+            <li>At confirmation, every draft succeeds or none do.</li>
           </ul>
         </section>
 
         <button
           className="bg-registry hover:bg-registry-hover min-h-12 w-full rounded-lg px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={remainingCredits !== 0}
-          onClick={() => setPhase("LOCKED")}
+          disabled={remainingCredits !== 0 || draftItems.length === 0}
+          onClick={reviewCard}
           type="button"
         >
           {remainingCredits === 0
-            ? "Lock completed card"
-            : `Allocate ${remainingCredits} more to lock`}
+            ? `Review & seal ${draftItems.length} positions`
+            : remainingCredits > 0
+              ? `Allocate ${remainingCredits} more to review`
+              : `Reduce by ${Math.abs(remainingCredits)} to review`}
         </button>
         <button
           className="text-action min-h-11 w-full text-sm font-semibold hover:underline"

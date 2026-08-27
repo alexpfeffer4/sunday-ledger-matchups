@@ -23,44 +23,64 @@ function marketCard(outcomeName: RegExp): HTMLElement {
   return card;
 }
 
-function acceptPosition(outcomeName: RegExp, stakeCredits: string) {
+function addDraft(outcomeName: RegExp, stakeCredits: string) {
   const card = marketCard(outcomeName);
   const outcome = within(card).getByRole("button", { name: outcomeName });
   fireEvent.click(outcome);
   fireEvent.change(within(card).getByLabelText("Credits at risk"), {
     target: { value: stakeCredits },
   });
-  fireEvent.click(within(card).getByRole("button", { name: "Confirm & seal" }));
+  fireEvent.click(within(card).getByRole("button", { name: "Add to card" }));
 }
 
 describe("solo interactive demo flow", () => {
-  it("enforces a guardrail and completes card, lock, reveal, and settlement", () => {
+  it("edits drafts, enforces a guardrail, and seals the complete card atomically", () => {
     render(<InteractiveWeekDemo />);
 
-    acceptPosition(/^Kansas City −205$/, "1000");
+    addDraft(/^Kansas City −205$/, "1000");
     expect(screen.getByRole("alert")).toHaveTextContent(
       "this position may use at most 750 credits",
     );
 
-    acceptPosition(/^Philadelphia −185$/, "500");
-    acceptPosition(/^Buffalo \+175$/, "250");
-    acceptPosition(/^Under 42.5 −110$/, "250");
+    addDraft(/^Philadelphia −185$/, "500");
+    addDraft(/^Buffalo \+175$/, "250");
+    addDraft(/^Under 42.5 −110$/, "250");
 
-    const lockButton = screen.getByRole("button", {
-      name: "Lock completed card",
+    const buffaloCard = marketCard(/^Buffalo \+175$/);
+    fireEvent.click(
+      within(buffaloCard).getByRole("button", { name: /^Kansas City −205$/ }),
+    );
+    expect(
+      within(buffaloCard).getByRole("button", { name: /^Kansas City −205$/ }),
+    ).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(
+      within(buffaloCard).getByRole("button", { name: /^Buffalo \+175$/ }),
+    );
+
+    const reviewButton = screen.getByRole("button", {
+      name: "Review & seal 3 positions",
     });
-    expect(lockButton).toBeEnabled();
-    fireEvent.click(lockButton);
+    expect(reviewButton).toBeEnabled();
+    fireEvent.click(reviewButton);
 
     expect(
-      screen.getByRole("heading", { name: "Your card is compliant" }),
+      screen.getByRole("heading", { name: "Review your complete card" }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm & seal entire card" }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Your complete card is sealed" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("Opponent card · revealed after kickoff"),
     ).not.toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Start games, reveal & settle" }),
+      screen.getByRole("button", {
+        name: "Advance to kickoff, reveal & settle",
+      }),
     );
 
     expect(
