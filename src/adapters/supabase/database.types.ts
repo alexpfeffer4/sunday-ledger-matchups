@@ -95,6 +95,14 @@ export type Database = {
         };
         Returns: Json;
       };
+      accept_stage1_card: {
+        Args: {
+          p_idempotency_key: string;
+          p_league_slug: string;
+          p_positions: Json;
+        };
+        Returns: Json;
+      };
       advance_stage1_clock: {
         Args: {
           p_idempotency_key: string;
@@ -110,6 +118,10 @@ export type Database = {
       get_stage1_state: {
         Args: { p_league_slug: string };
         Returns: Json;
+      };
+      get_simulation_season_archive: {
+        Args: { p_league_slug: string };
+        Returns: Json | null;
       };
       initialize_stage1_week: {
         Args: {
@@ -140,6 +152,14 @@ export type Database = {
           p_actual_started_at: string;
           p_event_id: string;
           p_idempotency_key: string;
+        };
+        Returns: Json;
+      };
+      publish_simulation_season_archive: {
+        Args: {
+          p_archive_json: Json;
+          p_idempotency_key: string;
+          p_league_id: string;
         };
         Returns: Json;
       };

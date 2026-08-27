@@ -19,14 +19,11 @@ export function qualifyPlayoffs(params: {
 }): QualifiedEntry[] {
   const qualifierCount = params.orderedStandings.length <= 8 ? 4 : 6;
   return params.orderedStandings
-    .map((row, index) => ({ row, qualificationSeed: index + 1 }))
-    .filter(
-      ({ row }) => row.attendanceMisses < params.playoffIneligibilityAtMisses,
-    )
+    .filter((row) => row.attendanceMisses < params.playoffIneligibilityAtMisses)
     .slice(0, qualifierCount)
-    .map(({ row, qualificationSeed }) => ({
+    .map((row, index) => ({
       entryId: row.entryId,
-      qualificationSeed,
+      qualificationSeed: index + 1,
     }));
 }
 

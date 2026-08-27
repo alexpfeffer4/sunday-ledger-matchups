@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
+import { isDemoSeasonEnabled } from "@/application/demo/demo-season-availability";
+import { DemoSeasonRunner } from "@/components/league/demo-season-runner";
 import { LeagueSetupForms } from "@/components/league/league-setup-forms";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Your leagues" };
 
 export default async function LeaguesPage() {
+  const demoSeasonEnabled = isDemoSeasonEnabled();
   const supabase = await createSupabaseServerClient();
   const leaguesResult = await supabase
     .schema("api")
@@ -29,12 +32,67 @@ export default async function LeaguesPage() {
             Your leagues
           </h1>
           <p className="text-graphite mt-3 max-w-2xl leading-7">
-            Authenticated Supabase memberships. Stage 1 leagues remain private
-            and use the deterministic provider fixture.
+            Authenticated Supabase memberships. Simulation leagues remain
+            private and can publish either the interactive Week 1 demo or a
+            complete deterministic season archive.
           </p>
         </div>
 
         <LeagueSetupForms />
+
+        <section className="border-champion bg-archive mt-8 rounded-xl border p-6 shadow-[var(--shadow-card)]">
+          <p className="text-champion text-xs font-bold tracking-[0.09em] uppercase">
+            Preview only · fictional test data
+          </p>
+          <h2 className="mt-2 text-xl font-bold">Choose what to test</h2>
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <article className="border-champion/30 bg-surface rounded-xl border p-5">
+              <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+                Hands-on weekly flow
+              </p>
+              <h3 className="mt-2 text-lg font-bold">
+                Test betting, sealing, and settlement
+              </h3>
+              <p className="text-graphite mt-2 text-sm leading-6">
+                Build a 1,000-credit card against a fictional opponent, test the
+                odds restrictions, lock it, reveal results, and settle the
+                matchup without inviting anyone.
+              </p>
+              {demoSeasonEnabled ? (
+                <Link
+                  className="bg-registry hover:bg-registry-hover mt-5 inline-flex min-h-11 items-center justify-center rounded-lg px-5 text-sm font-semibold text-white"
+                  href="/leagues/demo"
+                >
+                  Start solo betting demo
+                </Link>
+              ) : (
+                <button
+                  className="bg-subtle text-muted mt-5 min-h-11 cursor-not-allowed rounded-lg px-5 text-sm font-semibold"
+                  disabled
+                  type="button"
+                >
+                  Preview only
+                </button>
+              )}
+            </article>
+            <article className="border-champion/30 bg-surface rounded-xl border p-5">
+              <p className="text-champion text-xs font-bold tracking-[0.08em] uppercase">
+                Full-season engine
+              </p>
+              <h3 className="mt-2 text-lg font-bold">
+                Run a completed fictional season
+              </h3>
+              <p className="text-graphite mt-2 text-sm leading-6">
+                Execute Weeks 1–18 for 10 fictional members and inspect final
+                standings, playoffs, champion, and history. This is the batch
+                simulation you just tested.
+              </p>
+              <div className="mt-5">
+                <DemoSeasonRunner enabled={demoSeasonEnabled} />
+              </div>
+            </article>
+          </div>
+        </section>
 
         {leagues.length > 0 ? (
           <section className="mt-8" aria-labelledby="stored-leagues-title">

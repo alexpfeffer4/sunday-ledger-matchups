@@ -3,8 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
+import { getSimulationSeasonArchive } from "@/application/queries/get-simulation-season-archive";
+import { isDemoSeasonEnabled } from "@/application/demo/demo-season-availability";
 import { PageFrame } from "@/components/league/page-frame";
 import { MatchupCard } from "@/components/matchup/matchup-card";
+import { SeasonArchiveHome } from "@/components/season/archive-views";
 import { Stage1MatchupView } from "@/components/stage1/live-views";
 import { ButtonLink } from "@/components/ui/button-link";
 
@@ -12,11 +15,32 @@ export const metadata: Metadata = { title: "Week 6 matchup" };
 
 export default async function MatchupPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ leagueSlug: string }>;
+  searchParams: Promise<{ demoRun?: string | string[] }>;
 }) {
   const { leagueSlug } = await params;
-  const live = await getLiveStage1League(leagueSlug);
+  const { demoRun } = await searchParams;
+  const demoRunReceipt =
+    isDemoSeasonEnabled() &&
+    typeof demoRun === "string" &&
+    /^[0-9a-f]{12}$/.test(demoRun)
+      ? demoRun
+      : undefined;
+  const [live, archive] = await Promise.all([
+    getLiveStage1League(leagueSlug),
+    getSimulationSeasonArchive(leagueSlug),
+  ]);
+  if (archive) {
+    return (
+      <SeasonArchiveHome
+        archive={archive}
+        demoRunReceipt={demoRunReceipt}
+        leagueSlug={leagueSlug}
+      />
+    );
+  }
   if (live) return <Stage1MatchupView state={live} />;
   const league = getSimulationLeague(leagueSlug);
   if (!league) notFound();

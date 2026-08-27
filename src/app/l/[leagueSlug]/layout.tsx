@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
+import { getSimulationSeasonArchive } from "@/application/queries/get-simulation-season-archive";
 import { LeagueShell } from "@/components/league/league-shell";
 
 export default async function LeagueLayout({
@@ -12,7 +13,31 @@ export default async function LeagueLayout({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
-  const live = await getLiveStage1League(leagueSlug);
+  const [live, archive] = await Promise.all([
+    getLiveStage1League(leagueSlug),
+    getSimulationSeasonArchive(leagueSlug),
+  ]);
+  if (archive) {
+    const viewer = archive.members.find(
+      (member) => member.entryId === archive.viewerEntryId,
+    );
+    return (
+      <LeagueShell
+        leagueSlug={leagueSlug}
+        leagueName={live?.league.name ?? "West 21st Ledger Archive"}
+        week={18}
+        nflYear={archive.nflYear}
+        mode="SIMULATION"
+        dataLabel="Immutable full-season archive"
+        memberName={viewer?.displayName ?? "Member"}
+        memberRole="Archived participant"
+        allocatedCredits={0}
+        archiveMode
+      >
+        {children}
+      </LeagueShell>
+    );
+  }
   if (live) {
     return (
       <LeagueShell

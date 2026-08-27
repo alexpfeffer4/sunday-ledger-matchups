@@ -26,8 +26,9 @@ export function LeagueSetupForms() {
         </p>
         <h2 className="mt-2 text-xl font-bold">Create a Simulation league</h2>
         <p className="text-graphite mt-2 text-sm leading-6">
-          Stage 1 opens after exactly eight real members join. Rules and mode
-          freeze when Week 1 publishes.
+          Invite an even roster from 4 through 16 for a complete simulated
+          season, or use exactly eight members for the interactive Week 1 demo.
+          Rules and rosters freeze when either path publishes.
         </p>
         <label
           className="mt-5 block text-sm font-semibold"

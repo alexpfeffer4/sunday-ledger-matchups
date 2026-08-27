@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
-import { Stage1PositionForm } from "@/components/card/stage1-position-form";
+import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
 import { Stage1CommissionerControls } from "@/components/commissioner/stage1-controls";
 import { PageFrame } from "@/components/league/page-frame";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -45,12 +45,13 @@ function FormationPanel({ state }: { state: Stage1StateDto }) {
         League formation
       </p>
       <h2 className="mt-2 text-xl font-bold">
-        {state.league.memberCount} of 8 members joined
+        {state.league.memberCount} members joined
       </h2>
       <p className="text-graphite mt-3 max-w-2xl leading-7">
-        Week 1 publishes only at exactly eight entries. Until then there is no
-        schedule, slate, card, opponent readiness, or hidden competitive state
-        to infer.
+        A full season can publish with any even roster from 4 through 16; the
+        interactive Week 1 demo publishes at exactly eight. Until a path is
+        chosen, there is no schedule, slate, card, opponent readiness, or hidden
+        competitive state to infer.
       </p>
       {state.commissioner.isCommissioner ? (
         <Link
@@ -156,77 +157,14 @@ export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
       </PageFrame>
     );
   }
-  const canAccept =
-    state.week.state === "OPEN" && state.ownerCard.remainingCredits >= 50;
   return (
     <PageFrame
       eyebrow="Stored deterministic provider fixture"
       title="Week 1 slate"
-      description={`Common lock ${formatDate(state.week.commonLockAt)}. DraftKings-shaped primary quotes are distinct from stored comparison observations.`}
+      description={`Common lock ${formatDate(state.week.commonLockAt)}. Build an editable private draft, then review and seal the complete 1,000-credit card at once.`}
       aside={liveStatus(state)}
     >
-      <div className="mt-7 space-y-5">
-        {state.slate.map((event) => (
-          <section
-            className="border-boundary bg-surface rounded-xl border p-5"
-            key={event.id}
-          >
-            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
-              <div>
-                <h2 className="text-lg font-bold">
-                  {event.awayTeam} at {event.homeTeam}
-                </h2>
-                <p className="text-muted mt-1 text-sm">
-                  {formatDate(event.scheduledStartAt)}
-                </p>
-              </div>
-              <StatusBadge
-                tone={
-                  event.providerHealth === "HEALTHY" ? "positive" : "pending"
-                }
-              >
-                {event.state} · {event.providerHealth}
-              </StatusBadge>
-            </div>
-            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {event.markets.map((market) => (
-                <article
-                  className="border-boundary bg-subtle rounded-lg border p-4"
-                  key={market.id}
-                >
-                  <div className="flex justify-between gap-3">
-                    <div>
-                      <p className="text-muted text-[11px] font-bold tracking-[0.08em] uppercase">
-                        {market.marketType}
-                      </p>
-                      <p className="mt-1 text-sm font-semibold">
-                        {market.proposition}
-                      </p>
-                    </div>
-                    <p className="font-mono font-semibold">
-                      {formatOdds(market.americanOdds)}
-                    </p>
-                  </div>
-                  <p
-                    className={`mt-2 text-xs font-semibold ${market.qualityStatus === "HEALTHY" ? "text-positive" : "text-pending"}`}
-                  >
-                    {market.qualityStatus} · cap {market.maximumStakeCredits}
-                  </p>
-                  {canAccept && market.qualityStatus === "HEALTHY" ? (
-                    <Stage1PositionForm
-                      leagueSlug={state.league.slug}
-                      marketSnapshotId={market.id}
-                      payloadHash={market.payloadHash}
-                      maximumStakeCredits={market.maximumStakeCredits}
-                      remainingCredits={state.ownerCard?.remainingCredits ?? 0}
-                    />
-                  ) : null}
-                </article>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
+      <Stage1CardBuilder state={state} />
     </PageFrame>
   );
 }
@@ -532,6 +470,7 @@ export function Stage1CommissionerView({ state }: { state: Stage1StateDto }) {
               id: state.league.id,
               slug: state.league.slug,
               memberCount: state.league.memberCount,
+              lifecycle: state.league.lifecycle,
             },
             week: state.week
               ? {
@@ -556,7 +495,7 @@ export function Stage1CommissionerView({ state }: { state: Stage1StateDto }) {
             <dl className="mt-4 space-y-3 text-sm">
               <div className="flex justify-between">
                 <dt>Members</dt>
-                <dd>{state.league.memberCount}/8</dd>
+                <dd>{state.league.memberCount}/16 maximum</dd>
               </div>
               <div className="flex justify-between">
                 <dt>Week</dt>
@@ -714,13 +653,12 @@ export function Stage1EventView({
             </div>
             {state.week?.state === "OPEN" &&
             market.qualityStatus === "HEALTHY" ? (
-              <Stage1PositionForm
-                leagueSlug={state.league.slug}
-                marketSnapshotId={market.id}
-                payloadHash={market.payloadHash}
-                maximumStakeCredits={market.maximumStakeCredits}
-                remainingCredits={state.ownerCard?.remainingCredits ?? 0}
-              />
+              <Link
+                className="border-registry text-registry hover:bg-subtle mt-4 inline-flex min-h-11 items-center rounded-lg border px-4 text-sm font-semibold"
+                href={`/l/${state.league.slug}/slate`}
+              >
+                Select in Card Builder
+              </Link>
             ) : null}
           </article>
         ))}
