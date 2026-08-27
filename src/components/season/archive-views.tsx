@@ -35,9 +35,11 @@ function matchupLine(
 
 export function SeasonArchiveHome({
   archive,
+  demoRunReceipt,
   leagueSlug,
 }: {
   archive: SimulationSeasonArchiveDto;
+  demoRunReceipt?: string;
   leagueSlug: string;
 }) {
   const champion = memberName(archive, archive.playoffs.championEntryId);
@@ -54,6 +56,29 @@ export function SeasonArchiveHome({
       description="Fourteen regular-season weeks, the complete frozen playoff bracket, and Week 18 exhibitions were generated through the same scoring and standings rules as the weekly game."
       aside={<StatusBadge tone="positive">Season final</StatusBadge>}
     >
+      {demoRunReceipt ? (
+        <section
+          aria-labelledby="demo-run-title"
+          className="border-positive/30 bg-positive/10 mt-7 rounded-xl border p-5"
+          role="status"
+        >
+          <p className="text-positive text-xs font-bold tracking-[0.09em] uppercase">
+            Preview demo completed
+          </p>
+          <h2 id="demo-run-title" className="mt-2 text-lg font-bold">
+            All 18 weeks ran successfully
+          </h2>
+          <p className="text-graphite mt-2 text-sm leading-6">
+            The engine generated this complete archive for{" "}
+            {archive.members.length} fictional members. No invitations were sent
+            and no Supabase records were created.
+          </p>
+          <p className="text-muted mt-3 font-mono text-xs">
+            Output receipt · {demoRunReceipt}
+          </p>
+        </section>
+      ) : null}
+
       <section className="border-champion bg-archive mt-7 rounded-xl border-2 p-6 sm:p-8">
         <p className="text-champion text-xs font-bold tracking-[0.12em] uppercase">
           {archive.nflYear} champion

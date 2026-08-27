@@ -30,9 +30,13 @@ const members: SimulationMember[] = names.map(
   }),
 );
 
-export const fullSeasonSimulationArchive = simulateSeason({
-  members,
-  scheduleSeed: "west-21st-ledger-2026-full-season-v1",
-  nflYear: 2026,
-  viewerEntryId: "entry-pfeff",
-});
+export function createFullSeasonSimulationArchive() {
+  return simulateSeason({
+    members,
+    scheduleSeed: "west-21st-ledger-2026-full-season-v1",
+    nflYear: 2026,
+    viewerEntryId: "entry-pfeff",
+  });
+}
+
+export const fullSeasonSimulationArchive = createFullSeasonSimulationArchive();

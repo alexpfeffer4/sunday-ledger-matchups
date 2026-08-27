@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
-import { fullSeasonSimulationSlug } from "@/adapters/simulation/full-season";
+import { isDemoSeasonEnabled } from "@/application/demo/demo-season-availability";
+import { DemoSeasonRunner } from "@/components/league/demo-season-runner";
 import { LeagueSetupForms } from "@/components/league/league-setup-forms";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Your leagues" };
 
 export default async function LeaguesPage() {
+  const demoSeasonEnabled = isDemoSeasonEnabled();
   const supabase = await createSupabaseServerClient();
   const leaguesResult = await supabase
     .schema("api")
@@ -37,6 +39,23 @@ export default async function LeaguesPage() {
         </div>
 
         <LeagueSetupForms />
+
+        <section className="border-champion bg-archive mt-8 rounded-xl border p-6 shadow-[var(--shadow-card)]">
+          <p className="text-champion text-xs font-bold tracking-[0.09em] uppercase">
+            Preview only · fictional test data
+          </p>
+          <div className="mt-3 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-xl font-bold">Run a complete demo season</h2>
+              <p className="text-graphite mt-2 max-w-2xl text-sm leading-6">
+                Execute the real Stage 2 engine with 10 fictional members from
+                Week 1 through the Week 18 exhibitions. No invitations, Supabase
+                records, or changes to your private leagues.
+              </p>
+            </div>
+            <DemoSeasonRunner enabled={demoSeasonEnabled} />
+          </div>
+        </section>
 
         {leagues.length > 0 ? (
           <section className="mt-8" aria-labelledby="stored-leagues-title">
@@ -81,28 +100,6 @@ export default async function LeaguesPage() {
               className="border-registry bg-registry hover:bg-registry-hover inline-flex min-h-11 items-center justify-center rounded-lg border px-5 text-sm font-semibold text-white"
             >
               Open preview
-            </Link>
-          </div>
-        </section>
-
-        <section className="border-champion bg-archive mt-4 rounded-xl border p-6">
-          <p className="text-champion text-xs font-bold tracking-[0.09em] uppercase">
-            Stage 2 · deterministic archive
-          </p>
-          <div className="mt-3 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-            <div>
-              <h2 className="text-xl font-bold">
-                West 21st Ledger · full season
-              </h2>
-              <p className="text-graphite mt-2 text-sm">
-                Weeks 1–18 · final standings · playoffs · champion · history
-              </p>
-            </div>
-            <Link
-              href={`/l/${fullSeasonSimulationSlug}/matchup`}
-              className="border-champion bg-champion inline-flex min-h-11 items-center justify-center rounded-lg border px-5 text-sm font-semibold text-white hover:opacity-90"
-            >
-              Open season archive
             </Link>
           </div>
         </section>

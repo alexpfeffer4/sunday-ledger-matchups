@@ -1,10 +1,18 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
+import {
+  createFullSeasonSimulationArchive,
+  fullSeasonSimulationSlug,
+} from "@/adapters/simulation/full-season";
 import type { Json } from "@/adapters/supabase/database.types";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import type { AppActionState } from "@/application/actions/action-state";
+import { isDemoSeasonEnabled } from "@/application/demo/demo-season-availability";
+import { simulationSeasonArchiveSchema } from "@/application/queries/season-archive-dtos";
 import { canonicalizeRuleset, hashRuleset } from "@/rulesets/canonicalize";
 import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
 
@@ -20,6 +28,28 @@ const createLeagueSchema = z.object({
 const joinLeagueSchema = z.object({
   token: z.string().trim().min(16).max(120),
 });
+
+export async function runDemoSeasonAction(): Promise<never> {
+  if (!isDemoSeasonEnabled()) {
+    redirect("/leagues");
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const claims = await supabase.auth.getClaims();
+  if (!claims.data?.claims?.sub) {
+    redirect("/auth/sign-in?next=%2Fleagues");
+  }
+
+  const archive = simulationSeasonArchiveSchema.parse(
+    createFullSeasonSimulationArchive(),
+  );
+  const outputReceipt = createHash("sha256")
+    .update(JSON.stringify(archive))
+    .digest("hex")
+    .slice(0, 12);
+
+  redirect(`/l/${fullSeasonSimulationSlug}/matchup?demoRun=${outputReceipt}`);
+}
 
 export async function createLeagueAction(
   _state: AppActionState,
