@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { isPreviewDemoEnabled } from "@/application/demo/demo-season-availability";
 import { InteractiveWeekDemo } from "@/components/demo/interactive-week-demo";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Solo betting demo" };
 
 export default function InteractiveDemoPage() {
-  if (!isPreviewDemoEnabled()) notFound();
-
   return (
     <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">
       <div className="mx-auto max-w-[1480px]">
