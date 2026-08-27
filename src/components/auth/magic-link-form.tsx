@@ -1,10 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import {
-  initialMagicLinkState,
-  sendMagicLink,
-} from "@/app/(auth)/auth/actions";
+import { sendMagicLink } from "@/app/(auth)/auth/actions";
+import { initialMagicLinkState } from "@/app/(auth)/auth/state";
 
 export function MagicLinkForm({ next }: { next: string }) {
   const [state, formAction, pending] = useActionState(

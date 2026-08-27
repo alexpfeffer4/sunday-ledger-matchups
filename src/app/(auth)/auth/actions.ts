@@ -4,21 +4,12 @@ import { headers } from "next/headers";
 import { z } from "zod";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
+import type { MagicLinkState } from "@/app/(auth)/auth/state";
 
 const magicLinkSchema = z.object({
   email: z.email("Enter a valid email address.").trim().toLowerCase(),
   next: z.string().optional(),
 });
-
-export type MagicLinkState = {
-  status: "idle" | "error" | "sent";
-  message: string;
-};
-
-export const initialMagicLinkState: MagicLinkState = {
-  status: "idle",
-  message: "",
-};
 
 async function requestOrigin(): Promise<string> {
   const requestHeaders = await headers();
