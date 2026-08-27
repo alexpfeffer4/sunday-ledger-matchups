@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
+import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import {
   stage1StateSchema,
@@ -9,6 +10,8 @@ import {
 
 export const getLiveStage1League = cache(
   async (leagueSlug: string): Promise<Stage1StateDto | null> => {
+    if (!isSupabaseConfigured()) return null;
+
     const supabase = await createSupabaseServerClient();
     const claims = await supabase.auth.getClaims();
     if (!claims.data?.claims?.sub) return null;
