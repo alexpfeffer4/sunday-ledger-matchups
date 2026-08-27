@@ -44,16 +44,53 @@ export default async function LeaguesPage() {
           <p className="text-champion text-xs font-bold tracking-[0.09em] uppercase">
             Preview only · fictional test data
           </p>
-          <div className="mt-3 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-            <div>
-              <h2 className="text-xl font-bold">Run a complete demo season</h2>
-              <p className="text-graphite mt-2 max-w-2xl text-sm leading-6">
-                Execute the real Stage 2 engine with 10 fictional members from
-                Week 1 through the Week 18 exhibitions. No invitations, Supabase
-                records, or changes to your private leagues.
+          <h2 className="mt-2 text-xl font-bold">Choose what to test</h2>
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <article className="border-champion/30 bg-surface rounded-xl border p-5">
+              <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+                Hands-on weekly flow
               </p>
-            </div>
-            <DemoSeasonRunner enabled={demoSeasonEnabled} />
+              <h3 className="mt-2 text-lg font-bold">
+                Test betting, sealing, and settlement
+              </h3>
+              <p className="text-graphite mt-2 text-sm leading-6">
+                Build a 1,000-credit card against a fictional opponent, test the
+                odds restrictions, lock it, reveal results, and settle the
+                matchup without inviting anyone.
+              </p>
+              {demoSeasonEnabled ? (
+                <Link
+                  className="bg-registry hover:bg-registry-hover mt-5 inline-flex min-h-11 items-center justify-center rounded-lg px-5 text-sm font-semibold text-white"
+                  href="/leagues/demo"
+                >
+                  Start solo betting demo
+                </Link>
+              ) : (
+                <button
+                  className="bg-subtle text-muted mt-5 min-h-11 cursor-not-allowed rounded-lg px-5 text-sm font-semibold"
+                  disabled
+                  type="button"
+                >
+                  Preview only
+                </button>
+              )}
+            </article>
+            <article className="border-champion/30 bg-surface rounded-xl border p-5">
+              <p className="text-champion text-xs font-bold tracking-[0.08em] uppercase">
+                Full-season engine
+              </p>
+              <h3 className="mt-2 text-lg font-bold">
+                Run a completed fictional season
+              </h3>
+              <p className="text-graphite mt-2 text-sm leading-6">
+                Execute Weeks 1–18 for 10 fictional members and inspect final
+                standings, playoffs, champion, and history. This is the batch
+                simulation you just tested.
+              </p>
+              <div className="mt-5">
+                <DemoSeasonRunner enabled={demoSeasonEnabled} />
+              </div>
+            </article>
           </div>
         </section>
 

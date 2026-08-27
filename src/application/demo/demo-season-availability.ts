@@ -3,7 +3,7 @@ type DemoSeasonEnvironment = {
   VERCEL_ENV?: string;
 };
 
-export function isDemoSeasonEnabled(
+export function isPreviewDemoEnabled(
   environment: DemoSeasonEnvironment = process.env,
 ): boolean {
   if (environment.VERCEL_ENV) {
@@ -12,3 +12,5 @@ export function isDemoSeasonEnabled(
 
   return environment.NODE_ENV !== "production";
 }
+
+export const isDemoSeasonEnabled = isPreviewDemoEnabled;
