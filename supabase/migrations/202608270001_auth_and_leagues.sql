@@ -27,6 +27,9 @@ create table private.leagues (
   created_at timestamptz not null default now()
 );
 
+create index leagues_created_by_idx
+  on private.leagues (created_by);
+
 create table private.league_memberships (
   league_id uuid not null references private.leagues (id) on delete cascade,
   user_id uuid not null references private.profiles (id) on delete cascade,
@@ -52,6 +55,9 @@ create table private.league_invites (
 
 create index league_invites_league_id_idx
   on private.league_invites (league_id, expires_at);
+
+create index league_invites_created_by_idx
+  on private.league_invites (created_by);
 
 create table private.season_ruleset_snapshots (
   id uuid primary key default gen_random_uuid(),

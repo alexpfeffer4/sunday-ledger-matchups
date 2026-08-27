@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { z } from "zod";
+import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 
 const magicLinkSchema = z.object({
@@ -18,13 +19,6 @@ export const initialMagicLinkState: MagicLinkState = {
   status: "idle",
   message: "",
 };
-
-function safeNextPath(value: string | undefined): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/leagues";
-  }
-  return value;
-}
 
 async function requestOrigin(): Promise<string> {
   const requestHeaders = await headers();
@@ -66,7 +60,7 @@ export async function sendMagicLink(
       createSupabaseServerClient(),
       requestOrigin(),
     ]);
-    const next = safeNextPath(parsed.data.next);
+    const next = safeInternalPath(parsed.data.next);
     const confirmUrl = new URL("/auth/confirm", origin);
     confirmUrl.searchParams.set("next", next);
     const { error } = await supabase.auth.signInWithOtp({

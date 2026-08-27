@@ -1,13 +1,7 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
-
-function safeNextPath(value: string | null): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/leagues";
-  }
-  return value;
-}
 
 const allowedOtpTypes = new Set<EmailOtpType>([
   "email",
@@ -21,7 +15,7 @@ export async function GET(request: NextRequest) {
   const tokenHash = request.nextUrl.searchParams.get("token_hash");
   const typeValue = request.nextUrl.searchParams.get("type");
   const code = request.nextUrl.searchParams.get("code");
-  const next = safeNextPath(request.nextUrl.searchParams.get("next"));
+  const next = safeInternalPath(request.nextUrl.searchParams.get("next"));
 
   try {
     const supabase = await createSupabaseServerClient();
