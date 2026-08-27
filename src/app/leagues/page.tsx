@@ -58,22 +58,12 @@ export default async function LeaguesPage() {
                 odds restrictions, lock it, reveal results, and settle the
                 matchup without inviting anyone.
               </p>
-              {demoSeasonEnabled ? (
-                <Link
-                  className="bg-registry hover:bg-registry-hover mt-5 inline-flex min-h-11 items-center justify-center rounded-lg px-5 text-sm font-semibold text-white"
-                  href="/leagues/demo"
-                >
-                  Start solo betting demo
-                </Link>
-              ) : (
-                <button
-                  className="bg-subtle text-muted mt-5 min-h-11 cursor-not-allowed rounded-lg px-5 text-sm font-semibold"
-                  disabled
-                  type="button"
-                >
-                  Preview only
-                </button>
-              )}
+              <Link
+                className="bg-registry hover:bg-registry-hover mt-5 inline-flex min-h-11 items-center justify-center rounded-lg px-5 text-sm font-semibold text-white"
+                href="/leagues/demo"
+              >
+                Start solo betting demo
+              </Link>
             </article>
             <article className="border-champion/30 bg-surface rounded-xl border p-5">
               <p className="text-champion text-xs font-bold tracking-[0.08em] uppercase">

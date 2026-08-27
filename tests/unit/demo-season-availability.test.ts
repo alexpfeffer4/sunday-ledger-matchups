@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { isDemoSeasonEnabled } from "@/application/demo/demo-season-availability";
 
+// The environment guard applies only to the full-season redirect shortcut.
+// The isolated /leagues/demo practice flow is intentionally available in
+// Production because it is client-only and never writes competitive data.
+
 describe("demo season availability", () => {
   it("is enabled on Vercel Preview despite the production Node build mode", () => {
     expect(
