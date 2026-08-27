@@ -85,6 +85,18 @@ export type Database = {
           league_slug: string;
         }[];
       };
+      get_live_odds_import: {
+        Args: { p_league_slug: string };
+        Returns: Json | null;
+      };
+      store_live_odds_import: {
+        Args: {
+          p_idempotency_key: string;
+          p_import: Json;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
       accept_stage1_position: {
         Args: {
           p_expected_payload_hash: string;

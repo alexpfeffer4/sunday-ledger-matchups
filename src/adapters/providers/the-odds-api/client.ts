@@ -13,6 +13,10 @@ export class OddsProviderRequestError extends Error {
   }
 }
 
+export function isOddsProviderConfigured(): boolean {
+  return Boolean(process.env.THE_ODDS_API_KEY);
+}
+
 export async function fetchNflOdds(options?: {
   apiKey?: string;
   fetchImpl?: typeof fetch;

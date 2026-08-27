@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { isOddsProviderConfigured } from "@/adapters/providers/the-odds-api/client";
+import { getLiveOddsImport } from "@/application/queries/get-live-odds-import";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
 import { getSimulationSeasonArchive } from "@/application/queries/get-simulation-season-archive";
@@ -38,12 +40,20 @@ export default async function CommissionerPage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
-  const [archive, live] = await Promise.all([
+  const [archive, live, latestLiveImport] = await Promise.all([
     getSimulationSeasonArchive(leagueSlug),
     getLiveStage1League(leagueSlug),
+    getLiveOddsImport(leagueSlug),
   ]);
   if (archive) redirect(`/l/${leagueSlug}/matchup`);
-  if (live) return <Stage1CommissionerView state={live} />;
+  if (live)
+    return (
+      <Stage1CommissionerView
+        latestLiveImport={latestLiveImport}
+        providerConfigured={isOddsProviderConfigured()}
+        state={live}
+      />
+    );
   const league = getSimulationLeague(leagueSlug);
   if (!league) notFound();
 

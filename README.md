@@ -23,14 +23,18 @@ ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
   bracket, champion and placement results, and exhibition-only Week 18 history
 - Commissioner-only, idempotent season publication into an append-only,
   member-scoped Supabase archive with per-viewer history projection
+- Stage 3 Live-mode foundation: mode-aware league creation, a server-only The
+  Odds API client, strict DraftKings main-market normalization, and an
+  append-only commissioner review ledger protected from regular members by RLS
 - Deterministic provider-fixture ports for healthy, stale, outlier, suspended,
   provider-degraded, live, final, void, and corrected states
 - Vitest unit/property coverage and Playwright configuration
 
 The simulation adapter is visibly labeled and never mixes with live data.
 Stages 1 and 2 are the Production baseline. Stage 3 begins on the isolated
-`stage-3-live-season` branch with a server-only The Odds API boundary; no live
-provider request is made unless the environment has an authorized API key.
+`stage-3-live-season` branch with a server-only The Odds API boundary and
+private import review; no live provider request is made unless the environment
+has an authorized API key, and an import alone cannot publish a member slate.
 
 ## Local development
 
@@ -68,10 +72,11 @@ npm run test:e2e
 
 Migrations and pgTAP assertions live in `supabase/`. The Stage 1 suite executes
 the complete interactive lifecycle; the Stage 2 suite publishes, reads, and
-rejects mutation of a full-season archive. Both run inside rollback
-transactions. The `api` schema is the reviewed Data API boundary; base
-relations live in the non-exposed `private` schema and remain protected by
-grants and Row Level Security.
+rejects mutation of a full-season archive; the Stage 3 suite verifies guarded
+live imports, idempotency, append-only storage, and commissioner-only RLS. All
+run inside rollback transactions. The `api` schema is the reviewed Data API
+boundary; base relations live in the non-exposed `private` schema and remain
+protected by grants and Row Level Security.
 
 After authorization, link the intended Supabase development project, apply the
 migrations, expose only the `api` schema, generate project types, and run the
@@ -80,7 +85,6 @@ database tests. See `supabase/README.md` for the checkpoint sequence.
 ## Deployment
 
 Vercel is the only application deployment target. `main` is Production.
-Feature branches such as `stage-2-full-simulation-season` create Preview
-deployments through the connected Git integration; the obsolete
-`implementation` branch remains disabled. Stage 2 is not merged or promoted by
-its Preview deployment.
+Feature branches such as `stage-3-live-season` create Preview deployments
+through the connected Git integration; the obsolete `implementation` branch
+remains disabled. A Preview never promotes itself to Production.

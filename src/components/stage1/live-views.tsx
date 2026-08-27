@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
+import type { LiveOddsImportReview } from "@/application/queries/get-live-odds-import";
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
 import { Stage1CommissionerControls } from "@/components/commissioner/stage1-controls";
 import { PageFrame } from "@/components/league/page-frame";
@@ -442,7 +443,15 @@ export function Stage1StandingsView({ state }: { state: Stage1StateDto }) {
   );
 }
 
-export function Stage1CommissionerView({ state }: { state: Stage1StateDto }) {
+export function Stage1CommissionerView({
+  latestLiveImport,
+  providerConfigured,
+  state,
+}: {
+  latestLiveImport: LiveOddsImportReview | null;
+  providerConfigured: boolean;
+  state: Stage1StateDto;
+}) {
   if (!state.commissioner.isCommissioner) {
     return (
       <PageFrame
@@ -459,18 +468,21 @@ export function Stage1CommissionerView({ state }: { state: Stage1StateDto }) {
   return (
     <PageFrame
       eyebrow="Named idempotent operations"
-      title="Stage 1 commissioner console"
+      title="Commissioner console"
       description="No control can inspect sealed terms or directly edit scores, winners, records, or standings."
       aside={liveStatus(state)}
     >
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Stage1CommissionerControls
+          latestLiveImport={latestLiveImport}
+          providerConfigured={providerConfigured}
           state={{
             league: {
               id: state.league.id,
               slug: state.league.slug,
               memberCount: state.league.memberCount,
               lifecycle: state.league.lifecycle,
+              mode: state.league.mode,
             },
             week: state.week
               ? {

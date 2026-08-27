@@ -24,14 +24,29 @@ export function LeagueSetupForms() {
         <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
           Start a league
         </p>
-        <h2 className="mt-2 text-xl font-bold">Create a Simulation league</h2>
+        <h2 className="mt-2 text-xl font-bold">Create a private league</h2>
         <p className="text-graphite mt-2 text-sm leading-6">
-          Invite an even roster from 4 through 16 for a complete simulated
-          season, or use exactly eight members for the interactive Week 1 demo.
-          Rules and rosters freeze when either path publishes.
+          Choose Live for real NFL markets or Simulation for fictional test
+          data. Both modes support an even roster from 4 through 16 and keep
+          their records strictly separated.
         </p>
         <label
           className="mt-5 block text-sm font-semibold"
+          htmlFor="league-mode"
+        >
+          Season mode
+        </label>
+        <select
+          className="border-control bg-surface focus:border-registry mt-2 min-h-11 w-full rounded-lg border px-3 outline-none"
+          defaultValue="SIMULATION"
+          id="league-mode"
+          name="mode"
+        >
+          <option value="SIMULATION">Simulation · fictional data</option>
+          <option value="LIVE">Live · real NFL markets</option>
+        </select>
+        <label
+          className="mt-4 block text-sm font-semibold"
           htmlFor="league-name"
         >
           League name

@@ -6,6 +6,7 @@ import {
   correctStage1ResultAction,
   createLeagueInviteAction,
   finalizeStage1WeekAction,
+  importLiveOddsAction,
   initializeStage1WeekAction,
   lockStage1WeekAction,
   publishSimulationSeasonArchiveAction,
@@ -13,13 +14,14 @@ import {
   setStage1EventLiveAction,
 } from "@/app/l/[leagueSlug]/actions";
 import { initialAppActionState } from "@/application/actions/action-state";
+import type { LiveOddsImportReview } from "@/application/queries/get-live-odds-import";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import { ActionFeedback } from "@/components/forms/action-feedback";
 
 export type Stage1CommissionerControlState = {
   league: Pick<
     Stage1StateDto["league"],
-    "id" | "slug" | "memberCount" | "lifecycle"
+    "id" | "slug" | "memberCount" | "lifecycle" | "mode"
   >;
   week: Pick<
     NonNullable<Stage1StateDto["week"]>,
@@ -45,9 +47,26 @@ function ContextFields({ state }: { state: Stage1CommissionerControlState }) {
 const buttonClass =
   "border-control hover:border-registry hover:text-registry min-h-11 w-full rounded-lg border px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 
+const importTimestampFormatter = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "America/New_York",
+});
+
+const eventTimestampFormatter = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "America/New_York",
+});
+
 export function Stage1CommissionerControls({
+  latestLiveImport,
+  providerConfigured,
   state,
 }: {
+  latestLiveImport: LiveOddsImportReview | null;
+  providerConfigured: boolean;
   state: Stage1CommissionerControlState;
 }) {
   const [inviteState, inviteAction, inviting] = useActionState(
@@ -60,6 +79,10 @@ export function Stage1CommissionerControls({
   );
   const [archiveState, archiveAction, publishingArchive] = useActionState(
     publishSimulationSeasonArchiveAction,
+    initialAppActionState,
+  );
+  const [importState, importAction, importing] = useActionState(
+    importLiveOddsAction,
     initialAppActionState,
   );
   const [clockState, clockAction, advancing] = useActionState(
@@ -105,7 +128,83 @@ export function Stage1CommissionerControls({
         <ActionFeedback state={inviteState} />
       </section>
 
-      {!state.week ? (
+      {!state.week && state.league.mode === "LIVE" ? (
+        <section className="border-registry bg-surface rounded-xl border p-5">
+          <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+            Live provider · private review
+          </p>
+          <h2 className="mt-2 font-bold">Import current NFL markets</h2>
+          <p className="text-graphite mt-2 text-sm leading-6">
+            Fetch DraftKings moneyline, spread, and total observations through
+            The Odds API. The normalized import is stored for commissioner
+            review only; this command does not publish a slate, open cards, or
+            consume member credits.
+          </p>
+          <form action={importAction} className="mt-4">
+            <ContextFields state={state} />
+            <button
+              className={buttonClass}
+              disabled={!providerConfigured || importing}
+              type="submit"
+            >
+              {importing ? "Importing…" : "Import NFL markets for review"}
+            </button>
+          </form>
+          {!providerConfigured ? (
+            <p className="text-pending mt-3 text-xs leading-5 font-semibold">
+              The server-side provider key is not configured in this
+              environment. No request can be sent yet.
+            </p>
+          ) : null}
+          <ActionFeedback state={importState} />
+
+          {latestLiveImport ? (
+            <div className="border-boundary mt-5 border-t pt-5">
+              <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+                <div>
+                  <p className="text-sm font-bold">
+                    Latest reviewed import · {latestLiveImport.eventCount}{" "}
+                    events
+                  </p>
+                  <p className="text-muted mt-1 text-xs">
+                    The Odds API · DraftKings reference · fetched{" "}
+                    {importTimestampFormatter.format(
+                      new Date(latestLiveImport.fetchedAt),
+                    )}{" "}
+                    ET
+                  </p>
+                </div>
+                <span className="text-positive text-xs font-semibold">
+                  Stored · not published
+                </span>
+              </div>
+              <div className="divide-boundary mt-4 divide-y">
+                {latestLiveImport.events.map((event) => (
+                  <div
+                    className="py-3 first:pt-0 last:pb-0"
+                    key={event.externalEventId}
+                  >
+                    <p className="text-sm font-semibold">
+                      {event.awayTeam} at {event.homeTeam}
+                    </p>
+                    <p className="text-muted mt-1 text-xs">
+                      {event.markets.length} main-market outcomes ·{" "}
+                      {eventTimestampFormatter.format(
+                        new Date(event.scheduledStartAt),
+                      )}{" "}
+                      ET
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-muted mt-5 text-sm">
+              No live provider import is stored for this season.
+            </p>
+          )}
+        </section>
+      ) : !state.week ? (
         <>
           <section className="border-registry bg-surface rounded-xl border p-5">
             <h2 className="font-bold">Publish full simulated season</h2>

@@ -8,6 +8,11 @@ import {
   stage1InitialResults,
   stage1WeekOneFixture,
 } from "@/adapters/simulation/stage1-week-one";
+import {
+  fetchNflOdds,
+  OddsProviderRequestError,
+} from "@/adapters/providers/the-odds-api/client";
+import { OddsProviderPayloadError } from "@/adapters/providers/the-odds-api/normalize";
 import type { Json } from "@/adapters/supabase/database.types";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import type { AppActionState } from "@/application/actions/action-state";
@@ -227,6 +232,57 @@ export async function createLeagueInviteAction(
       "Invitation created for up to 15 joins. Share it privately; it expires in seven days.",
     value: result.data,
   };
+}
+
+export async function importLiveOddsAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  if (!context.success) return mutationError("invalid context");
+
+  const state = await getLiveStage1League(context.data.leagueSlug);
+  if (
+    !state ||
+    state.league.id !== context.data.leagueId ||
+    !state.commissioner.isCommissioner ||
+    state.league.mode !== "LIVE" ||
+    state.league.lifecycle === "FINAL"
+  ) {
+    return mutationError("A Live-league commissioner is required.");
+  }
+
+  try {
+    const liveImport = await fetchNflOdds();
+    const payloadHash = createHash("sha256")
+      .update(JSON.stringify(liveImport))
+      .digest("hex");
+    const supabase = await createSupabaseServerClient();
+    const result = await supabase.schema("api").rpc("store_live_odds_import", {
+      p_league_id: context.data.leagueId,
+      p_import: liveImport as unknown as Json,
+      p_idempotency_key: `live-odds:${payloadHash}`,
+    });
+    if (result.error) return mutationError(result.error.message);
+
+    revalidatePath(`/l/${context.data.leagueSlug}/commissioner`);
+    return {
+      status: "success",
+      message: `${liveImport.events.length} NFL events imported for commissioner review. Nothing has been published to members yet.`,
+    };
+  } catch (error) {
+    if (error instanceof OddsProviderRequestError) {
+      return { status: "error", message: error.message };
+    }
+    if (error instanceof OddsProviderPayloadError) {
+      return {
+        status: "error",
+        message:
+          "The provider response failed validation. No odds were stored or published.",
+      };
+    }
+    return mutationError("The live odds import failed.");
+  }
 }
 
 export async function initializeStage1WeekAction(

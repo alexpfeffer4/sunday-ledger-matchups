@@ -14,10 +14,12 @@ import type { AppActionState } from "@/application/actions/action-state";
 import { isDemoSeasonEnabled } from "@/application/demo/demo-season-availability";
 import { simulationSeasonArchiveSchema } from "@/application/queries/season-archive-dtos";
 import { canonicalizeRuleset, hashRuleset } from "@/rulesets/canonicalize";
+import { pocSeason1Ruleset } from "@/rulesets/poc-season-1";
 import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
 
 const createLeagueSchema = z.object({
   name: z.string().trim().min(1).max(80),
+  mode: z.enum(["LIVE", "SIMULATION"]),
   slug: z
     .string()
     .trim()
@@ -57,6 +59,7 @@ export async function createLeagueAction(
 ): Promise<AppActionState> {
   const parsed = createLeagueSchema.safeParse({
     name: formData.get("name"),
+    mode: formData.get("mode"),
     slug: formData.get("slug"),
   });
   if (!parsed.success) {
@@ -69,17 +72,21 @@ export async function createLeagueAction(
 
   try {
     const supabase = await createSupabaseServerClient();
-    const canonicalRuleset = canonicalizeRuleset(simulationSeason1Ruleset);
-    const rulesetHash = await hashRuleset(simulationSeason1Ruleset);
+    const ruleset =
+      parsed.data.mode === "LIVE"
+        ? pocSeason1Ruleset
+        : simulationSeason1Ruleset;
+    const canonicalRuleset = canonicalizeRuleset(ruleset);
+    const rulesetHash = await hashRuleset(ruleset);
     const result = await supabase.schema("api").rpc("create_league", {
       p_name: parsed.data.name,
       p_slug: parsed.data.slug,
-      p_mode: "SIMULATION",
+      p_mode: parsed.data.mode,
       p_nfl_year: 2026,
-      p_ruleset_id: simulationSeason1Ruleset.id,
-      p_ruleset_version: simulationSeason1Ruleset.version,
-      p_product_bible_id: simulationSeason1Ruleset.productBibleId,
-      p_product_bible_version: simulationSeason1Ruleset.productBibleVersion,
+      p_ruleset_id: ruleset.id,
+      p_ruleset_version: ruleset.version,
+      p_product_bible_id: ruleset.productBibleId,
+      p_product_bible_version: ruleset.productBibleVersion,
       p_canonical_ruleset: JSON.parse(canonicalRuleset) as Json,
       p_ruleset_sha256: rulesetHash,
     });
@@ -95,7 +102,9 @@ export async function createLeagueAction(
     return {
       status: "success",
       message:
-        "League created. Invite members, then choose a full simulated season or the eight-member interactive Week 1 demo.",
+        parsed.data.mode === "LIVE"
+          ? "Live league created. Invite members, then import and review the real NFL slate in the commissioner console."
+          : "Simulation league created. Invite members, then choose a full fictional season or the interactive Week 1 flow.",
       href: `/l/${result.data[0].league_slug}/commissioner`,
       hrefLabel: "Open commissioner setup",
     };
