@@ -34,6 +34,10 @@ Auth forms fail safely without sending a request. After an authorized project
 connection, set the browser-safe URL and publishable key in `.env.local`. Never
 commit `.env.local` or expose the server-only Supabase secret key.
 
+The hosted build uses the committed `.env.production`, which contains only the
+browser-safe Supabase project URL and publishable key. Server-only provider
+credentials remain untracked and must be configured through Vercel.
+
 ## Quality gate
 
 ```bash
