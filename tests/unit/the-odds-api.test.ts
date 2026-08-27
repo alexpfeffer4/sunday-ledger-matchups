@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { fetchNflOdds } from "@/adapters/providers/the-odds-api/client";
 import {
   normalizeTheOddsApiOdds,
   OddsProviderPayloadError,
+  selectNearestNflSlateEventIds,
 } from "@/adapters/providers/the-odds-api/normalize";
+
+vi.mock("server-only", () => ({}));
 
 const observedAt = "2026-09-10T16:00:00.000Z";
 
@@ -52,7 +56,71 @@ function event(overrides?: Record<string, unknown>) {
   };
 }
 
+function discoveredEvent(id: string, commenceTime: string) {
+  return {
+    id,
+    sport_key: "americanfootball_nfl",
+    commence_time: commenceTime,
+    home_team: `${id} Home`,
+    away_team: `${id} Away`,
+  };
+}
+
 describe("The Odds API normalization", () => {
+  it("discovers the nearest weekly event ids before requesting odds", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            discoveredEvent("event-buf-nyj", "2026-09-13T17:00:00.000Z"),
+            discoveredEvent("next-thursday", "2026-09-17T00:20:00.000Z"),
+          ]),
+        ),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify([event()])));
+
+    const result = await fetchNflOdds({
+      apiKey: "test-key",
+      fetchedAt: observedAt,
+      fetchImpl,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    const discoveryUrl = new URL(String(fetchImpl.mock.calls[0][0]));
+    const oddsUrl = new URL(String(fetchImpl.mock.calls[1][0]));
+    expect(
+      discoveryUrl.pathname.endsWith("/sports/americanfootball_nfl/events"),
+    ).toBe(true);
+    expect(oddsUrl.searchParams.get("eventIds")).toBe("event-buf-nyj");
+    expect(oddsUrl.searchParams.get("bookmakers")).toBe("draftkings");
+    expect(result.events).toHaveLength(1);
+  });
+
+  it("selects only the nearest Thursday-through-Monday NFL slate", () => {
+    const result = selectNearestNflSlateEventIds([
+      discoveredEvent("next-thursday", "2026-09-17T00:20:00.000Z"),
+      discoveredEvent("monday-night", "2026-09-15T00:15:00.000Z"),
+      discoveredEvent("opening-thursday", "2026-09-10T00:20:00.000Z"),
+      discoveredEvent("sunday", "2026-09-13T17:00:00.000Z"),
+    ]);
+
+    expect(result).toEqual(["opening-thursday", "sunday", "monday-night"]);
+  });
+
+  it("fails closed if the nearest weekly slate exceeds its storage bound", () => {
+    const events = Array.from({ length: 33 }, (_, index) =>
+      discoveredEvent(
+        `event-${String(index).padStart(2, "0")}`,
+        "2026-09-13T17:00:00.000Z",
+      ),
+    );
+
+    expect(() => selectNearestNflSlateEventIds(events)).toThrow(
+      "more than 32 events",
+    );
+  });
+
   it("normalizes the complete DraftKings main-market set", () => {
     const result = normalizeTheOddsApiOdds([event()], observedAt);
 

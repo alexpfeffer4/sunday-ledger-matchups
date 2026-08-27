@@ -1,8 +1,14 @@
 import "server-only";
 
-import { normalizeTheOddsApiOdds } from "@/adapters/providers/the-odds-api/normalize";
+import {
+  normalizeTheOddsApiOdds,
+  OddsProviderPayloadError,
+  selectNearestNflSlateEventIds,
+} from "@/adapters/providers/the-odds-api/normalize";
 import type { LiveOddsImport } from "@/application/providers/live-odds";
 
+const nflEventsUrl =
+  "https://api.the-odds-api.com/v4/sports/americanfootball_nfl/events";
 const nflOddsUrl =
   "https://api.the-odds-api.com/v4/sports/americanfootball_nfl/odds";
 
@@ -17,26 +23,10 @@ export function isOddsProviderConfigured(): boolean {
   return Boolean(process.env.ODDS_API_KEY);
 }
 
-export async function fetchNflOdds(options?: {
-  apiKey?: string;
-  fetchImpl?: typeof fetch;
-  fetchedAt?: string;
-}): Promise<LiveOddsImport> {
-  const apiKey = options?.apiKey ?? process.env.ODDS_API_KEY;
-  if (!apiKey) {
-    throw new OddsProviderRequestError(
-      "The Odds API is not configured for this environment.",
-    );
-  }
-
-  const url = new URL(nflOddsUrl);
-  url.searchParams.set("apiKey", apiKey);
-  url.searchParams.set("bookmakers", "draftkings");
-  url.searchParams.set("markets", "h2h,spreads,totals");
-  url.searchParams.set("oddsFormat", "american");
-  url.searchParams.set("dateFormat", "iso");
-
-  const fetchImpl = options?.fetchImpl ?? fetch;
+async function fetchProviderJson(
+  url: URL,
+  fetchImpl: typeof fetch,
+): Promise<unknown> {
   let response: Response;
   try {
     response = await fetchImpl(url, {
@@ -56,17 +46,56 @@ export async function fetchNflOdds(options?: {
     );
   }
 
-  let payload: unknown;
   try {
-    payload = await response.json();
+    return await response.json();
   } catch {
     throw new OddsProviderRequestError(
       "The Odds API response was not valid JSON.",
     );
   }
+}
 
-  return normalizeTheOddsApiOdds(
+export async function fetchNflOdds(options?: {
+  apiKey?: string;
+  fetchImpl?: typeof fetch;
+  fetchedAt?: string;
+}): Promise<LiveOddsImport> {
+  const apiKey = options?.apiKey ?? process.env.ODDS_API_KEY;
+  if (!apiKey) {
+    throw new OddsProviderRequestError(
+      "The Odds API is not configured for this environment.",
+    );
+  }
+
+  const fetchImpl = options?.fetchImpl ?? fetch;
+  const eventsUrl = new URL(nflEventsUrl);
+  eventsUrl.searchParams.set("apiKey", apiKey);
+  eventsUrl.searchParams.set("dateFormat", "iso");
+  const discoveryPayload = await fetchProviderJson(eventsUrl, fetchImpl);
+  const eventIds = selectNearestNflSlateEventIds(discoveryPayload);
+
+  const oddsUrl = new URL(nflOddsUrl);
+  oddsUrl.searchParams.set("apiKey", apiKey);
+  oddsUrl.searchParams.set("bookmakers", "draftkings");
+  oddsUrl.searchParams.set("markets", "h2h,spreads,totals");
+  oddsUrl.searchParams.set("oddsFormat", "american");
+  oddsUrl.searchParams.set("dateFormat", "iso");
+  oddsUrl.searchParams.set("eventIds", eventIds.join(","));
+  const payload = await fetchProviderJson(oddsUrl, fetchImpl);
+
+  const liveImport = normalizeTheOddsApiOdds(
     payload,
     options?.fetchedAt ?? new Date().toISOString(),
   );
+  const selectedEventIds = new Set(eventIds);
+  if (
+    liveImport.events.some(
+      (event) => !selectedEventIds.has(event.externalEventId),
+    )
+  ) {
+    throw new OddsProviderPayloadError(
+      "The Odds API returned an event outside the selected NFL slate.",
+    );
+  }
+  return liveImport;
 }

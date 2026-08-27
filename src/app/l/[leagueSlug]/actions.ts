@@ -97,6 +97,13 @@ function mutationError(message: string): AppActionState {
       message: "Allocate exactly 1,000 credits before sealing the card.",
     };
   }
+  if (message.includes("live odds event count")) {
+    return {
+      status: "error",
+      message:
+        "The provider returned too many games for one weekly import. No odds were stored.",
+    };
+  }
   return {
     status: "error",
     message: "The command was rejected without changing competitive history.",
@@ -263,7 +270,17 @@ export async function importLiveOddsAction(
       p_import: liveImport as unknown as Json,
       p_idempotency_key: `live-odds:${payloadHash}`,
     });
-    if (result.error) return mutationError(result.error.message);
+    if (result.error) {
+      console.error(
+        JSON.stringify({
+          level: "error",
+          message: "Live odds import storage rejected",
+          code: result.error.code,
+          databaseMessage: result.error.message,
+        }),
+      );
+      return mutationError(result.error.message);
+    }
 
     revalidatePath(`/l/${context.data.leagueSlug}/commissioner`);
     return {
@@ -271,6 +288,14 @@ export async function importLiveOddsAction(
       message: `${liveImport.events.length} NFL events imported for commissioner review. Nothing has been published to members yet.`,
     };
   } catch (error) {
+    console.error(
+      JSON.stringify({
+        level: "error",
+        message: "Live odds import failed",
+        errorName: error instanceof Error ? error.name : "UnknownError",
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
+      }),
+    );
     if (error instanceof OddsProviderRequestError) {
       return { status: "error", message: error.message };
     }

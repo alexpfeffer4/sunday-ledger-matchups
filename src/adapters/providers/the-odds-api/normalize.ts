@@ -24,22 +24,79 @@ const bookmakerSchema = z.object({
   markets: z.array(marketSchema),
 });
 
-const eventSchema = z.object({
+const providerEventSchema = z.object({
   id: z.string().min(1),
   sport_key: z.literal("americanfootball_nfl"),
   commence_time: z.iso.datetime(),
   home_team: z.string().min(1),
   away_team: z.string().min(1),
+});
+
+const eventSchema = providerEventSchema.extend({
   bookmakers: z.array(bookmakerSchema),
 });
 
 const responseSchema = z.array(eventSchema).min(1);
+const discoveryResponseSchema = z.array(providerEventSchema).min(1);
+const maximumImportedEvents = 32;
 
 export class OddsProviderPayloadError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "OddsProviderPayloadError";
   }
+}
+
+function nextNflWeekBoundary(commenceTime: string): number {
+  const kickoff = new Date(commenceTime);
+  const daysUntilTuesday = (2 - kickoff.getUTCDay() + 7) % 7;
+  const boundary = new Date(
+    Date.UTC(
+      kickoff.getUTCFullYear(),
+      kickoff.getUTCMonth(),
+      kickoff.getUTCDate() + daysUntilTuesday,
+      10,
+    ),
+  );
+  if (boundary.getTime() <= kickoff.getTime()) {
+    boundary.setUTCDate(boundary.getUTCDate() + 7);
+  }
+  return boundary.getTime();
+}
+
+export function selectNearestNflSlateEventIds(payload: unknown): string[] {
+  const parsed = discoveryResponseSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new OddsProviderPayloadError(
+      "The Odds API did not return any valid upcoming NFL events.",
+    );
+  }
+
+  const events = [...parsed.data].sort((left, right) =>
+    left.commence_time === right.commence_time
+      ? left.id.localeCompare(right.id)
+      : left.commence_time.localeCompare(right.commence_time),
+  );
+  const eventIds = new Set<string>();
+  for (const event of events) {
+    if (eventIds.has(event.id)) {
+      throw new OddsProviderPayloadError(
+        `The Odds API returned duplicate event ${event.id}.`,
+      );
+    }
+    eventIds.add(event.id);
+  }
+
+  const boundary = nextNflWeekBoundary(events[0].commence_time);
+  const selected = events.filter(
+    (event) => new Date(event.commence_time).getTime() < boundary,
+  );
+  if (selected.length > maximumImportedEvents) {
+    throw new OddsProviderPayloadError(
+      `The nearest NFL slate contains more than ${maximumImportedEvents} events.`,
+    );
+  }
+  return selected.map((event) => event.id);
 }
 
 function exactlyOneOutcome(
