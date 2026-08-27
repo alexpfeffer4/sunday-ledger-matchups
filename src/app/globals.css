@@ -1,0 +1,81 @@
+@import "tailwindcss";
+@import "../design/tokens.css";
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--app-canvas);
+  color: var(--ink-primary);
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+  background: var(--app-canvas);
+  color: var(--ink-primary);
+  font-family: var(--font-geist-sans), Inter, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+::selection {
+  background: var(--app-subtle);
+  color: var(--ink-primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+a,
+button,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a {
+  touch-action: manipulation;
+}
+
+.broadcast-dark {
+  --app-canvas: var(--dark-canvas);
+  --app-surface: var(--dark-surface);
+  --app-subtle: var(--dark-surface-raised);
+  --ink-primary: var(--dark-text);
+  --ink-secondary: var(--dark-text-secondary);
+  --ink-muted: var(--dark-text-muted);
+  --border-subtle: var(--dark-rule);
+  --border-control: var(--dark-text-muted);
+  --brand-primary: var(--dark-brand);
+  --brand-hover: var(--dark-brand);
+  --interactive-link: var(--dark-link);
+  --focus-ring: var(--dark-link);
+  --state-positive: var(--dark-positive);
+  --state-negative: var(--dark-negative);
+  --state-pending: var(--dark-pending);
+  --state-void: var(--dark-void);
+  --state-live: var(--dark-live);
+  --matchup-self: var(--dark-brand);
+  --matchup-opponent: #e2a06e;
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

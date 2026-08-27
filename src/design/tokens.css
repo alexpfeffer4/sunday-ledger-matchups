@@ -1,0 +1,68 @@
+:root {
+  --app-canvas: #f4f6f3;
+  --app-surface: #ffffff;
+  --app-subtle: #e9efeb;
+  --archive-cream: #f5f0e6;
+  --ink-primary: #18201d;
+  --ink-secondary: #46524d;
+  --ink-muted: #65706b;
+  --border-subtle: #d8e0db;
+  --border-control: #8a908b;
+  --brand-primary: #214e3e;
+  --brand-hover: #17392e;
+  --brand-copper: #9a4f20;
+  --brand-gold: #c98a1a;
+  --interactive-link: #0f6078;
+  --focus-ring: #0f6078;
+  --state-positive: #1f6a4b;
+  --state-negative: #a43f36;
+  --state-pending: #7a5a10;
+  --state-void: #5f6970;
+  --state-live: #b83f2f;
+  --state-corrected: #6e4765;
+  --state-sealed: #46524d;
+  --dark-canvas: #141917;
+  --dark-surface: #1d2421;
+  --dark-surface-raised: #27302c;
+  --dark-text: #f4efe5;
+  --dark-text-secondary: #c0c7c2;
+  --dark-text-muted: #a5aea9;
+  --dark-rule: #3a443f;
+  --dark-brand: #7eb69d;
+  --dark-link: #75bdd3;
+  --dark-positive: #70c59b;
+  --dark-negative: #f0877c;
+  --dark-pending: #e4bb63;
+  --dark-void: #b0bac0;
+  --dark-live: #ff8268;
+  --matchup-self: #214e3e;
+  --matchup-opponent: #9a4f20;
+  --playoff-cutline: #8a6512;
+  --shadow-card: 0 1px 2px rgb(24 32 29 / 6%), 0 8px 24px rgb(24 32 29 / 4%);
+  --shadow-modal: 0 16px 48px rgb(24 32 29 / 18%);
+}
+
+@theme inline {
+  --color-canvas: var(--app-canvas);
+  --color-surface: var(--app-surface);
+  --color-subtle: var(--app-subtle);
+  --color-archive: var(--archive-cream);
+  --color-ink: var(--ink-primary);
+  --color-graphite: var(--ink-secondary);
+  --color-muted: var(--ink-muted);
+  --color-boundary: var(--border-subtle);
+  --color-control: var(--border-control);
+  --color-registry: var(--brand-primary);
+  --color-registry-hover: var(--brand-hover);
+  --color-copper: var(--brand-copper);
+  --color-action: var(--interactive-link);
+  --color-positive: var(--state-positive);
+  --color-negative: var(--state-negative);
+  --color-pending: var(--state-pending);
+  --color-void: var(--state-void);
+  --color-live: var(--state-live);
+  --color-corrected: var(--state-corrected);
+  --color-sealed: var(--state-sealed);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
