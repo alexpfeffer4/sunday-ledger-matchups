@@ -1,0 +1,1 @@
+GRANT USAGE ON SCHEMA api TO anon;
