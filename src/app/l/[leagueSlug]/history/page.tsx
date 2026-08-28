@@ -51,7 +51,7 @@ export default async function HistoryPage({
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
           <div>
             <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">
-              West 21st Ledger · 2026
+              Sample League · 2026
             </p>
             <h2 className="mt-2 text-2xl font-bold">
               First season in progress

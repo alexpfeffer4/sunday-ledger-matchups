@@ -28,9 +28,16 @@ export type Database = {
       };
       my_leagues: {
         Row: {
+          archived_at: string | null;
+          can_delete: boolean | null;
+          current_week: number | null;
           id: string | null;
           joined_at: string | null;
+          lifecycle: string | null;
+          member_count: number | null;
+          mode: string | null;
           name: string | null;
+          nfl_year: number | null;
           role: string | null;
           slug: string | null;
         };
@@ -64,6 +71,10 @@ export type Database = {
           league_slug: string;
           season_id: string;
         }[];
+      };
+      delete_empty_draft_league: {
+        Args: { p_confirmation_name: string; p_league_slug: string };
+        Returns: boolean;
       };
       create_league_invite: {
         Args: {
@@ -116,6 +127,26 @@ export type Database = {
           league_id: string;
           league_slug: string;
         }[];
+      };
+      leave_league: {
+        Args: { p_league_slug: string };
+        Returns: boolean;
+      };
+      remove_league_member: {
+        Args: { p_league_slug: string; p_user_id: string };
+        Returns: boolean;
+      };
+      rename_league: {
+        Args: { p_league_slug: string; p_name: string };
+        Returns: string;
+      };
+      set_league_archived: {
+        Args: { p_archived: boolean; p_league_slug: string };
+        Returns: string | null;
+      };
+      transfer_league_commissioner: {
+        Args: { p_league_slug: string; p_user_id: string };
+        Returns: boolean;
       };
       get_live_odds_import: {
         Args: { p_league_slug: string };

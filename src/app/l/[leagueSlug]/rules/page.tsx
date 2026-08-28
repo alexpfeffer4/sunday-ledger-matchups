@@ -55,7 +55,7 @@ export default async function LeagueRulesPage({
 
   return (
     <PageFrame
-      eyebrow={`${live?.league.name ?? (archive ? "West 21st Ledger Archive" : "West 21st Ledger")} · league rules`}
+      eyebrow={`${live?.league.name ?? (archive ? "Sample Season" : "Sample League")} · league rules`}
       title="League rules"
       description="These rules apply to every member for the full season."
       aside={<StatusBadge tone="positive">Set for 2026</StatusBadge>}

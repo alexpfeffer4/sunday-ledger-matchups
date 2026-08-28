@@ -23,7 +23,7 @@ function MatchupPreview() {
       <div className="border-boundary mb-5 flex flex-wrap items-center justify-between gap-3 border-b pb-4">
         <div>
           <p className="text-muted text-xs font-semibold tracking-[0.08em] uppercase">
-            West 21st Ledger · Week 6
+            Sample League · Week 6
           </p>
           <p className="text-graphite mt-1 text-sm">
             Cards lock Sunday · 12:55 PM ET
