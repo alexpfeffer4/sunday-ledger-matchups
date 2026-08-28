@@ -31,7 +31,7 @@ export type Stage1CommissionerControlState = {
   >;
   week: Pick<
     NonNullable<Stage1StateDto["week"]>,
-    "nflWeek" | "state" | "commonLockAt" | "correctionWindowClosesAt"
+    "nflWeek" | "scope" | "state" | "commonLockAt" | "correctionWindowClosesAt"
   > | null;
   slate: Array<
     Pick<

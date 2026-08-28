@@ -196,6 +196,36 @@ function mutationError(message: string): AppActionState {
         "Finalize Week 14 and its correction window before freezing playoff qualification.",
     };
   }
+  if (message.includes("No additional competitive postseason")) {
+    return {
+      status: "error",
+      message: "The championship round is already the final postseason week.",
+    };
+  }
+  if (message.includes("frozen playoff field is incomplete")) {
+    return {
+      status: "error",
+      message:
+        "The frozen playoff field is incomplete, so the rules do not allow a replacement qualifier.",
+    };
+  }
+  if (
+    message.includes("Week 15 opening-round matchups must be final") ||
+    message.includes("Week 16 semifinals must be final")
+  ) {
+    return {
+      status: "error",
+      message:
+        "Finalize both playoff matchups in the current round before publishing the next one.",
+    };
+  }
+  if (message.includes("Import current NFL markets after the prior week")) {
+    return {
+      status: "error",
+      message:
+        "Import a fresh NFL market batch after the prior week before publishing the postseason slate.",
+    };
+  }
   if (message.includes("locked cards and an unfinalized week")) {
     return {
       status: "error",
@@ -344,12 +374,19 @@ export async function publishSimulationSeasonArchiveAction(
 }
 
 async function finish(slug: string, message: string): Promise<AppActionState> {
-  revalidatePath(`/l/${slug}`);
-  revalidatePath(`/l/${slug}/matchup`);
-  revalidatePath(`/l/${slug}/card`);
-  revalidatePath(`/l/${slug}/live`);
-  revalidatePath(`/l/${slug}/standings`);
-  revalidatePath(`/l/${slug}/commissioner`);
+  for (const path of [
+    `/l/${slug}`,
+    `/l/${slug}/matchup`,
+    `/l/${slug}/card`,
+    `/l/${slug}/live`,
+    `/l/${slug}/league`,
+    `/l/${slug}/slate`,
+    `/l/${slug}/standings`,
+    `/l/${slug}/playoffs`,
+    `/l/${slug}/commissioner`,
+  ]) {
+    revalidatePath(path);
+  }
   return { status: "success", message };
 }
 
@@ -604,6 +641,74 @@ export async function publishLivePlayoffQualificationAction(
       "The Week 14 ordering, attendance eligibility, qualification seeds, and bracket template are now immutable.",
     href: `/l/${context.data.leagueSlug}/playoffs`,
     hrefLabel: "Open the official bracket",
+  };
+}
+
+export async function publishNextLivePostseasonWeekAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  const selection = z
+    .object({
+      importId: z.uuid(),
+      externalEventIds: z.array(z.string().min(1).max(160)).min(1).max(32),
+    })
+    .safeParse({
+      importId: formData.get("importId"),
+      externalEventIds: formData.getAll("externalEventId"),
+    });
+  if (!context.success || !selection.success) {
+    return mutationError("Select between one and 32 imported events.");
+  }
+
+  const state = await getLiveStage1League(context.data.leagueSlug);
+  if (
+    !state ||
+    state.league.id !== context.data.leagueId ||
+    !state.commissioner.isCommissioner ||
+    state.league.mode !== "LIVE" ||
+    state.league.lifecycle !== "PLAYOFFS" ||
+    state.week?.state !== "FINAL" ||
+    state.week.nflWeek < 14 ||
+    state.week.nflWeek >= 17
+  ) {
+    return mutationError(
+      "The current week must be final before the next postseason week can publish.",
+    );
+  }
+
+  const nextWeek = state.week.nflWeek + 1;
+  const supabase = await createSupabaseServerClient();
+  const result = await supabase
+    .schema("api")
+    .rpc("publish_next_live_postseason_week", {
+      p_league_id: context.data.leagueId,
+      p_import_id: selection.data.importId,
+      p_external_event_ids: selection.data.externalEventIds,
+      p_idempotency_key: idempotencyKey(
+        `publish-live-postseason-week-${nextWeek}`,
+      ),
+    });
+  if (result.error) return mutationError(result.error.message);
+
+  for (const path of [
+    `/l/${context.data.leagueSlug}`,
+    `/l/${context.data.leagueSlug}/matchup`,
+    `/l/${context.data.leagueSlug}/slate`,
+    `/l/${context.data.leagueSlug}/card`,
+    `/l/${context.data.leagueSlug}/league`,
+    `/l/${context.data.leagueSlug}/standings`,
+    `/l/${context.data.leagueSlug}/playoffs`,
+    `/l/${context.data.leagueSlug}/commissioner`,
+  ]) {
+    revalidatePath(path);
+  }
+  return {
+    status: "success",
+    message: `Week ${nextWeek} is open from the frozen playoff bracket. Only this round's participants received fresh 1,000-credit cards.`,
+    href: `/l/${context.data.leagueSlug}/playoffs`,
+    hrefLabel: `Review the Week ${nextWeek} bracket`,
   };
 }
 

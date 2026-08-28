@@ -6,6 +6,14 @@ import { formatCenticredits } from "@/domain/odds/american";
 type BracketEntry =
   LivePlayoffState["publication"]["bracket"]["stages"][number]["games"][number]["sideA"];
 
+type PublishedRound = LivePlayoffState["rounds"][number];
+
+const roundTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "America/New_York",
+});
+
 function EntryLine({ entry }: { entry: BracketEntry }) {
   if (!entry) {
     return <span className="text-muted text-sm font-semibold">TBD</span>;
@@ -41,6 +49,39 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
         </StatusBadge>
       }
     >
+      <section aria-labelledby="published-rounds-title" className="mt-7">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+          <div>
+            <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
+              Operational postseason ledger
+            </p>
+            <h2 id="published-rounds-title" className="mt-2 text-xl font-bold">
+              Published rounds and advancement
+            </h2>
+          </div>
+          <StatusBadge tone={state.rounds.length ? "positive" : "pending"}>
+            {state.rounds.length
+              ? `${state.rounds.length} round${state.rounds.length === 1 ? "" : "s"} published`
+              : "Week 15 pending"}
+          </StatusBadge>
+        </div>
+
+        {state.rounds.length ? (
+          <div className="mt-4 grid gap-4 lg:grid-cols-3">
+            {state.rounds.map((round) => (
+              <PublishedRoundCard key={round.id} round={round} />
+            ))}
+          </div>
+        ) : (
+          <div className="border-boundary bg-surface mt-4 rounded-xl border p-5">
+            <p className="text-graphite text-sm leading-6">
+              Qualification is frozen. The commissioner can now import current
+              NFL markets and publish Week 15 from this bracket.
+            </p>
+          </div>
+        )}
+      </section>
+
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section aria-labelledby="bracket-title">
           <div>
@@ -184,5 +225,111 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
         </aside>
       </div>
     </PageFrame>
+  );
+}
+
+function PublishedRoundCard({ round }: { round: PublishedRound }) {
+  return (
+    <article className="border-registry bg-surface rounded-xl border p-5 shadow-[var(--shadow-card)]">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+            Week {round.week} · {round.scope.toLowerCase()}
+          </p>
+          <h3 className="mt-2 font-bold">
+            {round.week === 17
+              ? "Finals"
+              : round.scope === "EXHIBITION"
+                ? "Exhibition round"
+                : "Championship round"}
+          </h3>
+        </div>
+        <StatusBadge
+          tone={
+            round.state === "FINAL"
+              ? "positive"
+              : round.state === "OPEN"
+                ? "live"
+                : "pending"
+          }
+        >
+          {round.state.toLowerCase()}
+        </StatusBadge>
+      </div>
+      <p className="text-muted mt-2 text-xs">
+        Common lock {roundTimeFormatter.format(new Date(round.commonLockAt))} ET
+      </p>
+      <div className="mt-4 space-y-3">
+        {round.matchups.map((matchup) => {
+          const sideAAdvances =
+            matchup.result?.advancingEntryId === matchup.sideA.entryId;
+          const sideBAdvances =
+            matchup.result?.advancingEntryId === matchup.sideB.entryId;
+          return (
+            <div
+              className="border-boundary bg-subtle rounded-lg border p-3"
+              key={matchup.id}
+            >
+              <p className="text-muted text-xs font-semibold">
+                {matchup.label} · {matchup.scope.toLowerCase()}
+              </p>
+              <div className="mt-3 space-y-2">
+                <RoundEntryLine
+                  advances={sideAAdvances}
+                  decision={matchup.result?.sideADecision}
+                  entry={matchup.sideA}
+                  score={matchup.result?.sideAScoreCenticredits}
+                />
+                <RoundEntryLine
+                  advances={sideBAdvances}
+                  decision={matchup.result?.sideBDecision}
+                  entry={matchup.sideB}
+                  score={matchup.result?.sideBScoreCenticredits}
+                />
+              </div>
+              {matchup.result?.status === "FINAL" &&
+              matchup.scope === "PLAYOFF" ? (
+                <p className="text-positive mt-3 text-xs font-semibold">
+                  {sideAAdvances || sideBAdvances
+                    ? "Advancement recorded from the final result"
+                    : "Final result recorded"}
+                </p>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-muted mt-4 font-mono text-[0.6875rem] break-all">
+        Round hash · {round.inputHash}
+      </p>
+    </article>
+  );
+}
+
+function RoundEntryLine({
+  advances,
+  decision,
+  entry,
+  score,
+}: {
+  advances: boolean;
+  decision?: "WIN" | "LOSS" | "TIE";
+  entry: PublishedRound["matchups"][number]["sideA"];
+  score?: number;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-3 rounded-md px-2 py-1.5 ${advances ? "bg-positive/10 text-positive" : ""}`}
+    >
+      <span className="min-w-0 truncate text-sm font-semibold">
+        {entry.qualificationSeed ? `No. ${entry.qualificationSeed} · ` : ""}
+        {entry.displayName}
+      </span>
+      <span className="shrink-0 font-mono text-xs font-bold">
+        {score === undefined
+          ? "—"
+          : `${formatCenticredits(BigInt(score), true)}${decision ? ` · ${decision}` : ""}`}
+      </span>
+    </div>
   );
 }

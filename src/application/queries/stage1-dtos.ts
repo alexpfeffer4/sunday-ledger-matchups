@@ -87,6 +87,7 @@ export const stage1StateSchema = z.object({
     .object({
       id: z.uuid(),
       nflWeek: z.number().int(),
+      scope: z.enum(["REGULAR", "PLAYOFF", "PLACEMENT", "EXHIBITION"]),
       state: z.enum(["PLANNED", "OPEN", "LOCKED", "PROVISIONAL", "FINAL"]),
       opensAt: z.string(),
       commonLockAt: z.string(),
@@ -98,6 +99,7 @@ export const stage1StateSchema = z.object({
     z.object({
       id: z.uuid(),
       displayOrder: z.number().int(),
+      scope: z.enum(["REGULAR", "PLAYOFF", "PLACEMENT", "EXHIBITION"]),
       sideAEntryId: z.uuid(),
       sideAName: z.string(),
       sideBEntryId: z.uuid(),

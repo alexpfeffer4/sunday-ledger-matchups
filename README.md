@@ -45,6 +45,11 @@ ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
   standings and third-miss eligibility rule produce the roster-size-specific
   field, qualification seeds, bracket template, and member-visible audit hash
   before any Week 15 slate can open
+- Live postseason publication for Weeks 15–17: each reviewed NFL slate derives
+  its participants from the immutable bracket and prior final result versions,
+  grants cards only to scheduled entries, applies the published higher-seed
+  advancement rule to exact ties and dual incompletion, reseeds six-entry
+  semifinals, and never rewrites the frozen regular-season standings
 - Deterministic provider-fixture ports for healthy, stale, outlier, suspended,
   provider-degraded, live, final, void, and corrected states
 - Vitest unit/property coverage and Playwright configuration
@@ -99,7 +104,8 @@ current-quote refresh, idempotency, append-only storage, and commissioner-only
 RLS; the result suite verifies official-score provenance, correction replay,
 postponement voids, and final competitive snapshots; the progression suite
 verifies the Week 2–14 operational boundary and cumulative ledger; the playoff
-suite verifies final qualification, eligibility, and bracket immutability. All
+suites verify final qualification, eligibility, bracket immutability, real
+postseason card settlement, higher-seed advancement, and Week 16 reseeding. All
 run inside rollback transactions. The `api` schema is the reviewed Data API
 boundary; base relations live in the non-exposed `private` schema and remain
 protected by grants and Row Level Security.

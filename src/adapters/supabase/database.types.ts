@@ -251,6 +251,15 @@ export type Database = {
         };
         Returns: Json;
       };
+      publish_next_live_postseason_week: {
+        Args: {
+          p_external_event_ids: string[];
+          p_idempotency_key: string;
+          p_import_id: string;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
       publish_live_playoff_qualification: {
         Args: {
           p_idempotency_key: string;

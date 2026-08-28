@@ -47,6 +47,44 @@ const bracketStageSchema = z.object({
   games: z.array(bracketGameSchema),
 });
 
+const publishedRoundEntrySchema = z.object({
+  entryId: z.uuid(),
+  displayName: z.string(),
+  qualificationSeed: z.number().int().positive().nullable(),
+});
+
+const publishedRoundSchema = z.object({
+  id: z.uuid(),
+  week: z.union([z.literal(15), z.literal(16), z.literal(17)]),
+  scope: z.enum(["PLAYOFF", "EXHIBITION"]),
+  state: z.enum(["PLANNED", "OPEN", "LOCKED", "PROVISIONAL", "FINAL"]),
+  commonLockAt: z.string(),
+  publishedAt: z.string(),
+  inputHash: z.string().length(64),
+  sourceResultVersionIds: z.array(z.uuid()),
+  matchups: z.array(
+    z.object({
+      id: z.uuid(),
+      game: z.number().int().positive(),
+      scope: z.enum(["PLAYOFF", "PLACEMENT", "EXHIBITION"]),
+      label: z.string(),
+      sideA: publishedRoundEntrySchema,
+      sideB: publishedRoundEntrySchema,
+      result: z
+        .object({
+          id: z.uuid(),
+          status: z.enum(["PROVISIONAL", "FINAL"]),
+          sideADecision: z.enum(["WIN", "LOSS", "TIE"]),
+          sideBDecision: z.enum(["WIN", "LOSS", "TIE"]),
+          sideAScoreCenticredits: z.number().int().nonnegative(),
+          sideBScoreCenticredits: z.number().int().nonnegative(),
+          advancingEntryId: z.uuid().nullable(),
+        })
+        .nullable(),
+    }),
+  ),
+});
+
 export const livePlayoffStateSchema = z.object({
   league: z.object({
     id: z.uuid(),
@@ -72,6 +110,7 @@ export const livePlayoffStateSchema = z.object({
     tieRule: z.literal("HIGHER_QUALIFICATION_SEED_ADVANCES"),
     attendanceMissLimit: z.literal(3),
   }),
+  rounds: z.array(publishedRoundSchema),
   viewer: z.object({
     userId: z.uuid(),
     isCommissioner: z.boolean(),

@@ -58,6 +58,13 @@ gate, commissioner-only publication, third-miss exclusion, top-four/top-six
 field contract, immutable bracket template, idempotency, and member-scoped read
 model. It runs inside a rollback transaction.
 
+`tests/stage3_live_postseason_rounds.test.sql` verifies commissioner-only Week
+15–17 materialization, cards only for round participants, shared card/lock/score
+and finalization commands, no postseason standings mutation, exact-tie and
+dual-incomplete higher-seed advancement, six-entry semifinal reseeding,
+idempotency, append-only round evidence, and the member playoff read model. It
+runs inside a rollback transaction.
+
 The hosted Stage 2 migrations are:
 
 - `stage2_simulation_season_archives`
@@ -76,6 +83,8 @@ The hosted Stage 3 import migrations are:
 - `stage3_live_week_progression`
 - `stage3_live_playoff_qualification`
 - `stage3_live_playoff_fk_index`
+- `stage3_live_postseason_rounds`
+- `stage3_live_postseason_fk_index`
 
 After application, the security advisor reports no Stage 2 or Stage 3 issue and
 the performance advisor reports no unindexed Stage 2 or Stage 3 foreign key.

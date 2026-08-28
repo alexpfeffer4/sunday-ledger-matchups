@@ -74,6 +74,35 @@ function FormationPanel({ state }: { state: Stage1StateDto }) {
 }
 
 export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
+  if (
+    state.week &&
+    state.league.lifecycle === "PLAYOFFS" &&
+    (!state.matchup || !state.ownerCard)
+  ) {
+    return (
+      <PageFrame
+        eyebrow={`${state.league.name} · Week ${state.week.nflWeek} ${state.week.scope.toLowerCase()}`}
+        title="No matchup card this round"
+        description="Your entry is not scheduled in this round. That can mean a bye, an exhibition exclusion, or the end of its championship path."
+        aside={liveStatus(state)}
+      >
+        <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">
+          <h2 className="text-lg font-bold">The round still runs normally</h2>
+          <p className="text-graphite mt-2 max-w-2xl text-sm leading-6">
+            No private card was created for this entry, so there is nothing to
+            seal. Published matchups and advancement remain visible on the
+            playoff ledger.
+          </p>
+          <Link
+            className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
+            href={`/l/${state.league.slug}/playoffs`}
+          >
+            Open the playoff ledger
+          </Link>
+        </div>
+      </PageFrame>
+    );
+  }
   if (!state.week || !state.matchup || !state.ownerCard) {
     return (
       <PageFrame
@@ -203,6 +232,40 @@ export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
       </PageFrame>
     );
   }
+  if (
+    state.week &&
+    state.league.lifecycle === "PLAYOFFS" &&
+    state.slate.length > 0 &&
+    !state.ownerCard
+  ) {
+    return (
+      <PageFrame
+        eyebrow={`${state.league.name} · Week ${state.week.nflWeek} ${state.week.scope.toLowerCase()}`}
+        title="Published NFL slate"
+        description={`This round's event set is immutable. Your entry has no card this round, but the official markets and common lock remain visible.`}
+        aside={liveStatus(state)}
+      >
+        <div className="mt-7 grid gap-4">
+          {state.slate.map((event) => (
+            <article
+              className="border-boundary bg-surface rounded-xl border p-5"
+              key={event.id}
+            >
+              <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+                {formatDate(event.scheduledStartAt)}
+              </p>
+              <h2 className="mt-2 text-lg font-bold">
+                {event.awayTeam} at {event.homeTeam}
+              </h2>
+              <p className="text-muted mt-2 text-sm">
+                {event.markets.length} published outcomes
+              </p>
+            </article>
+          ))}
+        </div>
+      </PageFrame>
+    );
+  }
   if (!state.week || !state.ownerCard) {
     return (
       <PageFrame
@@ -227,6 +290,30 @@ export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
 }
 
 export function Stage1CardView({ state }: { state: Stage1StateDto }) {
+  if (state.week && state.league.lifecycle === "PLAYOFFS" && !state.ownerCard) {
+    return (
+      <PageFrame
+        eyebrow={`${state.league.name} · Week ${state.week.nflWeek} ${state.week.scope.toLowerCase()}`}
+        title="No card assigned this round"
+        description="Cards are granted only to entries scheduled in the published postseason round."
+        aside={liveStatus(state)}
+      >
+        <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">
+          <p className="text-graphite max-w-2xl leading-7">
+            There is no allocation to complete and no penalty for this entry.
+            Follow the official bracket for the current matchup field and
+            advancement.
+          </p>
+          <Link
+            className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
+            href={`/l/${state.league.slug}/playoffs`}
+          >
+            Open the playoff ledger
+          </Link>
+        </div>
+      </PageFrame>
+    );
+  }
   if (!state.week || !state.ownerCard) {
     return (
       <PageFrame
@@ -400,9 +487,13 @@ export function Stage1LiveView({ state }: { state: Stage1StateDto }) {
 export function Stage1LeagueView({ state }: { state: Stage1StateDto }) {
   return (
     <PageFrame
-      eyebrow={`${state.league.name} · Week ${state.week?.nflWeek ?? 1}`}
+      eyebrow={`${state.league.name} · Week ${state.week?.nflWeek ?? 1}${state.week ? ` ${state.week.scope.toLowerCase()}` : ""}`}
       title="Around the league"
-      description="Frozen scheduled matchups; sealed terms never enter this scoreboard."
+      description={
+        state.league.lifecycle === "PLAYOFFS"
+          ? "The published postseason pairings and latest result versions; sealed terms never enter this scoreboard."
+          : "Frozen scheduled matchups; sealed terms never enter this scoreboard."
+      }
       aside={liveStatus(state)}
     >
       {!state.week ? (
@@ -415,7 +506,7 @@ export function Stage1LeagueView({ state }: { state: Stage1StateDto }) {
               key={matchup.id}
             >
               <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
-                Matchup {matchup.displayOrder}
+                {matchup.scope.toLowerCase()} · Matchup {matchup.displayOrder}
               </p>
               <div className="mt-4 flex justify-between gap-4">
                 <p className="font-bold">{matchup.sideAName}</p>
@@ -444,9 +535,17 @@ export function Stage1LeagueView({ state }: { state: Stage1StateDto }) {
 export function Stage1StandingsView({ state }: { state: Stage1StateDto }) {
   return (
     <PageFrame
-      eyebrow={`Official through Week ${state.week?.nflWeek ?? 1}`}
+      eyebrow={
+        state.league.lifecycle === "PLAYOFFS"
+          ? "Regular season final · Week 14"
+          : `Official through Week ${state.week?.nflWeek ?? 1}`
+      }
       title="Standings"
-      description="The latest snapshot derives from the newest official result-version chain."
+      description={
+        state.league.lifecycle === "PLAYOFFS"
+          ? "The regular-season ordering is frozen. Postseason results advance the bracket without rewriting these standings."
+          : "The latest snapshot derives from the newest official result-version chain."
+      }
       aside={liveStatus(state)}
     >
       {state.standings.length === 0 ? (
@@ -549,6 +648,7 @@ export function Stage1CommissionerView({
             week: state.week
               ? {
                   nflWeek: state.week.nflWeek,
+                  scope: state.week.scope,
                   state: state.week.state,
                   commonLockAt: state.week.commonLockAt,
                   correctionWindowClosesAt: state.week.correctionWindowClosesAt,

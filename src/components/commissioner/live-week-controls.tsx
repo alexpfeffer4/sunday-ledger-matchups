@@ -9,6 +9,7 @@ import {
   importLiveScoresAction,
   lockStage1WeekAction,
   publishLivePlayoffQualificationAction,
+  publishNextLivePostseasonWeekAction,
   publishNextLiveWeekSlateAction,
   refreshLiveWeekQuotesAction,
   voidLiveEventAfterPostponementAction,
@@ -95,6 +96,8 @@ export function LiveWeekCommissionerControls({
     publishNextLiveWeekSlateAction,
     initialAppActionState,
   );
+  const [postseasonWeekState, postseasonWeekAction, publishingPostseasonWeek] =
+    useActionState(publishNextLivePostseasonWeekAction, initialAppActionState);
   const [
     playoffQualificationState,
     playoffQualificationAction,
@@ -493,6 +496,153 @@ export function LiveWeekCommissionerControls({
               enable the Week {nextWeekNumber} review.
             </p>
           )}
+        </section>
+      ) : null}
+
+      {state.week.state === "FINAL" &&
+      state.league.lifecycle === "PLAYOFFS" &&
+      weekNumber < 17 ? (
+        <section className="border-registry bg-surface rounded-xl border p-5">
+          <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+            Week {nextWeekNumber} · postseason publication
+          </p>
+          <h2 className="mt-2 font-bold">Open the next playoff ledger</h2>
+          <p className="text-graphite mt-2 text-sm leading-6">
+            Import current NFL markets and review the event set. The database
+            takes the participants from the immutable bracket and prior final
+            results, then grants cards only to entries playing in this round.
+            {weekNumber === 14 && state.league.memberCount <= 8
+              ? " Week 15 is the required non-elimination exhibition round."
+              : null}
+          </p>
+          <form action={oddsImportAction} className="mt-4">
+            <ContextFields state={state} />
+            <button
+              className={buttonClass}
+              disabled={!providerConfigured || importingOdds}
+              type="submit"
+            >
+              {importingOdds
+                ? "Importing current markets…"
+                : `Import Week ${nextWeekNumber} NFL markets for review`}
+            </button>
+          </form>
+          {!providerConfigured ? (
+            <p className="text-pending mt-3 text-xs leading-5 font-semibold">
+              The server-side provider key is not configured in this
+              environment.
+            </p>
+          ) : null}
+          <ActionFeedback state={oddsImportState} />
+
+          {nextWeekImport ? (
+            <div className="border-boundary mt-5 border-t pt-5">
+              <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+                <div>
+                  <p className="text-sm font-bold">
+                    Latest reviewed import · {nextWeekImport.eventCount} events
+                  </p>
+                  <p className="text-muted mt-1 text-xs">
+                    Fetched{" "}
+                    {timestampFormatter.format(
+                      new Date(nextWeekImport.fetchedAt),
+                    )}{" "}
+                    ET · not yet member-visible
+                  </p>
+                </div>
+                <span className="text-positive text-xs font-semibold">
+                  Ready for review
+                </span>
+              </div>
+              <form action={postseasonWeekAction} className="mt-4">
+                <ContextFields state={state} />
+                <input
+                  name="importId"
+                  type="hidden"
+                  value={nextWeekImport.importId}
+                />
+                <fieldset>
+                  <legend className="text-sm font-bold">
+                    Select the eligible Week {nextWeekNumber} games
+                  </legend>
+                  <p className="text-muted mt-1 text-xs leading-5">
+                    Standard Sunday games at 1:00 p.m. ET or later and Monday
+                    games start selected. Earlier and Thursday games require an
+                    affirmative selection.
+                  </p>
+                  <div className="divide-boundary mt-3 divide-y">
+                    {nextWeekImport.events.map((event) => (
+                      <label
+                        className="flex min-h-14 cursor-pointer items-start gap-3 py-3 first:pt-0 last:pb-0"
+                        key={event.externalEventId}
+                      >
+                        <input
+                          className="border-control text-registry mt-1 size-4 rounded"
+                          defaultChecked={isStandardLiveSlateEvent(event)}
+                          name="externalEventId"
+                          type="checkbox"
+                          value={event.externalEventId}
+                        />
+                        <span>
+                          <span className="block text-sm font-semibold">
+                            {event.awayTeam} at {event.homeTeam}
+                          </span>
+                          <span className="text-muted mt-1 block text-xs">
+                            {event.markets.length} main-market outcomes ·{" "}
+                            {timestampFormatter.format(
+                              new Date(event.scheduledStartAt),
+                            )}{" "}
+                            ET
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <p className="text-negative mt-4 text-sm leading-6 font-semibold">
+                  Irreversible: publication fixes the event set, matchup field,
+                  and common lock for Week {nextWeekNumber}. Prior results and
+                  qualification seeds cannot be edited.
+                </p>
+                <button
+                  className={`${buttonClass} mt-4`}
+                  disabled={publishingPostseasonWeek}
+                  type="submit"
+                >
+                  {publishingPostseasonWeek
+                    ? `Publishing Week ${nextWeekNumber}…`
+                    : `Publish Week ${nextWeekNumber} postseason ledger`}
+                </button>
+              </form>
+              <ActionFeedback state={postseasonWeekState} />
+            </div>
+          ) : (
+            <p className="text-muted mt-4 text-sm leading-6">
+              Import a new market batch after Week {weekNumber} common lock to
+              enable the Week {nextWeekNumber} postseason review.
+            </p>
+          )}
+        </section>
+      ) : null}
+
+      {state.week.state === "FINAL" &&
+      state.league.lifecycle === "PLAYOFFS" &&
+      weekNumber === 17 ? (
+        <section className="border-copper bg-surface rounded-xl border p-5">
+          <p className="text-copper text-xs font-bold tracking-[0.08em] uppercase">
+            Postseason complete
+          </p>
+          <h2 className="mt-2 font-bold">Week 17 results are final</h2>
+          <p className="text-graphite mt-2 text-sm leading-6">
+            The championship and third-place result versions are immutable. The
+            next lifecycle operation will publish the final season archive.
+          </p>
+          <Link
+            className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
+            href={`/l/${state.league.slug}/playoffs`}
+          >
+            Review the completed bracket
+          </Link>
         </section>
       ) : null}
 
