@@ -1,23 +1,19 @@
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
-import { SignOutForm } from "@/components/auth/sign-out-form";
 import {
   LeagueDesktopNav,
   LeagueMobileNav,
 } from "@/components/league/league-nav";
-import { LeagueMobileMore } from "@/components/league/league-mobile-more";
+import {
+  initials,
+  LeagueDesktopProfileMenu,
+  LeagueMobileMore,
+} from "@/components/league/league-mobile-more";
 import { LeagueMobileSecondaryNav } from "@/components/league/league-secondary-nav";
 import { BrandLockup, RegisterMark } from "@/components/ui/register-mark";
 
 function NavigationFallback() {
-  return <div className="bg-subtle mt-8 h-72 rounded-lg" aria-hidden="true" />;
-}
-
-function initials(displayName: string): string {
-  const parts = displayName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "SL";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0] ?? ""}${parts.at(-1)?.[0] ?? ""}`.toUpperCase();
+  return <div className="bg-subtle mt-7 h-72 rounded-lg" aria-hidden="true" />;
 }
 
 export function LeagueShell({
@@ -46,28 +42,48 @@ export function LeagueShell({
   isCommissioner?: boolean;
 }) {
   return (
-    <div className="bg-canvas min-h-screen lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
-      <aside className="border-boundary bg-surface hidden min-h-0 border-r px-4 py-5 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-hidden">
+    <div className="bg-canvas min-h-screen lg:grid lg:grid-cols-[72px_minmax(0,1fr)] xl:grid-cols-[232px_minmax(0,1fr)]">
+      <aside className="border-boundary bg-surface hidden min-h-0 border-r px-2 py-5 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col xl:px-4">
         <Link
           href="/"
           aria-label="Sunday Ledger home"
-          className="shrink-0 px-2"
+          className="text-registry flex h-7 shrink-0 items-center justify-center xl:hidden"
+        >
+          <RegisterMark className="h-7 w-7" />
+        </Link>
+        <Link
+          href="/"
+          aria-label="Sunday Ledger home"
+          className="hidden shrink-0 px-2 xl:block"
         >
           <BrandLockup />
         </Link>
-        <div className="bg-subtle mt-7 shrink-0 rounded-lg p-3">
-          <div className="flex items-center gap-3">
-            <span className="bg-registry flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white">
-              <RegisterMark className="h-5 w-5" />
+
+        <Link
+          aria-label={`Switch leagues. Current league: ${leagueName}`}
+          className="bg-subtle hover:bg-boundary/60 mt-7 flex min-h-12 shrink-0 items-center justify-center rounded-lg p-2 transition-colors xl:justify-start xl:gap-3 xl:p-3"
+          href="/leagues"
+          title="Switch leagues"
+        >
+          <span className="border-registry bg-surface text-registry flex size-9 shrink-0 items-center justify-center rounded-lg border text-xs font-bold">
+            {initials(leagueName)}
+          </span>
+          <span className="hidden min-w-0 flex-1 xl:block">
+            <span className="block truncate text-sm font-bold">
+              {leagueName}
             </span>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold">{leagueName}</p>
-              <p className="text-muted mt-0.5 text-xs">
-                NFL · {nflYear} · Week {week}
-              </p>
-            </div>
-          </div>
-        </div>
+            <span className="text-muted mt-0.5 block text-xs">
+              {nflYear} · Week {week}
+            </span>
+          </span>
+          <span
+            aria-hidden="true"
+            className="text-muted hidden text-xs xl:block"
+          >
+            ↕
+          </span>
+        </Link>
+
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-4">
           <Suspense fallback={<NavigationFallback />}>
             <LeagueDesktopNav
@@ -77,23 +93,12 @@ export function LeagueShell({
             />
           </Suspense>
         </div>
-        <div className="border-boundary shrink-0 border-t pt-4">
-          <div className="flex items-center gap-3 px-2">
-            <span className="border-registry bg-subtle text-registry flex h-8 w-8 items-center justify-center rounded-full border text-xs font-bold">
-              {initials(memberName)}
-            </span>
-            <div>
-              <p className="text-sm font-semibold">{memberName}</p>
-              <p className="text-muted text-xs">{memberRole}</p>
-            </div>
-          </div>
-          <Link
-            className="text-muted hover:text-ink mt-3 flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold"
-            href="/account"
-          >
-            Account
-          </Link>
-          <SignOutForm className="text-muted hover:text-ink min-h-11 w-full rounded-lg px-2 text-left text-sm font-semibold" />
+
+        <div className="border-boundary shrink-0 border-t pt-3">
+          <LeagueDesktopProfileMenu
+            memberName={memberName}
+            memberRole={memberRole}
+          />
         </div>
       </aside>
 
@@ -122,15 +127,11 @@ export function LeagueShell({
               <p className="text-muted text-xs">NFL · Week {week}</p>
             </div>
             <div className="flex items-center gap-2">
-              <span
-                className={`rounded px-2 py-1 text-[11px] font-bold tracking-[0.04em] uppercase ${
-                  mode === "SIMULATION"
-                    ? "border-pending/30 bg-pending/10 text-pending border"
-                    : "bg-subtle text-graphite"
-                }`}
-              >
-                {mode === "SIMULATION" ? "Practice" : "Live season"}
-              </span>
+              {mode === "SIMULATION" ? (
+                <span className="border-pending/30 bg-pending/10 text-pending rounded border px-2 py-1 text-[11px] font-bold tracking-[0.04em] uppercase">
+                  Practice
+                </span>
+              ) : null}
               {archiveMode ? (
                 <span className="text-positive hidden min-h-11 items-center px-3 text-sm font-semibold lg:inline-flex">
                   Season final
@@ -146,6 +147,8 @@ export function LeagueShell({
               <LeagueMobileMore
                 leagueSlug={leagueSlug}
                 isCommissioner={isCommissioner}
+                memberName={memberName}
+                memberRole={memberRole}
               />
             </div>
           </div>
