@@ -7,6 +7,8 @@ import type { LiveRegularSeasonSchedule } from "@/application/queries/get-live-r
 import type { LiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
 import { Stage1CommissionerControls } from "@/components/commissioner/stage1-controls";
+import { LeagueSettings } from "@/components/commissioner/league-settings";
+import type { MyLeagueSummary } from "@/application/queries/get-my-league-summary";
 import { PageFrame } from "@/components/league/page-frame";
 import { AllocationMeter } from "@/components/matchup/allocation-meter";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -806,12 +808,14 @@ export function Stage1StandingsView({ state }: { state: Stage1StateDto }) {
 
 export function Stage1CommissionerView({
   invites,
+  leagueManagement,
   latestLiveImport,
   liveWeekOperations,
   providerConfigured,
   state,
 }: {
   invites: LeagueInviteSummary[];
+  leagueManagement: MyLeagueSummary | null;
   latestLiveImport: LiveOddsImportReview | null;
   liveWeekOperations: LiveWeekOperations | null;
   providerConfigured: boolean;
@@ -837,75 +841,92 @@ export function Stage1CommissionerView({
       description="Run the season one step at a time. Member picks stay private, and published results cannot be manually rewritten."
       aside={liveStatus(state)}
     >
-      <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <Stage1CommissionerControls
-          invites={invites}
-          latestLiveImport={latestLiveImport}
-          liveWeekOperations={liveWeekOperations}
-          providerConfigured={providerConfigured}
-          state={{
-            league: {
-              id: state.league.id,
-              slug: state.league.slug,
-              memberCount: state.league.memberCount,
-              lifecycle: state.league.lifecycle,
-              mode: state.league.mode,
-            },
-            week: state.week
-              ? {
-                  nflWeek: state.week.nflWeek,
-                  scope: state.week.scope,
-                  state: state.week.state,
-                  commonLockAt: state.week.commonLockAt,
-                  correctionWindowClosesAt: state.week.correctionWindowClosesAt,
-                }
-              : null,
-            slate: state.slate.map((event) => ({
-              id: event.id,
-              key: event.key,
-              state: event.state,
-              scheduledStartAt: event.scheduledStartAt,
-              awayTeam: event.awayTeam,
-              homeTeam: event.homeTeam,
-              latestObservedAt: event.markets.reduce(
-                (latest, market) =>
-                  market.observedAt > latest ? market.observedAt : latest,
-                event.markets[0]?.observedAt ?? event.scheduledStartAt,
-              ),
-            })),
-          }}
-        />
-        <aside className="space-y-5">
-          <section className="border-boundary bg-surface rounded-xl border p-5">
-            <h2 className="font-bold">Current state</h2>
-            <dl className="mt-4 space-y-3 text-sm">
-              <div className="flex justify-between">
-                <dt>Members</dt>
-                <dd>{state.league.memberCount}/16 maximum</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt>Week</dt>
-                <dd>{state.week?.state ?? "FORMING"}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt>Ready cards</dt>
-                <dd>{state.commissioner.readyCount ?? "Sealed"}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt>Corrections</dt>
-                <dd>{state.commissioner.correctionCount}</dd>
-              </div>
-            </dl>
-          </section>
-          <section className="border-negative/25 bg-negative/10 rounded-xl border p-5">
-            <h2 className="text-negative font-bold">Member privacy</h2>
-            <p className="text-graphite mt-2 text-sm leading-6">
-              You can see how many cards are ready, but never a member’s picks
-              before they are revealed by the game schedule.
-            </p>
-          </section>
-        </aside>
-      </div>
+      <>
+        <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <Stage1CommissionerControls
+            invites={invites}
+            latestLiveImport={latestLiveImport}
+            liveWeekOperations={liveWeekOperations}
+            providerConfigured={providerConfigured}
+            state={{
+              league: {
+                id: state.league.id,
+                slug: state.league.slug,
+                memberCount: state.league.memberCount,
+                lifecycle: state.league.lifecycle,
+                mode: state.league.mode,
+              },
+              week: state.week
+                ? {
+                    nflWeek: state.week.nflWeek,
+                    scope: state.week.scope,
+                    state: state.week.state,
+                    commonLockAt: state.week.commonLockAt,
+                    correctionWindowClosesAt:
+                      state.week.correctionWindowClosesAt,
+                  }
+                : null,
+              slate: state.slate.map((event) => ({
+                id: event.id,
+                key: event.key,
+                state: event.state,
+                scheduledStartAt: event.scheduledStartAt,
+                awayTeam: event.awayTeam,
+                homeTeam: event.homeTeam,
+                latestObservedAt: event.markets.reduce(
+                  (latest, market) =>
+                    market.observedAt > latest ? market.observedAt : latest,
+                  event.markets[0]?.observedAt ?? event.scheduledStartAt,
+                ),
+              })),
+            }}
+          />
+          <aside className="space-y-5">
+            <section className="border-boundary bg-surface rounded-xl border p-5">
+              <h2 className="font-bold">Current state</h2>
+              <dl className="mt-4 space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <dt>Members</dt>
+                  <dd>{state.league.memberCount}/16 maximum</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt>Week</dt>
+                  <dd>{state.week?.state ?? "FORMING"}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt>Ready cards</dt>
+                  <dd>{state.commissioner.readyCount ?? "Sealed"}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt>Corrections</dt>
+                  <dd>{state.commissioner.correctionCount}</dd>
+                </div>
+              </dl>
+            </section>
+            <section className="border-negative/25 bg-negative/10 rounded-xl border p-5">
+              <h2 className="text-negative font-bold">Member privacy</h2>
+              <p className="text-graphite mt-2 text-sm leading-6">
+                You can see how many cards are ready, but never a member’s picks
+                before they are revealed by the game schedule.
+              </p>
+            </section>
+          </aside>
+        </div>
+        {leagueManagement ? (
+          <LeagueSettings
+            archived={leagueManagement.archivedAt !== null}
+            canDelete={leagueManagement.canDelete}
+            leagueName={leagueManagement.name}
+            leagueSlug={leagueManagement.slug}
+            lifecycle={leagueManagement.lifecycle}
+            members={state.members.map((member) => ({
+              displayName: member.displayName,
+              role: member.role,
+              userId: member.userId,
+            }))}
+          />
+        ) : null}
+      </>
     </PageFrame>
   );
 }

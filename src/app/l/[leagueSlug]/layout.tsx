@@ -24,7 +24,7 @@ export default async function LeagueLayout({
     return (
       <LeagueShell
         leagueSlug={leagueSlug}
-        leagueName={live?.league.name ?? "West 21st Ledger Archive"}
+        leagueName={live?.league.name ?? "Sample Season"}
         week={archive.mode === "LIVE" ? 17 : 18}
         nflYear={archive.nflYear}
         mode={archive.mode}

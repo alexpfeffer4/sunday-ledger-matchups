@@ -40,7 +40,7 @@ export default async function LeaguePage({
 
   return (
     <PageFrame
-      eyebrow="West 21st Ledger · Week 6"
+      eyebrow="Sample League · Week 6"
       title="Around the league"
       description="This week’s matchups and league updates."
       aside={

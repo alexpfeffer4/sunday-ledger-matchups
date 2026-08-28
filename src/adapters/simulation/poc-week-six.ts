@@ -11,7 +11,7 @@ export const simulationLeagueSlug = "west-21st-ledger";
 
 export const matchupHomeFixture: MatchupHomeDto = {
   league: {
-    name: "West 21st Ledger",
+    name: "Sample League",
     slug: simulationLeagueSlug,
     seasonLabel: "NFL · 2026",
     mode: "SIMULATION",

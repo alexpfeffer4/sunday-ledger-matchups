@@ -2,19 +2,122 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import { SignOutForm } from "@/components/auth/sign-out-form";
+import { LeagueListActions } from "@/components/league/league-list-actions";
 import { LeagueSetupForms } from "@/components/league/league-setup-forms";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Your leagues" };
+
+type LeagueSummary = {
+  archived_at: string | null;
+  current_week: number | null;
+  id: string;
+  lifecycle: string;
+  member_count: number;
+  mode: string;
+  name: string;
+  nfl_year: number;
+  role: string;
+  slug: string;
+};
+
+function leagueStatus(league: LeagueSummary): string {
+  if (league.lifecycle === "FINAL") return "Season final";
+  if (league.lifecycle === "DRAFT") return "Setting up";
+  if (league.current_week) return `Week ${league.current_week}`;
+  return league.lifecycle === "PLAYOFFS" ? "Playoffs" : "Season active";
+}
+
+function LeagueList({
+  archived = false,
+  leagues,
+}: {
+  archived?: boolean;
+  leagues: LeagueSummary[];
+}) {
+  return (
+    <div className="divide-boundary border-boundary divide-y border-y">
+      {leagues.map((league) => (
+        <article
+          className="flex flex-col justify-between gap-4 py-5 sm:flex-row sm:items-center"
+          key={league.id}
+        >
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-lg font-bold">{league.name}</h3>
+              {league.mode === "SIMULATION" ? (
+                <span className="border-control text-muted rounded-full border px-2 py-0.5 text-[11px] font-semibold">
+                  Practice
+                </span>
+              ) : null}
+            </div>
+            <p className="text-muted mt-1 text-xs font-semibold">
+              {leagueStatus(league)} · {league.member_count} member
+              {league.member_count === 1 ? "" : "s"} · {league.nfl_year} ·{" "}
+              {league.role === "COMMISSIONER" ? "Commissioner" : "Member"}
+            </p>
+          </div>
+          <div className="flex flex-col items-start gap-1 text-sm sm:items-end">
+            <Link
+              className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
+              href={`/l/${league.slug}/matchup`}
+            >
+              Open league
+            </Link>
+            <LeagueListActions
+              archived={archived}
+              lifecycle={league.lifecycle}
+              role={league.role}
+              slug={league.slug}
+            />
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
 
 export default async function LeaguesPage() {
   const supabase = await createSupabaseServerClient();
   const leaguesResult = await supabase
     .schema("api")
     .from("my_leagues")
-    .select("id, name, slug, role, joined_at")
-    .order("joined_at", { ascending: true });
-  const leagues = leaguesResult.data ?? [];
+    .select(
+      "id, name, slug, role, mode, nfl_year, lifecycle, archived_at, member_count, current_week, joined_at",
+    )
+    .order("joined_at", { ascending: false });
+  const leagues: LeagueSummary[] = (leaguesResult.data ?? []).flatMap(
+    (league) => {
+      if (
+        !league.id ||
+        !league.name ||
+        !league.slug ||
+        !league.role ||
+        !league.mode ||
+        !league.nfl_year ||
+        !league.lifecycle ||
+        league.member_count === null
+      ) {
+        return [];
+      }
+      return [
+        {
+          archived_at: league.archived_at,
+          current_week: league.current_week,
+          id: league.id,
+          lifecycle: league.lifecycle,
+          member_count: league.member_count,
+          mode: league.mode,
+          name: league.name,
+          nfl_year: league.nfl_year,
+          role: league.role,
+          slug: league.slug,
+        },
+      ];
+    },
+  );
+  const activeLeagues = leagues.filter((league) => !league.archived_at);
+  const archivedLeagues = leagues.filter((league) => league.archived_at);
 
   return (
     <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">
@@ -45,79 +148,69 @@ export default async function LeaguesPage() {
           </p>
         </div>
 
-        <LeagueSetupForms />
-
-        <section className="border-boundary mt-10 border-y py-6">
-          <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-            Practice week
-          </p>
-          <div className="mt-2 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-            <div>
-              <h2 className="text-xl font-bold">Learn the weekly game</h2>
-              <p className="text-graphite mt-2 max-w-2xl text-sm leading-6">
-                Build a 1,000-credit card and see how a matchup scores. Practice
-                cards never affect your leagues.
-              </p>
-            </div>
-            <Link
-              className="bg-registry hover:bg-registry-hover inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg px-5 text-sm font-semibold text-white"
-              href="/leagues/demo"
-            >
-              Try a practice week
-            </Link>
-          </div>
-        </section>
-
-        {leagues.length > 0 ? (
+        {activeLeagues.length > 0 ? (
           <section className="mt-8" aria-labelledby="stored-leagues-title">
             <h2 id="stored-leagues-title" className="text-xl font-bold">
-              League list
+              Active leagues
             </h2>
-            <div className="divide-boundary border-boundary mt-4 divide-y border-y">
-              {leagues.map((league) => (
-                <article
-                  className="flex flex-col justify-between gap-3 py-5 sm:flex-row sm:items-center"
-                  key={league.id}
-                >
-                  <div>
-                    <h3 className="text-lg font-bold">{league.name}</h3>
-                    <p className="text-muted mt-1 text-xs font-semibold">
-                      {league.role === "COMMISSIONER"
-                        ? "Commissioner"
-                        : "Member"}
-                    </p>
-                  </div>
-                  <Link
-                    className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
-                    href={`/l/${league.slug}/matchup`}
-                  >
-                    Open league
-                  </Link>
-                </article>
-              ))}
+            <div className="mt-4">
+              <LeagueList leagues={activeLeagues} />
             </div>
           </section>
-        ) : null}
+        ) : (
+          <section className="border-boundary bg-surface mt-8 rounded-xl border p-6">
+            <h2 className="text-xl font-bold">No active leagues yet</h2>
+            <p className="text-graphite mt-2 text-sm leading-6">
+              Create a private NFL league or open an invitation from a
+              commissioner.
+            </p>
+          </section>
+        )}
+
+        <LeagueSetupForms />
 
         <section className="border-boundary mt-8 border-t pt-6">
-          <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-            Example league
-          </p>
-          <div className="mt-3 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-            <div>
-              <h2 className="text-xl font-bold">West 21st Ledger</h2>
-              <p className="text-graphite mt-2 text-sm">
-                See a complete league before starting your own.
+          <h2 className="text-xl font-bold">Learn the game</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <article className="border-boundary bg-surface rounded-xl border p-5">
+              <h3 className="font-bold">Try a practice week</h3>
+              <p className="text-graphite mt-2 text-sm leading-6">
+                Build a 1,000-credit card and see how a matchup scores. Nothing
+                is saved to your leagues.
               </p>
-            </div>
-            <Link
-              href="/l/west-21st-ledger/matchup"
-              className="border-registry bg-registry hover:bg-registry-hover inline-flex min-h-11 items-center justify-center rounded-lg border px-5 text-sm font-semibold text-white"
-            >
-              View example
-            </Link>
+              <Link
+                className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
+                href="/leagues/demo"
+              >
+                Start practice week
+              </Link>
+            </article>
+            <article className="border-boundary bg-surface rounded-xl border p-5">
+              <h3 className="font-bold">View a sample season</h3>
+              <p className="text-graphite mt-2 text-sm leading-6">
+                See final standings, playoffs, a champion, and completed season
+                history.
+              </p>
+              <Link
+                href="/l/west-21st-ledger-archive/matchup"
+                className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
+              >
+                View sample season
+              </Link>
+            </article>
           </div>
         </section>
+
+        {archivedLeagues.length > 0 ? (
+          <details className="border-boundary mt-8 border-t pt-6">
+            <summary className="cursor-pointer text-sm font-semibold">
+              Archived leagues ({archivedLeagues.length})
+            </summary>
+            <div className="mt-4">
+              <LeagueList archived leagues={archivedLeagues} />
+            </div>
+          </details>
+        ) : null}
       </div>
     </main>
   );

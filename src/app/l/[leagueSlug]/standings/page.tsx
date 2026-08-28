@@ -42,7 +42,7 @@ export default async function StandingsPage({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] border-collapse text-left text-sm">
             <caption className="sr-only">
-              Official West 21st Ledger standings through Week 5
+              Official sample standings through Week 5
             </caption>
             <thead className="bg-subtle text-muted text-xs tracking-[0.08em] uppercase">
               <tr>
