@@ -7,7 +7,7 @@ import { PositionPreview } from "@/components/card/position-preview";
 import { PageFrame } from "@/components/league/page-frame";
 import { Stage1EventView } from "@/components/stage1/live-views";
 
-export const metadata: Metadata = { title: "Position preview" };
+export const metadata: Metadata = { title: "Pick preview" };
 
 export default async function EventPage({
   params,
@@ -35,7 +35,7 @@ export default async function EventPage({
     <PageFrame
       eyebrow={`${game.kickoffLabel} · ${game.updateLabel}`}
       title={`${game.awayTeam} at ${game.homeTeam}`}
-      description="Review the exact proposition, current quote, weekly-card effect, and permanent-receipt warning before acceptance."
+      description="Review the pick, current odds, and effect on your card."
       aside={
         <Link
           href={`/l/${leagueSlug}/slate`}

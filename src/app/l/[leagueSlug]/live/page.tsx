@@ -24,14 +24,14 @@ export default async function LivePage({
       dark
       eyebrow="Week 6 · pre-kickoff"
       title="Pfeff vs Mia"
-      description="No designated event is reliably live. Scores and positions remain sealed until a provider live state or commissioner kickoff confirmation."
+      description="Scores and picks stay sealed until kickoff is confirmed."
       aside={<StatusBadge tone="sealed">Waiting for kickoff</StatusBadge>}
     >
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-5">
           <section className="border-boundary bg-surface rounded-xl border p-5 sm:p-7">
             <p className="text-live text-xs font-bold tracking-[0.1em] uppercase">
-              Official records · weekly score not started
+              Weekly score not started
             </p>
             <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-8">
               <div>
@@ -49,9 +49,9 @@ export default async function LivePage({
               </div>
             </div>
             <div className="border-boundary bg-subtle mt-7 rounded-lg border px-4 py-5 text-center">
-              <p className="font-semibold">Future positions sealed</p>
+              <p className="font-semibold">Future picks sealed</p>
               <p className="text-muted mt-1 text-xs">
-                No count, allocation, market, or geometry is disclosed.
+                Opponent cards remain private until kickoff.
               </p>
             </div>
           </section>
@@ -90,15 +90,14 @@ export default async function LivePage({
             </p>
             <h2 className="mt-2 text-lg font-bold">No complete path yet</h2>
             <p className="text-graphite mt-3 text-sm leading-6">
-              Every position is still sealed, so no factual win path can be
-              calculated without exposing private terms.
+              Every pick is still sealed, so there is no live scoring path yet.
             </p>
           </section>
           <section className="border-boundary bg-surface rounded-xl border p-5">
-            <h2 className="font-bold">Reveal reliability</h2>
+            <h2 className="font-bold">When picks reveal</h2>
             <p className="text-graphite mt-2 text-sm leading-6">
-              Scheduled time alone never reveals a receipt. A reliable provider
-              live state or explicit actual-kickoff confirmation is required.
+              Picks reveal only after kickoff is confirmed, not simply when the
+              scheduled start time arrives.
             </p>
           </section>
         </aside>

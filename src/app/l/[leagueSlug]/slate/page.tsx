@@ -28,14 +28,14 @@ export default async function SlatePage({
 
   return (
     <PageFrame
-      eyebrow="Week 6 · DraftKings reference markets"
-      title="Eligible slate"
-      description="Main pregame moneyline, spread, and total markets only. The published slate and common lock freeze after the first accepted receipt."
+      eyebrow="Week 6 · cards lock Sunday at 12:55 PM ET"
+      title="Week 6 slate"
+      description="Choose from the published winner, spread, and total picks."
       aside={
         <div className="bg-subtle rounded-lg px-4 py-3 text-sm">
-          <p className="font-semibold">650 allocated · 350 remaining</p>
+          <p className="font-semibold">650 used · 350 left</p>
           <p className="text-muted mt-1 text-xs">
-            Common lock Sunday · 12:55 PM ET
+            Cards lock Sunday · 12:55 PM ET
           </p>
         </div>
       }

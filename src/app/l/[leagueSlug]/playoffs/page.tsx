@@ -55,8 +55,8 @@ export default async function PlayoffsPage({
         }
         description={
           week14Final
-            ? "Week 14 is final. The commissioner must confirm the immutable qualification checkpoint before any Week 15 slate can open."
-            : `This ${live.league.memberCount}-entry league will use its frozen roster-size qualifier rule. Qualification does not become official until Week 14 is final.`
+            ? "Week 14 is final. The commissioner must confirm the playoff field before Week 15 opens."
+            : `This ${live.league.memberCount}-member league qualifies its playoff field after Week 14 is final.`
         }
       />
     );
@@ -69,7 +69,7 @@ export default async function PlayoffsPage({
     <PageFrame
       eyebrow="Week 6 playoff race · 9 weeks remain"
       title="No one has qualified yet"
-      description="The official Week 5 ordering is useful context, but the qualification snapshot is not created until Week 14 finalization."
+      description="The current field is based on the Week 5 standings. Playoff spots become official after Week 14."
     >
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section aria-labelledby="structure-title">
@@ -79,7 +79,7 @@ export default async function PlayoffsPage({
                 Ten-member structure
               </p>
               <h2 id="structure-title" className="mt-2 text-xl font-bold">
-                Published championship path
+                Championship path
               </h2>
             </div>
             <p className="text-muted text-xs font-semibold">Top six eligible</p>
@@ -112,9 +112,8 @@ export default async function PlayoffsPage({
             <h2 className="font-bold">Pfeff’s current path</h2>
             <p className="text-graphite mt-2 text-sm leading-6">
               Pfeff sits No. 5 in the official table, one game above the current
-              cutline. If that ordering were the final qualification snapshot,
-              No. 5 would meet No. 4 in Week 15. This is context, not a clinch
-              or a guaranteed seed.
+              cutline. If the season ended today, No. 5 would meet No. 4 in Week
+              15. No spot or seed is official yet.
             </p>
           </section>
         </section>

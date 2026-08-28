@@ -65,7 +65,7 @@ function acceptedCardPositions(
 ): AcceptedCardPosition[] {
   return positions.map((position) => {
     const opportunity = getInteractiveDemoOpportunity(position.opportunityId);
-    if (!opportunity) throw new Error("The accepted demo position is missing.");
+    if (!opportunity) throw new Error("The accepted practice pick is missing.");
     return {
       eventId: opportunity.eventId,
       marketType: opportunity.marketType,
@@ -83,7 +83,7 @@ function AcceptedPositions({
   label?: "Draft" | "Receipt";
 }) {
   return positions.length === 0 ? (
-    <p className="text-muted text-sm">No positions accepted yet.</p>
+    <p className="text-muted text-sm">No picks sealed yet.</p>
   ) : (
     <div className="divide-boundary divide-y">
       {positions.map((position, index) => {
@@ -481,10 +481,10 @@ export function InteractiveWeekDemo() {
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
             <div>
               <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-                Solo demo · final
+                Practice week · final
               </p>
               <h2 className="mt-2 text-2xl font-bold">
-                Position flow completed successfully
+                Practice matchup final
               </h2>
             </div>
             <StatusBadge tone="positive">Matchup final</StatusBadge>
@@ -499,7 +499,7 @@ export function InteractiveWeekDemo() {
             </div>
             <span className="text-muted text-xs font-bold">VS</span>
             <div>
-              <p className="font-bold">Demo opponent</p>
+              <p className="font-bold">Practice opponent</p>
               <p className="mt-2 font-mono text-3xl font-bold">
                 {formatCenticredits(opponentScore, true)}
               </p>
@@ -509,7 +509,7 @@ export function InteractiveWeekDemo() {
         </section>
 
         <section className="border-boundary bg-subtle rounded-xl border p-5">
-          <h2 className="font-bold">Final event results</h2>
+          <h2 className="font-bold">Final scores</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             {interactiveDemoEvents.map((event) => {
               const result = interactiveDemoResults[event.id];
@@ -530,9 +530,9 @@ export function InteractiveWeekDemo() {
         </section>
 
         <div className="grid gap-5 lg:grid-cols-2">
-          <SettledCard heading="Your settled card" positions={positions} />
+          <SettledCard heading="Your final card" positions={positions} />
           <SettledCard
-            heading="Opponent card · revealed after kickoff"
+            heading="Opponent’s final card"
             positions={interactiveDemoOpponentPositions}
           />
         </div>
@@ -543,7 +543,7 @@ export function InteractiveWeekDemo() {
             onClick={resetDemo}
             type="button"
           >
-            Run another position demo
+            Build another card
           </button>
           <Link
             className="border-registry text-registry hover:bg-subtle inline-flex min-h-11 items-center justify-center rounded-lg border px-5 font-semibold"
@@ -565,9 +565,8 @@ export function InteractiveWeekDemo() {
           </p>
           <h2 className="mt-2 text-2xl font-bold">Review your complete card</h2>
           <p className="text-graphite mt-3 leading-7">
-            Nothing has been accepted yet. Confirming below seals every listed
-            position together; if any validation fails, none of them are
-            accepted.
+            Nothing is sealed yet. Confirm the complete card when every pick
+            looks right.
           </p>
           <div className="mt-6">
             <AcceptedPositions
@@ -585,7 +584,7 @@ export function InteractiveWeekDemo() {
               {allocatedCredits.toLocaleString()} / 1,000
             </p>
             <p className="text-graphite mt-2 text-sm">
-              {draftItems.length} positions · one atomic acceptance
+              {draftItems.length} picks
             </p>
           </section>
           {feedback ? (
@@ -601,7 +600,7 @@ export function InteractiveWeekDemo() {
             onClick={sealCard}
             type="button"
           >
-            Confirm &amp; seal entire card
+            Confirm and seal
           </button>
           <button
             className="border-registry text-registry hover:bg-subtle min-h-11 w-full rounded-lg border px-5 text-sm font-semibold"
@@ -625,13 +624,13 @@ export function InteractiveWeekDemo() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-                Atomic acceptance complete
+                Card ready
               </p>
               <h2 className="mt-2 text-xl font-bold">
                 Your complete card is sealed
               </h2>
             </div>
-            <StatusBadge tone="sealed">Locked</StatusBadge>
+            <StatusBadge tone="sealed">Sealed</StatusBadge>
           </div>
           <div className="mt-5">
             <AcceptedPositions positions={positions} />
@@ -639,10 +638,9 @@ export function InteractiveWeekDemo() {
         </section>
         <aside className="space-y-5">
           <section className="border-boundary bg-subtle rounded-xl border p-5">
-            <h2 className="font-bold">Demo opponent · sealed</h2>
+            <h2 className="font-bold">Opponent card sealed</h2>
             <p className="text-graphite mt-2 text-sm leading-6">
-              You cannot see its position count, markets, stakes, odds, or card
-              shape before reliable kickoff.
+              Your opponent’s picks stay hidden until kickoff.
             </p>
           </section>
           <button
@@ -650,14 +648,14 @@ export function InteractiveWeekDemo() {
             onClick={() => setPhase("FINAL")}
             type="button"
           >
-            Advance to kickoff, reveal &amp; settle
+            See results
           </button>
           <button
             className="text-action min-h-11 w-full text-sm font-semibold hover:underline"
             onClick={resetDemo}
             type="button"
           >
-            Reset test data
+            Start over
           </button>
         </aside>
       </div>
@@ -670,18 +668,17 @@ export function InteractiveWeekDemo() {
         <section className="border-boundary bg-surface rounded-xl border p-5 sm:p-6">
           <AllocationMeter
             allocatedCredits={allocatedCredits}
-            commonLockLabel="Demo Sunday · 12:55 PM ET"
+            commonLockLabel="Practice Sunday · 12:55 PM ET"
             maximumPositions={simulationSeason1Ruleset.card.maximumPositions}
-            positionCount={positions.length}
+            positionCount={draftItems.length}
             remainingCredits={remainingCredits}
             weeklyAllocationCredits={
               simulationSeason1Ruleset.card.weeklyAllocationCredits
             }
           />
           <p className="text-graphite mt-4 text-sm leading-6">
-            Add draft positions until exactly 1,000 whole credits are allocated.
-            You can switch sides, edit stakes, or remove drafts until the final
-            card confirmation.
+            Add picks until all 1,000 credits are used. You can switch sides,
+            edit amounts, or remove picks before sealing the card.
           </p>
         </section>
 
@@ -723,13 +720,13 @@ export function InteractiveWeekDemo() {
       <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
         <section className="border-boundary bg-surface rounded-xl border p-5">
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-            Card Builder
+            Your card
           </p>
           <div className="mt-4">
             {draftItems.length === 0 ? (
               <p className="text-muted text-sm">
-                Add a position from the slate. Nothing is sealed until final
-                confirmation.
+                Add a pick from the slate. Nothing is sealed until you confirm
+                the complete card.
               </p>
             ) : (
               <AcceptedPositions
@@ -739,25 +736,11 @@ export function InteractiveWeekDemo() {
             )}
           </div>
           <p className="border-boundary text-graphite mt-4 border-t pt-4 text-sm font-semibold">
-            {allocatedCredits.toLocaleString()} allocated ·{" "}
+            {allocatedCredits.toLocaleString()} used ·{" "}
             {remainingCredits >= 0
-              ? `${remainingCredits.toLocaleString()} remaining`
+              ? `${remainingCredits.toLocaleString()} left`
               : `${Math.abs(remainingCredits).toLocaleString()} over`}
           </p>
-        </section>
-
-        <section className="border-boundary bg-subtle rounded-xl border p-5">
-          <h2 className="font-bold">Try the guardrails</h2>
-          <ul className="text-graphite mt-3 list-disc space-y-2 pl-5 text-sm leading-6">
-            <li>
-              Try 1,000 on Kansas City −205; the 750 cap should reject it.
-            </li>
-            <li>
-              Try leaving 1–49 credits; legal completion should reject it.
-            </li>
-            <li>Switch any side or stake before the final confirmation.</li>
-            <li>At confirmation, every draft succeeds or none do.</li>
-          </ul>
         </section>
 
         <button
@@ -767,7 +750,7 @@ export function InteractiveWeekDemo() {
           type="button"
         >
           {remainingCredits === 0
-            ? `Review & seal ${draftItems.length} positions`
+            ? `Review ${draftItems.length} picks`
             : remainingCredits > 0
               ? `Allocate ${remainingCredits} more to review`
               : `Reduce by ${Math.abs(remainingCredits)} to review`}
@@ -777,7 +760,7 @@ export function InteractiveWeekDemo() {
           onClick={resetDemo}
           type="button"
         >
-          Reset test data
+          Start over
         </button>
       </aside>
     </div>

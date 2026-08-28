@@ -80,7 +80,7 @@ export function validateProposedPosition(params: {
     return {
       accepted: false,
       code: "INVALID_STAKE",
-      message: "Positions use positive whole-credit stakes.",
+      message: "Picks use positive whole-credit amounts.",
     };
   }
 
@@ -101,7 +101,7 @@ export function validateProposedPosition(params: {
       accepted: false,
       code: "ABOVE_POSITION_CAP",
       maximumStakeCredits,
-      message: `At these odds, this position may use at most ${maximumStakeCredits} credits.`,
+      message: `At these odds, this pick may use at most ${maximumStakeCredits} credits.`,
     };
   }
 
@@ -121,7 +121,7 @@ export function validateProposedPosition(params: {
       accepted: false,
       code: "DUPLICATE_OR_OPPOSING_MARKET",
       message:
-        "You already hold this event and market. Opposing positions are not allowed.",
+        "You already have a pick for this game and market. Opposing picks are not allowed.",
     };
   }
 
@@ -160,7 +160,7 @@ export function validateProposedPosition(params: {
       message:
         remainingCredits > 0 && remainingCredits < minimumStakeCredits
           ? `${proposedPosition.stakeCredits} would leave ${remainingCredits} credits, below the ${minimumStakeCredits}-credit minimum.`
-          : "This position would leave no legal path to allocate the full weekly card.",
+          : "This pick would leave no way to use all 1,000 credits.",
     };
   }
 

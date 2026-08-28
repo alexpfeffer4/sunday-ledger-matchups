@@ -8,15 +8,15 @@ export const metadata: Metadata = { title: "Season 1 rules" };
 const sections = [
   {
     title: "Your weekly card",
-    body: `Every regular-season week starts with ${pocSeason1Ruleset.card.weeklyAllocationCredits.toLocaleString()} fresh virtual credits. Allocate all of them across ${pocSeason1Ruleset.card.minimumPositions}–${pocSeason1Ruleset.card.maximumPositions} positions before common lock. Stakes are whole credits with a ${pocSeason1Ruleset.card.minimumStakeCredits}-credit minimum.`,
+    body: `Every regular-season week starts with ${pocSeason1Ruleset.card.weeklyAllocationCredits.toLocaleString()} fresh virtual credits. Use all of them across ${pocSeason1Ruleset.card.minimumPositions}–${pocSeason1Ruleset.card.maximumPositions} picks before cards lock. Each pick uses whole credits with a ${pocSeason1Ruleset.card.minimumStakeCredits}-credit minimum.`,
   },
   {
-    title: "Eligible positions",
-    body: "Use main pregame moneyline, spread, and game-total markets. One position is allowed per event and market type; duplicates and opposing sides are prohibited.",
+    title: "Eligible picks",
+    body: "Choose from pregame winner, spread, and game-total markets. You may make one pick per game and market type, with no duplicates or opposing sides.",
   },
   {
     title: "Concentration",
-    body: `At −200 or longer, one position may use the full card. A favorite shorter than −200 is capped at ${pocSeason1Ruleset.concentration.heavyFavoriteSinglePositionCapCredits} credits. There is no blanket odds band or aggregate favorite cap.`,
+    body: `At −200 or longer, one pick may use the full card. A favorite shorter than −200 is capped at ${pocSeason1Ruleset.concentration.heavyFavoriteSinglePositionCapCredits} credits.`,
   },
   {
     title: "Scoring",
@@ -24,7 +24,7 @@ const sections = [
   },
   {
     title: "Incomplete cards",
-    body: `A card below ${pocSeason1Ruleset.card.weeklyAllocationCredits.toLocaleString()} credits at common lock receives an automatic loss, zero Points For, and one miss. A third regular-season miss removes playoff eligibility.`,
+    body: `A card below ${pocSeason1Ruleset.card.weeklyAllocationCredits.toLocaleString()} credits when cards lock receives an automatic loss, zero Points For, and one miss. A third regular-season miss removes playoff eligibility.`,
   },
   {
     title: "The season",
@@ -40,15 +40,13 @@ export default function RulesPage() {
           <BrandLockup />
         </Link>
         <p className="text-registry mt-16 text-xs font-bold tracking-[0.1em] uppercase">
-          Frozen participant rulebook
+          How the league works
         </p>
         <h1 className="mt-4 text-4xl font-bold tracking-[-0.04em]">
           Season 1 rules
         </h1>
         <p className="text-graphite mt-5 text-lg leading-7">
-          These values are visible before roster lock, freeze with the season,
-          and remain attached to its receipts, results, standings, bracket, and
-          history.
+          Every member plays by the same rules for the full season.
         </p>
         <div className="divide-boundary border-boundary mt-10 divide-y border-y">
           {sections.map((section) => (

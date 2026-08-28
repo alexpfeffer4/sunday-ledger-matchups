@@ -89,22 +89,22 @@ function commissionerNextStep({
     if (!providerConfigured) {
       return {
         detail:
-          "A server-side odds-provider key is required before the first slate can be imported.",
-        prerequisites: "Provider connection",
-        title: "Connect the odds provider",
+          "Odds are not connected yet. Finish league setup before importing the Week 1 slate.",
+        prerequisites: "Odds connection needed",
+        title: "Connect weekly odds",
       };
     }
     if (!hasLiveImport) {
       return {
         detail:
           "Import the current NFL markets for private review. This does not open member cards.",
-        prerequisites: "Provider connected",
+        prerequisites: "Odds connected",
         title: "Import current NFL markets",
       };
     }
     return {
       detail:
-        "Review the imported games, then publish the eligible Week 1 slate and common lock.",
+        "Review the imported games, then publish the eligible Week 1 slate and card-lock time.",
       prerequisites: "Imported odds ready",
       title: "Publish the Week 1 slate",
     };
@@ -121,11 +121,11 @@ function commissionerNextStep({
     }
     return {
       detail:
-        "Choose a full simulated season, or use the eight-member interactive Week 1 path.",
+        "Run a full practice season, or open an eight-member practice Week 1.",
       prerequisites:
         state.league.memberCount === 8
-          ? "Both season formats are available"
-          : "Full-season simulation is available",
+          ? "Both practice formats are available"
+          : "Full practice season is available",
       title: "Choose how to begin the season",
     };
   }
@@ -344,7 +344,7 @@ export function Stage1CommissionerControls({
 
           {invites.length > 0 ? (
             <div className="border-boundary mt-6 border-t pt-5">
-              <h3 className="text-sm font-bold">Recent invitation states</h3>
+              <h3 className="text-sm font-bold">Recent invitations</h3>
               <div className="divide-boundary mt-3 divide-y">
                 {invites.map((invite) => (
                   <div
@@ -393,14 +393,12 @@ export function Stage1CommissionerControls({
       {!state.week && state.league.mode === "LIVE" ? (
         <section className="border-registry bg-surface rounded-xl border p-5">
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-            Live provider · private review
+            Week 1 setup
           </p>
           <h2 className="mt-2 font-bold">Import current NFL markets</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Fetch DraftKings moneyline, spread, and total observations through
-            The Odds API. The normalized import is stored for commissioner
-            review only; this command does not publish a slate, open cards, or
-            consume member credits.
+            Import the current DraftKings winner, spread, and total lines for
+            review. Members will not see them until you publish the slate.
           </p>
           <form action={importAction} className="mt-4">
             <ContextFields state={state} />
@@ -414,8 +412,7 @@ export function Stage1CommissionerControls({
           </form>
           {!providerConfigured ? (
             <p className="text-pending mt-3 text-xs leading-5 font-semibold">
-              The server-side provider key is not configured in this
-              environment. No request can be sent yet.
+              Odds are not connected for this league yet.
             </p>
           ) : null}
           <ActionFeedback state={importState} />
@@ -425,11 +422,10 @@ export function Stage1CommissionerControls({
               <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
                 <div>
                   <p className="text-sm font-bold">
-                    Latest reviewed import · {latestLiveImport.eventCount}{" "}
-                    events
+                    Imported games · {latestLiveImport.eventCount}
                   </p>
                   <p className="text-muted mt-1 text-xs">
-                    The Odds API · DraftKings reference · fetched{" "}
+                    DraftKings odds · fetched{" "}
                     {importTimestampFormatter.format(
                       new Date(latestLiveImport.fetchedAt),
                     )}{" "}
@@ -437,7 +433,7 @@ export function Stage1CommissionerControls({
                   </p>
                 </div>
                 <span className="text-positive text-xs font-semibold">
-                  Stored · not published
+                  Ready to publish
                 </span>
               </div>
               <form action={publishLiveSlateAction} className="mt-4">
@@ -474,7 +470,7 @@ export function Stage1CommissionerControls({
                             {event.awayTeam} at {event.homeTeam}
                           </span>
                           <span className="text-muted mt-1 block text-xs">
-                            {event.markets.length} main-market outcomes ·{" "}
+                            {event.markets.length} available lines ·{" "}
                             {eventTimestampFormatter.format(
                               new Date(event.scheduledStartAt),
                             )}{" "}
@@ -486,8 +482,9 @@ export function Stage1CommissionerControls({
                   </div>
                 </fieldset>
                 <p className="text-negative mt-4 text-sm leading-6 font-semibold">
-                  Publication fixes the eligible event set and common lock. It
-                  cannot be replaced; cards and credits remain closed.
+                  Once published, the selected games and card-lock time cannot
+                  be changed. Member cards remain closed until the roster is
+                  locked.
                 </p>
                 <button
                   className={`${buttonClass} mt-4`}
@@ -503,19 +500,18 @@ export function Stage1CommissionerControls({
             </div>
           ) : (
             <p className="text-muted mt-5 text-sm">
-              No live provider import is stored for this season.
+              Import current markets to review the Week 1 games.
             </p>
           )}
         </section>
       ) : !state.week ? (
         <>
           <section className="border-registry bg-surface rounded-xl border p-5">
-            <h2 className="font-bold">Publish full simulated season</h2>
+            <h2 className="font-bold">Run a full practice season</h2>
             <p className="text-graphite mt-2 text-sm leading-6">
-              Requires an even roster from 4 through 16. This one-time command
-              plays Weeks 1–14, applies attendance eligibility, completes the
-              playoff bracket, records the champion, and publishes Week 18 as
-              exhibition-only history.
+              Use an even roster from 4 through 16. This completes Weeks 1–18,
+              including the playoffs and champion, so you can explore a finished
+              season.
             </p>
             <p className="text-negative mt-3 text-sm leading-6 font-semibold">
               Publishing freezes the roster and rules, finalizes the season, and
@@ -535,19 +531,18 @@ export function Stage1CommissionerControls({
                 type="submit"
               >
                 {publishingArchive
-                  ? "Publishing full season…"
-                  : `Publish full season · ${state.league.memberCount} members`}
+                  ? "Running practice season…"
+                  : `Run practice season · ${state.league.memberCount} members`}
               </button>
             </form>
             <ActionFeedback state={archiveState} />
           </section>
 
           <section className="border-boundary bg-surface rounded-xl border p-5">
-            <h2 className="font-bold">Or publish interactive Week 1</h2>
+            <h2 className="font-bold">Or open a practice Week 1</h2>
             <p className="text-graphite mt-2 text-sm leading-6">
-              The hands-on Week 1 path requires exactly eight members. It
-              freezes the Simulation rules, publishes four matchups, and grants
-              1,000 credits to every entry for hands-on play.
+              This option requires exactly eight members. It creates four
+              matchups and gives every member 1,000 credits to build a card.
             </p>
             <form action={initializeAction} className="mt-4">
               <ContextFields state={state} />
@@ -570,15 +565,15 @@ export function Stage1CommissionerControls({
             Week 1 · eligible slate published
           </p>
           <h2 className="mt-2 font-bold">
-            {state.slate.length} NFL events are fixed
+            {state.slate.length} NFL games selected
           </h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            The selected event set and common lock are member-visible and cannot
-            be replaced. No schedule, matchup, card, or credit grant exists yet.
+            Members can see the selected games and card-lock time. Cards open
+            after you lock the roster.
           </p>
           <dl className="border-boundary mt-4 space-y-3 border-t pt-4 text-sm">
             <div className="flex justify-between gap-4">
-              <dt className="text-graphite">Common lock</dt>
+              <dt className="text-graphite">Cards lock</dt>
               <dd className="text-right font-semibold">
                 {importTimestampFormatter.format(
                   new Date(state.week.commonLockAt),
@@ -627,8 +622,7 @@ export function Stage1CommissionerControls({
           </form>
           {!providerConfigured ? (
             <p className="text-pending mt-3 text-xs leading-5 font-semibold">
-              The server-side provider key is not configured in this
-              environment.
+              Odds are not connected for this league yet.
             </p>
           ) : null}
           <ActionFeedback state={refreshQuotesState} />
@@ -637,17 +631,14 @@ export function Stage1CommissionerControls({
               Roster readiness · {state.league.memberCount}/4 minimum
             </p>
             <p className="text-muted mt-1 text-xs leading-5">
-              Opening cards remains unavailable until the roster has an even
-              4–16 members. Refreshing odds never bypasses that competitive
-              rule.
+              Cards can open when the roster has an even 4–16 members.
             </p>
           </div>
           <form action={liveRosterLockAction} className="mt-4">
             <ContextFields state={state} />
             <p className="text-negative text-xs leading-5 font-semibold">
-              Irreversible: this freezes the roster, rules, and complete 14-week
-              schedule. It then opens every Week 1 card with 1,000 fresh credits
-              after one final automatic odds refresh.
+              Once confirmed, the roster, rules, and 14-week schedule cannot be
+              changed. Every Week 1 card opens with 1,000 credits.
             </p>
             <button
               className={`${buttonClass} mt-3`}
@@ -682,10 +673,10 @@ export function Stage1CommissionerControls({
       ) : (
         <>
           <section className="border-boundary bg-surface rounded-xl border p-5">
-            <h2 className="font-bold">Clock and common lock</h2>
+            <h2 className="font-bold">Practice clock and card lock</h2>
             <p className="text-graphite mt-2 text-sm leading-6">
-              Advancing time creates no result. Database time still rejects late
-              positions even before the explicit lock command.
+              Moving the practice clock does not create a score. Picks still
+              close at the published deadline.
             </p>
             <form action={clockAction} className="mt-4">
               <ContextFields state={state} />
@@ -701,7 +692,7 @@ export function Stage1CommissionerControls({
                 disabled={advancing}
                 type="submit"
               >
-                {advancing ? "Advancing…" : "Advance to common lock"}
+                {advancing ? "Advancing…" : "Advance to card lock"}
               </button>
             </form>
             <form action={lockAction} className="mt-3">
@@ -719,7 +710,7 @@ export function Stage1CommissionerControls({
           </section>
 
           <section className="border-boundary bg-surface rounded-xl border p-5">
-            <h2 className="font-bold">Event reveal and results</h2>
+            <h2 className="font-bold">Kickoff and results</h2>
             <div className="divide-boundary mt-4 divide-y">
               {state.slate.map((event) => (
                 <div className="py-4 first:pt-0 last:pb-0" key={event.id}>
@@ -794,11 +785,10 @@ export function Stage1CommissionerControls({
           </section>
 
           <section className="border-copper bg-surface rounded-xl border p-5">
-            <h2 className="font-bold">Correction replay</h2>
+            <h2 className="font-bold">Correct a result</h2>
             <p className="text-graphite mt-2 text-sm leading-6">
-              Appends a corrected Buffalo–New York result and superseding
-              settlements, scores, matchup result, and standings snapshot. The
-              original chain remains queryable.
+              Update the Buffalo–New York result. The correction and its effect
+              on scores and standings will remain visible.
             </p>
             <form action={correctionAction} className="mt-4">
               <ContextFields state={state} />
@@ -816,7 +806,7 @@ export function Stage1CommissionerControls({
                 }
                 type="submit"
               >
-                {correcting ? "Replaying…" : "Apply visible correction"}
+                {correcting ? "Applying…" : "Apply correction"}
               </button>
             </form>
             <ActionFeedback state={correctionState} />
@@ -840,7 +830,7 @@ export function Stage1CommissionerControls({
                   disabled={advancing}
                   type="submit"
                 >
-                  Advance beyond correction window
+                  Advance past correction window
                 </button>
               </form>
             ) : null}

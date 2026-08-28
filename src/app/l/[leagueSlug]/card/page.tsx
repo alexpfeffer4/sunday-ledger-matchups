@@ -26,10 +26,10 @@ export default async function CardPage({
     <PageFrame
       eyebrow="Week 6 · your private card"
       title={`${allocation.remainingCredits} credits still to allocate`}
-      description="Accepted terms are immutable. Only you can read these sealed receipts before their events become revealable."
+      description="Only you can see your sealed picks before kickoff."
       aside={
         <ButtonLink href={`/l/${leagueSlug}/slate`}>
-          Allocate remaining {allocation.remainingCredits}
+          Use remaining {allocation.remainingCredits}
         </ButtonLink>
       }
     >
@@ -41,8 +41,8 @@ export default async function CardPage({
               commonLockLabel={league.matchup.league.commonLockLabel}
             />
             <p className="text-pending border-pending/25 bg-pending/10 mt-5 rounded-lg border px-4 py-3 text-sm leading-6">
-              The final 350 credits can be completed legally in one position on
-              any unused eligible event-market opportunity shown on the slate.
+              You can finish this card with one 350-credit pick from any unused
+              game and market on the slate.
             </p>
           </section>
 
@@ -58,11 +58,11 @@ export default async function CardPage({
         <aside className="space-y-5" aria-label="Card summary">
           <section className="border-boundary bg-surface rounded-xl border p-5">
             <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-              Portfolio
+              Card summary
             </p>
             <dl className="divide-boundary mt-4 divide-y text-sm">
               <div className="flex justify-between gap-4 py-3 first:pt-0">
-                <dt className="text-graphite">Positions</dt>
+                <dt className="text-graphite">Picks</dt>
                 <dd className="font-semibold">3 of 20</dd>
               </div>
               <div className="flex justify-between gap-4 py-3">
@@ -75,15 +75,15 @@ export default async function CardPage({
               </div>
               <div className="flex justify-between gap-4 py-3 last:pb-0">
                 <dt className="text-graphite">Mode</dt>
-                <dd className="font-semibold">Simulation</dd>
+                <dd className="font-semibold">Practice</dd>
               </div>
             </dl>
           </section>
           <section className="border-boundary bg-subtle rounded-xl border p-5 text-sm leading-6">
             <h2 className="font-bold">Privacy before reveal</h2>
             <p className="text-graphite mt-2">
-              Mia receives no receipt count, stake, line, odds, or layout clue.
-              The league sees a generic future-sealed state only when needed.
+              Your opponent cannot see your picks, stakes, lines, or odds before
+              kickoff.
             </p>
           </section>
         </aside>

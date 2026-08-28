@@ -12,18 +12,18 @@ export const metadata: Metadata = { title: "Week 6 league" };
 const activity = [
   {
     time: "Saturday · 4:41 PM ET",
-    title: "Pfeff accepted a sealed position",
-    detail: "No terms are public before reveal.",
+    title: "Pfeff added a pick to his card",
+    detail: "The pick stays private until reveal.",
   },
   {
     time: "Saturday · 2:08 PM ET",
     title: "Lee’s card is ready",
-    detail: "Exactly 1,000 credits accepted before common lock.",
+    detail: "Exactly 1,000 credits used before cards locked.",
   },
   {
     time: "Friday · 6:30 PM ET",
     title: "Week 6 slate published",
-    detail: "Common lock is Sunday at 12:55 PM ET.",
+    detail: "Cards lock Sunday at 12:55 PM ET.",
   },
 ];
 
@@ -42,13 +42,13 @@ export default async function LeaguePage({
     <PageFrame
       eyebrow="West 21st Ledger · Week 6"
       title="Around the league"
-      description="Weekly pairings and structured league moments. Sealed position terms never enter this feed."
+      description="This week’s matchups and league updates."
       aside={
         <Link
           href={`/l/${leagueSlug}/standings`}
           className="text-action inline-flex min-h-11 items-center text-sm font-semibold hover:underline"
         >
-          Open official standings
+          View standings
         </Link>
       }
     >
@@ -91,7 +91,7 @@ export default async function LeaguePage({
         <aside aria-labelledby="moments-title">
           <section className="border-boundary bg-surface rounded-xl border p-5">
             <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-              Structured activity
+              League updates
             </p>
             <h2 id="moments-title" className="mt-2 text-lg font-bold">
               League moments

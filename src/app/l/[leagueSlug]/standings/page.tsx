@@ -28,7 +28,7 @@ export default async function StandingsPage({
     <PageFrame
       eyebrow="Official through Week 5"
       title="Standings"
-      description="Week 6 has not changed the official table. Record leads the frozen tiebreak order; current cards and provisional outcomes do not."
+      description="Week 6 is still open, so the standings remain official through Week 5."
       aside={
         <div className="border-control bg-surface inline-flex rounded-lg border p-1 text-sm font-semibold">
           <span className="bg-registry rounded-md px-4 py-2 text-white">
@@ -112,7 +112,7 @@ export default async function StandingsPage({
       <div className="mt-6 grid gap-5 lg:grid-cols-2">
         <section className="border-boundary bg-surface rounded-xl border p-5">
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-            Your record bridge
+            Your standing
           </p>
           <h2 className="mt-2 text-lg font-bold">Pfeff · No. 5</h2>
           <p className="text-graphite mt-3 leading-6">
@@ -121,11 +121,11 @@ export default async function StandingsPage({
           </p>
         </section>
         <section className="border-boundary bg-subtle rounded-xl border p-5">
-          <h2 className="font-bold">Frozen tiebreak order</h2>
+          <h2 className="font-bold">Tiebreakers</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
             Win percentage, Points For, all-play percentage, balanced head to
             head when applicable, fewer misses, highest official weekly score,
-            then the published deterministic random value.
+            then the league’s published final tiebreaker.
           </p>
         </section>
       </div>

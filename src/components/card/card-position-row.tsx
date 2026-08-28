@@ -55,7 +55,7 @@ export function CardPositionRow({
         href={`/l/${leagueSlug}/receipt/${position.id}`}
         className="text-action mt-4 inline-flex min-h-11 items-center text-sm font-semibold hover:underline"
       >
-        View immutable receipt
+        View receipt
       </Link>
     </article>
   );

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { InteractiveWeekDemo } from "@/components/demo/interactive-week-demo";
 import { BrandLockup } from "@/components/ui/register-mark";
 
-export const metadata: Metadata = { title: "Solo position demo" };
+export const metadata: Metadata = { title: "Practice week" };
 
 export default function InteractiveDemoPage() {
   return (
@@ -22,16 +22,14 @@ export default function InteractiveDemoPage() {
         </div>
         <header className="mt-14">
           <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">
-            Preview lab · fictional test data
+            Practice week
           </p>
           <h1 className="mt-3 text-4xl font-bold tracking-[-0.04em]">
-            Test the weekly position flow
+            Build a practice card
           </h1>
           <p className="text-graphite mt-3 max-w-3xl leading-7">
-            Build a private 1,000-credit card, exercise the real stake and odds
-            guardrails, see the opponent remain sealed in the interface through
-            lock, then reveal and settle a fictional head-to-head matchup.
-            Nothing on this page changes a real league.
+            Make your picks, use all 1,000 credits, and see how the matchup
+            scores. Practice cards never affect your leagues.
           </p>
         </header>
         <InteractiveWeekDemo />

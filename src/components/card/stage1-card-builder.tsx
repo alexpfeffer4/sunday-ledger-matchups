@@ -327,14 +327,13 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
               Card sealed
             </p>
             <h2 className="mt-2 text-xl font-bold">
-              All 1,000 credits were accepted
+              All 1,000 credits are sealed
             </h2>
             <p className="text-graphite mt-2 text-sm">
-              Every position now has an immutable receipt. Open My Card to
-              review the accepted terms.
+              Your card is ready. Open My Card to review your sealed picks.
             </p>
           </div>
-          <StatusBadge tone="sealed">Immutable</StatusBadge>
+          <StatusBadge tone="sealed">Ready</StatusBadge>
         </div>
       </section>
     );
@@ -349,8 +348,8 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
           </p>
           <h2 className="mt-2 text-2xl font-bold">Review your complete card</h2>
           <p className="text-graphite mt-3 leading-7">
-            These picks are still editable. Confirming accepts the current terms
-            and locks every position together.
+            These picks are still editable. Confirm the complete card when
+            everything looks right.
           </p>
           {quoteReviewCount > 0 ? (
             <p
@@ -371,7 +370,7 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                   key={draft.marketSnapshotId}
                 >
                   <p className="text-muted text-xs">
-                    Draft {String(index + 1).padStart(2, "0")} ·{" "}
+                    Pick {String(index + 1).padStart(2, "0")} ·{" "}
                     {selected.market.marketType}
                   </p>
                   <div className="mt-1 flex justify-between gap-4 text-sm">
@@ -395,8 +394,7 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
             </p>
             <p className="mt-2 font-mono text-3xl font-bold">1,000 / 1,000</p>
             <p className="text-graphite mt-2 text-sm">
-              {ownerCard.positions.length + drafts.length} total positions ·{" "}
-              {drafts.length} accepted in this transaction
+              {ownerCard.positions.length + drafts.length} total picks
             </p>
           </section>
           <form action={action}>
@@ -423,7 +421,7 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                 ? "Locking card…"
                 : quoteReviewCount > 0
                   ? "Review changed quotes first"
-                  : "Confirm & lock entire card"}
+                  : "Confirm and seal"}
             </button>
             <ActionFeedback state={actionState} />
           </form>
@@ -445,7 +443,7 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
       <div className="space-y-6">
         <section className="border-boundary bg-surface rounded-xl border p-5">
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-            Draft card
+            Card progress
           </p>
           <p className="mt-2 font-mono text-2xl font-bold">
             {totalCredits.toLocaleString()} / 1,000
@@ -599,17 +597,17 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
       <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
         <section className="border-boundary bg-surface rounded-xl border p-5">
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-            Card Builder
+            Your picks
           </p>
           {ownerCard.positions.length > 0 ? (
             <p className="text-muted mt-2 text-xs">
-              {ownerCard.allocatedCredits} credits are already sealed and cannot
-              be edited.
+              {ownerCard.allocatedCredits} credits are already sealed and can’t
+              be changed.
             </p>
           ) : null}
           {drafts.length === 0 ? (
             <p className="text-muted mt-4 text-sm">
-              Choose a market outcome to add the first draft.
+              Choose a side from the slate to add your first pick.
             </p>
           ) : (
             <div className="divide-boundary mt-4 divide-y">
@@ -622,7 +620,7 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-muted text-xs">
-                          Draft {String(index + 1).padStart(2, "0")}
+                          Pick {String(index + 1).padStart(2, "0")}
                         </p>
                         <p className="mt-1 text-sm font-semibold">
                           {selected.market.proposition}
@@ -646,7 +644,7 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                                 onClick={() => reviewUpdatedQuote(key)}
                                 type="button"
                               >
-                                Review and accept updated quote
+                                Use updated odds
                               </button>
                             ) : (
                               <p className="text-pending mt-2 font-semibold">
@@ -694,9 +692,9 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
             </div>
           )}
           <p className="border-boundary text-graphite mt-4 border-t pt-4 text-sm font-semibold">
-            {totalCredits.toLocaleString()} allocated ·{" "}
+            {totalCredits.toLocaleString()} used ·{" "}
             {remainingCredits >= 0
-              ? `${remainingCredits.toLocaleString()} remaining`
+              ? `${remainingCredits.toLocaleString()} left`
               : `${Math.abs(remainingCredits).toLocaleString()} over`}
           </p>
         </section>
@@ -721,9 +719,9 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
           {quoteReviewCount > 0
             ? `Review ${quoteReviewCount} changed quote${quoteReviewCount === 1 ? "" : "s"}`
             : draftValidation.accepted
-              ? `Review & lock ${drafts.length} positions`
+              ? `Review ${drafts.length} picks`
               : remainingCredits > 0
-                ? `Allocate ${remainingCredits} more to review`
+                ? `Use ${remainingCredits} more to review`
                 : remainingCredits < 0
                   ? `Reduce by ${Math.abs(remainingCredits)} to review`
                   : "Resolve card issues to review"}

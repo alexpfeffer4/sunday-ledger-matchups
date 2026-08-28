@@ -34,7 +34,7 @@ export function validateDraftCard(params: {
     return {
       accepted: false,
       code: "EMPTY_DRAFT",
-      message: "Add at least one position before reviewing the card.",
+      message: "Add at least one pick before reviewing the card.",
     };
   }
 

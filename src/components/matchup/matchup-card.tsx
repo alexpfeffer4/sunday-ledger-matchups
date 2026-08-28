@@ -56,7 +56,7 @@ export function MatchupCard({ matchup }: { matchup: MatchupHomeDto }) {
         <MemberField
           member={matchup.self}
           side="self"
-          detail={`${matchup.allocation.allocatedCredits} allocated · ${matchup.allocation.remainingCredits} remaining`}
+          detail={`${matchup.allocation.allocatedCredits} used · ${matchup.allocation.remainingCredits} left`}
         />
         <div className="pt-7 text-center">
           <p className="text-muted text-xs font-bold tracking-[0.1em] uppercase">
@@ -69,7 +69,7 @@ export function MatchupCard({ matchup }: { matchup: MatchupHomeDto }) {
         <MemberField
           member={matchup.opponent}
           side="opponent"
-          detail="Sealed until common lock"
+          detail="Sealed until cards lock"
         />
       </div>
 

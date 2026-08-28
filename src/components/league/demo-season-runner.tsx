@@ -12,7 +12,7 @@ function RunDemoSeasonButton({ enabled }: { enabled: boolean }) {
       disabled={!enabled || pending}
       type="submit"
     >
-      {pending ? "Running all 18 weeks…" : "Run demo season"}
+      {pending ? "Running all 18 weeks…" : "Run practice season"}
     </button>
   );
 }
@@ -24,9 +24,7 @@ export function DemoSeasonRunner({ enabled }: { enabled: boolean }) {
         <RunDemoSeasonButton enabled={enabled} />
       </form>
       <p className="text-muted mt-2 text-xs">
-        {enabled
-          ? "Available on this Preview deployment"
-          : "Disabled on Production"}
+        {enabled ? "Available here" : "Unavailable here"}
       </p>
     </div>
   );

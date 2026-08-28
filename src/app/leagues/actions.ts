@@ -66,7 +66,7 @@ export async function createLeagueAction(
     return {
       status: "error",
       message:
-        "Enter a league name and a lowercase URL slug such as west-21st-ledger.",
+        "Enter a league name and a lowercase league URL such as sunday-league.",
     };
   }
 
@@ -103,8 +103,8 @@ export async function createLeagueAction(
       status: "success",
       message:
         parsed.data.mode === "LIVE"
-          ? "Live league created. Invite members, then import and review the real NFL slate in the commissioner console."
-          : "Simulation league created. Invite members, then choose a full fictional season or the interactive Week 1 flow.",
+          ? "Live league created. Invite members, then prepare Week 1 from the Commissioner page."
+          : "Practice league created. Invite members, then open a practice week or run a full practice season.",
       href: `/l/${result.data[0].league_slug}/commissioner`,
       hrefLabel: "Open commissioner setup",
     };

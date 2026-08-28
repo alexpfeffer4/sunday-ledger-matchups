@@ -20,22 +20,22 @@ export function AllocationMeter({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="font-semibold">
-            {allocatedCredits.toLocaleString()} allocated ·{" "}
-            {remainingCredits.toLocaleString()} remaining
+            {allocatedCredits.toLocaleString()} used ·{" "}
+            {remainingCredits.toLocaleString()} left
           </p>
           <p className="text-graphite mt-1 text-sm">
-            {positionCount} of {maximumPositions} positions used
+            {positionCount} of {maximumPositions} picks used
           </p>
         </div>
         <div className="text-left sm:text-right">
           <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
-            Common lock
+            Cards lock
           </p>
           <p className="mt-1 text-sm font-semibold">{commonLockLabel}</p>
         </div>
       </div>
       <div
-        aria-label={`${allocatedCredits} of ${weeklyAllocationCredits} credits allocated`}
+        aria-label={`${allocatedCredits} of ${weeklyAllocationCredits} credits used`}
         aria-valuemax={weeklyAllocationCredits}
         aria-valuemin={0}
         aria-valuenow={allocatedCredits}

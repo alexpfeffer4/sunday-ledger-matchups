@@ -12,10 +12,10 @@ export function PositionPreview({ outcome }: { outcome: SlateOutcomeDto }) {
   const [stake, setStake] = useState(350);
   const validation = useMemo(() => {
     if (!Number.isInteger(stake)) return "Use whole credits.";
-    if (stake < 50) return "The minimum position is 50 credits.";
-    if (stake > 350) return "Only 350 credits remain on this simulation card.";
+    if (stake < 50) return "The minimum pick is 50 credits.";
+    if (stake > 350) return "Only 350 credits are left on this practice card.";
     if (stake > outcome.maximumStakeCredits) {
-      return `At ${formatOdds(outcome.americanOdds)}, this position may use at most ${outcome.maximumStakeCredits} credits.`;
+      return `At ${formatOdds(outcome.americanOdds)}, this pick may use at most ${outcome.maximumStakeCredits} credits.`;
     }
     const remainder = 350 - stake;
     if (remainder > 0 && remainder < 50) {
@@ -33,7 +33,7 @@ export function PositionPreview({ outcome }: { outcome: SlateOutcomeDto }) {
       <div className="border-boundary flex flex-col justify-between gap-3 border-b pb-5 sm:flex-row">
         <div>
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-            Add position
+            Add pick
           </p>
           <h2 className="mt-2 text-xl font-bold">{outcome.proposition}.</h2>
         </div>
@@ -60,7 +60,7 @@ export function PositionPreview({ outcome }: { outcome: SlateOutcomeDto }) {
           <span className="text-muted pr-4 text-sm">credits</span>
         </div>
         <p className="text-graphite mt-2 text-sm">
-          At {formatOdds(outcome.americanOdds)}, this position may use up to{" "}
+          At {formatOdds(outcome.americanOdds)}, this pick may use up to{" "}
           {outcome.maximumStakeCredits.toLocaleString()} credits.
         </p>
         {validation ? (
@@ -99,11 +99,11 @@ export function PositionPreview({ outcome }: { outcome: SlateOutcomeDto }) {
 
       <div className="bg-subtle mt-5 rounded-lg p-4 text-sm">
         <p className="font-semibold">
-          After this position: {validation ? "—" : 1_000 - (350 - stake)}{" "}
-          allocated · {validation ? "—" : 350 - stake} remaining
+          After this pick: {validation ? "—" : 1_000 - (350 - stake)} used ·{" "}
+          {validation ? "—" : 350 - stake} left
         </p>
         <p className="text-graphite mt-1">
-          Accepted entries cannot be changed or canceled.
+          Sealed picks cannot be changed or canceled.
         </p>
       </div>
 
@@ -115,7 +115,7 @@ export function PositionPreview({ outcome }: { outcome: SlateOutcomeDto }) {
         Confirm and seal
       </button>
       <p className="text-muted mt-2 text-center text-xs">
-        This read-only preview cannot accept a position.
+        This example league cannot accept a pick.
       </p>
     </div>
   );

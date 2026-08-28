@@ -51,7 +51,7 @@ export default async function LeagueLayout({
         }
         cardStatusLabel={
           live.ownerCard
-            ? `${live.ownerCard.allocatedCredits} / 1,000 allocated`
+            ? `${live.ownerCard.allocatedCredits} / 1,000 used`
             : live.league.lifecycle === "PLAYOFFS"
               ? "No card this round"
               : "Card opens at roster lock"
@@ -73,8 +73,8 @@ export default async function LeagueLayout({
       nflYear={2026}
       mode="SIMULATION"
       memberName="Pfeff"
-      memberRole="Simulation host"
-      cardStatusLabel={`${league.matchup.allocation.allocatedCredits} / 1,000 allocated`}
+      memberRole="Practice commissioner"
+      cardStatusLabel={`${league.matchup.allocation.allocatedCredits} / 1,000 used`}
       isCommissioner
     >
       {children}

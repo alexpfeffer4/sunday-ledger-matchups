@@ -26,7 +26,7 @@ function MatchupPreview() {
             West 21st Ledger · Week 6
           </p>
           <p className="text-graphite mt-1 text-sm">
-            Common lock Sunday · 12:55 PM ET
+            Cards lock Sunday · 12:55 PM ET
           </p>
         </div>
         <StatusBadge tone="sealed" icon={<span aria-hidden="true">●</span>}>
@@ -62,15 +62,13 @@ function MatchupPreview() {
       <div className="bg-subtle mt-7 rounded-lg p-4">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold">
-              650 allocated · 350 remaining
-            </p>
-            <p className="text-graphite mt-1 text-xs">3 of 20 positions used</p>
+            <p className="text-sm font-semibold">650 used · 350 left</p>
+            <p className="text-graphite mt-1 text-xs">3 picks on your card</p>
           </div>
           <p className="text-sealed text-xs font-medium">Opponent sealed</p>
         </div>
         <div
-          aria-label="650 of 1,000 credits allocated"
+          aria-label="650 of 1,000 credits used"
           className="bg-boundary mt-3 h-2 overflow-hidden rounded-full"
           role="progressbar"
           aria-valuemin={0}
@@ -138,7 +136,7 @@ export default async function HomePage() {
               variant="secondary"
               className="sm:min-w-48"
             >
-              Open simulation preview
+              Try a practice week
             </ButtonLink>
           </div>
           <p className="text-muted mt-5 text-sm">
@@ -157,17 +155,17 @@ export default async function HomePage() {
             [
               "01",
               "Build your card",
-              "Allocate all 1,000 credits across main pregame NFL markets. Concentrate or diversify within the frozen season rules.",
+              "Use all 1,000 credits across winner, spread, and total picks before cards lock.",
             ],
             [
               "02",
               "Beat one opponent",
-              "Cards stay sealed. Positions reveal by event, returned credits become the paired weekly score, and the higher score wins.",
+              "Cards stay sealed until kickoff. Returned credits become your weekly score, and the higher score wins.",
             ],
             [
               "03",
               "Climb the table",
-              "Matchup records lead. Points For and all-play add context before deterministic playoffs decide the champion.",
+              "Build your record, track the playoff race, and play through Week 17 for the championship.",
             ],
           ].map(([number, title, description]) => (
             <article key={number} className="border-registry border-t-2 pt-5">
@@ -185,15 +183,15 @@ export default async function HomePage() {
 
       <section className="mx-auto max-w-5xl px-5 py-16 text-center sm:px-8 md:py-24">
         <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">
-          The trust model
+          Fair play
         </p>
         <h2 className="mx-auto mt-4 max-w-3xl text-3xl font-bold tracking-[-0.035em] sm:text-4xl">
           Your decisions stay private. The season stays on the record.
         </h2>
         <p className="text-graphite mx-auto mt-5 max-w-2xl leading-7">
-          Opponents and commissioners cannot inspect unrevealed cards. Accepted
-          positions become permanent receipts, and objective corrections append
-          visibly instead of rewriting history.
+          Opponents and commissioners cannot inspect unrevealed cards. Every
+          pick keeps its original line and odds, and official corrections stay
+          visible.
         </p>
         <ButtonLink href="/trust" variant="tertiary" className="mt-6">
           Read rules &amp; trust

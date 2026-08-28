@@ -1,16 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
-import { isDemoSeasonEnabled } from "@/application/demo/demo-season-availability";
 import { SignOutForm } from "@/components/auth/sign-out-form";
-import { DemoSeasonRunner } from "@/components/league/demo-season-runner";
 import { LeagueSetupForms } from "@/components/league/league-setup-forms";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Your leagues" };
 
 export default async function LeaguesPage() {
-  const demoSeasonEnabled = isDemoSeasonEnabled();
   const supabase = await createSupabaseServerClient();
   const leaguesResult = await supabase
     .schema("api")
@@ -44,74 +41,54 @@ export default async function LeaguesPage() {
             Your leagues
           </h1>
           <p className="text-graphite mt-3 max-w-2xl leading-7">
-            Private leagues connected to this account. Simulation seasons stay
-            clearly labeled and separate from Live NFL competition.
+            Open a league, join with an invitation, or start a new season.
           </p>
         </div>
 
         <LeagueSetupForms />
 
-        <section className="border-champion bg-archive mt-8 rounded-xl border p-6 shadow-[var(--shadow-card)]">
-          <p className="text-champion text-xs font-bold tracking-[0.09em] uppercase">
-            Preview only · fictional test data
+        <section className="border-boundary mt-10 border-y py-6">
+          <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
+            Practice week
           </p>
-          <h2 className="mt-2 text-xl font-bold">Choose what to test</h2>
-          <div className="mt-5 grid gap-4 lg:grid-cols-2">
-            <article className="border-champion/30 bg-surface rounded-xl border p-5">
-              <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-                Hands-on weekly flow
+          <div className="mt-2 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-xl font-bold">Learn the weekly game</h2>
+              <p className="text-graphite mt-2 max-w-2xl text-sm leading-6">
+                Build a 1,000-credit card and see how a matchup scores. Practice
+                cards never affect your leagues.
               </p>
-              <h3 className="mt-2 text-lg font-bold">
-                Test positions, sealing, and settlement
-              </h3>
-              <p className="text-graphite mt-2 text-sm leading-6">
-                Build a 1,000-credit card against a fictional opponent, test the
-                odds restrictions, lock it, reveal results, and settle the
-                matchup without inviting anyone.
-              </p>
-              <Link
-                className="bg-registry hover:bg-registry-hover mt-5 inline-flex min-h-11 items-center justify-center rounded-lg px-5 text-sm font-semibold text-white"
-                href="/leagues/demo"
-              >
-                Start solo position demo
-              </Link>
-            </article>
-            <article className="border-champion/30 bg-surface rounded-xl border p-5">
-              <p className="text-champion text-xs font-bold tracking-[0.08em] uppercase">
-                Full-season engine
-              </p>
-              <h3 className="mt-2 text-lg font-bold">
-                Run a completed fictional season
-              </h3>
-              <p className="text-graphite mt-2 text-sm leading-6">
-                Execute Weeks 1–18 for 10 fictional members and inspect final
-                standings, playoffs, champion, and history. This is the batch
-                simulation you just tested.
-              </p>
-              <div className="mt-5">
-                <DemoSeasonRunner enabled={demoSeasonEnabled} />
-              </div>
-            </article>
+            </div>
+            <Link
+              className="bg-registry hover:bg-registry-hover inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg px-5 text-sm font-semibold text-white"
+              href="/leagues/demo"
+            >
+              Try a practice week
+            </Link>
           </div>
         </section>
 
         {leagues.length > 0 ? (
           <section className="mt-8" aria-labelledby="stored-leagues-title">
             <h2 id="stored-leagues-title" className="text-xl font-bold">
-              Stored leagues
+              League list
             </h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="divide-boundary border-boundary mt-4 divide-y border-y">
               {leagues.map((league) => (
                 <article
-                  className="border-boundary bg-surface rounded-xl border p-5"
+                  className="flex flex-col justify-between gap-3 py-5 sm:flex-row sm:items-center"
                   key={league.id}
                 >
-                  <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-                    {league.role === "COMMISSIONER" ? "Commissioner" : "Member"}
-                  </p>
-                  <h3 className="mt-2 text-lg font-bold">{league.name}</h3>
+                  <div>
+                    <h3 className="text-lg font-bold">{league.name}</h3>
+                    <p className="text-muted mt-1 text-xs font-semibold">
+                      {league.role === "COMMISSIONER"
+                        ? "Commissioner"
+                        : "Member"}
+                    </p>
+                  </div>
                   <Link
-                    className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
+                    className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
                     href={`/l/${league.slug}/matchup`}
                   >
                     Open league
@@ -122,22 +99,22 @@ export default async function LeaguesPage() {
           </section>
         ) : null}
 
-        <section className="border-registry bg-surface mt-8 rounded-xl border p-6 shadow-[var(--shadow-card)]">
+        <section className="border-boundary mt-8 border-t pt-6">
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-            Read-only simulation · fictional fixture
+            Example league
           </p>
           <div className="mt-3 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
             <div>
               <h2 className="text-xl font-bold">West 21st Ledger</h2>
               <p className="text-graphite mt-2 text-sm">
-                NFL · 2026 · Week 6 · read-only preview
+                See a complete league before starting your own.
               </p>
             </div>
             <Link
               href="/l/west-21st-ledger/matchup"
               className="border-registry bg-registry hover:bg-registry-hover inline-flex min-h-11 items-center justify-center rounded-lg border px-5 text-sm font-semibold text-white"
             >
-              Open preview
+              View example
             </Link>
           </div>
         </section>

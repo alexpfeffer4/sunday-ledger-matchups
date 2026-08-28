@@ -41,8 +41,8 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
   return (
     <PageFrame
       eyebrow={`${state.league.nflYear} playoffs · official through Week 14`}
-      title="The playoff field is on the record"
-      description={`The top ${publication.expectedQualifierCount} eligible entries were frozen from the final regular-season table. Week 15 markets cannot change these seeds.`}
+      title="The playoff field is set"
+      description={`The top ${publication.expectedQualifierCount} eligible members qualified from the final regular-season standings.`}
       aside={
         <StatusBadge tone={fieldComplete ? "positive" : "pending"}>
           {publication.actualQualifierCount} qualified
@@ -53,7 +53,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
             <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-              Operational postseason ledger
+              Playoff schedule
             </p>
             <h2 id="published-rounds-title" className="mt-2 text-xl font-bold">
               Published rounds and advancement
@@ -75,8 +75,8 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
         ) : (
           <div className="border-boundary bg-surface mt-4 rounded-xl border p-5">
             <p className="text-graphite text-sm leading-6">
-              Qualification is frozen. The commissioner can now import current
-              NFL markets and publish Week 15 from this bracket.
+              The field is set. The commissioner can now prepare Week 15 from
+              this bracket.
             </p>
           </div>
         )}
@@ -86,7 +86,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
         <section aria-labelledby="bracket-title">
           <div>
             <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-              Immutable bracket template
+              Championship bracket
             </p>
             <h2 id="bracket-title" className="mt-2 text-xl font-bold">
               {publication.bracket.format === "SMALL_FOUR"
@@ -154,7 +154,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
         <aside className="space-y-5">
           <section className="border-boundary bg-surface rounded-xl border p-5">
             <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-              Qualification snapshot
+              Playoff field
             </p>
             <h2 className="mt-2 font-bold">Official field</h2>
             <ol className="divide-boundary mt-4 divide-y">
@@ -183,7 +183,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
           </section>
 
           <section className="border-boundary bg-surface rounded-xl border p-5">
-            <h2 className="font-bold">Week 14 audit</h2>
+            <h2 className="font-bold">Final Week 14 standings</h2>
             <div className="mt-4 space-y-3">
               {publication.standings.map((standing) => (
                 <div
@@ -257,7 +257,7 @@ function PublishedRoundCard({ round }: { round: PublishedRound }) {
         </StatusBadge>
       </div>
       <p className="text-muted mt-2 text-xs">
-        Common lock {roundTimeFormatter.format(new Date(round.commonLockAt))} ET
+        Cards lock {roundTimeFormatter.format(new Date(round.commonLockAt))} ET
       </p>
       <div className="mt-4 space-y-3">
         {round.matchups.map((matchup) => {
