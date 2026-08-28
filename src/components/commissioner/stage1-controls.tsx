@@ -42,6 +42,9 @@ export type Stage1CommissionerControlState = {
       "id" | "key" | "state" | "scheduledStartAt" | "awayTeam" | "homeTeam"
     > & { latestObservedAt: string }
   >;
+  members: Array<
+    Pick<Stage1StateDto["members"][number], "userId" | "displayName" | "role">
+  >;
 };
 
 function ContextFields({ state }: { state: Stage1CommissionerControlState }) {
@@ -71,6 +74,14 @@ const eventTimestampFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
 });
 
+function isRosterValid(state: Stage1CommissionerControlState) {
+  return (
+    state.league.memberCount >= 4 &&
+    state.league.memberCount <= 16 &&
+    state.league.memberCount % 2 === 0
+  );
+}
+
 function commissionerNextStep({
   hasLiveImport,
   providerConfigured,
@@ -80,10 +91,16 @@ function commissionerNextStep({
   providerConfigured: boolean;
   state: Stage1CommissionerControlState;
 }) {
-  const rosterIsValid =
-    state.league.memberCount >= 4 &&
-    state.league.memberCount <= 16 &&
-    state.league.memberCount % 2 === 0;
+  const rosterIsValid = isRosterValid(state);
+
+  if (!state.week && !rosterIsValid) {
+    return {
+      detail:
+        "Invite members until the roster has an even total between 4 and 16.",
+      prerequisites: `${state.league.memberCount} members now · even 4–16 required`,
+      title: "Complete the league roster",
+    };
+  }
 
   if (!state.week && state.league.mode === "LIVE") {
     if (!providerConfigured) {
@@ -111,14 +128,6 @@ function commissionerNextStep({
   }
 
   if (!state.week) {
-    if (!rosterIsValid) {
-      return {
-        detail:
-          "Invite members until the roster has an even total between 4 and 16.",
-        prerequisites: `${state.league.memberCount} members now · even 4–16 required`,
-        title: "Complete the league roster",
-      };
-    }
     return {
       detail:
         "Run a full practice season, or open an eight-member practice Week 1.",
@@ -258,6 +267,7 @@ export function Stage1CommissionerControls({
     providerConfigured,
     state,
   });
+  const rosterIsValid = isRosterValid(state);
 
   return (
     <div className="space-y-5">
@@ -274,137 +284,185 @@ export function Stage1CommissionerControls({
         </p>
       </section>
 
-      <details
-        className="border-boundary bg-surface rounded-xl border p-5"
-        open={
-          state.league.lifecycle === "DRAFT" &&
-          (state.league.memberCount < 4 || state.league.memberCount % 2 !== 0)
-        }
-      >
-        <summary className="cursor-pointer list-none font-bold">
-          Invite and manage members
-          <span className="text-muted ml-2 text-xs font-normal">
-            {state.league.memberCount}/16
-          </span>
-        </summary>
-        <div className="mt-5">
-          <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-            League formation
-          </p>
-          <h2 className="mt-2 text-lg font-bold">Private invitation links</h2>
-          <p className="text-graphite mt-2 text-sm leading-6">
-            {state.league.lifecycle === "DRAFT"
-              ? "Create a private link that shows the league and commissioner before a member signs in. The roster stops at 16 members."
-              : "The competitive roster is frozen. Existing members keep access, but no additional member can join this season."}
-          </p>
-          <form
-            action={inviteAction}
-            className="mt-5 grid gap-4 sm:grid-cols-2"
+      <section className="border-boundary bg-surface rounded-xl border p-5">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+          <div>
+            <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+              League formation
+            </p>
+            <h2 className="mt-2 text-lg font-bold">Invite members first</h2>
+          </div>
+          <span
+            className={`inline-flex min-h-7 items-center self-start rounded-full border px-3 text-xs font-bold ${
+              rosterIsValid
+                ? "border-positive/30 bg-positive/10 text-positive"
+                : "border-pending/30 bg-pending/10 text-pending"
+            }`}
           >
-            <ContextFields state={state} />
-            <label className="text-sm font-semibold">
-              Link expires
-              <select
-                className="border-control bg-surface focus:border-registry mt-2 min-h-11 w-full rounded-lg border px-3 outline-none"
-                defaultValue="7"
-                disabled={state.league.lifecycle !== "DRAFT"}
-                name="expiresInDays"
+            {rosterIsValid ? "✓ Roster ready" : "Roster needs members"}
+          </span>
+        </div>
+        <p className="text-graphite mt-3 text-sm leading-6">
+          {state.league.lifecycle === "DRAFT"
+            ? "Share one private link with the group. It previews the league before each person creates an account or signs in."
+            : "The competitive roster is frozen. Existing members keep access, but invitations can no longer add members."}
+        </p>
+
+        <div className="border-boundary mt-5 rounded-lg border p-4">
+          <div className="flex items-baseline justify-between gap-4">
+            <h3 className="text-sm font-bold">Joined members</h3>
+            <p className="text-muted text-xs font-semibold">
+              {state.league.memberCount}/16
+            </p>
+          </div>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {state.members.map((member) => (
+              <li
+                className="bg-subtle flex min-h-11 items-center justify-between gap-3 rounded-lg px-3 text-sm"
+                key={member.userId}
               >
-                <option value="1">In 1 day</option>
-                <option value="7">In 7 days</option>
-                <option value="14">In 14 days</option>
-                <option value="30">In 30 days</option>
-              </select>
-            </label>
-            <label className="text-sm font-semibold">
-              Maximum joins
-              <input
-                className="border-control bg-surface focus:border-registry mt-2 min-h-11 w-full rounded-lg border px-3 font-mono outline-none"
-                defaultValue={Math.max(1, 16 - state.league.memberCount)}
-                disabled={state.league.lifecycle !== "DRAFT"}
-                max={15}
-                min={1}
-                name="maxUses"
-                type="number"
-              />
-            </label>
+                <span className="min-w-0 truncate font-semibold">
+                  {member.displayName}
+                </span>
+                <span className="text-muted shrink-0 text-xs">
+                  {member.role === "COMMISSIONER" ? "Commissioner" : "Member"}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-muted mt-3 text-xs leading-5">
+            {rosterIsValid
+              ? `${state.league.memberCount} is a valid even roster. You may continue to Week 1 setup.`
+              : "Continue inviting until 4–16 members have joined and the total is even."}
+          </p>
+        </div>
+
+        {state.league.lifecycle === "DRAFT" ? (
+          <form action={inviteAction} className="mt-5">
+            <ContextFields state={state} />
+            <p className="text-sm font-semibold">Default invitation</p>
+            <p className="text-muted mt-1 text-xs leading-5">
+              Expires in 7 days · up to{" "}
+              {Math.max(1, 16 - state.league.memberCount)} joins
+            </p>
             <button
-              className={`${buttonClass} sm:col-span-2`}
-              disabled={inviting || state.league.lifecycle !== "DRAFT"}
+              className={`${buttonClass} mt-3`}
+              disabled={inviting || state.league.memberCount >= 16}
               type="submit"
             >
               {inviting
                 ? "Creating…"
-                : state.league.lifecycle === "DRAFT"
-                  ? "Create private invitation link"
-                  : "Roster locked"}
+                : state.league.memberCount >= 16
+                  ? "Roster at capacity"
+                  : "Create default invitation link"}
             </button>
-          </form>
-          <InviteLinkFeedback key={inviteState.value} state={inviteState} />
-
-          {invites.length > 0 ? (
-            <div className="border-boundary mt-6 border-t pt-5">
-              <h3 className="text-sm font-bold">Recent invitations</h3>
-              <div className="divide-boundary mt-3 divide-y">
-                {invites.map((invite) => (
-                  <div
-                    className="flex flex-col justify-between gap-3 py-3 sm:flex-row sm:items-center"
-                    key={invite.id}
+            <details className="border-boundary mt-4 border-t pt-4">
+              <summary className="min-h-11 cursor-pointer content-center text-sm font-semibold">
+                Advanced invitation settings
+              </summary>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <label className="text-sm font-semibold">
+                  Link expires
+                  <select
+                    className="border-control bg-surface focus:border-registry mt-2 min-h-11 w-full rounded-lg border px-3"
+                    defaultValue="7"
+                    name="expiresInDays"
                   >
-                    <div>
-                      <p className="text-sm font-semibold">
-                        {invite.status} · {invite.uses} of {invite.max_uses}{" "}
-                        joins used
-                      </p>
-                      <p className="text-muted mt-1 text-xs">
-                        Expires{" "}
-                        {eventTimestampFormatter.format(
-                          new Date(invite.expires_at),
-                        )}{" "}
-                        ET
-                      </p>
-                    </div>
-                    {invite.active ? (
-                      <form action={revokeInviteAction}>
-                        <ContextFields state={state} />
-                        <input
-                          name="inviteId"
-                          type="hidden"
-                          value={invite.id}
-                        />
-                        <button
-                          className="border-negative text-negative hover:bg-negative/5 min-h-11 rounded-lg border px-4 text-xs font-semibold disabled:opacity-50"
-                          disabled={revokingInvite}
-                          type="submit"
-                        >
-                          Revoke
-                        </button>
-                      </form>
-                    ) : null}
-                  </div>
-                ))}
+                    <option value="1">In 1 day</option>
+                    <option value="7">In 7 days</option>
+                    <option value="14">In 14 days</option>
+                    <option value="30">In 30 days</option>
+                  </select>
+                </label>
+                <label className="text-sm font-semibold">
+                  Maximum joins
+                  <input
+                    className="border-control bg-surface focus:border-registry mt-2 min-h-11 w-full rounded-lg border px-3 font-mono"
+                    defaultValue={Math.max(1, 16 - state.league.memberCount)}
+                    max={15}
+                    min={1}
+                    name="maxUses"
+                    type="number"
+                  />
+                </label>
               </div>
-              <ActionFeedback state={revokeInviteState} />
+            </details>
+          </form>
+        ) : null}
+        <InviteLinkFeedback key={inviteState.value} state={inviteState} />
+
+        <p className="border-boundary text-negative mt-5 border-t pt-4 text-xs leading-5 font-semibold">
+          Locking the roster later freezes membership and the season schedule.
+          Invitation links cannot add members after that point.
+        </p>
+
+        {invites.length > 0 ? (
+          <details className="border-boundary mt-4 border-t pt-4">
+            <summary className="min-h-11 cursor-pointer content-center text-sm font-bold">
+              Manage recent invitations · {invites.length}
+            </summary>
+            <div className="divide-boundary mt-3 divide-y">
+              {invites.map((invite) => (
+                <div
+                  className="flex flex-col justify-between gap-3 py-3 sm:flex-row sm:items-center"
+                  key={invite.id}
+                >
+                  <div>
+                    <p className="text-sm font-semibold">
+                      {invite.status} · {invite.uses} of {invite.max_uses} joins
+                      used
+                    </p>
+                    <p className="text-muted mt-1 text-xs">
+                      Expires{" "}
+                      {eventTimestampFormatter.format(
+                        new Date(invite.expires_at),
+                      )}{" "}
+                      ET
+                    </p>
+                  </div>
+                  {invite.active ? (
+                    <form action={revokeInviteAction}>
+                      <ContextFields state={state} />
+                      <input name="inviteId" type="hidden" value={invite.id} />
+                      <button
+                        className="border-negative text-negative hover:bg-negative/5 min-h-11 rounded-lg border px-4 text-xs font-semibold disabled:opacity-50"
+                        disabled={revokingInvite}
+                        type="submit"
+                      >
+                        Revoke
+                      </button>
+                    </form>
+                  ) : null}
+                </div>
+              ))}
             </div>
-          ) : null}
-        </div>
-      </details>
+            <ActionFeedback state={revokeInviteState} />
+          </details>
+        ) : null}
+      </section>
 
       {!state.week && state.league.mode === "LIVE" ? (
-        <section className="border-registry bg-surface rounded-xl border p-5">
+        <section
+          className={`${rosterIsValid ? "border-registry bg-surface" : "border-boundary bg-subtle"} rounded-xl border p-5`}
+        >
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
             Week 1 setup
           </p>
-          <h2 className="mt-2 font-bold">Import current NFL markets</h2>
+          <h2 className="mt-2 font-bold">
+            {rosterIsValid
+              ? "Import current NFL markets"
+              : "Finish the roster before odds work"}
+          </h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Import the current DraftKings winner, spread, and total lines for
-            review. Members will not see them until you publish the slate.
+            {rosterIsValid
+              ? "Import the current DraftKings winner, spread, and total lines for review. Members will not see them until you publish the slate."
+              : "Provider and market controls become available after an even roster of 4–16 members has joined."}
           </p>
           <form action={importAction} className="mt-4">
             <ContextFields state={state} />
             <button
               className={buttonClass}
-              disabled={!providerConfigured || importing}
+              disabled={!providerConfigured || importing || !rosterIsValid}
               type="submit"
             >
               {importing ? "Importing…" : "Import NFL markets for review"}
@@ -488,7 +546,7 @@ export function Stage1CommissionerControls({
                 </p>
                 <button
                   className={`${buttonClass} mt-4`}
-                  disabled={publishingLiveSlate}
+                  disabled={publishingLiveSlate || !rosterIsValid}
                   type="submit"
                 >
                   {publishingLiveSlate

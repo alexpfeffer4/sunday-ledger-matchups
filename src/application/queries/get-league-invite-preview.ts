@@ -17,6 +17,7 @@ export async function getLeagueInvitePreview(
     .rpc("get_league_invite_preview", { p_token: token })
     .maybeSingle();
 
-  if (result.error || !result.data) return null;
+  if (result.error) throw result.error;
+  if (!result.data) return null;
   return leagueInvitePreviewSchema.parse(result.data);
 }

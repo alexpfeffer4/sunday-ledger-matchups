@@ -879,6 +879,11 @@ export function Stage1CommissionerView({
                   event.markets[0]?.observedAt ?? event.scheduledStartAt,
                 ),
               })),
+              members: state.members.map((member) => ({
+                displayName: member.displayName,
+                role: member.role,
+                userId: member.userId,
+              })),
             }}
           />
           <aside className="space-y-5">

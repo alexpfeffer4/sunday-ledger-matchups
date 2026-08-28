@@ -9,10 +9,12 @@ describe("server actions", () => {
     );
 
     expect(exportedValues).toEqual([
-      expect.stringMatching(/^async function sendMagicLink\(/),
+      expect.stringMatching(/^async function sendCreateAccountLink\(/),
+      expect.stringMatching(/^async function sendSignInLink\(/),
       expect.stringMatching(/^async function requestPasswordReset\(/),
       expect.stringMatching(/^async function signInWithPassword\(/),
       expect.stringMatching(/^async function updatePassword\(/),
+      expect.stringMatching(/^async function finishPasswordRecovery\(/),
       expect.stringMatching(/^async function signOutAction\(/),
     ]);
   });
