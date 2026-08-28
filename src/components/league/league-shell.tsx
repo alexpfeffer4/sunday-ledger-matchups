@@ -44,11 +44,15 @@ export function LeagueShell({
 }) {
   return (
     <div className="bg-canvas min-h-screen lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
-      <aside className="border-boundary bg-surface relative hidden min-h-screen border-r px-4 py-5 lg:sticky lg:top-0 lg:block lg:h-screen">
-        <Link href="/" aria-label="Sunday Ledger home" className="px-2">
+      <aside className="border-boundary bg-surface hidden min-h-0 border-r px-4 py-5 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-hidden">
+        <Link
+          href="/"
+          aria-label="Sunday Ledger home"
+          className="shrink-0 px-2"
+        >
           <BrandLockup />
         </Link>
-        <div className="bg-subtle mt-7 rounded-lg p-3">
+        <div className="bg-subtle mt-7 shrink-0 rounded-lg p-3">
           <div className="flex items-center gap-3">
             <span className="bg-registry flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white">
               <RegisterMark className="h-5 w-5" />
@@ -61,10 +65,15 @@ export function LeagueShell({
             </div>
           </div>
         </div>
-        <Suspense fallback={<NavigationFallback />}>
-          <LeagueDesktopNav leagueSlug={leagueSlug} archiveMode={archiveMode} />
-        </Suspense>
-        <div className="border-boundary absolute right-4 bottom-5 left-4 border-t pt-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-4">
+          <Suspense fallback={<NavigationFallback />}>
+            <LeagueDesktopNav
+              leagueSlug={leagueSlug}
+              archiveMode={archiveMode}
+            />
+          </Suspense>
+        </div>
+        <div className="border-boundary shrink-0 border-t pt-4">
           <div className="flex items-center gap-3 px-2">
             <span className="border-registry bg-subtle text-registry flex h-8 w-8 items-center justify-center rounded-full border text-xs font-bold">
               {initials(memberName)}
