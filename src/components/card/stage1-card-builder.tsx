@@ -14,6 +14,10 @@ import {
   type RestoredCardDraft,
   type StoredCardDraft,
 } from "@/components/card/card-draft-storage";
+import {
+  formatAmericanOdds,
+  marketOptionCopy,
+} from "@/components/card/market-option-copy";
 import { ActionFeedback } from "@/components/forms/action-feedback";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { validateDraftCard } from "@/domain/cards/validate-card-draft";
@@ -42,10 +46,6 @@ const kickoffFilterLabels: Record<KickoffFilter, string> = {
   SUN_LATE: "Sun late",
   SUN_NIGHT: "Sun night",
 };
-
-function formatOdds(odds: number): string {
-  return odds > 0 ? `+${odds}` : `−${Math.abs(odds)}`;
-}
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -380,7 +380,7 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                     </span>
                     <span className="shrink-0 font-mono">
                       {draft.stakeCredits} @{" "}
-                      {formatOdds(selected.market.americanOdds)}
+                      {formatAmericanOdds(selected.market.americanOdds)}
                     </span>
                   </div>
                 </article>
@@ -547,10 +547,20 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                       {outcomes.map((market) => {
                         const isSelected =
                           selectedDraft?.outcomeKey === market.outcomeKey;
+                        const copy = marketOptionCopy({
+                          americanOdds: market.americanOdds,
+                          awayTeam: event.awayTeam,
+                          fallbackLabel: market.proposition,
+                          homeTeam: event.homeTeam,
+                          lineMilli: market.lineMilli,
+                          marketType: market.marketType,
+                          outcomeKey: market.outcomeKey,
+                        });
                         return (
                           <button
+                            aria-label={copy.accessibleLabel}
                             aria-pressed={isSelected}
-                            className={`relative h-20 rounded-lg border py-2 pr-10 pl-3 text-left transition-colors ${
+                            className={`relative flex h-20 flex-col justify-center rounded-lg border py-2 pr-10 pl-3 text-left transition-colors ${
                               isSelected
                                 ? "border-registry bg-registry text-white shadow-sm"
                                 : "border-control bg-surface hover:border-registry hover:bg-registry/5"
@@ -560,11 +570,11 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                             onClick={() => selectOutcome(event, market)}
                             type="button"
                           >
-                            <span className="block text-sm leading-5 font-semibold">
-                              {market.proposition}
+                            <span className="block truncate text-sm leading-5 font-semibold">
+                              {copy.primary}
                             </span>
-                            <span className="mt-1 block font-mono text-xs leading-4">
-                              {formatOdds(market.americanOdds)}
+                            <span className="mt-1 block font-mono text-xs leading-4 whitespace-nowrap">
+                              {copy.secondary}
                             </span>
                             {isSelected ? (
                               <span
@@ -618,17 +628,17 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                           {selected.market.proposition}
                         </p>
                         <p className="text-muted mt-1 font-mono text-xs">
-                          {formatOdds(selected.market.americanOdds)} · cap{" "}
-                          {selected.market.maximumStakeCredits}
+                          {formatAmericanOdds(selected.market.americanOdds)} ·
+                          cap {selected.market.maximumStakeCredits}
                         </p>
                         {draft.quoteReviewRequired ? (
                           <div className="border-pending/40 bg-pending/10 mt-3 rounded-lg border p-3 text-xs leading-5">
                             <p className="font-semibold">Odds changed</p>
                             <p className="text-graphite mt-1">
                               {draft.reviewedProposition}{" "}
-                              {formatOdds(draft.reviewedAmericanOdds)} →{" "}
+                              {formatAmericanOdds(draft.reviewedAmericanOdds)} →{" "}
                               {selected.market.proposition}{" "}
-                              {formatOdds(selected.market.americanOdds)}
+                              {formatAmericanOdds(selected.market.americanOdds)}
                             </p>
                             {selected.market.qualityStatus === "HEALTHY" ? (
                               <button

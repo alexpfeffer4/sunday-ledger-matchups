@@ -46,6 +46,25 @@ describe("solo interactive demo flow", () => {
       within(openingCard).getByRole("button", { name: "Add to card" }),
     ).toBeDisabled();
 
+    const buffaloSpread = screen.getByRole("button", {
+      name: /^Buffalo \+4.5 −110$/,
+    });
+    expect(within(buffaloSpread).getByText("Buffalo")).toBeVisible();
+    expect(within(buffaloSpread).getByText("+4.5 · −110")).toBeVisible();
+    expect(within(buffaloSpread).queryByText("Buffalo +4.5")).toBeNull();
+
+    const kansasCitySpread = screen.getByRole("button", {
+      name: /^Kansas City −4.5 −110$/,
+    });
+    expect(within(kansasCitySpread).getByText("Kansas City")).toBeVisible();
+    expect(within(kansasCitySpread).getByText("−4.5 · −110")).toBeVisible();
+
+    const underTotal = screen.getByRole("button", {
+      name: /^Under 47.5 −112$/,
+    });
+    expect(within(underTotal).getByText("Under")).toBeVisible();
+    expect(within(underTotal).getByText("47.5 · −112")).toBeVisible();
+
     addDraft(/^Kansas City −205$/, "1000");
     expect(screen.getByRole("alert")).toHaveTextContent(
       "this position may use at most 750 credits",

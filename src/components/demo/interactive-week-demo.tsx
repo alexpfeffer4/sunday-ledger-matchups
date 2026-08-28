@@ -13,6 +13,10 @@ import {
   type InteractiveDemoPosition,
 } from "@/adapters/simulation/interactive-week";
 import { AllocationMeter } from "@/components/matchup/allocation-meter";
+import {
+  formatAmericanOdds,
+  marketOptionCopy,
+} from "@/components/card/market-option-copy";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   cardCompliance,
@@ -37,10 +41,6 @@ type Feedback = {
   tone: "positive" | "negative";
   message: string;
 } | null;
-
-function formatOdds(odds: number): string {
-  return odds > 0 ? `+${odds}` : `−${Math.abs(odds)}`;
-}
 
 function marketKey(eventId: string, marketType: string): string {
   return `${eventId}:${marketType}`;
@@ -100,7 +100,8 @@ function AcceptedPositions({
             <div className="mt-1 flex justify-between gap-4 text-sm">
               <span className="font-semibold">{opportunity.displayLine}</span>
               <span className="font-mono">
-                {position.stakeCredits} @ {formatOdds(opportunity.americanOdds)}
+                {position.stakeCredits} @{" "}
+                {formatAmericanOdds(opportunity.americanOdds)}
               </span>
             </div>
           </article>
@@ -111,7 +112,9 @@ function AcceptedPositions({
 }
 
 function DemoMarketCard({
+  awayTeam,
   eventId,
+  homeTeam,
   market,
   draft,
   feedback,
@@ -119,7 +122,9 @@ function DemoMarketCard({
   onDraftChange,
   onToggleCard,
 }: {
+  awayTeam: string;
   eventId: string;
+  homeTeam: string;
   market: InteractiveDemoMarket;
   draft: DraftPosition;
   feedback: Feedback;
@@ -154,11 +159,20 @@ function DemoMarketCard({
       <div className="mt-3 grid grid-cols-2 gap-2">
         {market.opportunities.map((opportunity) => {
           const isSelected = draft.opportunityId === opportunity.id;
+          const copy = marketOptionCopy({
+            americanOdds: opportunity.americanOdds,
+            awayTeam,
+            fallbackLabel: opportunity.displayLine,
+            homeTeam,
+            lineMilli: opportunity.lineMilli,
+            marketType: opportunity.marketType,
+            outcomeKey: opportunity.selectedSide,
+          });
           return (
             <button
-              aria-label={`${opportunity.displayLine} ${formatOdds(opportunity.americanOdds)}`}
+              aria-label={copy.accessibleLabel}
               aria-pressed={isSelected}
-              className={`relative h-20 rounded-lg border py-2 pr-10 pl-3 text-left transition-colors ${
+              className={`relative flex h-20 flex-col justify-center rounded-lg border py-2 pr-10 pl-3 text-left transition-colors ${
                 isSelected
                   ? "border-registry bg-registry text-white shadow-sm"
                   : "border-control bg-surface hover:border-registry hover:bg-registry/5"
@@ -172,11 +186,11 @@ function DemoMarketCard({
               }
               type="button"
             >
-              <span className="block text-sm leading-5 font-semibold">
-                {opportunity.displayLine}
+              <span className="block truncate text-sm leading-5 font-semibold">
+                {copy.primary}
               </span>
-              <span className="mt-1 block font-mono text-xs leading-4">
-                {formatOdds(opportunity.americanOdds)}
+              <span className="mt-1 block font-mono text-xs leading-4 whitespace-nowrap">
+                {copy.secondary}
               </span>
               {isSelected ? (
                 <span
@@ -280,7 +294,7 @@ function SettledCard({
             </div>
             <p className="text-muted mt-1 text-xs">
               Risked {position.stakeCredits} @{" "}
-              {formatOdds(position.opportunity.americanOdds)} · returned{" "}
+              {formatAmericanOdds(position.opportunity.americanOdds)} · returned{" "}
               {formatCenticredits(
                 position.settlement.returnedCenticredits ?? 0n,
                 true,
@@ -688,9 +702,11 @@ export function InteractiveWeekDemo() {
                 };
                 return (
                   <DemoMarketCard
+                    awayTeam={event.awayTeam}
                     draft={draft}
                     eventId={event.id}
                     feedback={feedback}
+                    homeTeam={event.homeTeam}
                     isInCard={draftMarketKeys.includes(key)}
                     key={market.marketType}
                     market={market}
