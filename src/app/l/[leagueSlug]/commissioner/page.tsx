@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { isOddsProviderConfigured } from "@/adapters/providers/the-odds-api/client";
 import { getLiveOddsImport } from "@/application/queries/get-live-odds-import";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
+import { getLiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
 import { getSimulationSeasonArchive } from "@/application/queries/get-simulation-season-archive";
 import { PageFrame } from "@/components/league/page-frame";
@@ -40,16 +41,19 @@ export default async function CommissionerPage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
-  const [archive, live, latestLiveImport] = await Promise.all([
-    getSimulationSeasonArchive(leagueSlug),
-    getLiveStage1League(leagueSlug),
-    getLiveOddsImport(leagueSlug),
-  ]);
+  const [archive, live, latestLiveImport, liveWeekOperations] =
+    await Promise.all([
+      getSimulationSeasonArchive(leagueSlug),
+      getLiveStage1League(leagueSlug),
+      getLiveOddsImport(leagueSlug),
+      getLiveWeekOperations(leagueSlug),
+    ]);
   if (archive) redirect(`/l/${leagueSlug}/matchup`);
   if (live)
     return (
       <Stage1CommissionerView
         latestLiveImport={latestLiveImport}
+        liveWeekOperations={liveWeekOperations}
         providerConfigured={isOddsProviderConfigured()}
         state={live}
       />

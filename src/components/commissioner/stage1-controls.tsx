@@ -19,7 +19,9 @@ import {
 import { initialAppActionState } from "@/application/actions/action-state";
 import { isStandardLiveSlateEvent } from "@/application/providers/select-standard-live-slate";
 import type { LiveOddsImportReview } from "@/application/queries/get-live-odds-import";
+import type { LiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
+import { LiveWeekCommissionerControls } from "@/components/commissioner/live-week-controls";
 import { ActionFeedback } from "@/components/forms/action-feedback";
 
 export type Stage1CommissionerControlState = {
@@ -68,10 +70,12 @@ const eventTimestampFormatter = new Intl.DateTimeFormat("en-US", {
 
 export function Stage1CommissionerControls({
   latestLiveImport,
+  liveWeekOperations,
   providerConfigured,
   state,
 }: {
   latestLiveImport: LiveOddsImportReview | null;
+  liveWeekOperations: LiveWeekOperations | null;
   providerConfigured: boolean;
   state: Stage1CommissionerControlState;
 }) {
@@ -431,6 +435,12 @@ export function Stage1CommissionerControls({
           </form>
           <ActionFeedback state={liveRosterLockState} />
         </section>
+      ) : state.league.mode === "LIVE" ? (
+        <LiveWeekCommissionerControls
+          liveWeekOperations={liveWeekOperations}
+          providerConfigured={providerConfigured}
+          state={state}
+        />
       ) : (
         <>
           <section className="border-boundary bg-surface rounded-xl border p-5">

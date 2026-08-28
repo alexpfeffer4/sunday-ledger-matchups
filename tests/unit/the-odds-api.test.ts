@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchNflOdds } from "@/adapters/providers/the-odds-api/client";
+import {
+  fetchNflOdds,
+  fetchNflScores,
+} from "@/adapters/providers/the-odds-api/client";
+import { normalizeTheOddsApiScores } from "@/adapters/providers/the-odds-api/normalize-scores";
 import {
   normalizeTheOddsApiOdds,
   OddsProviderPayloadError,
@@ -252,5 +256,114 @@ describe("The Odds API normalization", () => {
     expect(() =>
       normalizeTheOddsApiOdds([event(), event()], observedAt),
     ).toThrow("duplicate event event-buf-nyj");
+  });
+
+  it("normalizes live and completed NFL score responses", () => {
+    const result = normalizeTheOddsApiScores(
+      [
+        {
+          id: "event-buf-nyj",
+          sport_key: "americanfootball_nfl",
+          commence_time: "2026-09-13T17:00:00.000Z",
+          home_team: "New York Jets",
+          away_team: "Buffalo Bills",
+          completed: true,
+          scores: [
+            { name: "New York Jets", score: "20" },
+            { name: "Buffalo Bills", score: "27" },
+          ],
+          last_update: "2026-09-13T20:12:30.000Z",
+        },
+      ],
+      "2026-09-13T20:13:00.000Z",
+    );
+
+    expect(result.events[0]).toEqual(
+      expect.objectContaining({
+        externalEventId: "event-buf-nyj",
+        awayScore: 27,
+        homeScore: 20,
+        completed: true,
+        lastUpdate: "2026-09-13T20:12:30.000Z",
+      }),
+    );
+  });
+
+  it("requests scores only for the exact published event set", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify([
+          {
+            id: "event-buf-nyj",
+            sport_key: "americanfootball_nfl",
+            commence_time: "2026-09-13T17:00:00.000Z",
+            home_team: "New York Jets",
+            away_team: "Buffalo Bills",
+            completed: false,
+            scores: null,
+            last_update: null,
+          },
+        ]),
+      ),
+    );
+
+    const result = await fetchNflScores({
+      apiKey: "test-key",
+      eventIds: ["event-buf-nyj"],
+      fetchedAt: observedAt,
+      fetchImpl,
+    });
+
+    const scoresUrl = new URL(String(fetchImpl.mock.calls[0][0]));
+    expect(scoresUrl.pathname.endsWith("/americanfootball_nfl/scores")).toBe(
+      true,
+    );
+    expect(scoresUrl.searchParams.get("daysFrom")).toBe("3");
+    expect(scoresUrl.searchParams.get("eventIds")).toBe("event-buf-nyj");
+    expect(result.events[0].awayScore).toBeNull();
+  });
+
+  it("fails closed on partial scores and incomplete score slates", async () => {
+    expect(() =>
+      normalizeTheOddsApiScores(
+        [
+          {
+            id: "event-buf-nyj",
+            sport_key: "americanfootball_nfl",
+            commence_time: "2026-09-13T17:00:00.000Z",
+            home_team: "New York Jets",
+            away_team: "Buffalo Bills",
+            completed: true,
+            scores: [{ name: "New York Jets", score: "20" }],
+            last_update: "2026-09-13T20:12:30.000Z",
+          },
+        ],
+        observedAt,
+      ),
+    ).toThrow("exactly two team scores");
+
+    await expect(
+      fetchNflScores({
+        apiKey: "test-key",
+        eventIds: ["event-buf-nyj", "event-missing"],
+        fetchedAt: observedAt,
+        fetchImpl: vi.fn<typeof fetch>().mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                id: "event-buf-nyj",
+                sport_key: "americanfootball_nfl",
+                commence_time: "2026-09-13T17:00:00.000Z",
+                home_team: "New York Jets",
+                away_team: "Buffalo Bills",
+                completed: false,
+                scores: null,
+                last_update: null,
+              },
+            ]),
+          ),
+        ),
+      }),
+    ).rejects.toThrow("complete published NFL score slate");
   });
 });

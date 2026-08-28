@@ -97,6 +97,37 @@ export type Database = {
         Args: { p_league_slug: string };
         Returns: Json | null;
       };
+      get_live_week_operations: {
+        Args: { p_league_slug: string };
+        Returns: Json | null;
+      };
+      import_live_scores: {
+        Args: {
+          p_idempotency_key: string;
+          p_import: Json;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
+      correct_live_event_result: {
+        Args: {
+          p_away_score: number | null;
+          p_event_id: string;
+          p_home_score: number | null;
+          p_idempotency_key: string;
+          p_reason: string;
+          p_status: string;
+        };
+        Returns: Json;
+      };
+      void_live_event_after_postponement_window: {
+        Args: {
+          p_event_id: string;
+          p_idempotency_key: string;
+          p_reason: string;
+        };
+        Returns: Json;
+      };
       lock_live_roster_and_open_week: {
         Args: {
           p_idempotency_key: string;

@@ -10,6 +10,7 @@ import {
 } from "@/adapters/simulation/stage1-week-one";
 import {
   fetchNflOdds,
+  fetchNflScores,
   OddsProviderRequestError,
 } from "@/adapters/providers/the-odds-api/client";
 import { OddsProviderPayloadError } from "@/adapters/providers/the-odds-api/normalize";
@@ -76,11 +77,16 @@ function mutationError(message: string): AppActionState {
         "Advance the simulation clock to common lock before locking cards.",
     };
   }
-  if (message.includes("correction window")) {
+  if (message.includes("cannot finalize before its correction window")) {
     return {
       status: "error",
-      message:
-        "Advance the simulation clock beyond the correction window first.",
+      message: "The 24-hour correction window is still open.",
+    };
+  }
+  if (message.includes("correction window is closed")) {
+    return {
+      status: "error",
+      message: "The visible correction window has closed.",
     };
   }
   if (message.includes("stale")) {
@@ -129,7 +135,7 @@ function mutationError(message: string): AppActionState {
         "A newer NFL market import is available. Refresh the commissioner page and review it before publishing.",
     };
   }
-  if (message.includes("exactly the published event set")) {
+  if (message.includes("live score batch must match")) {
     return {
       status: "error",
       message:
@@ -161,6 +167,51 @@ function mutationError(message: string): AppActionState {
       status: "error",
       message:
         "Every published game needs a complete current quote set. Refresh the odds and try the roster lock again.",
+    };
+  }
+  if (message.includes("locked cards and an unfinalized week")) {
+    return {
+      status: "error",
+      message: "Lock all Week 1 cards before importing NFL results.",
+    };
+  }
+  if (message.includes("exactly the published event set")) {
+    return {
+      status: "error",
+      message:
+        "The provider did not return every published game. No result was imported.",
+    };
+  }
+  if (message.includes("live score import is not fresh")) {
+    return {
+      status: "error",
+      message:
+        "The provider result batch was stale. Request current scores again.",
+    };
+  }
+  if (message.includes("48-hour postponement window")) {
+    return {
+      status: "error",
+      message: "This event cannot be voided before the 48-hour window closes.",
+    };
+  }
+  if (message.includes("already has a recorded result")) {
+    return {
+      status: "error",
+      message:
+        "This event already has a result; use the visible correction flow.",
+    };
+  }
+  if (message.includes("correction must change")) {
+    return {
+      status: "error",
+      message: "Enter a changed objective score before recording a correction.",
+    };
+  }
+  if (message.includes("visible correction reason")) {
+    return {
+      status: "error",
+      message: "Explain the objective correction in at least 10 characters.",
     };
   }
   return {
@@ -605,6 +656,158 @@ export async function lockLiveRosterAndOpenWeekAction(
     }
     return mutationError("The Live roster lock failed.");
   }
+}
+
+const liveScoreImportReceiptSchema = z.object({
+  eventCount: z.number().int().positive(),
+  pendingCount: z.number().int().nonnegative(),
+  liveCount: z.number().int().nonnegative(),
+  settledCount: z.number().int().nonnegative(),
+  correctedCount: z.number().int().nonnegative(),
+  unchangedCount: z.number().int().nonnegative(),
+  weekState: z.enum(["LOCKED", "PROVISIONAL"]),
+});
+
+export async function importLiveScoresAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  if (!context.success) return mutationError("invalid context");
+
+  const state = await getLiveStage1League(context.data.leagueSlug);
+  if (
+    !state ||
+    state.league.id !== context.data.leagueId ||
+    !state.commissioner.isCommissioner ||
+    state.league.mode !== "LIVE" ||
+    !state.week ||
+    !["LOCKED", "PROVISIONAL"].includes(state.week.state) ||
+    state.slate.length === 0
+  ) {
+    return mutationError(
+      "Live score imports require locked cards and an unfinalized week.",
+    );
+  }
+
+  try {
+    const scoreImport = await fetchNflScores({
+      eventIds: state.slate.map((event) => event.key),
+    });
+    const payloadHash = createHash("sha256")
+      .update(JSON.stringify(scoreImport))
+      .digest("hex");
+    const supabase = await createSupabaseServerClient();
+    const imported = await supabase.schema("api").rpc("import_live_scores", {
+      p_league_id: context.data.leagueId,
+      p_import: scoreImport as unknown as Json,
+      p_idempotency_key: `live-scores:${payloadHash}`,
+    });
+    if (imported.error) return mutationError(imported.error.message);
+
+    const receipt = liveScoreImportReceiptSchema.safeParse(imported.data);
+    if (!receipt.success) {
+      return mutationError("The stored live score receipt is invalid.");
+    }
+
+    return finish(
+      context.data.leagueSlug,
+      `${receipt.data.eventCount} NFL games checked: ${receipt.data.settledCount} newly settled, ${receipt.data.correctedCount} corrected, ${receipt.data.liveCount} live, ${receipt.data.pendingCount} pending, and ${receipt.data.unchangedCount} unchanged.`,
+    );
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        level: "error",
+        message: "Live score import failed",
+        errorName: error instanceof Error ? error.name : "UnknownError",
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
+      }),
+    );
+    if (error instanceof OddsProviderRequestError) {
+      return { status: "error", message: error.message };
+    }
+    if (error instanceof OddsProviderPayloadError) {
+      return {
+        status: "error",
+        message:
+          "The provider returned an incomplete or inconsistent score slate. No result was imported.",
+      };
+    }
+    return mutationError("The live score import failed.");
+  }
+}
+
+const objectiveScoreSchema = z
+  .string()
+  .regex(/^\d{1,3}$/)
+  .transform(Number);
+
+export async function correctLiveEventResultAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  const correction = z
+    .object({
+      eventId: z.uuid(),
+      awayScore: objectiveScoreSchema,
+      homeScore: objectiveScoreSchema,
+      reason: z.string().trim().min(10).max(500),
+    })
+    .safeParse({
+      eventId: formData.get("eventId"),
+      awayScore: formData.get("awayScore"),
+      homeScore: formData.get("homeScore"),
+      reason: formData.get("reason"),
+    });
+  if (!context.success || !correction.success) {
+    return {
+      status: "error",
+      message:
+        "Enter both objective final scores and a correction reason of at least 10 characters.",
+    };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const result = await supabase.schema("api").rpc("correct_live_event_result", {
+    p_event_id: correction.data.eventId,
+    p_status: "FINAL",
+    p_away_score: correction.data.awayScore,
+    p_home_score: correction.data.homeScore,
+    p_reason: correction.data.reason,
+    p_idempotency_key: idempotencyKey("correct-live-result"),
+  });
+  if (result.error) return mutationError(result.error.message);
+  return finish(
+    context.data.leagueSlug,
+    "The objective correction was appended. Receipts remained immutable while every downstream competitive version replayed.",
+  );
+}
+
+export async function voidLiveEventAfterPostponementAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  const eventId = z.uuid().safeParse(formData.get("eventId"));
+  if (!context.success || !eventId.success) {
+    return mutationError("invalid event");
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const result = await supabase
+    .schema("api")
+    .rpc("void_live_event_after_postponement_window", {
+      p_event_id: eventId.data,
+      p_reason:
+        "No on-field official result was available within 48 hours of the original scheduled start.",
+      p_idempotency_key: idempotencyKey("void-live-event"),
+    });
+  if (result.error) return mutationError(result.error.message);
+  return finish(
+    context.data.leagueSlug,
+    "The event was visibly voided after the 48-hour window. Stakes return to weekly scores without redeployment.",
+  );
 }
 
 export async function initializeStage1WeekAction(

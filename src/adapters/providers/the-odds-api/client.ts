@@ -5,12 +5,16 @@ import {
   OddsProviderPayloadError,
   selectNearestNflSlateEventIds,
 } from "@/adapters/providers/the-odds-api/normalize";
+import { normalizeTheOddsApiScores } from "@/adapters/providers/the-odds-api/normalize-scores";
 import type { LiveOddsImport } from "@/application/providers/live-odds";
+import type { LiveScoreImport } from "@/application/providers/live-scores";
 
 const nflEventsUrl =
   "https://api.the-odds-api.com/v4/sports/americanfootball_nfl/events";
 const nflOddsUrl =
   "https://api.the-odds-api.com/v4/sports/americanfootball_nfl/odds";
+const nflScoresUrl =
+  "https://api.the-odds-api.com/v4/sports/americanfootball_nfl/scores";
 
 export class OddsProviderRequestError extends Error {
   constructor(message: string) {
@@ -129,4 +133,55 @@ export async function fetchNflOdds(options?: {
     );
   }
   return liveImport;
+}
+
+export async function fetchNflScores(options: {
+  apiKey?: string;
+  eventIds: string[];
+  fetchImpl?: typeof fetch;
+  fetchedAt?: string;
+}): Promise<LiveScoreImport> {
+  const apiKey = options.apiKey ?? process.env.ODDS_API_KEY;
+  if (!apiKey) {
+    throw new OddsProviderRequestError(
+      "The Odds API is not configured for this environment.",
+    );
+  }
+  if (
+    options.eventIds.length < 1 ||
+    options.eventIds.length > 32 ||
+    new Set(options.eventIds).size !== options.eventIds.length ||
+    options.eventIds.some((eventId) => eventId.trim().length === 0)
+  ) {
+    throw new OddsProviderRequestError(
+      "A score import requires 1 through 32 unique event identifiers.",
+    );
+  }
+
+  const scoresUrl = new URL(nflScoresUrl);
+  scoresUrl.searchParams.set("apiKey", apiKey);
+  scoresUrl.searchParams.set("daysFrom", "3");
+  scoresUrl.searchParams.set("dateFormat", "iso");
+  scoresUrl.searchParams.set("eventIds", options.eventIds.join(","));
+  const payload = await fetchProviderJson(
+    scoresUrl,
+    options.fetchImpl ?? fetch,
+  );
+  const scoreImport = normalizeTheOddsApiScores(
+    payload,
+    options.fetchedAt ?? new Date().toISOString(),
+  );
+
+  const returnedEventIds = new Set(
+    scoreImport.events.map((event) => event.externalEventId),
+  );
+  if (
+    scoreImport.events.length !== options.eventIds.length ||
+    options.eventIds.some((eventId) => !returnedEventIds.has(eventId))
+  ) {
+    throw new OddsProviderPayloadError(
+      "The Odds API did not return the complete published NFL score slate.",
+    );
+  }
+  return scoreImport;
 }

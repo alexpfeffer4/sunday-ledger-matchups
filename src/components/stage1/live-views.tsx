@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import type { LiveOddsImportReview } from "@/application/queries/get-live-odds-import";
 import type { LiveRegularSeasonSchedule } from "@/application/queries/get-live-regular-season-schedule";
+import type { LiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
 import { Stage1CommissionerControls } from "@/components/commissioner/stage1-controls";
 import { PageFrame } from "@/components/league/page-frame";
@@ -500,10 +501,12 @@ export function Stage1StandingsView({ state }: { state: Stage1StateDto }) {
 
 export function Stage1CommissionerView({
   latestLiveImport,
+  liveWeekOperations,
   providerConfigured,
   state,
 }: {
   latestLiveImport: LiveOddsImportReview | null;
+  liveWeekOperations: LiveWeekOperations | null;
   providerConfigured: boolean;
   state: Stage1StateDto;
 }) {
@@ -530,6 +533,7 @@ export function Stage1CommissionerView({
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Stage1CommissionerControls
           latestLiveImport={latestLiveImport}
+          liveWeekOperations={liveWeekOperations}
           providerConfigured={providerConfigured}
           state={{
             league: {
