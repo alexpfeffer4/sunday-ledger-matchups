@@ -189,6 +189,13 @@ function mutationError(message: string): AppActionState {
         "Week 14 is complete; the next operation is playoff qualification.",
     };
   }
+  if (message.includes("Week 14 must be final")) {
+    return {
+      status: "error",
+      message:
+        "Finalize Week 14 and its correction window before freezing playoff qualification.",
+    };
+  }
   if (message.includes("locked cards and an unfinalized week")) {
     return {
       status: "error",
@@ -548,6 +555,55 @@ export async function publishNextLiveWeekSlateAction(
     message: `Week ${nextWeek} is open: the frozen matchup and fresh 1,000-credit cards are published with ${selection.data.externalEventIds.length} NFL events.`,
     href: `/l/${context.data.leagueSlug}/slate`,
     hrefLabel: `Build the Week ${nextWeek} card`,
+  };
+}
+
+export async function publishLivePlayoffQualificationAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  if (!context.success) return mutationError("invalid context");
+
+  const state = await getLiveStage1League(context.data.leagueSlug);
+  if (
+    !state ||
+    state.league.id !== context.data.leagueId ||
+    !state.commissioner.isCommissioner ||
+    state.league.mode !== "LIVE" ||
+    state.league.lifecycle !== "REGULAR" ||
+    state.week?.state !== "FINAL" ||
+    state.week.nflWeek !== 14
+  ) {
+    return mutationError(
+      "Week 14 must be final before playoff qualification can publish.",
+    );
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const result = await supabase
+    .schema("api")
+    .rpc("publish_live_playoff_qualification", {
+      p_league_id: context.data.leagueId,
+      p_idempotency_key: idempotencyKey("publish-live-playoff-qualification"),
+    });
+  if (result.error) return mutationError(result.error.message);
+
+  for (const path of [
+    `/l/${context.data.leagueSlug}`,
+    `/l/${context.data.leagueSlug}/standings`,
+    `/l/${context.data.leagueSlug}/playoffs`,
+    `/l/${context.data.leagueSlug}/commissioner`,
+    "/leagues",
+  ]) {
+    revalidatePath(path);
+  }
+  return {
+    status: "success",
+    message:
+      "The Week 14 ordering, attendance eligibility, qualification seeds, and bracket template are now immutable.",
+    href: `/l/${context.data.leagueSlug}/playoffs`,
+    hrefLabel: "Open the official bracket",
   };
 }
 

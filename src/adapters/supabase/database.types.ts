@@ -89,6 +89,10 @@ export type Database = {
         Args: { p_league_slug: string };
         Returns: Json | null;
       };
+      get_live_playoff_state: {
+        Args: { p_league_slug: string };
+        Returns: Json | null;
+      };
       get_live_quote_heads: {
         Args: { p_league_slug: string };
         Returns: Json;
@@ -243,6 +247,13 @@ export type Database = {
           p_external_event_ids: string[];
           p_idempotency_key: string;
           p_import_id: string;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
+      publish_live_playoff_qualification: {
+        Args: {
+          p_idempotency_key: string;
           p_league_id: string;
         };
         Returns: Json;

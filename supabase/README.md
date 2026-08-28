@@ -53,6 +53,11 @@ frozen-schedule pairings, equal fresh 1,000-credit cards, current-week card and
 lock commands, provider settlement, cumulative records/points/all-play/misses,
 and idempotent replay. It runs inside a rollback transaction.
 
+`tests/stage3_live_playoff_qualification.test.sql` verifies the final Week 14
+gate, commissioner-only publication, third-miss exclusion, top-four/top-six
+field contract, immutable bracket template, idempotency, and member-scoped read
+model. It runs inside a rollback transaction.
+
 The hosted Stage 2 migrations are:
 
 - `stage2_simulation_season_archives`
@@ -69,6 +74,8 @@ The hosted Stage 3 import migrations are:
 - `stage3_live_results`
 - `stage3_live_score_import_policy`
 - `stage3_live_week_progression`
+- `stage3_live_playoff_qualification`
+- `stage3_live_playoff_fk_index`
 
 After application, the security advisor reports no Stage 2 or Stage 3 issue and
 the performance advisor reports no unindexed Stage 2 or Stage 3 foreign key.

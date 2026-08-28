@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getLivePlayoffState } from "@/application/queries/get-live-playoff-state";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
 import { getSimulationSeasonArchive } from "@/application/queries/get-simulation-season-archive";
 import { PageFrame } from "@/components/league/page-frame";
+import { LivePlayoffView } from "@/components/playoffs/live-playoff-view";
 import { SeasonArchivePlayoffs } from "@/components/season/archive-views";
 import { Stage1DeferredView } from "@/components/stage1/live-views";
 
@@ -33,17 +35,29 @@ export default async function PlayoffsPage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
-  const [live, archive] = await Promise.all([
+  const [live, livePlayoffs, archive] = await Promise.all([
     getLiveStage1League(leagueSlug),
+    getLivePlayoffState(leagueSlug),
     getSimulationSeasonArchive(leagueSlug),
   ]);
   if (archive) return <SeasonArchivePlayoffs archive={archive} />;
+  if (livePlayoffs) return <LivePlayoffView state={livePlayoffs} />;
   if (live) {
+    const week14Final =
+      live.week?.nflWeek === 14 && live.week.state === "FINAL";
     return (
       <Stage1DeferredView
         state={live}
-        title="The playoff race has not opened"
-        description="An eight-entry league will use the frozen small-league qualifier rule, but Stage 1 publishes no qualification claims from a single week."
+        title={
+          week14Final
+            ? "The final field awaits publication"
+            : "The playoff race has not opened"
+        }
+        description={
+          week14Final
+            ? "Week 14 is final. The commissioner must confirm the immutable qualification checkpoint before any Week 15 slate can open."
+            : `This ${live.league.memberCount}-entry league will use its frozen roster-size qualifier rule. Qualification does not become official until Week 14 is final.`
+        }
       />
     );
   }

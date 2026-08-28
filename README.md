@@ -41,6 +41,10 @@ ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
   cards, generalized card/lock/result RPCs, and cumulative standings with the
   ordered win percentage, points-for, all-play, balanced head-to-head,
   attendance, high-week, and deterministic tiebreak chain
+- Immutable Live playoff qualification after Week 14 finalization: the frozen
+  standings and third-miss eligibility rule produce the roster-size-specific
+  field, qualification seeds, bracket template, and member-visible audit hash
+  before any Week 15 slate can open
 - Deterministic provider-fixture ports for healthy, stale, outlier, suspended,
   provider-degraded, live, final, void, and corrected states
 - Vitest unit/property coverage and Playwright configuration
@@ -94,8 +98,9 @@ live imports, immutable event selection, noncompetitive solo publication,
 current-quote refresh, idempotency, append-only storage, and commissioner-only
 RLS; the result suite verifies official-score provenance, correction replay,
 postponement voids, and final competitive snapshots; the progression suite
-verifies the Week 2–14 operational boundary and cumulative ledger. All run
-inside rollback transactions. The `api` schema is the reviewed Data API
+verifies the Week 2–14 operational boundary and cumulative ledger; the playoff
+suite verifies final qualification, eligibility, and bracket immutability. All
+run inside rollback transactions. The `api` schema is the reviewed Data API
 boundary; base relations live in the non-exposed `private` schema and remain
 protected by grants and Row Level Security.
 

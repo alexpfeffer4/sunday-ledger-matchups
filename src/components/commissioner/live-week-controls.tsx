@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import {
   correctLiveEventResultAction,
@@ -7,6 +8,7 @@ import {
   importLiveOddsAction,
   importLiveScoresAction,
   lockStage1WeekAction,
+  publishLivePlayoffQualificationAction,
   publishNextLiveWeekSlateAction,
   refreshLiveWeekQuotesAction,
   voidLiveEventAfterPostponementAction,
@@ -91,6 +93,14 @@ export function LiveWeekCommissionerControls({
   );
   const [nextWeekState, nextWeekAction, publishingNextWeek] = useActionState(
     publishNextLiveWeekSlateAction,
+    initialAppActionState,
+  );
+  const [
+    playoffQualificationState,
+    playoffQualificationAction,
+    publishingPlayoffQualification,
+  ] = useActionState(
+    publishLivePlayoffQualificationAction,
     initialAppActionState,
   );
 
@@ -496,6 +506,34 @@ export function LiveWeekCommissionerControls({
             No Week 15 regular-season slate can publish. Playoff qualification
             is the next lifecycle operation.
           </p>
+          {state.league.lifecycle === "REGULAR" ? (
+            <>
+              <form action={playoffQualificationAction} className="mt-4">
+                <ContextFields state={state} />
+                <p className="text-negative text-sm leading-6 font-semibold">
+                  Irreversible: this freezes Week 14 ordering, attendance
+                  eligibility, qualification seeds, and the bracket template.
+                </p>
+                <button
+                  className={`${buttonClass} mt-4`}
+                  disabled={publishingPlayoffQualification}
+                  type="submit"
+                >
+                  {publishingPlayoffQualification
+                    ? "Freezing playoff field…"
+                    : "Confirm & freeze playoff field"}
+                </button>
+              </form>
+              <ActionFeedback state={playoffQualificationState} />
+            </>
+          ) : (
+            <Link
+              className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
+              href={`/l/${state.league.slug}/playoffs`}
+            >
+              Open the official bracket
+            </Link>
+          )}
         </section>
       ) : null}
     </>
