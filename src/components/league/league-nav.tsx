@@ -2,32 +2,93 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  LeagueNavIcon,
+  type LeagueNavIconName,
+} from "@/components/league/league-nav-icon";
 
-const primaryItems = [
-  { label: "Matchup", segment: "matchup", short: "M" },
-  { label: "Slate", segment: "slate", short: "S" },
-  { label: "My Card", segment: "card", short: "C" },
-  { label: "League", segment: "league", short: "L" },
-  { label: "Live", segment: "live", short: "●" },
-] as const;
+type NavItem = {
+  label: string;
+  segment: string;
+  icon: LeagueNavIconName;
+};
 
-const secondaryItems = [
-  { label: "Standings", segment: "standings" },
-  { label: "Schedule", segment: "schedule" },
-  { label: "Playoffs", segment: "playoffs" },
-  { label: "History", segment: "history" },
-] as const;
+const playItems: readonly NavItem[] = [
+  { label: "Matchup", segment: "matchup", icon: "matchup" },
+  { label: "Slate", segment: "slate", icon: "slate" },
+  { label: "My Card", segment: "card", icon: "card" },
+  { label: "Live", segment: "live", icon: "live" },
+];
 
-const archiveItems = [
-  { label: "Season", segment: "matchup", short: "S" },
-  { label: "Standings", segment: "standings", short: "#" },
-  { label: "Schedule", segment: "schedule", short: "14" },
-  { label: "Playoffs", segment: "playoffs", short: "P" },
-  { label: "History", segment: "history", short: "H" },
-] as const;
+const leagueItems: readonly NavItem[] = [
+  { label: "Overview", segment: "league", icon: "league" },
+  { label: "Standings", segment: "standings", icon: "standings" },
+  { label: "Schedule", segment: "schedule", icon: "schedule" },
+  { label: "Playoffs", segment: "playoffs", icon: "playoffs" },
+  { label: "History", segment: "history", icon: "history" },
+];
+
+const mobileItems: readonly NavItem[] = [
+  ...playItems.slice(0, 3),
+  { label: "League", segment: "league", icon: "league" },
+  playItems[3],
+];
+
+const archiveItems: readonly NavItem[] = [
+  { label: "Season", segment: "matchup", icon: "league" },
+  { label: "Standings", segment: "standings", icon: "standings" },
+  { label: "Schedule", segment: "schedule", icon: "schedule" },
+  { label: "Playoffs", segment: "playoffs", icon: "playoffs" },
+  { label: "History", segment: "history", icon: "history" },
+];
 
 function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function DesktopNavGroup({
+  base,
+  items,
+  label,
+  pathname,
+}: {
+  base: string;
+  items: readonly NavItem[];
+  label: string;
+  pathname: string;
+}) {
+  return (
+    <div>
+      <p className="text-muted mb-2 hidden px-3 text-xs font-semibold xl:block">
+        {label}
+      </p>
+      <ul className="space-y-1">
+        {items.map((item) => {
+          const href = `${base}/${item.segment}`;
+          const active = isActive(pathname, href);
+
+          return (
+            <li key={item.segment}>
+              <Link
+                aria-current={active ? "page" : undefined}
+                aria-label={item.label}
+                className={`flex min-h-11 items-center justify-center rounded-lg border-l-2 px-2 text-sm font-semibold transition-colors xl:justify-start xl:gap-3 xl:px-3 ${
+                  active
+                    ? "border-registry bg-subtle text-registry"
+                    : "text-graphite hover:bg-subtle hover:text-ink border-transparent"
+                }`}
+                href={href}
+                title={item.label}
+              >
+                <LeagueNavIcon className="size-5 shrink-0" name={item.icon} />
+                <span className="hidden xl:inline">{item.label}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }
 
 export function LeagueDesktopNav({
@@ -41,87 +102,52 @@ export function LeagueDesktopNav({
 }) {
   const pathname = usePathname();
   const base = `/l/${leagueSlug}`;
-  const mainItems = archiveMode ? archiveItems : primaryItems;
+  const manageItems: readonly NavItem[] = [
+    { label: "Rules & trust", segment: "rules", icon: "rules" },
+    ...(archiveMode || !isCommissioner
+      ? []
+      : [
+          {
+            label: "Commissioner",
+            segment: "commissioner",
+            icon: "commissioner" as const,
+          },
+        ]),
+  ];
 
   return (
-    <nav aria-label="League navigation" className="mt-8">
-      <ul className="space-y-1">
-        {mainItems.map((item) => {
-          const href = `${base}/${item.segment}`;
-          const active = isActive(pathname, href);
-          return (
-            <li key={item.segment}>
-              <Link
-                className={`flex min-h-11 items-center gap-3 rounded-lg border-l-2 px-3 text-sm font-semibold transition-colors ${
-                  active
-                    ? "border-registry bg-subtle text-registry"
-                    : "text-graphite hover:bg-subtle hover:text-ink border-transparent"
-                }`}
-                href={href}
-              >
-                <span
-                  aria-hidden="true"
-                  className="w-5 text-center font-mono text-xs"
-                >
-                  {item.short}
-                </span>
-                {item.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-      {!archiveMode ? (
+    <nav aria-label="League navigation" className="mt-7">
+      {archiveMode ? (
+        <DesktopNavGroup
+          base={base}
+          items={archiveItems}
+          label="Season"
+          pathname={pathname}
+        />
+      ) : (
         <>
+          <DesktopNavGroup
+            base={base}
+            items={playItems}
+            label="Play"
+            pathname={pathname}
+          />
           <div className="border-boundary my-5 border-t" />
-          <ul className="space-y-1">
-            {secondaryItems.map((item) => {
-              const href = `${base}/${item.segment}`;
-              const active = isActive(pathname, href);
-              return (
-                <li key={item.segment}>
-                  <Link
-                    className={`flex min-h-11 items-center rounded-lg border-l-2 px-3 text-sm font-medium transition-colors ${
-                      active
-                        ? "border-registry bg-subtle text-registry"
-                        : "text-graphite hover:bg-subtle hover:text-ink border-transparent"
-                    }`}
-                    href={href}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <DesktopNavGroup
+            base={base}
+            items={leagueItems}
+            label="League"
+            pathname={pathname}
+          />
         </>
-      ) : null}
+      )}
       <div className="border-boundary my-5 border-t" />
-      <ul className="space-y-1">
-        {[
-          { label: "Rules & trust", segment: "rules" },
-          ...(archiveMode || !isCommissioner
-            ? []
-            : [{ label: "Commissioner", segment: "commissioner" }]),
-        ].map((item) => {
-          const href = `${base}/${item.segment}`;
-          const active = isActive(pathname, href);
-          return (
-            <li key={item.segment}>
-              <Link
-                className={`flex min-h-11 items-center rounded-lg border-l-2 px-3 text-sm font-medium transition-colors ${
-                  active
-                    ? "border-registry bg-subtle text-registry"
-                    : "text-graphite hover:bg-subtle hover:text-ink border-transparent"
-                }`}
-                href={href}
-              >
-                {item.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      <DesktopNavGroup
+        base={base}
+        items={manageItems}
+        label="Manage"
+        pathname={pathname}
+      />
     </nav>
   );
 }
@@ -135,7 +161,7 @@ export function LeagueMobileNav({
 }) {
   const pathname = usePathname();
   const base = `/l/${leagueSlug}`;
-  const items = archiveMode ? archiveItems : primaryItems;
+  const items = archiveMode ? archiveItems : mobileItems;
 
   return (
     <nav
@@ -149,19 +175,23 @@ export function LeagueMobileNav({
             isActive(pathname, href) ||
             (!archiveMode &&
               item.segment === "league" &&
-              secondaryItems.some((secondary) =>
-                isActive(pathname, `${base}/${secondary.segment}`),
+              leagueItems.some((leagueItem) =>
+                isActive(pathname, `${base}/${leagueItem.segment}`),
               ));
+
           return (
             <li key={item.segment}>
               <Link
-                className={`flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold ${active ? "text-registry" : "text-muted"}`}
+                aria-current={active ? "page" : undefined}
+                className={`relative flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors after:absolute after:inset-x-4 after:top-0 after:h-0.5 after:rounded-full ${
+                  active
+                    ? "text-registry after:bg-registry"
+                    : "text-muted after:bg-transparent"
+                }`}
                 href={href}
               >
-                <span aria-hidden="true" className="font-mono text-xs">
-                  {item.short}
-                </span>
-                {item.label}
+                <LeagueNavIcon className="size-5" name={item.icon} />
+                <span>{item.label}</span>
               </Link>
             </li>
           );
