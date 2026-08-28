@@ -14,14 +14,17 @@ import {
   publishSimulationSeasonArchiveAction,
   recordStage1ResultAction,
   refreshLiveWeekQuotesAction,
+  revokeLeagueInviteAction,
   setStage1EventLiveAction,
 } from "@/app/l/[leagueSlug]/actions";
 import { initialAppActionState } from "@/application/actions/action-state";
 import { isStandardLiveSlateEvent } from "@/application/providers/select-standard-live-slate";
+import type { LeagueInviteSummary } from "@/application/queries/league-invite-dtos";
 import type { LiveOddsImportReview } from "@/application/queries/get-live-odds-import";
 import type { LiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import { LiveWeekCommissionerControls } from "@/components/commissioner/live-week-controls";
+import { InviteLinkFeedback } from "@/components/commissioner/invite-link-feedback";
 import { ActionFeedback } from "@/components/forms/action-feedback";
 
 export type Stage1CommissionerControlState = {
@@ -68,12 +71,134 @@ const eventTimestampFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
 });
 
+function commissionerNextStep({
+  hasLiveImport,
+  providerConfigured,
+  state,
+}: {
+  hasLiveImport: boolean;
+  providerConfigured: boolean;
+  state: Stage1CommissionerControlState;
+}) {
+  const rosterIsValid =
+    state.league.memberCount >= 4 &&
+    state.league.memberCount <= 16 &&
+    state.league.memberCount % 2 === 0;
+
+  if (!state.week && state.league.mode === "LIVE") {
+    if (!providerConfigured) {
+      return {
+        detail:
+          "A server-side odds-provider key is required before the first slate can be imported.",
+        prerequisites: "Provider connection",
+        title: "Connect the odds provider",
+      };
+    }
+    if (!hasLiveImport) {
+      return {
+        detail:
+          "Import the current NFL markets for private review. This does not open member cards.",
+        prerequisites: "Provider connected",
+        title: "Import current NFL markets",
+      };
+    }
+    return {
+      detail:
+        "Review the imported games, then publish the eligible Week 1 slate and common lock.",
+      prerequisites: "Imported odds ready",
+      title: "Publish the Week 1 slate",
+    };
+  }
+
+  if (!state.week) {
+    if (!rosterIsValid) {
+      return {
+        detail:
+          "Invite members until the roster has an even total between 4 and 16.",
+        prerequisites: `${state.league.memberCount} members now · even 4–16 required`,
+        title: "Complete the league roster",
+      };
+    }
+    return {
+      detail:
+        "Choose a full simulated season, or use the eight-member interactive Week 1 path.",
+      prerequisites:
+        state.league.memberCount === 8
+          ? "Both season formats are available"
+          : "Full-season simulation is available",
+      title: "Choose how to begin the season",
+    };
+  }
+
+  if (state.league.mode === "LIVE" && state.week.state === "PLANNED") {
+    if (!rosterIsValid) {
+      return {
+        detail:
+          "The slate is published. Invite members until the roster has an even total between 4 and 16.",
+        prerequisites: `${state.league.memberCount} members now · even 4–16 required`,
+        title: "Complete the league roster",
+      };
+    }
+    return {
+      detail:
+        "Refresh the odds one final time, freeze the roster and schedule, and open every member card.",
+      prerequisites: `${state.league.memberCount}-member roster ready`,
+      title: "Lock the roster and open Week 1",
+    };
+  }
+
+  if (state.week.state === "OPEN") {
+    return {
+      detail:
+        state.league.mode === "LIVE"
+          ? "Monitor card completion and quote health. Cards lock for everyone at the published deadline."
+          : "Members complete their cards before the shared deadline; then lock the week.",
+      prerequisites: `Week ${state.week.nflWeek} cards are open`,
+      title: "Monitor cards until lock",
+    };
+  }
+
+  if (state.week.state === "LOCKED") {
+    return {
+      detail:
+        "Record final game results as they arrive. Matchup scores update from the accepted card terms.",
+      prerequisites: "All member cards are locked",
+      title: "Record final results",
+    };
+  }
+
+  if (state.week.state === "PROVISIONAL") {
+    return {
+      detail:
+        "Review any correction, then finalize the week after the correction window closes.",
+      prerequisites: state.week.correctionWindowClosesAt
+        ? `Window closes ${eventTimestampFormatter.format(new Date(state.week.correctionWindowClosesAt))} ET`
+        : "Awaiting correction-window close",
+      title: "Finalize the week",
+    };
+  }
+
+  return {
+    detail:
+      state.league.lifecycle === "FINAL"
+        ? "The champion and season history are final. No further commissioner action is required."
+        : "This week is final. Continue the season when the next weekly slate is available.",
+    prerequisites: `Week ${state.week.nflWeek} is final`,
+    title:
+      state.league.lifecycle === "FINAL"
+        ? "Season complete"
+        : "Prepare the next week",
+  };
+}
+
 export function Stage1CommissionerControls({
+  invites,
   latestLiveImport,
   liveWeekOperations,
   providerConfigured,
   state,
 }: {
+  invites: LeagueInviteSummary[];
   latestLiveImport: LiveOddsImportReview | null;
   liveWeekOperations: LiveWeekOperations | null;
   providerConfigured: boolean;
@@ -83,6 +208,8 @@ export function Stage1CommissionerControls({
     createLeagueInviteAction,
     initialAppActionState,
   );
+  const [revokeInviteState, revokeInviteAction, revokingInvite] =
+    useActionState(revokeLeagueInviteAction, initialAppActionState);
   const [initializeState, initializeAction, initializing] = useActionState(
     initializeStage1WeekAction,
     initialAppActionState,
@@ -126,32 +253,142 @@ export function Stage1CommissionerControls({
     initialAppActionState,
   );
   const correctionEvent = state.slate.find((event) => event.key === "buf-nyj");
+  const nextStep = commissionerNextStep({
+    hasLiveImport: latestLiveImport !== null,
+    providerConfigured,
+    state,
+  });
 
   return (
     <div className="space-y-5">
-      <section className="border-boundary bg-surface rounded-xl border p-5">
-        <h2 className="font-bold">Private invitation</h2>
-        <p className="text-graphite mt-2 text-sm leading-6">
-          {state.league.lifecycle === "DRAFT"
-            ? "One code admits up to 15 members and expires in seven days. The database stops the roster at 16 total members."
-            : "The competitive roster is frozen. Existing members keep access, but no additional member can join this season."}
+      <section className="border-registry bg-registry/5 rounded-xl border p-5 shadow-[var(--shadow-card)]">
+        <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+          Next action
         </p>
-        <form action={inviteAction} className="mt-4">
-          <ContextFields state={state} />
-          <button
-            className={buttonClass}
-            disabled={inviting || state.league.lifecycle !== "DRAFT"}
-            type="submit"
-          >
-            {inviting
-              ? "Creating…"
-              : state.league.lifecycle === "DRAFT"
-                ? "Create 15-use invite"
-                : "Roster locked"}
-          </button>
-        </form>
-        <ActionFeedback state={inviteState} />
+        <h2 className="mt-2 text-xl font-bold">{nextStep.title}</h2>
+        <p className="text-graphite mt-2 text-sm leading-6">
+          {nextStep.detail}
+        </p>
+        <p className="border-registry/20 text-registry mt-4 border-t pt-3 text-xs font-semibold">
+          {nextStep.prerequisites}
+        </p>
       </section>
+
+      <details
+        className="border-boundary bg-surface rounded-xl border p-5"
+        open={
+          state.league.lifecycle === "DRAFT" &&
+          (state.league.memberCount < 4 || state.league.memberCount % 2 !== 0)
+        }
+      >
+        <summary className="cursor-pointer list-none font-bold">
+          Invite and manage members
+          <span className="text-muted ml-2 text-xs font-normal">
+            {state.league.memberCount}/16
+          </span>
+        </summary>
+        <div className="mt-5">
+          <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+            League formation
+          </p>
+          <h2 className="mt-2 text-lg font-bold">Private invitation links</h2>
+          <p className="text-graphite mt-2 text-sm leading-6">
+            {state.league.lifecycle === "DRAFT"
+              ? "Create a private link that shows the league and commissioner before a member signs in. The roster stops at 16 members."
+              : "The competitive roster is frozen. Existing members keep access, but no additional member can join this season."}
+          </p>
+          <form
+            action={inviteAction}
+            className="mt-5 grid gap-4 sm:grid-cols-2"
+          >
+            <ContextFields state={state} />
+            <label className="text-sm font-semibold">
+              Link expires
+              <select
+                className="border-control bg-surface focus:border-registry mt-2 min-h-11 w-full rounded-lg border px-3 outline-none"
+                defaultValue="7"
+                disabled={state.league.lifecycle !== "DRAFT"}
+                name="expiresInDays"
+              >
+                <option value="1">In 1 day</option>
+                <option value="7">In 7 days</option>
+                <option value="14">In 14 days</option>
+                <option value="30">In 30 days</option>
+              </select>
+            </label>
+            <label className="text-sm font-semibold">
+              Maximum joins
+              <input
+                className="border-control bg-surface focus:border-registry mt-2 min-h-11 w-full rounded-lg border px-3 font-mono outline-none"
+                defaultValue={Math.max(1, 16 - state.league.memberCount)}
+                disabled={state.league.lifecycle !== "DRAFT"}
+                max={15}
+                min={1}
+                name="maxUses"
+                type="number"
+              />
+            </label>
+            <button
+              className={`${buttonClass} sm:col-span-2`}
+              disabled={inviting || state.league.lifecycle !== "DRAFT"}
+              type="submit"
+            >
+              {inviting
+                ? "Creating…"
+                : state.league.lifecycle === "DRAFT"
+                  ? "Create private invitation link"
+                  : "Roster locked"}
+            </button>
+          </form>
+          <InviteLinkFeedback key={inviteState.value} state={inviteState} />
+
+          {invites.length > 0 ? (
+            <div className="border-boundary mt-6 border-t pt-5">
+              <h3 className="text-sm font-bold">Recent invitation states</h3>
+              <div className="divide-boundary mt-3 divide-y">
+                {invites.map((invite) => (
+                  <div
+                    className="flex flex-col justify-between gap-3 py-3 sm:flex-row sm:items-center"
+                    key={invite.id}
+                  >
+                    <div>
+                      <p className="text-sm font-semibold">
+                        {invite.status} · {invite.uses} of {invite.max_uses}{" "}
+                        joins used
+                      </p>
+                      <p className="text-muted mt-1 text-xs">
+                        Expires{" "}
+                        {eventTimestampFormatter.format(
+                          new Date(invite.expires_at),
+                        )}{" "}
+                        ET
+                      </p>
+                    </div>
+                    {invite.active ? (
+                      <form action={revokeInviteAction}>
+                        <ContextFields state={state} />
+                        <input
+                          name="inviteId"
+                          type="hidden"
+                          value={invite.id}
+                        />
+                        <button
+                          className="border-negative text-negative hover:bg-negative/5 min-h-11 rounded-lg border px-4 text-xs font-semibold disabled:opacity-50"
+                          disabled={revokingInvite}
+                          type="submit"
+                        >
+                          Revoke
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+              <ActionFeedback state={revokeInviteState} />
+            </div>
+          ) : null}
+        </div>
+      </details>
 
       {!state.week && state.league.mode === "LIVE" ? (
         <section className="border-registry bg-surface rounded-xl border p-5">
@@ -276,9 +513,9 @@ export function Stage1CommissionerControls({
             <h2 className="font-bold">Publish full simulated season</h2>
             <p className="text-graphite mt-2 text-sm leading-6">
               Requires an even roster from 4 through 16. This one-time command
-              deterministically settles Weeks 1–14, applies attendance
-              eligibility, completes the correct playoff bracket, records the
-              champion, and publishes Week 18 as exhibition-only history.
+              plays Weeks 1–14, applies attendance eligibility, completes the
+              playoff bracket, records the champion, and publishes Week 18 as
+              exhibition-only history.
             </p>
             <p className="text-negative mt-3 text-sm leading-6 font-semibold">
               Publishing freezes the roster and rules, finalizes the season, and
@@ -545,7 +782,7 @@ export function Stage1CommissionerControls({
                         }
                         type="submit"
                       >
-                        Import deterministic final
+                        Record final result
                       </button>
                     </form>
                   </div>

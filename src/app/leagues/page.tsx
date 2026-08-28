@@ -107,7 +107,7 @@ export default async function LeaguesPage() {
                   key={league.id}
                 >
                   <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-                    {league.role} · Supabase
+                    {league.role === "COMMISSIONER" ? "Commissioner" : "Member"}
                   </p>
                   <h3 className="mt-2 text-lg font-bold">{league.name}</h3>
                   <Link

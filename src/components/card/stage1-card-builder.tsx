@@ -1,9 +1,19 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import {
+  useActionState,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { acceptStage1CardAction } from "@/app/l/[leagueSlug]/actions";
 import { initialAppActionState } from "@/application/actions/action-state";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
+import {
+  restoreCardDrafts,
+  type RestoredCardDraft,
+  type StoredCardDraft,
+} from "@/components/card/card-draft-storage";
 import { ActionFeedback } from "@/components/forms/action-feedback";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { validateDraftCard } from "@/domain/cards/validate-card-draft";
@@ -13,13 +23,7 @@ import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
 type SlateEvent = Stage1StateDto["slate"][number];
 type SlateMarket = SlateEvent["markets"][number];
 
-type DraftSelection = {
-  eventId: string;
-  marketSnapshotId: string;
-  marketType: SlateMarket["marketType"];
-  payloadHash: string;
-  stakeCredits: number;
-};
+type DraftSelection = RestoredCardDraft;
 
 const marketLabels = {
   MONEYLINE: "Winner",
@@ -28,6 +32,16 @@ const marketLabels = {
 } as const;
 
 const marketTypes = ["MONEYLINE", "SPREAD", "TOTAL"] as const;
+
+type KickoffFilter = "ALL" | "SUN_EARLY" | "SUN_LATE" | "SUN_NIGHT" | "MON";
+
+const kickoffFilterLabels: Record<KickoffFilter, string> = {
+  ALL: "All games",
+  MON: "Monday",
+  SUN_EARLY: "Sun early",
+  SUN_LATE: "Sun late",
+  SUN_NIGHT: "Sun night",
+};
 
 function formatOdds(odds: number): string {
   return odds > 0 ? `+${odds}` : `−${Math.abs(odds)}`;
@@ -43,20 +57,107 @@ function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
+function formatObservedAt(value: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(new Date(value));
+}
+
+function kickoffWindow(value: string): Exclude<KickoffFilter, "ALL"> | "OTHER" {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    hour: "numeric",
+    hour12: false,
+  }).formatToParts(new Date(value));
+  const weekday = parts.find((part) => part.type === "weekday")?.value;
+  const hour = Number(parts.find((part) => part.type === "hour")?.value);
+  if (weekday === "Mon") return "MON";
+  if (weekday !== "Sun" || !Number.isFinite(hour)) return "OTHER";
+  if (hour < 16) return "SUN_EARLY";
+  if (hour < 20) return "SUN_LATE";
+  return "SUN_NIGHT";
+}
+
 function selectionKey(
   selection: Pick<DraftSelection, "eventId" | "marketType">,
 ) {
   return `${selection.eventId}:${selection.marketType}`;
 }
 
+function subscribeToHydration() {
+  return () => undefined;
+}
+
 export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
-  const [drafts, setDrafts] = useState<DraftSelection[]>([]);
+  const ownerCard = state.ownerCard;
+  const draftStorageKey =
+    ownerCard && state.week
+      ? `sunday-ledger:card-draft:v1:${state.league.id}:${state.week.id}:${ownerCard.id}`
+      : null;
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
+  const [drafts, setDrafts] = useState<DraftSelection[]>(() => {
+    if (typeof window === "undefined" || !draftStorageKey) return [];
+    try {
+      return restoreCardDrafts(
+        localStorage.getItem(draftStorageKey),
+        state.slate,
+      );
+    } catch {
+      return [];
+    }
+  });
+  const [kickoffFilter, setKickoffFilter] = useState<KickoffFilter>("ALL");
   const [reviewing, setReviewing] = useState(false);
   const [actionState, action, pending] = useActionState(
     acceptStage1CardAction,
     initialAppActionState,
   );
-  const ownerCard = state.ownerCard;
+  useEffect(() => {
+    if (!draftStorageKey || !hydrated) return;
+    try {
+      if (
+        ownerCard?.remainingCredits === 0 ||
+        actionState.status === "success" ||
+        drafts.length === 0
+      ) {
+        localStorage.removeItem(draftStorageKey);
+        return;
+      }
+
+      const stored: StoredCardDraft = {
+        version: 1,
+        drafts: drafts.map((draft) => ({
+          eventId: draft.eventId,
+          marketType: draft.marketType,
+          outcomeKey: draft.outcomeKey,
+          reviewedAmericanOdds: draft.reviewedAmericanOdds,
+          reviewedPayloadHash: draft.reviewedPayloadHash,
+          reviewedProposition: draft.reviewedProposition,
+          stakeCredits: draft.stakeCredits,
+        })),
+      };
+      localStorage.setItem(draftStorageKey, JSON.stringify(stored));
+    } catch {
+      // Card entry remains usable when browser storage is unavailable.
+    }
+  }, [
+    actionState.status,
+    draftStorageKey,
+    drafts,
+    hydrated,
+    ownerCard?.remainingCredits,
+  ]);
+
   if (!ownerCard || !state.week) return null;
 
   const snapshots = new Map(
@@ -128,10 +229,17 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
     setDrafts((current) => {
       const existing = current.find((draft) => selectionKey(draft) === key);
       const replacement: DraftSelection = {
+        americanOdds: market.americanOdds,
         eventId: event.id,
         marketSnapshotId: market.id,
         marketType: market.marketType,
+        outcomeKey: market.outcomeKey,
         payloadHash: market.payloadHash,
+        proposition: market.proposition,
+        quoteReviewRequired: false,
+        reviewedAmericanOdds: market.americanOdds,
+        reviewedPayloadHash: market.payloadHash,
+        reviewedProposition: market.proposition,
         stakeCredits:
           existing?.stakeCredits ?? Math.min(250, market.maximumStakeCredits),
       };
@@ -158,6 +266,56 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
       current.filter((draft) => selectionKey(draft) !== key),
     );
     setReviewing(false);
+  }
+
+  function reviewUpdatedQuote(key: string) {
+    setDrafts((current) =>
+      current.map((draft) => {
+        if (selectionKey(draft) !== key) return draft;
+        const selected = snapshots.get(draft.marketSnapshotId);
+        if (!selected || selected.market.qualityStatus !== "HEALTHY") {
+          return draft;
+        }
+        return {
+          ...draft,
+          quoteReviewRequired: false,
+          reviewedAmericanOdds: selected.market.americanOdds,
+          reviewedPayloadHash: selected.market.payloadHash,
+          reviewedProposition: selected.market.proposition,
+          stakeCredits: Math.min(
+            draft.stakeCredits,
+            selected.market.maximumStakeCredits,
+          ),
+        };
+      }),
+    );
+    setReviewing(false);
+  }
+
+  const availableFilters = (
+    ["ALL", "SUN_EARLY", "SUN_LATE", "SUN_NIGHT", "MON"] as const
+  ).filter(
+    (filter) =>
+      filter === "ALL" ||
+      state.slate.some(
+        (event) => kickoffWindow(event.scheduledStartAt) === filter,
+      ),
+  );
+  const visibleEvents = state.slate.filter(
+    (event) =>
+      kickoffFilter === "ALL" ||
+      kickoffWindow(event.scheduledStartAt) === kickoffFilter,
+  );
+  const quoteReviewCount = drafts.filter(
+    (draft) => draft.quoteReviewRequired,
+  ).length;
+
+  if (!hydrated) {
+    return (
+      <section className="border-boundary bg-surface mt-7 rounded-xl border p-5">
+        <p className="font-semibold">Restoring your saved card…</p>
+      </section>
+    );
   }
 
   if (ownerCard.remainingCredits === 0) {
@@ -191,10 +349,18 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
           </p>
           <h2 className="mt-2 text-2xl font-bold">Review your complete card</h2>
           <p className="text-graphite mt-3 leading-7">
-            These drafts are still editable and unaccepted. The final button
-            rechecks every quote and seals all positions in one database
-            transaction.
+            These picks are still editable. Confirming accepts the current terms
+            and locks every position together.
           </p>
+          {quoteReviewCount > 0 ? (
+            <p
+              className="border-pending/40 bg-pending/10 text-graphite mt-4 rounded-lg border p-3 text-sm font-semibold"
+              role="alert"
+            >
+              Review {quoteReviewCount} changed quote
+              {quoteReviewCount === 1 ? "" : "s"} before confirming.
+            </p>
+          ) : null}
           <div className="divide-boundary mt-6 divide-y">
             {drafts.map((draft, index) => {
               const selected = snapshots.get(draft.marketSnapshotId);
@@ -250,10 +416,14 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
             />
             <button
               className="bg-registry hover:bg-registry-hover min-h-12 w-full rounded-lg px-5 font-semibold text-white disabled:opacity-50"
-              disabled={pending}
+              disabled={pending || quoteReviewCount > 0}
               type="submit"
             >
-              {pending ? "Sealing entire card…" : "Confirm & seal entire card"}
+              {pending
+                ? "Locking card…"
+                : quoteReviewCount > 0
+                  ? "Review changed quotes first"
+                  : "Confirm & lock entire card"}
             </button>
             <ActionFeedback state={actionState} />
           </form>
@@ -281,29 +451,72 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
             {totalCredits.toLocaleString()} / 1,000
           </p>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Select one side per market. Nothing is accepted until you review and
-            seal the complete card.
+            Select one side per market. Your unfinished picks are saved on this
+            device until you confirm the complete card.
           </p>
+          <dl className="border-boundary mt-4 grid gap-3 border-t pt-4 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-muted">Card deadline</dt>
+              <dd className="mt-1 font-semibold">
+                {formatDate(state.week.commonLockAt)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted">If incomplete at lock</dt>
+              <dd className="mt-1 font-semibold">Automatic matchup loss</dd>
+            </div>
+          </dl>
         </section>
 
-        {state.slate.map((event) => (
+        <nav
+          aria-label="Filter games by kickoff"
+          className="flex flex-wrap gap-2"
+        >
+          {availableFilters.map((filter) => (
+            <button
+              aria-pressed={kickoffFilter === filter}
+              className={`min-h-10 rounded-full border px-4 text-sm font-semibold transition-colors ${
+                kickoffFilter === filter
+                  ? "border-registry bg-registry text-white"
+                  : "border-control bg-surface hover:border-registry"
+              }`}
+              key={filter}
+              onClick={() => setKickoffFilter(filter)}
+              type="button"
+            >
+              {kickoffFilterLabels[filter]}
+            </button>
+          ))}
+        </nav>
+
+        {visibleEvents.map((event) => (
           <section
             aria-labelledby={`card-builder-event-${event.id}`}
             className="border-boundary bg-surface rounded-xl border p-5"
             key={event.id}
           >
-            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
               <h2
                 className="text-lg font-bold"
                 id={`card-builder-event-${event.id}`}
               >
                 {event.awayTeam} at {event.homeTeam}
               </h2>
-              <p className="text-muted text-sm">
-                {formatDate(event.scheduledStartAt)}
-              </p>
+              <div className="text-muted text-sm sm:text-right">
+                <p>{formatDate(event.scheduledStartAt)}</p>
+                <p className="mt-1 text-xs">
+                  Odds updated{" "}
+                  {formatObservedAt(
+                    event.markets.reduce(
+                      (latest, market) =>
+                        market.observedAt > latest ? market.observedAt : latest,
+                      event.markets[0]?.observedAt ?? event.scheduledStartAt,
+                    ),
+                  )}
+                </p>
+              </div>
             </div>
-            <div className="mt-5 grid gap-3 lg:grid-cols-3">
+            <div className="divide-boundary border-boundary mt-4 divide-y border-y">
               {marketTypes.map((marketType) => {
                 const outcomes = event.markets.filter(
                   (market) => market.marketType === marketType,
@@ -315,25 +528,25 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                 );
                 return (
                   <article
-                    className={`rounded-lg border p-4 ${
-                      selectedDraft
-                        ? "border-registry bg-registry/5"
-                        : "border-boundary bg-subtle"
+                    className={`grid gap-3 py-4 sm:grid-cols-[110px_minmax(0,1fr)] sm:items-center ${
+                      selectedDraft ? "bg-registry/5" : ""
                     }`}
                     key={marketType}
                   >
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center justify-between gap-3 sm:block">
                       <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
                         {marketLabels[marketType]}
                       </p>
                       {selectedDraft ? (
-                        <StatusBadge tone="positive">In card</StatusBadge>
+                        <span className="text-positive mt-1 block text-xs font-semibold">
+                          In card
+                        </span>
                       ) : null}
                     </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {outcomes.map((market) => {
                         const isSelected =
-                          selectedDraft?.marketSnapshotId === market.id;
+                          selectedDraft?.outcomeKey === market.outcomeKey;
                         return (
                           <button
                             aria-pressed={isSelected}
@@ -400,6 +613,31 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                           {formatOdds(selected.market.americanOdds)} · cap{" "}
                           {selected.market.maximumStakeCredits}
                         </p>
+                        {draft.quoteReviewRequired ? (
+                          <div className="border-pending/40 bg-pending/10 mt-3 rounded-lg border p-3 text-xs leading-5">
+                            <p className="font-semibold">Odds changed</p>
+                            <p className="text-graphite mt-1">
+                              {draft.reviewedProposition}{" "}
+                              {formatOdds(draft.reviewedAmericanOdds)} →{" "}
+                              {selected.market.proposition}{" "}
+                              {formatOdds(selected.market.americanOdds)}
+                            </p>
+                            {selected.market.qualityStatus === "HEALTHY" ? (
+                              <button
+                                className="text-action mt-2 min-h-10 font-semibold hover:underline"
+                                onClick={() => reviewUpdatedQuote(key)}
+                                type="button"
+                              >
+                                Review and accept updated quote
+                              </button>
+                            ) : (
+                              <p className="text-pending mt-2 font-semibold">
+                                This quote is temporarily unavailable. Choose a
+                                different side or check again later.
+                              </p>
+                            )}
+                          </div>
+                        ) : null}
                       </div>
                       <button
                         className="text-action min-h-11 px-2 text-xs font-semibold hover:underline"
@@ -458,17 +696,19 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
 
         <button
           className="bg-registry hover:bg-registry-hover min-h-12 w-full rounded-lg px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={!draftValidation.accepted}
+          disabled={!draftValidation.accepted || quoteReviewCount > 0}
           onClick={() => setReviewing(true)}
           type="button"
         >
-          {draftValidation.accepted
-            ? `Review & seal ${drafts.length} positions`
-            : remainingCredits > 0
-              ? `Allocate ${remainingCredits} more to review`
-              : remainingCredits < 0
-                ? `Reduce by ${Math.abs(remainingCredits)} to review`
-                : "Resolve card issues to review"}
+          {quoteReviewCount > 0
+            ? `Review ${quoteReviewCount} changed quote${quoteReviewCount === 1 ? "" : "s"}`
+            : draftValidation.accepted
+              ? `Review & lock ${drafts.length} positions`
+              : remainingCredits > 0
+                ? `Allocate ${remainingCredits} more to review`
+                : remainingCredits < 0
+                  ? `Reduce by ${Math.abs(remainingCredits)} to review`
+                  : "Resolve card issues to review"}
         </button>
       </aside>
     </div>

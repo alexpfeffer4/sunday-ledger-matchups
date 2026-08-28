@@ -1,14 +1,16 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PasswordSignInForm } from "@/components/auth/password-sign-in-form";
+import { PasswordRecoveryForm } from "@/components/auth/password-recovery-form";
 import { SetPasswordForm } from "@/components/auth/set-password-form";
 import { MagicLinkForm } from "@/components/auth/magic-link-form";
 import { UsernameForm } from "@/components/auth/username-form";
 
 vi.mock("@/app/(auth)/auth/actions", () => ({
   sendMagicLink: vi.fn(),
+  requestPasswordReset: vi.fn(),
   signInWithPassword: vi.fn(),
   updatePassword: vi.fn(),
 }));
@@ -31,6 +33,22 @@ describe("password authentication options", () => {
     );
     expect(
       screen.getByRole("button", { name: "Sign in with password" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Forgot password?" }),
+    ).toHaveAttribute("href", "/auth/recover");
+  });
+
+  it("offers email recovery for an existing password", () => {
+    const recovery = render(<PasswordRecoveryForm />);
+    const form = within(recovery.container);
+
+    expect(form.getByLabelText("Email address")).toHaveAttribute(
+      "autocomplete",
+      "email",
+    );
+    expect(
+      form.getByRole("button", { name: "Email recovery link" }),
     ).toBeVisible();
   });
 

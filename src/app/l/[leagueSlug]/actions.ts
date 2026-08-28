@@ -2,6 +2,7 @@
 
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { z } from "zod";
 import {
   stage1CorrectionResult,
@@ -31,6 +32,13 @@ const contextSchema = z.object({
   leagueSlug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
 });
 
+const inviteSettingsSchema = z.object({
+  expiresInDays: z.coerce.number().int().min(1).max(30),
+  maxUses: z.coerce.number().int().min(1).max(15),
+});
+
+const revokeInviteSchema = z.object({ inviteId: z.uuid() });
+
 function parseContext(formData: FormData) {
   return contextSchema.safeParse({
     leagueId: formData.get("leagueId"),
@@ -40,6 +48,25 @@ function parseContext(formData: FormData) {
 
 function idempotencyKey(command: string): string {
   return `${command}:${crypto.randomUUID()}`;
+}
+
+async function requestOrigin(): Promise<string> {
+  const requestHeaders = await headers();
+  const origin = requestHeaders.get("origin");
+  if (origin) {
+    const parsed = new URL(origin);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.origin;
+    }
+  }
+
+  const host =
+    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  const protocol = requestHeaders.get("x-forwarded-proto") ?? "http";
+  if (!host || (protocol !== "http" && protocol !== "https")) {
+    throw new Error("The request origin could not be verified.");
+  }
+  return `${protocol}://${host}`;
 }
 
 function mutationError(message: string): AppActionState {
@@ -418,22 +445,77 @@ export async function createLeagueInviteAction(
   const context = parseContext(formData);
   if (!context.success) return mutationError("invalid context");
 
+  const settings = inviteSettingsSchema.safeParse({
+    expiresInDays: formData.get("expiresInDays"),
+    maxUses: formData.get("maxUses"),
+  });
+  if (!settings.success) {
+    return mutationError("Choose an expiry from 1–30 days and 1–15 uses.");
+  }
+
+  let origin: string;
+  try {
+    origin = await requestOrigin();
+  } catch {
+    return mutationError("The share-link address could not be verified.");
+  }
+
   const supabase = await createSupabaseServerClient();
+  const claims = await supabase.auth.getClaims();
+  if (!claims.data?.claims?.sub) {
+    return mutationError("Sign in again before creating an invitation.");
+  }
   const expiresAt = new Date(
-    Date.now() + 7 * 24 * 60 * 60 * 1000,
+    Date.now() + settings.data.expiresInDays * 24 * 60 * 60 * 1000,
   ).toISOString();
   const result = await supabase.schema("api").rpc("create_league_invite", {
     p_league_id: context.data.leagueId,
     p_expires_at: expiresAt,
-    p_max_uses: 15,
+    p_max_uses: settings.data.maxUses,
   });
   if (result.error) return mutationError(result.error.message);
 
+  const inviteUrl = new URL(`/join/${result.data}`, origin).toString();
+
+  revalidatePath(`/l/${context.data.leagueSlug}/commissioner`);
+
   return {
     status: "success",
-    message:
-      "Invitation created for up to 15 joins. Share it privately; it expires in seven days.",
-    value: result.data,
+    message: `Private link created for ${settings.data.maxUses} ${settings.data.maxUses === 1 ? "join" : "joins"}. It expires in ${settings.data.expiresInDays} ${settings.data.expiresInDays === 1 ? "day" : "days"}.`,
+    value: inviteUrl,
+  };
+}
+
+export async function revokeLeagueInviteAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  const invite = revokeInviteSchema.safeParse({
+    inviteId: formData.get("inviteId"),
+  });
+  if (!context.success || !invite.success) {
+    return mutationError("The invitation could not be identified.");
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const claims = await supabase.auth.getClaims();
+  if (!claims.data?.claims?.sub) {
+    return mutationError("Sign in again before changing an invitation.");
+  }
+
+  const result = await supabase.schema("api").rpc("revoke_league_invite", {
+    p_invite_id: invite.data.inviteId,
+    p_league_id: context.data.leagueId,
+  });
+  if (result.error) return mutationError(result.error.message);
+
+  revalidatePath(`/l/${context.data.leagueSlug}/commissioner`);
+  return {
+    status: "success",
+    message: result.data
+      ? "Invitation revoked. Anyone opening that link can no longer join."
+      : "That invitation was already inactive.",
   };
 }
 

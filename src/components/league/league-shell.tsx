@@ -6,6 +6,7 @@ import {
   LeagueMobileNav,
 } from "@/components/league/league-nav";
 import { LeagueMobileMore } from "@/components/league/league-mobile-more";
+import { LeagueMobileSecondaryNav } from "@/components/league/league-secondary-nav";
 import { BrandLockup, RegisterMark } from "@/components/ui/register-mark";
 
 function NavigationFallback() {
@@ -26,7 +27,6 @@ export function LeagueShell({
   week,
   nflYear,
   mode,
-  dataLabel,
   memberName,
   memberRole,
   cardStatusLabel,
@@ -39,7 +39,6 @@ export function LeagueShell({
   week: number;
   nflYear: number;
   mode: "LIVE" | "SIMULATION";
-  dataLabel: string;
   memberName: string;
   memberRole: string;
   cardStatusLabel: string;
@@ -111,46 +110,49 @@ export function LeagueShell({
               </Link>
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold">{leagueName}</p>
-                <p className="text-muted text-xs">Week {week}</p>
+                <p className="text-muted max-w-[13rem] truncate text-xs">
+                  Week {week} · {archiveMode ? "Season final" : cardStatusLabel}
+                </p>
               </div>
             </div>
-            <LeagueMobileMore
-              leagueSlug={leagueSlug}
-              isCommissioner={isCommissioner}
-            />
             <div className="hidden lg:block">
               <p className="text-sm font-semibold">
                 {leagueName} / {nflYear}
               </p>
-              <p className="text-muted text-xs">{dataLabel}</p>
+              <p className="text-muted text-xs">NFL · Week {week}</p>
             </div>
-            {archiveMode ? (
-              <span className="text-positive hidden min-h-11 items-center px-3 text-sm font-semibold lg:inline-flex">
-                Season final
-              </span>
-            ) : (
-              <Link
-                href={`/l/${leagueSlug}/card`}
-                className="text-registry hover:bg-subtle hidden min-h-11 items-center rounded-lg px-3 text-sm font-semibold lg:inline-flex"
+            <div className="flex items-center gap-2">
+              <span
+                className={`rounded px-2 py-1 text-[11px] font-bold tracking-[0.04em] uppercase ${
+                  mode === "SIMULATION"
+                    ? "border-pending/30 bg-pending/10 text-pending border"
+                    : "bg-subtle text-graphite"
+                }`}
               >
-                {cardStatusLabel}
-              </Link>
-            )}
+                {mode === "SIMULATION" ? "Simulation" : "Live season"}
+              </span>
+              {archiveMode ? (
+                <span className="text-positive hidden min-h-11 items-center px-3 text-sm font-semibold lg:inline-flex">
+                  Season final
+                </span>
+              ) : (
+                <Link
+                  href={`/l/${leagueSlug}/card`}
+                  className="text-registry hover:bg-subtle hidden min-h-11 items-center rounded-lg px-3 text-sm font-semibold lg:inline-flex"
+                >
+                  {cardStatusLabel}
+                </Link>
+              )}
+              <LeagueMobileMore
+                leagueSlug={leagueSlug}
+                isCommissioner={isCommissioner}
+              />
+            </div>
           </div>
         </header>
-        <div className="border-boundary bg-surface border-b px-4 py-2 text-center text-xs font-semibold lg:hidden">
-          {archiveMode ? (
-            <span className="text-positive">Season final</span>
-          ) : (
-            <Link className="text-registry" href={`/l/${leagueSlug}/card`}>
-              {cardStatusLabel}
-            </Link>
-          )}
-        </div>
-        <div className="border-pending/20 bg-pending/10 text-pending border-b px-4 py-2 text-center text-xs font-semibold">
-          {mode === "SIMULATION" ? "Simulation mode" : "Live mode"} ·{" "}
-          {dataLabel} · no live or simulated data is mixed
-        </div>
+        <Suspense fallback={null}>
+          <LeagueMobileSecondaryNav leagueSlug={leagueSlug} />
+        </Suspense>
         {children}
       </div>
 

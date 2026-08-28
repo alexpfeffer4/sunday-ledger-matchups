@@ -33,27 +33,29 @@ export default async function SchedulePage({
     <PageFrame
       eyebrow="Published at roster lock"
       title="2026 regular-season schedule"
-      description="One matchup per member per week. The complete 14-week publication is deterministic and immutable except for a proven integrity correction."
+      description="One matchup per member per week. Once the roster locks, all 14 weeks are published and do not change."
     >
       <div className="border-boundary bg-surface mt-7 rounded-xl border p-4 sm:p-5">
-        <dl className="grid gap-4 text-sm sm:grid-cols-3">
-          <div>
-            <dt className="text-muted">Algorithm</dt>
-            <dd className="mt-1 font-semibold">
-              {league.schedule.algorithmVersion}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted">Publication</dt>
-            <dd className="mt-1 font-semibold">14 weeks · frozen</dd>
-          </div>
-          <div>
-            <dt className="text-muted">Output evidence</dt>
-            <dd className="mt-1 truncate font-mono text-xs">
-              {league.schedule.outputHash}
-            </dd>
-          </div>
-        </dl>
+        <p className="font-semibold">14-week schedule locked</p>
+        <details className="border-boundary mt-4 border-t pt-4 text-sm">
+          <summary className="cursor-pointer font-semibold">
+            Schedule verification
+          </summary>
+          <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div>
+              <dt className="text-muted">Method</dt>
+              <dd className="mt-1 font-semibold">
+                {league.schedule.algorithmVersion}
+              </dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-muted">Verification code</dt>
+              <dd className="mt-1 truncate font-mono text-xs">
+                {league.schedule.outputHash}
+              </dd>
+            </div>
+          </dl>
+        </details>
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">

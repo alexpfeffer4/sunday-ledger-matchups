@@ -69,8 +69,8 @@ export default async function SignInPage({
           <MagicLinkForm next={next} />
         </section>
         <p className="text-muted mt-5 text-center text-xs leading-5">
-          Authentication is provided by Supabase Auth. League data remains in
-          Supabase Postgres under membership-scoped Row Level Security.
+          Your email stays private. League members see only the username you
+          choose on Account.
         </p>
       </div>
     </main>

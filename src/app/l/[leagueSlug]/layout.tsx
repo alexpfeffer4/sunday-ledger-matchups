@@ -28,11 +28,6 @@ export default async function LeagueLayout({
         week={archive.mode === "LIVE" ? 17 : 18}
         nflYear={archive.nflYear}
         mode={archive.mode}
-        dataLabel={
-          archive.mode === "LIVE"
-            ? "Immutable Live season archive"
-            : "Immutable full-season simulation archive"
-        }
         memberName={viewer?.displayName ?? "Member"}
         memberRole="Archived participant"
         cardStatusLabel="Season final"
@@ -50,7 +45,6 @@ export default async function LeagueLayout({
         week={live.week?.nflWeek ?? 1}
         nflYear={live.league.nflYear}
         mode={live.league.mode}
-        dataLabel="Supabase competitive ledger"
         memberName={live.viewer.displayName}
         memberRole={
           live.league.role === "COMMISSIONER" ? "Commissioner" : "Member"
@@ -78,7 +72,6 @@ export default async function LeagueLayout({
       week={league.matchup.league.week}
       nflYear={2026}
       mode="SIMULATION"
-      dataLabel="Deterministic local preview"
       memberName="Pfeff"
       memberRole="Simulation host"
       cardStatusLabel={`${league.matchup.allocation.allocatedCredits} / 1,000 allocated`}

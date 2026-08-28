@@ -27,6 +27,19 @@ export function LeagueMobileMore({
           <Link className={itemClass} href={`/l/${leagueSlug}/rules`}>
             Rules &amp; trust
           </Link>
+          <div className="border-boundary my-2 border-t" />
+          <Link className={itemClass} href={`/l/${leagueSlug}/standings`}>
+            Standings
+          </Link>
+          <Link className={itemClass} href={`/l/${leagueSlug}/schedule`}>
+            Schedule
+          </Link>
+          <Link className={itemClass} href={`/l/${leagueSlug}/playoffs`}>
+            Playoffs
+          </Link>
+          <Link className={itemClass} href={`/l/${leagueSlug}/history`}>
+            History
+          </Link>
           {isCommissioner ? (
             <Link className={itemClass} href={`/l/${leagueSlug}/commissioner`}>
               Commissioner

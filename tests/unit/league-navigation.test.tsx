@@ -7,6 +7,11 @@ import {
   LeagueMobileNav,
 } from "@/components/league/league-nav";
 import { LeagueMobileMore } from "@/components/league/league-mobile-more";
+import { LeagueMobileSecondaryNav } from "@/components/league/league-secondary-nav";
+
+const navigationState = vi.hoisted(() => ({
+  pathname: "/l/live-test/matchup",
+}));
 
 vi.mock("next/link", () => ({
   default: ({
@@ -21,7 +26,7 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/l/live-test/matchup",
+  usePathname: () => navigationState.pathname,
 }));
 
 vi.mock("@/app/(auth)/auth/actions", () => ({
@@ -29,7 +34,23 @@ vi.mock("@/app/(auth)/auth/actions", () => ({
 }));
 
 describe("league navigation permissions", () => {
+  it("shows the league subnavigation on mobile league pages", () => {
+    navigationState.pathname = "/l/live-test/standings";
+    render(<LeagueMobileSecondaryNav leagueSlug="live-test" />);
+
+    const navigation = screen.getByRole("navigation", {
+      name: "League sections",
+    });
+    expect(
+      within(navigation).getByRole("link", { name: "Overview" }),
+    ).toHaveAttribute("href", "/l/live-test/league");
+    expect(
+      within(navigation).getByRole("link", { name: "Standings" }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
   it("keeps commissioner navigation out of a regular member's UI", () => {
+    navigationState.pathname = "/l/live-test/matchup";
     render(<LeagueDesktopNav leagueSlug="live-test" isCommissioner={false} />);
 
     expect(screen.getByRole("link", { name: "Rules & trust" })).toBeVisible();

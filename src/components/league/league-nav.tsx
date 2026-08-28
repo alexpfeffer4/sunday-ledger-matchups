@@ -145,7 +145,13 @@ export function LeagueMobileNav({
       <ul className="mx-auto grid max-w-xl grid-cols-5">
         {items.map((item) => {
           const href = `${base}/${item.segment}`;
-          const active = isActive(pathname, href);
+          const active =
+            isActive(pathname, href) ||
+            (!archiveMode &&
+              item.segment === "league" &&
+              secondaryItems.some((secondary) =>
+                isActive(pathname, `${base}/${secondary.segment}`),
+              ));
           return (
             <li key={item.segment}>
               <Link

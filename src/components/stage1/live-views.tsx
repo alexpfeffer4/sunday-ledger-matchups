@@ -2,11 +2,13 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import type { LiveOddsImportReview } from "@/application/queries/get-live-odds-import";
+import type { LeagueInviteSummary } from "@/application/queries/league-invite-dtos";
 import type { LiveRegularSeasonSchedule } from "@/application/queries/get-live-regular-season-schedule";
 import type { LiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
 import { Stage1CommissionerControls } from "@/components/commissioner/stage1-controls";
 import { PageFrame } from "@/components/league/page-frame";
+import { AllocationMeter } from "@/components/matchup/allocation-meter";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCenticredits } from "@/domain/odds/american";
 
@@ -28,6 +30,22 @@ function formatOdds(odds: number): string {
 
 function formatScore(value: number): string {
   return formatCenticredits(BigInt(value), true);
+}
+
+function memberInitials(displayName: string): string {
+  const parts = displayName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "SL";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? ""}${parts.at(-1)?.[0] ?? ""}`.toUpperCase();
+}
+
+function recordLabel(
+  row: Stage1StateDto["standings"][number] | undefined,
+): string {
+  if (!row) return "0–0";
+  return row.ties > 0
+    ? `${row.wins}–${row.losses}–${row.ties}`
+    : `${row.wins}–${row.losses}`;
 }
 
 function liveStatus(state: Stage1StateDto): ReactNode {
@@ -115,65 +133,197 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
     );
   }
   const result = state.matchup.result;
+  const selfStanding = state.standings.find(
+    (row) => row.entryId === state.viewer.entryId,
+  );
+  const opponentStanding = state.standings.find(
+    (row) => row.entryId === state.matchup?.opponentEntryId,
+  );
+  const nextEvent = [...state.slate].sort(
+    (left, right) =>
+      new Date(left.scheduledStartAt).getTime() -
+      new Date(right.scheduledStartAt).getTime(),
+  )[0];
+  const ownerReady = state.ownerCard.remainingCredits === 0;
+  const primaryAction =
+    state.week.state === "OPEN"
+      ? ownerReady
+        ? {
+            href: `/l/${state.league.slug}/card`,
+            label: "Review sealed card",
+          }
+        : {
+            href: `/l/${state.league.slug}/slate`,
+            label: `Allocate remaining ${state.ownerCard.remainingCredits}`,
+          }
+      : state.week.state === "FINAL"
+        ? {
+            href: `/l/${state.league.slug}/league`,
+            label: "View final league scoreboard",
+          }
+        : {
+            href: `/l/${state.league.slug}/live`,
+            label: "Open live matchup",
+          };
+  const matchupState = result
+    ? result.status === "FINAL"
+      ? "Final"
+      : "Provisional"
+    : state.week.state === "OPEN"
+      ? ownerReady
+        ? "Your card is ready"
+        : "Cards open"
+      : "Cards locked";
+  const consequence = result
+    ? `${result.selfDecision === "WIN" ? "Win" : result.selfDecision === "LOSS" ? "Loss" : "Tie"} filed ${result.status.toLowerCase()}. The official standings update through the result shown here.`
+    : state.week.scope === "PLAYOFF"
+      ? "The winner advances. If both completed cards finish with the same score, the higher regular-season seed advances."
+      : `A win would move you to ${(selfStanding?.wins ?? 0) + 1}–${selfStanding?.losses ?? 0}; a loss would move you to ${selfStanding?.wins ?? 0}–${(selfStanding?.losses ?? 0) + 1}.`;
   return (
     <PageFrame
       eyebrow={`${state.league.name} · Week ${state.week.nflWeek}`}
-      title={`${state.viewer.displayName} vs ${state.matchup.opponentName}`}
-      description="Matchup-first status from the sealed server read model."
+      title={`Your Week ${state.week.nflWeek} matchup`}
+      description={`Cards lock ${formatDate(state.week.commonLockAt)}. Opponent choices remain sealed until their games begin.`}
       aside={liveStatus(state)}
     >
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="border-registry bg-surface rounded-xl border p-6 shadow-[var(--shadow-card)]">
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-            <div>
-              <p className="text-registry text-xl font-bold">
-                {state.viewer.displayName}
+        <div className="space-y-6">
+          <section className="border-boundary bg-surface rounded-xl border p-5 shadow-[var(--shadow-card)] sm:p-7">
+            <div className="border-boundary flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+              <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
+                Week {state.week.nflWeek} · {state.week.scope.toLowerCase()}
               </p>
-              <p className="mt-3 font-mono text-3xl font-bold">
-                {result ? formatScore(result.selfPointsForCenticredits) : "—"}
-              </p>
+              <StatusBadge
+                tone={result ? "pending" : ownerReady ? "positive" : "sealed"}
+              >
+                {matchupState}
+              </StatusBadge>
             </div>
-            <span className="text-muted text-xs font-bold">VS</span>
-            <div className="text-right">
-              <p className="text-copper text-xl font-bold">
-                {state.matchup.opponentName}
-              </p>
-              <p className="mt-3 font-mono text-3xl font-bold">
-                {result
-                  ? formatScore(result.opponentPointsForCenticredits)
-                  : "—"}
-              </p>
+
+            <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3 py-7 sm:gap-8">
+              <div className="min-w-0 text-center">
+                <div className="border-registry bg-subtle text-registry mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 text-lg font-bold">
+                  {memberInitials(state.viewer.displayName)}
+                </div>
+                <p className="mt-3 truncate text-lg font-bold">
+                  {state.viewer.displayName}
+                </p>
+                <p className="text-graphite mt-1 text-sm">
+                  {recordLabel(selfStanding)}
+                  {selfStanding ? ` · No. ${selfStanding.seed} seed` : ""}
+                </p>
+                <p className="text-registry mt-3 text-sm font-semibold">
+                  {result
+                    ? formatScore(result.selfPointsForCenticredits)
+                    : `${state.ownerCard.allocatedCredits} allocated · ${state.ownerCard.remainingCredits} remaining`}
+                </p>
+              </div>
+              <div className="pt-7 text-center">
+                <p className="text-muted text-xs font-bold tracking-[0.1em] uppercase">
+                  {result ? result.status : "vs"}
+                </p>
+                {!result ? (
+                  <p className="text-graphite mt-2 font-mono text-xs font-semibold sm:text-sm">
+                    1,000 each
+                  </p>
+                ) : null}
+              </div>
+              <div className="min-w-0 text-center">
+                <div className="border-copper bg-subtle text-copper mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 text-lg font-bold">
+                  {memberInitials(state.matchup.opponentName)}
+                </div>
+                <p className="mt-3 truncate text-lg font-bold">
+                  {state.matchup.opponentName}
+                </p>
+                <p className="text-graphite mt-1 text-sm">
+                  {recordLabel(opponentStanding)}
+                  {opponentStanding
+                    ? ` · No. ${opponentStanding.seed} seed`
+                    : ""}
+                </p>
+                <p className="text-copper mt-3 text-sm font-semibold">
+                  {result
+                    ? formatScore(result.opponentPointsForCenticredits)
+                    : state.matchup.opponentReadiness
+                      ? state.matchup.opponentReadiness === "COMPLIANT"
+                        ? "Card ready"
+                        : state.matchup.opponentReadiness === "INCOMPLETE"
+                          ? "Incomplete"
+                          : "Pending"
+                      : "Sealed until common lock"}
+                </p>
+              </div>
             </div>
-          </div>
-          {result ? (
-            <p className="border-boundary mt-6 border-t pt-4 text-sm font-semibold">
-              {result.status} · {result.selfDecision} /{" "}
-              {result.opponentDecision}
+
+            {!result ? (
+              <AllocationMeter
+                allocatedCredits={state.ownerCard.allocatedCredits}
+                commonLockLabel={formatDate(state.week.commonLockAt)}
+                maximumPositions={20}
+                positionCount={state.ownerCard.positions.length}
+                remainingCredits={state.ownerCard.remainingCredits}
+                weeklyAllocationCredits={1_000}
+              />
+            ) : (
+              <p className="border-boundary border-t pt-4 text-sm font-semibold">
+                {result.selfDecision} · {recordLabel(selfStanding)} current
+                record
+              </p>
+            )}
+
+            <Link
+              className="bg-registry hover:bg-registry-hover mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-lg px-5 text-sm font-semibold text-white"
+              href={primaryAction.href}
+            >
+              {primaryAction.label}
+            </Link>
+          </section>
+
+          <section className="border-boundary border-l-registry bg-surface rounded-xl border border-l-4 p-5">
+            <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+              What&apos;s at stake
             </p>
-          ) : (
-            <p className="border-boundary text-muted mt-6 border-t pt-4 text-sm">
-              Opponent terms stay sealed. Readiness appears only after common
-              lock.
-            </p>
-          )}
-        </section>
+            <p className="text-graphite mt-2 leading-7">{consequence}</p>
+            <Link
+              className="text-action mt-3 inline-flex min-h-11 items-center font-semibold hover:underline"
+              href={`/l/${state.league.slug}/standings`}
+            >
+              View full standings
+            </Link>
+          </section>
+        </div>
+
         <aside className="space-y-5">
           <section className="border-boundary bg-surface rounded-xl border p-5">
             <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-              Weekly allocation
+              Next kickoff
             </p>
-            <p className="mt-2 font-mono text-2xl font-bold">
-              {state.ownerCard.allocatedCredits} / 1,000
-            </p>
-            <p className="text-muted mt-2 text-sm">
-              {state.ownerCard.remainingCredits} credits remain ·{" "}
-              {state.ownerCard.positions.length} positions
-            </p>
+            {nextEvent ? (
+              <>
+                <h2 className="mt-2 text-lg font-bold">
+                  {nextEvent.awayTeam} at {nextEvent.homeTeam}
+                </h2>
+                <p className="text-graphite mt-2 text-sm">
+                  {formatDate(nextEvent.scheduledStartAt)}
+                </p>
+                <Link
+                  className="text-action mt-3 inline-flex min-h-11 items-center font-semibold hover:underline"
+                  href={`/l/${state.league.slug}/event/${nextEvent.id}`}
+                >
+                  View game markets
+                </Link>
+              </>
+            ) : (
+              <p className="text-muted mt-2 text-sm">
+                No designated game is currently published.
+              </p>
+            )}
           </section>
           <section className="border-boundary bg-subtle rounded-xl border p-5">
-            <h2 className="font-bold">Opponent readiness</h2>
-            <p className="text-graphite mt-2 text-sm">
-              {state.matchup.opponentReadiness ?? "Sealed until common lock"}
+            <h2 className="font-bold">Privacy</h2>
+            <p className="text-graphite mt-2 text-sm leading-6">
+              Your opponent cannot inspect your future selections. Each position
+              reveals only when its game begins.
             </p>
           </section>
         </aside>
@@ -271,7 +421,7 @@ export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
       <PageFrame
         eyebrow={`${state.league.name} · Formation`}
         title="Week 1 slate"
-        description="The deterministic slate publishes with the eight-entry roster."
+        description="The Week 1 slate appears after the commissioner completes league setup."
       >
         <FormationPanel state={state} />
       </PageFrame>
@@ -279,9 +429,9 @@ export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
   }
   return (
     <PageFrame
-      eyebrow="Stored deterministic provider fixture"
+      eyebrow="Current published odds"
       title={`Week ${state.week.nflWeek} slate`}
-      description={`Common lock ${formatDate(state.week.commonLockAt)}. Build an editable private draft, then review and seal the complete 1,000-credit card at once.`}
+      description={`Cards lock ${formatDate(state.week.commonLockAt)}. Build a private draft, review the current terms, then confirm all 1,000 credits at once.`}
       aside={liveStatus(state)}
     >
       <Stage1CardBuilder state={state} />
@@ -327,7 +477,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
   }
   return (
     <PageFrame
-      eyebrow="Private owner read model"
+      eyebrow="Visible only to you"
       title={`My Week ${state.week.nflWeek} card`}
       description="Your exact accepted terms are always visible to you and never available to the commissioner."
       aside={
@@ -430,12 +580,14 @@ export function Stage1LiveView({ state }: { state: Stage1StateDto }) {
       </PageFrame>
     );
   }
+  const hasLiveEvent = state.slate.some((event) => event.state === "LIVE");
   return (
     <PageFrame
-      eyebrow="Broadcast view · reliable reveal"
+      eyebrow={hasLiveEvent ? "Live now" : "Game-day matchup"}
       title={`${state.viewer.displayName} vs ${state.matchup.opponentName}`}
-      description="Scheduled time alone never reveals a position."
+      description="Positions reveal game by game after actual kickoff. Future selections remain sealed."
       aside={liveStatus(state)}
+      dark={hasLiveEvent}
     >
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section className="border-boundary bg-surface rounded-xl border p-5">
@@ -473,10 +625,10 @@ export function Stage1LiveView({ state }: { state: Stage1StateDto }) {
           </div>
         </section>
         <aside className="border-boundary bg-surface h-fit rounded-xl border p-5">
-          <h2 className="font-bold">Reveal boundary</h2>
+          <h2 className="font-bold">What remains private</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Only receipts linked to LIVE, FINAL, VOID, or CORRECTED events enter
-            this response.
+            Only selections tied to games that have started appear here. No
+            future position count, allocation, or outcome is disclosed.
           </p>
         </aside>
       </div>
@@ -556,57 +708,115 @@ export function Stage1StandingsView({ state }: { state: Stage1StateDto }) {
           </p>
         </div>
       ) : (
-        <div className="border-boundary bg-surface mt-7 overflow-x-auto rounded-xl border">
-          <table className="w-full min-w-[720px] text-left text-sm">
-            <thead className="bg-subtle text-muted text-xs uppercase">
-              <tr>
-                <th className="px-4 py-3">Seed</th>
-                <th className="px-4 py-3">Member</th>
-                <th className="px-4 py-3">Record</th>
-                <th className="px-4 py-3">Points For</th>
-                <th className="px-4 py-3">All-play</th>
-                <th className="px-4 py-3">Misses</th>
-              </tr>
-            </thead>
-            <tbody className="divide-boundary divide-y">
-              {state.standings.map((row) => (
-                <tr
-                  className={
-                    row.entryId === state.viewer.entryId ? "bg-registry/5" : ""
-                  }
+        <>
+          <div className="mt-7 space-y-3 sm:hidden">
+            {state.standings.map((row) => {
+              const playoffCutline = state.league.memberCount <= 8 ? 4 : 6;
+              return (
+                <details
+                  className={`border-boundary bg-surface rounded-xl border ${
+                    row.entryId === state.viewer.entryId
+                      ? "border-l-registry border-l-4"
+                      : ""
+                  }`}
                   key={row.entryId}
                 >
-                  <td className="px-4 py-4 font-mono font-semibold">
-                    {row.seed}
-                  </td>
-                  <th className="px-4 py-4">{row.displayName}</th>
-                  <td className="px-4 py-4">
-                    {row.wins}-{row.losses}-{row.ties}
-                  </td>
-                  <td className="px-4 py-4 font-mono">
-                    {formatScore(row.pointsForCenticredits)}
-                  </td>
-                  <td className="px-4 py-4">
-                    {row.allPlayHalfWinUnits / 2}-
-                    {row.allPlayComparisonCount - row.allPlayHalfWinUnits / 2}
-                  </td>
-                  <td className="px-4 py-4">{row.attendanceMisses}</td>
+                  <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 px-4 [&::-webkit-details-marker]:hidden">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="text-registry w-7 shrink-0 font-mono font-bold">
+                        {row.seed}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate font-bold">{row.displayName}</p>
+                        <p className="text-muted mt-1 text-xs">
+                          {row.wins}–{row.losses}
+                          {row.ties ? `–${row.ties}` : ""} ·{" "}
+                          {formatScore(row.pointsForCenticredits)} PF
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-muted shrink-0 text-xs font-semibold">
+                      {row.seed <= playoffCutline
+                        ? "Playoff seed"
+                        : "Outside cutline"}
+                    </span>
+                  </summary>
+                  <dl className="border-boundary grid grid-cols-2 gap-4 border-t px-4 py-4 text-sm">
+                    <div>
+                      <dt className="text-muted text-xs">All-play</dt>
+                      <dd className="mt-1 font-semibold">
+                        {row.allPlayHalfWinUnits / 2}–
+                        {row.allPlayComparisonCount -
+                          row.allPlayHalfWinUnits / 2}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted text-xs">Attendance misses</dt>
+                      <dd className="mt-1 font-semibold">
+                        {row.attendanceMisses} of 3
+                      </dd>
+                    </div>
+                  </dl>
+                </details>
+              );
+            })}
+          </div>
+          <div className="border-boundary bg-surface mt-7 hidden overflow-x-auto rounded-xl border sm:block">
+            <table className="w-full min-w-[720px] text-left text-sm">
+              <thead className="bg-subtle text-muted text-xs uppercase">
+                <tr>
+                  <th className="px-4 py-3">Seed</th>
+                  <th className="px-4 py-3">Member</th>
+                  <th className="px-4 py-3">Record</th>
+                  <th className="px-4 py-3">Points For</th>
+                  <th className="px-4 py-3">All-play</th>
+                  <th className="px-4 py-3">Misses</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-boundary divide-y">
+                {state.standings.map((row) => (
+                  <tr
+                    className={
+                      row.entryId === state.viewer.entryId
+                        ? "bg-registry/5"
+                        : ""
+                    }
+                    key={row.entryId}
+                  >
+                    <td className="px-4 py-4 font-mono font-semibold">
+                      {row.seed}
+                    </td>
+                    <th className="px-4 py-4">{row.displayName}</th>
+                    <td className="px-4 py-4">
+                      {row.wins}-{row.losses}-{row.ties}
+                    </td>
+                    <td className="px-4 py-4 font-mono">
+                      {formatScore(row.pointsForCenticredits)}
+                    </td>
+                    <td className="px-4 py-4">
+                      {row.allPlayHalfWinUnits / 2}-
+                      {row.allPlayComparisonCount - row.allPlayHalfWinUnits / 2}
+                    </td>
+                    <td className="px-4 py-4">{row.attendanceMisses}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </PageFrame>
   );
 }
 
 export function Stage1CommissionerView({
+  invites,
   latestLiveImport,
   liveWeekOperations,
   providerConfigured,
   state,
 }: {
+  invites: LeagueInviteSummary[];
   latestLiveImport: LiveOddsImportReview | null;
   liveWeekOperations: LiveWeekOperations | null;
   providerConfigured: boolean;
@@ -627,13 +837,14 @@ export function Stage1CommissionerView({
   }
   return (
     <PageFrame
-      eyebrow="Named idempotent operations"
+      eyebrow={`${state.league.name} · Commissioner`}
       title="Commissioner console"
-      description="No control can inspect sealed terms or directly edit scores, winners, records, or standings."
+      description="Run the season one step at a time. Member picks stay private, and published results cannot be manually rewritten."
       aside={liveStatus(state)}
     >
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Stage1CommissionerControls
+          invites={invites}
           latestLiveImport={latestLiveImport}
           liveWeekOperations={liveWeekOperations}
           providerConfigured={providerConfigured}
@@ -692,10 +903,10 @@ export function Stage1CommissionerView({
             </dl>
           </section>
           <section className="border-negative/25 bg-negative/10 rounded-xl border p-5">
-            <h2 className="text-negative font-bold">Permission boundary</h2>
+            <h2 className="text-negative font-bold">Member privacy</h2>
             <p className="text-graphite mt-2 text-sm leading-6">
-              The commissioner read model contains aggregate health only;
-              receipt content is never selected.
+              You can see how many cards are ready, but never a member’s picks
+              before they are revealed by the game schedule.
             </p>
           </section>
         </aside>
@@ -716,7 +927,7 @@ export function Stage1ScheduleView({
       <PageFrame
         eyebrow="Published at roster lock"
         title="2026 regular-season schedule"
-        description="One matchup per member per week. The complete 14-week publication is deterministic and immutable; future weekly NFL slates do not change these opponents."
+        description="One matchup per member per week. Once the roster locks, all 14 weeks are published and future NFL slates do not change these opponents."
         aside={liveStatus(state)}
       >
         {!liveSchedule ? (
@@ -724,30 +935,37 @@ export function Stage1ScheduleView({
         ) : (
           <>
             <section className="border-boundary bg-surface mt-7 rounded-xl border p-5">
-              <dl className="grid gap-4 text-sm sm:grid-cols-3">
+              <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
                 <div>
-                  <dt className="text-muted">Algorithm</dt>
-                  <dd className="mt-1 font-semibold">
-                    {liveSchedule.algorithmVersion}
-                  </dd>
+                  <p className="font-semibold">14-week schedule locked</p>
+                  <p className="text-muted mt-1 text-xs">
+                    Published {formatDate(liveSchedule.publishedAt)}
+                  </p>
                 </div>
-                <div>
-                  <dt className="text-muted">Publication</dt>
-                  <dd className="mt-1 font-semibold">14 weeks · frozen</dd>
-                </div>
-                <div>
-                  <dt className="text-muted">Output evidence</dt>
-                  <dd
-                    className="mt-1 truncate font-mono text-xs"
-                    title={liveSchedule.outputHash}
-                  >
-                    {liveSchedule.outputHash}
-                  </dd>
-                </div>
-              </dl>
-              <p className="text-muted mt-4 text-xs">
-                Published {formatDate(liveSchedule.publishedAt)}
-              </p>
+                <StatusBadge tone="positive">Verified</StatusBadge>
+              </div>
+              <details className="border-boundary mt-4 border-t pt-4 text-sm">
+                <summary className="cursor-pointer font-semibold">
+                  Schedule verification
+                </summary>
+                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-muted">Method</dt>
+                    <dd className="mt-1 font-semibold">
+                      {liveSchedule.algorithmVersion}
+                    </dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-muted">Verification code</dt>
+                    <dd
+                      className="mt-1 truncate font-mono text-xs"
+                      title={liveSchedule.outputHash}
+                    >
+                      {liveSchedule.outputHash}
+                    </dd>
+                  </div>
+                </dl>
+              </details>
             </section>
             <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 14 }, (_, index) => index + 1).map(
@@ -817,27 +1035,30 @@ export function Stage1ScheduleView({
     <PageFrame
       eyebrow="Published at roster lock"
       title="2026 Week 1 schedule"
-      description="The deterministic schedule seed and four pairings are stored as public league evidence. Position terms are not part of this publication."
+      description="The four Week 1 pairings are published for the league. Private card terms are never included in the schedule."
       aside={liveStatus(state)}
     >
       {!state.week ? (
         <FormationPanel state={state} />
       ) : (
         <>
-          <section className="border-boundary bg-surface mt-7 rounded-xl border p-5">
-            <dl className="grid gap-4 text-sm sm:grid-cols-2">
+          <details className="border-boundary bg-surface mt-7 rounded-xl border p-5 text-sm">
+            <summary className="cursor-pointer font-semibold">
+              Schedule verification
+            </summary>
+            <dl className="mt-4 grid gap-4 sm:grid-cols-2">
               <div>
-                <dt className="text-muted">Algorithm</dt>
-                <dd className="mt-1 font-semibold">stage1-circle-v1</dd>
+                <dt className="text-muted">Method</dt>
+                <dd className="mt-1 font-semibold">Circle schedule</dd>
               </div>
               <div>
-                <dt className="text-muted">Public schedule seed</dt>
+                <dt className="text-muted">Verification code</dt>
                 <dd className="mt-1 font-mono text-xs break-all">
                   {state.season.scheduleSeed}
                 </dd>
               </div>
             </dl>
-          </section>
+          </details>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {state.schedule.map((matchup) => (
               <article

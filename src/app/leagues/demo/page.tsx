@@ -31,7 +31,7 @@ export default function InteractiveDemoPage() {
             Build a private 1,000-credit card, exercise the real stake and odds
             guardrails, see the opponent remain sealed in the interface through
             lock, then reveal and settle a fictional head-to-head matchup.
-            Nothing on this page writes to Supabase or changes a real league.
+            Nothing on this page changes a real league.
           </p>
         </header>
         <InteractiveWeekDemo />

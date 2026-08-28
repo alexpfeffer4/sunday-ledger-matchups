@@ -115,8 +115,7 @@ export function PositionPreview({ outcome }: { outcome: SlateOutcomeDto }) {
         Confirm and seal
       </button>
       <p className="text-muted mt-2 text-center text-xs">
-        Receipt acceptance activates after the authorized Supabase database is
-        connected.
+        This read-only preview cannot accept a position.
       </p>
     </div>
   );

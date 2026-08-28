@@ -34,6 +34,10 @@ const passwordUpdateSchema = z
     path: ["confirmPassword"],
   });
 
+const passwordRecoverySchema = z.object({
+  email: z.email("Enter a valid email address.").trim().toLowerCase(),
+});
+
 async function requestOrigin(): Promise<string> {
   const requestHeaders = await headers();
   const origin = requestHeaders.get("origin");
@@ -93,6 +97,13 @@ export async function sendMagicLink(
             "A sign-in email was just requested. Use the newest email or wait before requesting another.",
         };
       }
+      if (error.code === "email_address_not_authorized") {
+        return {
+          status: "error",
+          message:
+            "Email delivery is not connected for that address yet. Ask the commissioner to finish custom email setup.",
+        };
+      }
       return {
         status: "error",
         message: "The sign-in email could not be sent. Try again shortly.",
@@ -108,7 +119,68 @@ export async function sendMagicLink(
     return {
       status: "error",
       message:
-        "Supabase is not connected in this environment yet. No sign-in email was sent.",
+        "Sign-in email is not connected in this environment yet. No email was sent.",
+    };
+  }
+}
+
+export async function requestPasswordReset(
+  _state: PasswordActionState,
+  formData: FormData,
+): Promise<PasswordActionState> {
+  const parsed = passwordRecoverySchema.safeParse({
+    email: formData.get("email"),
+  });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "Check the email address.",
+    };
+  }
+
+  try {
+    const [supabase, origin] = await Promise.all([
+      createSupabaseServerClient(),
+      requestOrigin(),
+    ]);
+    const confirmUrl = new URL("/auth/confirm", origin);
+    confirmUrl.searchParams.set("flow", "recovery");
+    confirmUrl.searchParams.set("next", "/leagues");
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      parsed.data.email,
+      { redirectTo: confirmUrl.toString() },
+    );
+
+    if (error) {
+      if (error.code === "over_email_send_rate_limit" || error.status === 429) {
+        return {
+          status: "error",
+          message:
+            "A recovery email was just requested. Use the newest email or wait before requesting another.",
+        };
+      }
+      if (error.code === "email_address_not_authorized") {
+        return {
+          status: "error",
+          message:
+            "Email delivery is not connected for that address yet. Ask the commissioner to finish custom email setup.",
+        };
+      }
+      return {
+        status: "error",
+        message: "The recovery email could not be sent. Try again shortly.",
+      };
+    }
+
+    return {
+      status: "success",
+      message:
+        "Check your email for a password-recovery link. The link opens Account so you can choose a new password.",
+    };
+  } catch {
+    return {
+      status: "error",
+      message: "Password recovery is temporarily unavailable.",
     };
   }
 }
