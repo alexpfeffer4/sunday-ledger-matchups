@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -13,12 +13,29 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://sunday-ledger-matchups.vercel.app"),
   title: {
     default: "Sunday Ledger",
     template: "%s · Sunday Ledger",
   },
   description:
-    "A private NFL matchup league where every member starts each week with the same 1,000 virtual credits.",
+    "Private NFL matchup leagues where equal weekly virtual credits turn real lines into head-to-head scores.",
+  openGraph: {
+    title: "Sunday Ledger",
+    description:
+      "Build your card, beat your weekly matchup, and climb the standings.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sunday Ledger",
+    description:
+      "Build your card, beat your weekly matchup, and climb the standings.",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#214e3e",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

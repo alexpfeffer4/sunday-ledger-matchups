@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PasswordSignInForm } from "@/components/auth/password-sign-in-form";
 import { PasswordRecoveryForm } from "@/components/auth/password-recovery-form";
 import { SetPasswordForm } from "@/components/auth/set-password-form";
 import { MagicLinkForm } from "@/components/auth/magic-link-form";
+import { SignInMethods } from "@/components/auth/sign-in-methods";
 import { UsernameForm } from "@/components/auth/username-form";
 
 vi.mock("@/app/(auth)/auth/actions", () => ({
@@ -65,13 +66,34 @@ describe("password authentication options", () => {
     );
   });
 
-  it("explains that a magic link continues into account setup", () => {
+  it("explains that a magic link continues into username and password setup", () => {
     render(<MagicLinkForm next="/leagues" />);
 
-    expect(screen.getByText(/open Account/i)).toBeVisible();
+    expect(screen.getByText(/choose a username and password/i)).toBeVisible();
     expect(
-      screen.getByRole("button", { name: "Email me a sign-in link" }),
+      screen.getByRole("button", { name: "Send sign-in link" }),
     ).toBeVisible();
+  });
+
+  it("shows one sign-in method at a time", () => {
+    const switcher = render(<SignInMethods next="/leagues" />);
+    const form = within(switcher.container);
+
+    expect(
+      form.getByRole("button", { name: "Sign in with password" }),
+    ).toBeVisible();
+    expect(
+      form.queryByRole("button", { name: "Send sign-in link" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(form.getByRole("tab", { name: "Email link" }));
+
+    expect(
+      form.getByRole("button", { name: "Send sign-in link" }),
+    ).toBeVisible();
+    expect(
+      form.queryByRole("button", { name: "Sign in with password" }),
+    ).not.toBeInTheDocument();
   });
 
   it("offers an editable public username", () => {

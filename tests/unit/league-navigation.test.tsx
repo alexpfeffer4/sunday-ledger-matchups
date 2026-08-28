@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   LeagueDesktopNav,
@@ -90,7 +90,13 @@ describe("league navigation", () => {
     expect(
       within(primary).getByRole("link", { name: "My Card" }),
     ).toHaveAttribute("href", "/l/live-test/card");
-    expect(screen.getByText("AP", { selector: "summary" })).toBeInTheDocument();
+    const profileTrigger = screen.getByRole("button", {
+      name: "Open profile menu",
+    });
+    expect(profileTrigger).toHaveTextContent("AP");
+    expect(profileTrigger).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(profileTrigger);
+    expect(profileTrigger).toHaveAttribute("aria-expanded", "true");
     const utilities = within(
       screen.getByRole("navigation", { name: "League and account" }),
     );
@@ -120,15 +126,17 @@ describe("league navigation", () => {
       />,
     );
 
-    expect(
-      screen.getByText("AP", { selector: "summary span" }),
-    ).toBeInTheDocument();
+    const accountTrigger = screen.getByRole("button", {
+      name: "Open account menu",
+    });
+    expect(accountTrigger).toHaveTextContent("AP");
+    fireEvent.click(accountTrigger);
     const account = screen.getByRole("navigation", { name: "Account options" });
     expect(account.getAttribute("class")).toContain("mt-2");
     expect(
       within(account).getByRole("link", { name: "Your leagues" }),
     ).toHaveAttribute("href", "/leagues");
-    const menu = account.closest("details");
+    const menu = account.closest('[role="dialog"]');
     expect(menu).not.toBeNull();
     expect(
       within(menu as HTMLElement).getByRole("button", { name: "Sign out" }),

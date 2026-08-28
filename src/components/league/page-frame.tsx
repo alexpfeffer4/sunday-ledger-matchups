@@ -26,9 +26,7 @@ export function PageFrame({
       <div className="mx-auto max-w-[1480px] px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
-            <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-              {eyebrow}
-            </p>
+            <p className="text-muted text-sm font-semibold">{eyebrow}</p>
             <h1 className="text-ink mt-2 text-[1.75rem] leading-9 font-bold tracking-[-0.035em] sm:text-[2rem]">
               {title}
             </h1>

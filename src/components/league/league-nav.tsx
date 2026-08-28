@@ -171,8 +171,9 @@ export function LeagueMobileNav({
       <ul className="mx-auto grid max-w-xl grid-cols-5">
         {items.map((item) => {
           const href = `${base}/${item.segment}`;
+          const exactActive = isActive(pathname, href);
           const active =
-            isActive(pathname, href) ||
+            exactActive ||
             (!archiveMode &&
               item.segment === "league" &&
               leagueItems.some((leagueItem) =>
@@ -182,7 +183,7 @@ export function LeagueMobileNav({
           return (
             <li key={item.segment}>
               <Link
-                aria-current={active ? "page" : undefined}
+                aria-current={exactActive ? "page" : undefined}
                 className={`relative flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors after:absolute after:inset-x-4 after:top-0 after:h-0.5 after:rounded-full ${
                   active
                     ? "text-registry after:bg-registry"
