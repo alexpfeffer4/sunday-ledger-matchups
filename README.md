@@ -50,6 +50,10 @@ ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
   grants cards only to scheduled entries, applies the published higher-seed
   advancement rule to exact ties and dual incompletion, reseeds six-entry
   semifinals, and never rewrites the frozen regular-season standings
+- Terminal Live season archival after Week 17 finalization: the database
+  derives the champion and permanent member-visible record from immutable
+  scores, receipts, standings, bracket rounds, and corrections before moving
+  the season lifecycle to `FINAL`
 - Deterministic provider-fixture ports for healthy, stale, outlier, suspended,
   provider-degraded, live, final, void, and corrected states
 - Vitest unit/property coverage and Playwright configuration

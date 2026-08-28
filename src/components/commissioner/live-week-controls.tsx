@@ -9,6 +9,7 @@ import {
   importLiveScoresAction,
   lockStage1WeekAction,
   publishLivePlayoffQualificationAction,
+  publishLiveSeasonArchiveAction,
   publishNextLivePostseasonWeekAction,
   publishNextLiveWeekSlateAction,
   refreshLiveWeekQuotesAction,
@@ -98,6 +99,10 @@ export function LiveWeekCommissionerControls({
   );
   const [postseasonWeekState, postseasonWeekAction, publishingPostseasonWeek] =
     useActionState(publishNextLivePostseasonWeekAction, initialAppActionState);
+  const [archiveState, archiveAction, publishingArchive] = useActionState(
+    publishLiveSeasonArchiveAction,
+    initialAppActionState,
+  );
   const [
     playoffQualificationState,
     playoffQualificationAction,
@@ -635,8 +640,27 @@ export function LiveWeekCommissionerControls({
           <h2 className="mt-2 font-bold">Week 17 results are final</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
             The championship and third-place result versions are immutable. The
-            next lifecycle operation will publish the final season archive.
+            archive command derives the champion, final standings, schedule,
+            bracket, cards, receipts, and correction evidence from those final
+            records. No competitive value can be supplied or edited here.
           </p>
+          <form action={archiveAction} className="mt-4">
+            <ContextFields state={state} />
+            <p className="text-negative text-sm leading-6 font-semibold">
+              Irreversible: publishing closes the Live season and preserves its
+              permanent member-visible archive.
+            </p>
+            <button
+              className={`${buttonClass} mt-4`}
+              disabled={publishingArchive}
+              type="submit"
+            >
+              {publishingArchive
+                ? "Publishing final archive…"
+                : "Publish champion & final season archive"}
+            </button>
+          </form>
+          <ActionFeedback state={archiveState} />
           <Link
             className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
             href={`/l/${state.league.slug}/playoffs`}

@@ -91,7 +91,7 @@ export const livePlayoffStateSchema = z.object({
     name: z.string(),
     slug: z.string(),
     nflYear: z.number().int(),
-    lifecycle: z.literal("PLAYOFFS"),
+    lifecycle: z.enum(["PLAYOFFS", "FINAL"]),
   }),
   publication: z.object({
     id: z.uuid(),

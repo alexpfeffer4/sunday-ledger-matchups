@@ -202,6 +202,27 @@ function mutationError(message: string): AppActionState {
       message: "The championship round is already the final postseason week.",
     };
   }
+  if (message.includes("Week 17 must be final")) {
+    return {
+      status: "error",
+      message:
+        "Finalize Week 17 and its correction window before publishing the season archive.",
+    };
+  }
+  if (
+    message.includes("regular-season weeks must be final") ||
+    message.includes("postseason rounds must be final") ||
+    message.includes("requires a final result") ||
+    message.includes("requires a final weekly score") ||
+    message.includes("requires settlement") ||
+    message.includes("derived season archive is incomplete")
+  ) {
+    return {
+      status: "error",
+      message:
+        "The final competitive ledger is incomplete. No archive was published and the season remains in playoffs.",
+    };
+  }
   if (message.includes("frozen playoff field is incomplete")) {
     return {
       status: "error",
@@ -709,6 +730,58 @@ export async function publishNextLivePostseasonWeekAction(
     message: `Week ${nextWeek} is open from the frozen playoff bracket. Only this round's participants received fresh 1,000-credit cards.`,
     href: `/l/${context.data.leagueSlug}/playoffs`,
     hrefLabel: `Review the Week ${nextWeek} bracket`,
+  };
+}
+
+export async function publishLiveSeasonArchiveAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  if (!context.success) return mutationError("invalid context");
+
+  const state = await getLiveStage1League(context.data.leagueSlug);
+  if (
+    !state ||
+    state.league.id !== context.data.leagueId ||
+    !state.commissioner.isCommissioner ||
+    state.league.mode !== "LIVE" ||
+    state.league.lifecycle !== "PLAYOFFS" ||
+    state.week?.state !== "FINAL" ||
+    state.week.nflWeek !== 17
+  ) {
+    return mutationError(
+      "Week 17 must be final before the season archive can publish.",
+    );
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const result = await supabase
+    .schema("api")
+    .rpc("publish_live_season_archive", {
+      p_league_id: context.data.leagueId,
+      p_idempotency_key: idempotencyKey("publish-live-season-archive"),
+    });
+  if (result.error) return mutationError(result.error.message);
+
+  for (const path of [
+    `/l/${context.data.leagueSlug}`,
+    `/l/${context.data.leagueSlug}/matchup`,
+    `/l/${context.data.leagueSlug}/schedule`,
+    `/l/${context.data.leagueSlug}/standings`,
+    `/l/${context.data.leagueSlug}/playoffs`,
+    `/l/${context.data.leagueSlug}/history`,
+    `/l/${context.data.leagueSlug}/commissioner`,
+    "/leagues",
+  ]) {
+    revalidatePath(path);
+  }
+  return {
+    status: "success",
+    message:
+      "The champion and complete final ledger are now preserved in the immutable season archive.",
+    href: `/l/${context.data.leagueSlug}/matchup`,
+    hrefLabel: "Open the completed season",
   };
 }
 

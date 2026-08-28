@@ -25,10 +25,14 @@ export default async function LeagueLayout({
       <LeagueShell
         leagueSlug={leagueSlug}
         leagueName={live?.league.name ?? "West 21st Ledger Archive"}
-        week={18}
+        week={archive.mode === "LIVE" ? 17 : 18}
         nflYear={archive.nflYear}
-        mode="SIMULATION"
-        dataLabel="Immutable full-season archive"
+        mode={archive.mode}
+        dataLabel={
+          archive.mode === "LIVE"
+            ? "Immutable Live season archive"
+            : "Immutable full-season simulation archive"
+        }
         memberName={viewer?.displayName ?? "Member"}
         memberRole="Archived participant"
         allocatedCredits={0}

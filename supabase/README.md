@@ -65,6 +65,11 @@ dual-incomplete higher-seed advancement, six-entry semifinal reseeding,
 idempotency, append-only round evidence, and the member playoff read model. It
 runs inside a rollback transaction.
 
+`tests/stage3_live_season_archive.test.sql` verifies that only the commissioner
+can close a complete final Week 17 ledger, that the champion is derived from
+the frozen bracket, and that the resulting member-scoped archive is immutable
+and idempotent. It runs inside a rollback transaction.
+
 The hosted Stage 2 migrations are:
 
 - `stage2_simulation_season_archives`
@@ -85,6 +90,8 @@ The hosted Stage 3 import migrations are:
 - `stage3_live_playoff_fk_index`
 - `stage3_live_postseason_rounds`
 - `stage3_live_postseason_fk_index`
+- `stage3_live_season_archive`
+- `stage3_live_season_archive_fk_index`
 
 After application, the security advisor reports no Stage 2 or Stage 3 issue and
 the performance advisor reports no unindexed Stage 2 or Stage 3 foreign key.
