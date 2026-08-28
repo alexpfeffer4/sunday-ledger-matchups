@@ -97,6 +97,8 @@ describe("league navigation", () => {
     expect(profileTrigger).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(profileTrigger);
     expect(profileTrigger).toHaveAttribute("aria-expanded", "true");
+    const profileMenu = screen.getByRole("dialog", { name: "Profile menu" });
+    expect(profileMenu.parentElement).toBe(document.body);
     const utilities = within(
       screen.getByRole("navigation", { name: "League and account" }),
     );
@@ -114,7 +116,7 @@ describe("league navigation", () => {
       utilities.queryByRole("link", { name: "Schedule" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Sign out" }),
+      within(profileMenu).getByRole("button", { name: "Sign out" }),
     ).toBeInTheDocument();
   });
 
