@@ -41,6 +41,12 @@ replay, member schedule reads, and the post-lock membership boundary. It runs
 inside a rollback transaction and does not alter the one-member Live test
 league.
 
+`tests/stage3_live_results.test.sql` contains 42 assertions for exact-set score
+imports, commissioner-only settlement, provider and documented objective
+corrections, the 48-hour postponement void, the 24-hour correction window,
+final score/matchup/standings versions, explicit fail-closed RLS, and immutable
+provider evidence. It runs inside a rollback transaction.
+
 The hosted Stage 2 migrations are:
 
 - `stage2_simulation_season_archives`
@@ -54,6 +60,8 @@ The hosted Stage 3 import migrations are:
 - `stage3_live_quote_refresh`
 - `stage3_live_quote_heads_fk_index`
 - `stage3_live_roster_lock`
+- `stage3_live_results`
+- `stage3_live_score_import_policy`
 
 After application, the security advisor reports no Stage 2 or Stage 3 issue and
 the performance advisor reports no unindexed Stage 2 or Stage 3 foreign key.

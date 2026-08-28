@@ -33,6 +33,9 @@ ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
 - Current-odds refresh for exactly the published event set: every observation
   remains append-only, one explicit quote head drives the UI, and receipt
   insertion rejects superseded prices without changing games or common lock
+- Exact-set NFL score refresh for the locked Live slate, provisional receipt
+  settlement, visible provider/manual correction versions, the frozen 48-hour
+  postponement rule, and database-enforced 24-hour finalization
 - Deterministic provider-fixture ports for healthy, stale, outlier, suspended,
   provider-degraded, live, final, void, and corrected states
 - Vitest unit/property coverage and Playwright configuration
@@ -84,9 +87,11 @@ the complete interactive lifecycle; the Stage 2 suite publishes, reads, and
 rejects mutation of a full-season archive; the Stage 3 suite verifies guarded
 live imports, immutable event selection, noncompetitive solo publication,
 current-quote refresh, idempotency, append-only storage, and commissioner-only
-RLS. All run inside rollback transactions. The `api` schema is the reviewed Data API
-boundary; base relations live in the non-exposed `private` schema and remain
-protected by grants and Row Level Security.
+RLS; the result suite verifies official-score provenance, correction replay,
+postponement voids, and final competitive snapshots. All run inside rollback
+transactions. The `api` schema is the reviewed Data API boundary; base
+relations live in the non-exposed `private` schema and remain protected by
+grants and Row Level Security.
 
 After authorization, link the intended Supabase development project, apply the
 migrations, expose only the `api` schema, generate project types, and run the
