@@ -77,6 +77,10 @@ export type Database = {
         Args: { p_display_name?: string };
         Returns: string;
       };
+      update_profile_display_name: {
+        Args: { p_display_name: string };
+        Returns: string;
+      };
       join_league: {
         Args: { p_token: string };
         Returns: {

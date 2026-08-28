@@ -4,10 +4,17 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PasswordSignInForm } from "@/components/auth/password-sign-in-form";
 import { SetPasswordForm } from "@/components/auth/set-password-form";
+import { MagicLinkForm } from "@/components/auth/magic-link-form";
+import { UsernameForm } from "@/components/auth/username-form";
 
 vi.mock("@/app/(auth)/auth/actions", () => ({
+  sendMagicLink: vi.fn(),
   signInWithPassword: vi.fn(),
   updatePassword: vi.fn(),
+}));
+
+vi.mock("@/app/account/actions", () => ({
+  updateUsername: vi.fn(),
 }));
 
 describe("password authentication options", () => {
@@ -27,16 +34,36 @@ describe("password authentication options", () => {
     ).toBeVisible();
   });
 
-  it("requires a twelve-character confirmed password for setup", () => {
+  it("requires an eight-character confirmed password for setup", () => {
     render(<SetPasswordForm />);
 
     expect(screen.getByLabelText("New password")).toHaveAttribute(
       "minlength",
-      "12",
+      "8",
     );
     expect(screen.getByLabelText("Confirm password")).toHaveAttribute(
       "autocomplete",
       "new-password",
     );
+  });
+
+  it("explains that a magic link continues into account setup", () => {
+    render(<MagicLinkForm next="/leagues" />);
+
+    expect(screen.getByText(/open Account/i)).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Email me a sign-in link" }),
+    ).toBeVisible();
+  });
+
+  it("offers an editable public username", () => {
+    render(<UsernameForm currentUsername="alexpfeffer4" />);
+
+    expect(screen.getByLabelText("Username")).toHaveValue("alexpfeffer4");
+    expect(screen.getByLabelText("Username")).toHaveAttribute(
+      "maxlength",
+      "30",
+    );
+    expect(screen.getByText(/email stays private/i)).toBeVisible();
   });
 });

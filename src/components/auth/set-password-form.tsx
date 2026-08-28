@@ -21,7 +21,7 @@ export function SetPasswordForm() {
           name="password"
           type="password"
           autoComplete="new-password"
-          minLength={12}
+          minLength={8}
           maxLength={128}
           required
           aria-describedby="password-requirements"
@@ -31,7 +31,7 @@ export function SetPasswordForm() {
           id="password-requirements"
           className="text-muted mt-2 text-xs leading-5"
         >
-          Use at least 12 characters. A password manager-generated password is
+          Use at least 8 characters. A password manager-generated password is
           best.
         </p>
       </div>
@@ -44,7 +44,7 @@ export function SetPasswordForm() {
           name="confirmPassword"
           type="password"
           autoComplete="new-password"
-          minLength={12}
+          minLength={8}
           maxLength={128}
           required
           className="border-control bg-surface focus:border-action mt-2 min-h-12 w-full rounded-lg border px-3 text-base"

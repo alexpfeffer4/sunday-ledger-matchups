@@ -36,7 +36,7 @@ export function PasswordSignInForm({ next }: { next: string }) {
           name="password"
           type="password"
           autoComplete="current-password"
-          minLength={6}
+          minLength={8}
           required
           className="border-control bg-surface focus:border-action mt-2 min-h-12 w-full rounded-lg border px-3 text-base"
         />

@@ -17,7 +17,7 @@ const magicLinkSchema = z.object({
 
 const passwordSignInSchema = z.object({
   email: z.email("Enter a valid email address.").trim().toLowerCase(),
-  password: z.string().min(6, "Enter your password."),
+  password: z.string().min(8, "Enter your password."),
   next: z.string().optional(),
 });
 
@@ -25,7 +25,7 @@ const passwordUpdateSchema = z
   .object({
     password: z
       .string()
-      .min(12, "Use at least 12 characters.")
+      .min(8, "Use at least 8 characters.")
       .max(128, "Use no more than 128 characters."),
     confirmPassword: z.string(),
   })
@@ -101,7 +101,8 @@ export async function sendMagicLink(
 
     return {
       status: "sent",
-      message: "Check your email for a one-time Sunday Ledger sign-in link.",
+      message:
+        "Check your email for a one-time sign-in link. It opens Account, where you can choose a username and create a password.",
     };
   } catch {
     return {
