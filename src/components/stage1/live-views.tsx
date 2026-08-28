@@ -1,6 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
+import type { LiveOddsImportReview } from "@/application/queries/get-live-odds-import";
+import type { LiveRegularSeasonSchedule } from "@/application/queries/get-live-regular-season-schedule";
+import type { LiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
 import { Stage1CommissionerControls } from "@/components/commissioner/stage1-controls";
 import { PageFrame } from "@/components/league/page-frame";
@@ -29,6 +32,8 @@ function formatScore(value: number): string {
 
 function liveStatus(state: Stage1StateDto): ReactNode {
   if (!state.week) return <StatusBadge tone="pending">Forming</StatusBadge>;
+  if (state.week.state === "PLANNED")
+    return <StatusBadge tone="sealed">Slate published</StatusBadge>;
   if (state.week.state === "FINAL")
     return <StatusBadge tone="positive">Final</StatusBadge>;
   if (state.week.state === "PROVISIONAL")
@@ -39,19 +44,22 @@ function liveStatus(state: Stage1StateDto): ReactNode {
 }
 
 function FormationPanel({ state }: { state: Stage1StateDto }) {
+  const liveSlatePublished =
+    state.league.mode === "LIVE" && state.week?.state === "PLANNED";
   return (
     <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">
       <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
         League formation
       </p>
       <h2 className="mt-2 text-xl font-bold">
-        {state.league.memberCount} members joined
+        {liveSlatePublished
+          ? `Week 1 slate published · ${state.league.memberCount} members joined`
+          : `${state.league.memberCount} members joined`}
       </h2>
       <p className="text-graphite mt-3 max-w-2xl leading-7">
-        A full season can publish with any even roster from 4 through 16; the
-        interactive Week 1 demo publishes at exactly eight. Until a path is
-        chosen, there is no schedule, slate, card, opponent readiness, or hidden
-        competitive state to infer.
+        {liveSlatePublished
+          ? "The eligible NFL events and common lock are fixed. Competitive play remains closed until an even roster of 4–16 locks and the balanced schedule, matchups, and weekly cards publish."
+          : "A full season can publish with any even roster from 4 through 16; the interactive Week 1 demo publishes at exactly eight. Until a path is chosen, there is no schedule, slate, card, opponent readiness, or hidden competitive state to infer."}
       </p>
       {state.commissioner.isCommissioner ? (
         <Link
@@ -66,6 +74,35 @@ function FormationPanel({ state }: { state: Stage1StateDto }) {
 }
 
 export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
+  if (
+    state.week &&
+    state.league.lifecycle === "PLAYOFFS" &&
+    (!state.matchup || !state.ownerCard)
+  ) {
+    return (
+      <PageFrame
+        eyebrow={`${state.league.name} · Week ${state.week.nflWeek} ${state.week.scope.toLowerCase()}`}
+        title="No matchup card this round"
+        description="Your entry is not scheduled in this round. That can mean a bye, an exhibition exclusion, or the end of its championship path."
+        aside={liveStatus(state)}
+      >
+        <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">
+          <h2 className="text-lg font-bold">The round still runs normally</h2>
+          <p className="text-graphite mt-2 max-w-2xl text-sm leading-6">
+            No private card was created for this entry, so there is nothing to
+            seal. Published matchups and advancement remain visible on the
+            playoff ledger.
+          </p>
+          <Link
+            className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
+            href={`/l/${state.league.slug}/playoffs`}
+          >
+            Open the playoff ledger
+          </Link>
+        </div>
+      </PageFrame>
+    );
+  }
   if (!state.week || !state.matchup || !state.ownerCard) {
     return (
       <PageFrame
@@ -80,7 +117,7 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
   const result = state.matchup.result;
   return (
     <PageFrame
-      eyebrow={`${state.league.name} · Week 1`}
+      eyebrow={`${state.league.name} · Week ${state.week.nflWeek}`}
       title={`${state.viewer.displayName} vs ${state.matchup.opponentName}`}
       description="Matchup-first status from the sealed server read model."
       aside={liveStatus(state)}
@@ -146,6 +183,89 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
 }
 
 export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
+  if (
+    state.league.mode === "LIVE" &&
+    state.week?.state === "PLANNED" &&
+    state.slate.length > 0 &&
+    !state.ownerCard
+  ) {
+    return (
+      <PageFrame
+        eyebrow={`${state.league.name} · Live Week 1`}
+        title="Published NFL slate"
+        description={`The eligible event set is immutable. Common lock ${formatDate(state.week.commonLockAt)}; cards stay closed until the roster and schedule publish.`}
+        aside={liveStatus(state)}
+      >
+        <div className="mt-7 grid gap-4">
+          {state.slate.map((event) => (
+            <article
+              className="border-boundary bg-surface rounded-xl border p-5"
+              key={event.id}
+            >
+              <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
+                <div>
+                  <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+                    {formatDate(event.scheduledStartAt)}
+                  </p>
+                  <h2 className="mt-2 text-lg font-bold">
+                    {event.awayTeam} at {event.homeTeam}
+                  </h2>
+                </div>
+                <StatusBadge tone="positive">6 outcomes stored</StatusBadge>
+              </div>
+              <ul className="border-boundary mt-4 grid gap-2 border-t pt-4 sm:grid-cols-2 lg:grid-cols-3">
+                {event.markets.map((market) => (
+                  <li
+                    className="bg-subtle flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm"
+                    key={market.id}
+                  >
+                    <span className="truncate">{market.proposition}</span>
+                    <span className="shrink-0 font-mono font-semibold">
+                      {formatOdds(market.americanOdds)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </PageFrame>
+    );
+  }
+  if (
+    state.week &&
+    state.league.lifecycle === "PLAYOFFS" &&
+    state.slate.length > 0 &&
+    !state.ownerCard
+  ) {
+    return (
+      <PageFrame
+        eyebrow={`${state.league.name} · Week ${state.week.nflWeek} ${state.week.scope.toLowerCase()}`}
+        title="Published NFL slate"
+        description={`This round's event set is immutable. Your entry has no card this round, but the official markets and common lock remain visible.`}
+        aside={liveStatus(state)}
+      >
+        <div className="mt-7 grid gap-4">
+          {state.slate.map((event) => (
+            <article
+              className="border-boundary bg-surface rounded-xl border p-5"
+              key={event.id}
+            >
+              <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+                {formatDate(event.scheduledStartAt)}
+              </p>
+              <h2 className="mt-2 text-lg font-bold">
+                {event.awayTeam} at {event.homeTeam}
+              </h2>
+              <p className="text-muted mt-2 text-sm">
+                {event.markets.length} published outcomes
+              </p>
+            </article>
+          ))}
+        </div>
+      </PageFrame>
+    );
+  }
   if (!state.week || !state.ownerCard) {
     return (
       <PageFrame
@@ -160,7 +280,7 @@ export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
   return (
     <PageFrame
       eyebrow="Stored deterministic provider fixture"
-      title="Week 1 slate"
+      title={`Week ${state.week.nflWeek} slate`}
       description={`Common lock ${formatDate(state.week.commonLockAt)}. Build an editable private draft, then review and seal the complete 1,000-credit card at once.`}
       aside={liveStatus(state)}
     >
@@ -170,12 +290,36 @@ export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
 }
 
 export function Stage1CardView({ state }: { state: Stage1StateDto }) {
+  if (state.week && state.league.lifecycle === "PLAYOFFS" && !state.ownerCard) {
+    return (
+      <PageFrame
+        eyebrow={`${state.league.name} · Week ${state.week.nflWeek} ${state.week.scope.toLowerCase()}`}
+        title="No card assigned this round"
+        description="Cards are granted only to entries scheduled in the published postseason round."
+        aside={liveStatus(state)}
+      >
+        <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">
+          <p className="text-graphite max-w-2xl leading-7">
+            There is no allocation to complete and no penalty for this entry.
+            Follow the official bracket for the current matchup field and
+            advancement.
+          </p>
+          <Link
+            className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
+            href={`/l/${state.league.slug}/playoffs`}
+          >
+            Open the playoff ledger
+          </Link>
+        </div>
+      </PageFrame>
+    );
+  }
   if (!state.week || !state.ownerCard) {
     return (
       <PageFrame
         eyebrow={`${state.league.name} · Formation`}
         title="My card"
-        description="The weekly card is granted when Week 1 publishes."
+        description="The weekly card is granted when the commissioner publishes the operational slate."
       >
         <FormationPanel state={state} />
       </PageFrame>
@@ -184,7 +328,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
   return (
     <PageFrame
       eyebrow="Private owner read model"
-      title="My Week 1 card"
+      title={`My Week ${state.week.nflWeek} card`}
       description="Your exact accepted terms are always visible to you and never available to the commissioner."
       aside={
         <StatusBadge
@@ -343,9 +487,13 @@ export function Stage1LiveView({ state }: { state: Stage1StateDto }) {
 export function Stage1LeagueView({ state }: { state: Stage1StateDto }) {
   return (
     <PageFrame
-      eyebrow={`${state.league.name} · Week 1`}
+      eyebrow={`${state.league.name} · Week ${state.week?.nflWeek ?? 1}${state.week ? ` ${state.week.scope.toLowerCase()}` : ""}`}
       title="Around the league"
-      description="Four deterministic matchups; sealed terms never enter this scoreboard."
+      description={
+        state.league.lifecycle === "PLAYOFFS"
+          ? "The published postseason pairings and latest result versions; sealed terms never enter this scoreboard."
+          : "Frozen scheduled matchups; sealed terms never enter this scoreboard."
+      }
       aside={liveStatus(state)}
     >
       {!state.week ? (
@@ -358,7 +506,7 @@ export function Stage1LeagueView({ state }: { state: Stage1StateDto }) {
               key={matchup.id}
             >
               <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
-                Matchup {matchup.displayOrder}
+                {matchup.scope.toLowerCase()} · Matchup {matchup.displayOrder}
               </p>
               <div className="mt-4 flex justify-between gap-4">
                 <p className="font-bold">{matchup.sideAName}</p>
@@ -387,14 +535,25 @@ export function Stage1LeagueView({ state }: { state: Stage1StateDto }) {
 export function Stage1StandingsView({ state }: { state: Stage1StateDto }) {
   return (
     <PageFrame
-      eyebrow="Week 1 stored snapshot"
+      eyebrow={
+        state.league.lifecycle === "PLAYOFFS"
+          ? "Regular season final · Week 14"
+          : `Official through Week ${state.week?.nflWeek ?? 1}`
+      }
       title="Standings"
-      description="The latest snapshot derives from the newest official result-version chain."
+      description={
+        state.league.lifecycle === "PLAYOFFS"
+          ? "The regular-season ordering is frozen. Postseason results advance the bracket without rewriting these standings."
+          : "The latest snapshot derives from the newest official result-version chain."
+      }
       aside={liveStatus(state)}
     >
       {state.standings.length === 0 ? (
         <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">
-          <p>Standings publish after all four Week 1 matchups complete.</p>
+          <p>
+            Standings publish after every Week {state.week?.nflWeek ?? 1}
+            matchup completes.
+          </p>
         </div>
       ) : (
         <div className="border-boundary bg-surface mt-7 overflow-x-auto rounded-xl border">
@@ -442,7 +601,17 @@ export function Stage1StandingsView({ state }: { state: Stage1StateDto }) {
   );
 }
 
-export function Stage1CommissionerView({ state }: { state: Stage1StateDto }) {
+export function Stage1CommissionerView({
+  latestLiveImport,
+  liveWeekOperations,
+  providerConfigured,
+  state,
+}: {
+  latestLiveImport: LiveOddsImportReview | null;
+  liveWeekOperations: LiveWeekOperations | null;
+  providerConfigured: boolean;
+  state: Stage1StateDto;
+}) {
   if (!state.commissioner.isCommissioner) {
     return (
       <PageFrame
@@ -459,21 +628,27 @@ export function Stage1CommissionerView({ state }: { state: Stage1StateDto }) {
   return (
     <PageFrame
       eyebrow="Named idempotent operations"
-      title="Stage 1 commissioner console"
+      title="Commissioner console"
       description="No control can inspect sealed terms or directly edit scores, winners, records, or standings."
       aside={liveStatus(state)}
     >
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Stage1CommissionerControls
+          latestLiveImport={latestLiveImport}
+          liveWeekOperations={liveWeekOperations}
+          providerConfigured={providerConfigured}
           state={{
             league: {
               id: state.league.id,
               slug: state.league.slug,
               memberCount: state.league.memberCount,
               lifecycle: state.league.lifecycle,
+              mode: state.league.mode,
             },
             week: state.week
               ? {
+                  nflWeek: state.week.nflWeek,
+                  scope: state.week.scope,
                   state: state.week.state,
                   commonLockAt: state.week.commonLockAt,
                   correctionWindowClosesAt: state.week.correctionWindowClosesAt,
@@ -486,6 +661,11 @@ export function Stage1CommissionerView({ state }: { state: Stage1StateDto }) {
               scheduledStartAt: event.scheduledStartAt,
               awayTeam: event.awayTeam,
               homeTeam: event.homeTeam,
+              latestObservedAt: event.markets.reduce(
+                (latest, market) =>
+                  market.observedAt > latest ? market.observedAt : latest,
+                event.markets[0]?.observedAt ?? event.scheduledStartAt,
+              ),
             })),
           }}
         />
@@ -524,7 +704,115 @@ export function Stage1CommissionerView({ state }: { state: Stage1StateDto }) {
   );
 }
 
-export function Stage1ScheduleView({ state }: { state: Stage1StateDto }) {
+export function Stage1ScheduleView({
+  liveSchedule,
+  state,
+}: {
+  liveSchedule?: LiveRegularSeasonSchedule | null;
+  state: Stage1StateDto;
+}) {
+  if (state.league.mode === "LIVE") {
+    return (
+      <PageFrame
+        eyebrow="Published at roster lock"
+        title="2026 regular-season schedule"
+        description="One matchup per member per week. The complete 14-week publication is deterministic and immutable; future weekly NFL slates do not change these opponents."
+        aside={liveStatus(state)}
+      >
+        {!liveSchedule ? (
+          <FormationPanel state={state} />
+        ) : (
+          <>
+            <section className="border-boundary bg-surface mt-7 rounded-xl border p-5">
+              <dl className="grid gap-4 text-sm sm:grid-cols-3">
+                <div>
+                  <dt className="text-muted">Algorithm</dt>
+                  <dd className="mt-1 font-semibold">
+                    {liveSchedule.algorithmVersion}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted">Publication</dt>
+                  <dd className="mt-1 font-semibold">14 weeks · frozen</dd>
+                </div>
+                <div>
+                  <dt className="text-muted">Output evidence</dt>
+                  <dd
+                    className="mt-1 truncate font-mono text-xs"
+                    title={liveSchedule.outputHash}
+                  >
+                    {liveSchedule.outputHash}
+                  </dd>
+                </div>
+              </dl>
+              <p className="text-muted mt-4 text-xs">
+                Published {formatDate(liveSchedule.publishedAt)}
+              </p>
+            </section>
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 14 }, (_, index) => index + 1).map(
+                (week) => {
+                  const matchups = liveSchedule.matchups.filter(
+                    (matchup) => matchup.week === week,
+                  );
+                  return (
+                    <section
+                      aria-labelledby={`live-schedule-week-${week}`}
+                      className={`rounded-xl border p-5 ${
+                        week === state.week?.nflWeek
+                          ? "border-registry bg-registry/5"
+                          : "border-boundary bg-surface"
+                      }`}
+                      key={week}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <h2
+                          className="font-bold"
+                          id={`live-schedule-week-${week}`}
+                        >
+                          Week {week}
+                        </h2>
+                        <span className="text-muted text-xs font-semibold">
+                          {week === state.week?.nflWeek
+                            ? state.week.state
+                            : week < (state.week?.nflWeek ?? 1)
+                              ? "Final"
+                              : "Scheduled"}
+                        </span>
+                      </div>
+                      <div className="divide-boundary mt-3 divide-y">
+                        {matchups.map((matchup) => {
+                          const isViewerMatchup = [
+                            matchup.sideAEntryId,
+                            matchup.sideBEntryId,
+                          ].includes(state.viewer.entryId);
+                          return (
+                            <p
+                              className={`py-2.5 text-sm ${
+                                isViewerMatchup
+                                  ? "text-registry font-bold"
+                                  : "text-graphite"
+                              }`}
+                              key={`${matchup.sideAEntryId}-${matchup.sideBEntryId}`}
+                            >
+                              {matchup.sideAName}{" "}
+                              <span className="text-muted">vs</span>{" "}
+                              {matchup.sideBName}
+                            </p>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  );
+                },
+              )}
+            </div>
+          </>
+        )}
+      </PageFrame>
+    );
+  }
+
   return (
     <PageFrame
       eyebrow="Published at roster lock"
@@ -594,17 +882,19 @@ export function Stage1DeferredView({
       aside={<StatusBadge tone="pending">Not published</StatusBadge>}
     >
       <section className="border-boundary bg-surface mt-7 max-w-3xl rounded-xl border p-6">
-        <h2 className="font-bold">Week 1 remains the source of truth</h2>
+        <h2 className="font-bold">
+          Week {state.week?.nflWeek ?? 1} remains the source of truth
+        </h2>
         <p className="text-graphite mt-3 leading-7">
-          This Stage 1 vertical slice intentionally stops at the first official
-          weekly result and standings snapshot. No placeholder history or
-          postseason fact is inferred from private or incomplete data.
+          The current operational week and latest official standings snapshot
+          remain authoritative. No placeholder history or postseason fact is
+          inferred from private or incomplete data.
         </p>
         <Link
           className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
           href={`/l/${state.league.slug}/matchup`}
         >
-          Return to Week 1 matchup
+          Return to current matchup
         </Link>
       </section>
     </PageFrame>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
+import { getLiveRegularSeasonSchedule } from "@/application/queries/get-live-regular-season-schedule";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
 import { getSimulationSeasonArchive } from "@/application/queries/get-simulation-season-archive";
 import { PageFrame } from "@/components/league/page-frame";
@@ -15,12 +16,14 @@ export default async function SchedulePage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
-  const [live, archive] = await Promise.all([
+  const [live, archive, liveSchedule] = await Promise.all([
     getLiveStage1League(leagueSlug),
     getSimulationSeasonArchive(leagueSlug),
+    getLiveRegularSeasonSchedule(leagueSlug),
   ]);
   if (archive) return <SeasonArchiveSchedule archive={archive} />;
-  if (live) return <Stage1ScheduleView state={live} />;
+  if (live)
+    return <Stage1ScheduleView liveSchedule={liveSchedule} state={live} />;
   const league = getSimulationLeague(leagueSlug);
   if (!league) notFound();
 

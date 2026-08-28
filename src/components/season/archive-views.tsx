@@ -44,7 +44,9 @@ export function SeasonArchiveHome({
 }) {
   const champion = memberName(archive, archive.playoffs.championEntryId);
   const runnerUp = memberName(archive, archive.playoffs.runnerUpEntryId);
-  const third = memberName(archive, archive.playoffs.thirdPlaceEntryId);
+  const third = archive.playoffs.thirdPlaceEntryId
+    ? memberName(archive, archive.playoffs.thirdPlaceEntryId)
+    : null;
   const viewer = archive.regularSeason.finalStandings.find(
     (standing) => standing.entryId === archive.viewerEntryId,
   );
@@ -53,7 +55,11 @@ export function SeasonArchiveHome({
     <PageFrame
       eyebrow={`${archive.nflYear} season · official archive`}
       title={`${champion} won the Ledger`}
-      description="Fourteen regular-season weeks, the complete frozen playoff bracket, and Week 18 exhibitions were generated through the same scoring and standings rules as the weekly game."
+      description={
+        archive.mode === "LIVE"
+          ? "Fourteen regular-season weeks and the complete frozen playoff bracket are preserved from final accepted cards, official results, and visible corrections."
+          : "Fourteen regular-season weeks, the complete frozen playoff bracket, and Week 18 exhibitions were generated through the same scoring and standings rules as the weekly game."
+      }
       aside={<StatusBadge tone="positive">Season final</StatusBadge>}
     >
       {demoRunReceipt ? (
@@ -89,7 +95,10 @@ export function SeasonArchiveHome({
               {champion}
             </h2>
             <p className="text-graphite mt-2">
-              Defeated {runnerUp} in Week 17 · {third} finished third
+              Defeated {runnerUp} in Week 17 ·{" "}
+              {third
+                ? `${third} finished third`
+                : "the third-place matchup finished tied"}
             </p>
           </div>
           <Link
@@ -131,9 +140,9 @@ export function SeasonArchiveHome({
           <p className="text-graphite mt-3 max-w-3xl leading-7">
             The archive retains {archive.regularSeason.weeks.length} ordered
             standings snapshots, {archive.schedule.matchups.length}{" "}
-            regular-season matchups, immutable receipt terms for every simulated
-            card, playoff advancement reasons, and exhibitions that cannot alter
-            the champion.
+            regular-season matchups, immutable receipt terms for every{" "}
+            {archive.mode === "LIVE" ? "accepted" : "simulated"} card, playoff
+            advancement reasons, and exhibitions that cannot alter the champion.
           </p>
           <div className="mt-5 flex flex-wrap gap-4">
             <Link
@@ -295,7 +304,7 @@ export function SeasonArchiveStandings({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] border-collapse text-left text-sm">
             <caption className="sr-only">
-              Final {archive.nflYear} simulation standings
+              Final {archive.nflYear} season standings
             </caption>
             <thead className="bg-subtle text-muted text-xs tracking-[0.08em] uppercase">
               <tr>
@@ -434,10 +443,9 @@ export function SeasonArchivePlayoffs({
                         </span>
                       </div>
                       <p className="text-positive mt-3 text-xs font-semibold">
-                        {line.winner} advanced ·{" "}
-                        {game.advancementReason
-                          ?.toLowerCase()
-                          .replaceAll("_", " ")}
+                        {line.winner
+                          ? `${line.winner} ${game.scope === "PLAYOFF" ? "advanced" : "won"}${game.advancementReason ? ` · ${game.advancementReason.toLowerCase().replaceAll("_", " ")}` : ""}`
+                          : "Matchup finished tied"}
                       </p>
                     </article>
                   );

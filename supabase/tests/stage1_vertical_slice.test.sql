@@ -316,22 +316,34 @@ select lives_ok(
 );
 
 select is(
-  (select count(*) from private.matchups),
+  (
+    select count(*) from private.matchups
+    where season_id = '30000000-0000-4000-8000-000000000001'
+  ),
   4::bigint,
   'four Week 1 matchups are stored'
 );
 select is(
-  (select count(*) from private.weekly_cards),
+  (
+    select count(*) from private.weekly_cards
+    where season_id = '30000000-0000-4000-8000-000000000001'
+  ),
   8::bigint,
   'all eight entries receive a card'
 );
 select is(
-  (select count(*) from private.slate_items),
+  (
+    select count(*) from private.slate_items
+    where league_id = '10000000-0000-4000-8000-000000000001'
+  ),
   48::bigint,
   'only the 48 primary DraftKings-shaped outcomes are eligible'
 );
 select is(
-  (select count(*) from private.market_snapshots),
+  (
+    select count(*) from private.market_snapshots
+    where league_id = '10000000-0000-4000-8000-000000000001'
+  ),
   56::bigint,
   'all primary and comparison observations are retained'
 );
@@ -339,7 +351,8 @@ select is(
   (
     select count(*)
     from private.market_snapshots
-    where book_key = 'fanduel' and quality_status = 'OUTLIER'
+    where league_id = '10000000-0000-4000-8000-000000000001'
+      and book_key = 'fanduel' and quality_status = 'OUTLIER'
   ),
   8::bigint,
   'eight comparison-provider observations are stored but ineligible'
@@ -348,7 +361,7 @@ select is(
   (
     select common_lock_at
     from private.season_weeks
-    where nfl_week = 1
+    where season_id = '30000000-0000-4000-8000-000000000001' and nfl_week = 1
   ),
   '2026-09-13T16:55:00Z'::timestamptz,
   'common lock is five minutes before the earliest kickoff'
@@ -392,6 +405,7 @@ begin
   join private.sports_events as event on event.id = snapshot.event_id
   join private.slate_items as item on item.market_snapshot_id = snapshot.id
   where event.fixture_event_key = p_event_key
+    and event.season_id = '30000000-0000-4000-8000-000000000001'
     and snapshot.market_type = p_market_type
     and snapshot.outcome_key = p_outcome_key
     and snapshot.book_key = 'draftkings';
@@ -438,6 +452,7 @@ begin
   from jsonb_array_elements(p_selections) with ordinality as selection(value, ordinality)
   join private.sports_events as event
     on event.fixture_event_key = selection.value ->> 'eventKey'
+   and event.season_id = '30000000-0000-4000-8000-000000000001'
   join private.market_snapshots as snapshot
     on snapshot.event_id = event.id
    and snapshot.market_type = selection.value ->> 'marketType'
@@ -497,7 +512,11 @@ select is(
   'the viewer has exactly 1,000 accepted credits'
 );
 select ok(
-  (select frozen_at is not null from private.slates limit 1),
+  (
+    select frozen_at is not null from private.slates
+    where season_id = '30000000-0000-4000-8000-000000000001'
+    limit 1
+  ),
   'the slate freezes on the first immutable receipt'
 );
 select ok(
@@ -519,7 +538,11 @@ select lives_ok(
   'database time locks every card at the common boundary'
 );
 select is(
-  (select count(*) from private.weekly_cards where compliance = 'COMPLIANT'),
+  (
+    select count(*) from private.weekly_cards
+    where season_id = '30000000-0000-4000-8000-000000000001'
+      and compliance = 'COMPLIANT'
+  ),
   5::bigint,
   'five deliberately completed cards are compliant'
 );
@@ -547,7 +570,8 @@ declare
 begin
   select * into strict v_event
   from private.sports_events
-  where fixture_event_key = p_event_key;
+  where season_id = '30000000-0000-4000-8000-000000000001'
+    and fixture_event_key = p_event_key;
 
   perform api.set_stage1_event_live(
     v_event.id,
@@ -600,7 +624,8 @@ begin
   loop
     select id into strict v_event_id
     from private.sports_events
-    where fixture_event_key = v_result.event_key;
+    where season_id = '30000000-0000-4000-8000-000000000001'
+      and fixture_event_key = v_result.event_key;
 
     perform api.record_stage1_result(
       v_event_id,
@@ -620,7 +645,12 @@ select lives_ok(
   'all eight deterministic event results settle and replay the week'
 );
 select is(
-  (select count(*) from private.matchup_result_versions),
+  (
+    select count(*)
+    from private.matchup_result_versions as result
+    join private.matchups as matchup on matchup.id = result.matchup_id
+    where matchup.season_id = '30000000-0000-4000-8000-000000000001'
+  ),
   4::bigint,
   'all four matchup cases produce a result'
 );
@@ -677,7 +707,10 @@ select is(
   'a half-cent profit rounds half up to the next centicredit'
 );
 select is(
-  (select state from private.season_weeks where nfl_week = 1),
+  (
+    select state from private.season_weeks
+    where season_id = '30000000-0000-4000-8000-000000000001' and nfl_week = 1
+  ),
   'PROVISIONAL',
   'the fully settled week enters its 24-hour provisional window'
 );
@@ -685,6 +718,7 @@ select is(
   (
     select jsonb_array_length(ordered_rows)
     from private.standings_snapshots
+    where season_id = '30000000-0000-4000-8000-000000000001'
     order by created_at desc
     limit 1
   ),
@@ -694,16 +728,21 @@ select is(
 
 create temporary table receipt_evidence_before_correction as
 select id, receipt_hash
-from private.position_receipts;
+from private.position_receipts
+where league_id = '10000000-0000-4000-8000-000000000001';
 
 create temporary table correction_window_before as
 select correction_window_closes_at
 from private.season_weeks
-where nfl_week = 1;
+where season_id = '30000000-0000-4000-8000-000000000001' and nfl_week = 1;
 
 select lives_ok(
   $$select api.record_stage1_result(
-    (select id from private.sports_events where fixture_event_key = 'buf-nyj'),
+    (
+      select id from private.sports_events
+      where season_id = '30000000-0000-4000-8000-000000000001'
+        and fixture_event_key = 'buf-nyj'
+    ),
     'FINAL',
     20,
     24,
@@ -718,13 +757,17 @@ select is(
     select count(*)
     from private.event_result_versions as result
     join private.sports_events as event on event.id = result.event_id
-    where event.fixture_event_key = 'buf-nyj'
+    where event.season_id = '30000000-0000-4000-8000-000000000001'
+      and event.fixture_event_key = 'buf-nyj'
   ),
   2::bigint,
   'the original and corrected result versions both remain'
 );
 select is(
-  (select count(*) from private.corrections),
+  (
+    select count(*) from private.corrections
+    where league_id = '10000000-0000-4000-8000-000000000001'
+  ),
   1::bigint,
   'the correction ledger records before and after evidence'
 );
@@ -743,7 +786,8 @@ select is(
     from private.settlement_versions as settlement
     join private.position_receipts as receipt on receipt.id = settlement.receipt_id
     join private.sports_events as event on event.id = receipt.event_id
-    where event.fixture_event_key = 'buf-nyj'
+    where event.season_id = '30000000-0000-4000-8000-000000000001'
+      and event.fixture_event_key = 'buf-nyj'
       and settlement.supersedes_id is not null
   ),
   2::bigint,
@@ -753,7 +797,9 @@ select set_eq(
   $$
     select distinct settlement.outcome
     from private.settlement_versions as settlement
-    where not exists (
+    join private.position_receipts as receipt on receipt.id = settlement.receipt_id
+    where receipt.league_id = '10000000-0000-4000-8000-000000000001'
+      and not exists (
       select 1
       from private.settlement_versions as newer
       where newer.supersedes_id = settlement.id
@@ -763,12 +809,19 @@ select set_eq(
   'the final receipt set demonstrates win, loss, push, and void'
 );
 select is(
-  (select correction_window_closes_at from private.season_weeks where nfl_week = 1),
+  (
+    select correction_window_closes_at from private.season_weeks
+    where season_id = '30000000-0000-4000-8000-000000000001' and nfl_week = 1
+  ),
   (select correction_window_closes_at from correction_window_before),
   'a correction does not extend its own 24-hour window'
 );
 select ok(
-  (select count(*) > 0 from private.standings_snapshots where supersedes_id is not null),
+  (
+    select count(*) > 0 from private.standings_snapshots
+    where season_id = '30000000-0000-4000-8000-000000000001'
+      and supersedes_id is not null
+  ),
   'standings replay appends a superseding snapshot'
 );
 
@@ -777,7 +830,7 @@ select api.advance_stage1_clock(
   (
     select correction_window_closes_at + interval '1 minute'
     from private.season_weeks
-    where nfl_week = 1
+    where season_id = '30000000-0000-4000-8000-000000000001' and nfl_week = 1
   ),
   'advance-after-correction-window'
 );
@@ -789,22 +842,41 @@ select lives_ok(
   'the commissioner can finalize only after the correction window'
 );
 select is(
-  (select state from private.season_weeks where nfl_week = 1),
+  (
+    select state from private.season_weeks
+    where season_id = '30000000-0000-4000-8000-000000000001' and nfl_week = 1
+  ),
   'FINAL',
   'Week 1 becomes final'
 );
 select is(
-  (select count(*) from private.weekly_score_versions where status = 'FINAL'),
+  (
+    select count(*)
+    from private.weekly_score_versions as score
+    join private.weekly_cards as card on card.id = score.card_id
+    where card.season_id = '30000000-0000-4000-8000-000000000001'
+      and score.status = 'FINAL'
+  ),
   8::bigint,
   'all eight weekly scores receive final versions'
 );
 select is(
-  (select count(*) from private.matchup_result_versions where status = 'FINAL'),
+  (
+    select count(*)
+    from private.matchup_result_versions as result
+    join private.matchups as matchup on matchup.id = result.matchup_id
+    where matchup.season_id = '30000000-0000-4000-8000-000000000001'
+      and result.status = 'FINAL'
+  ),
   4::bigint,
   'all four matchup results receive final versions'
 );
 select is(
-  (select count(*) from private.standings_snapshots where status = 'FINAL'),
+  (
+    select count(*) from private.standings_snapshots
+    where season_id = '30000000-0000-4000-8000-000000000001'
+      and status = 'FINAL'
+  ),
   1::bigint,
   'the standings receive a final snapshot'
 );

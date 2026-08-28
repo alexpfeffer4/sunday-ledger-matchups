@@ -18,6 +18,32 @@ const positionSchema = z.object({
   settlement: settlementSchema.optional(),
 });
 
+export const stage1MarketSchema = z.object({
+  id: z.uuid(),
+  marketType: z.enum(["MONEYLINE", "SPREAD", "TOTAL"]),
+  outcomeKey: z.enum(["AWAY", "HOME", "OVER", "UNDER"]),
+  proposition: z.string(),
+  lineMilli: z.number().int().nullable(),
+  americanOdds: z.number().int(),
+  qualityStatus: z.enum([
+    "HEALTHY",
+    "STALE",
+    "OUTLIER",
+    "SUSPENDED",
+    "PROVIDER_DEGRADED",
+  ]),
+  observedAt: z.string(),
+  payloadHash: z.string().length(64),
+  maximumStakeCredits: z.number().int().positive(),
+});
+
+export const liveQuoteHeadsSchema = z.array(
+  z.object({
+    eventId: z.uuid(),
+    markets: z.array(stage1MarketSchema).length(6),
+  }),
+);
+
 export const stage1StateSchema = z.object({
   league: z.object({
     id: z.uuid(),
@@ -61,6 +87,7 @@ export const stage1StateSchema = z.object({
     .object({
       id: z.uuid(),
       nflWeek: z.number().int(),
+      scope: z.enum(["REGULAR", "PLAYOFF", "PLACEMENT", "EXHIBITION"]),
       state: z.enum(["PLANNED", "OPEN", "LOCKED", "PROVISIONAL", "FINAL"]),
       opensAt: z.string(),
       commonLockAt: z.string(),
@@ -72,6 +99,7 @@ export const stage1StateSchema = z.object({
     z.object({
       id: z.uuid(),
       displayOrder: z.number().int(),
+      scope: z.enum(["REGULAR", "PLAYOFF", "PLACEMENT", "EXHIBITION"]),
       sideAEntryId: z.uuid(),
       sideAName: z.string(),
       sideBEntryId: z.uuid(),
@@ -97,26 +125,7 @@ export const stage1StateSchema = z.object({
       actualStartedAt: z.string().nullable(),
       state: z.enum(["SCHEDULED", "LIVE", "FINAL", "VOID", "CORRECTED"]),
       providerHealth: z.enum(["HEALTHY", "DEGRADED"]),
-      markets: z.array(
-        z.object({
-          id: z.uuid(),
-          marketType: z.enum(["MONEYLINE", "SPREAD", "TOTAL"]),
-          outcomeKey: z.enum(["AWAY", "HOME", "OVER", "UNDER"]),
-          proposition: z.string(),
-          lineMilli: z.number().int().nullable(),
-          americanOdds: z.number().int(),
-          qualityStatus: z.enum([
-            "HEALTHY",
-            "STALE",
-            "OUTLIER",
-            "SUSPENDED",
-            "PROVIDER_DEGRADED",
-          ]),
-          observedAt: z.string(),
-          payloadHash: z.string().length(64),
-          maximumStakeCredits: z.number().int().positive(),
-        }),
-      ),
+      markets: z.array(stage1MarketSchema),
     }),
   ),
   ownerCard: z
@@ -175,6 +184,9 @@ export const stage1StateSchema = z.object({
       pointsForCenticredits: z.number().int().nonnegative(),
       allPlayHalfWinUnits: z.number().int().nonnegative(),
       allPlayComparisonCount: z.number().int().nonnegative(),
+      headToHeadApplied: z.boolean().optional(),
+      headToHeadHalfWinUnits: z.number().int().nonnegative().optional(),
+      headToHeadComparisonCount: z.number().int().nonnegative().optional(),
       attendanceMisses: z.number().int().nonnegative(),
       highestWeekCenticredits: z.number().int().nonnegative(),
       deterministicTiebreak: z.string(),

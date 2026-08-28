@@ -85,6 +85,80 @@ export type Database = {
           league_slug: string;
         }[];
       };
+      get_live_odds_import: {
+        Args: { p_league_slug: string };
+        Returns: Json | null;
+      };
+      get_live_playoff_state: {
+        Args: { p_league_slug: string };
+        Returns: Json | null;
+      };
+      get_season_archive: {
+        Args: { p_league_slug: string };
+        Returns: Json | null;
+      };
+      get_live_quote_heads: {
+        Args: { p_league_slug: string };
+        Returns: Json;
+      };
+      get_live_regular_season_schedule: {
+        Args: { p_league_slug: string };
+        Returns: Json | null;
+      };
+      get_live_week_operations: {
+        Args: { p_league_slug: string };
+        Returns: Json | null;
+      };
+      import_live_scores: {
+        Args: {
+          p_idempotency_key: string;
+          p_import: Json;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
+      correct_live_event_result: {
+        Args: {
+          p_away_score: number | null;
+          p_event_id: string;
+          p_home_score: number | null;
+          p_idempotency_key: string;
+          p_reason: string;
+          p_status: string;
+        };
+        Returns: Json;
+      };
+      void_live_event_after_postponement_window: {
+        Args: {
+          p_event_id: string;
+          p_idempotency_key: string;
+          p_reason: string;
+        };
+        Returns: Json;
+      };
+      lock_live_roster_and_open_week: {
+        Args: {
+          p_idempotency_key: string;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
+      refresh_live_week_quotes: {
+        Args: {
+          p_idempotency_key: string;
+          p_import_id: string;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
+      store_live_odds_import: {
+        Args: {
+          p_idempotency_key: string;
+          p_import: Json;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
       accept_stage1_position: {
         Args: {
           p_expected_payload_hash: string;
@@ -158,6 +232,47 @@ export type Database = {
       publish_simulation_season_archive: {
         Args: {
           p_archive_json: Json;
+          p_idempotency_key: string;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
+      publish_live_week_slate: {
+        Args: {
+          p_external_event_ids: string[];
+          p_idempotency_key: string;
+          p_import_id: string;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
+      publish_next_live_week_slate: {
+        Args: {
+          p_external_event_ids: string[];
+          p_idempotency_key: string;
+          p_import_id: string;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
+      publish_next_live_postseason_week: {
+        Args: {
+          p_external_event_ids: string[];
+          p_idempotency_key: string;
+          p_import_id: string;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
+      publish_live_playoff_qualification: {
+        Args: {
+          p_idempotency_key: string;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
+      publish_live_season_archive: {
+        Args: {
           p_idempotency_key: string;
           p_league_id: string;
         };

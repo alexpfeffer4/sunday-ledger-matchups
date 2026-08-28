@@ -14,6 +14,28 @@ function pairKey(left: string, right: string): string {
 }
 
 describe("regular-season schedule properties", () => {
+  it("matches the database circle-v1 publication fixture", () => {
+    const schedule = generateRegularSeasonSchedule({
+      entryIds: [
+        "74000000-0000-4000-8000-000000000001",
+        "74000000-0000-4000-8000-000000000002",
+        "74000000-0000-4000-8000-000000000003",
+        "74000000-0000-4000-8000-000000000004",
+      ],
+      seed: "stage3-live-roster-lock-seed-0001",
+    });
+
+    expect(schedule.orderedEntryIds).toEqual([
+      "74000000-0000-4000-8000-000000000004",
+      "74000000-0000-4000-8000-000000000003",
+      "74000000-0000-4000-8000-000000000002",
+      "74000000-0000-4000-8000-000000000001",
+    ]);
+    expect(schedule.outputHash).toBe(
+      "35b4236a237622597e8d0a78980dae7569cea88af4dca0823c8e3695306c798f",
+    );
+  });
+
   it("satisfies every roster-size invariant over many public seeds", () => {
     fc.assert(
       fc.property(fc.constantFrom(...supportedSizes), hexSeed, (size, seed) => {

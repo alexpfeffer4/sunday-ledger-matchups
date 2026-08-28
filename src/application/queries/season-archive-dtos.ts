@@ -56,7 +56,7 @@ const standingSchema = z.object({
 
 export const simulationSeasonArchiveSchema = z.object({
   schemaVersion: z.literal(1),
-  mode: z.literal("SIMULATION"),
+  mode: z.enum(["LIVE", "SIMULATION"]),
   seasonLabel: z.string(),
   nflYear: z.number().int(),
   generatedAt: z.string(),
@@ -108,10 +108,13 @@ export const simulationSeasonArchiveSchema = z.object({
     games: z.array(matchupSchema),
     championEntryId: z.string(),
     runnerUpEntryId: z.string(),
-    thirdPlaceEntryId: z.string(),
+    thirdPlaceEntryId: z.string().nullable(),
+    thirdPlaceTied: z.boolean().optional(),
   }),
   week18: z.array(matchupSchema),
 });
+
+export type SeasonArchiveDto = z.infer<typeof simulationSeasonArchiveSchema>;
 
 export type SimulationSeasonArchiveDto = z.infer<
   typeof simulationSeasonArchiveSchema
