@@ -37,6 +37,15 @@ describe("solo interactive demo flow", () => {
   it("edits drafts, enforces a guardrail, and seals the complete card atomically", () => {
     render(<InteractiveWeekDemo />);
 
+    const openingCard = marketCard(/^Kansas City −205$/);
+    const openingOutcomes = within(openingCard).getAllByRole("button", {
+      pressed: false,
+    });
+    expect(openingOutcomes).toHaveLength(2);
+    expect(
+      within(openingCard).getByRole("button", { name: "Add to card" }),
+    ).toBeDisabled();
+
     addDraft(/^Kansas City −205$/, "1000");
     expect(screen.getByRole("alert")).toHaveTextContent(
       "this position may use at most 750 credits",
@@ -58,7 +67,7 @@ describe("solo interactive demo flow", () => {
       "border-registry",
       "bg-registry",
       "text-white",
-      "min-h-20",
+      "h-20",
       "pr-10",
     );
     expect(within(selectedKansasCity).getByText("✓")).toBeVisible();

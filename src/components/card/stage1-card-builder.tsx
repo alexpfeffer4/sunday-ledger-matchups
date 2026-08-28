@@ -550,7 +550,7 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                         return (
                           <button
                             aria-pressed={isSelected}
-                            className={`relative min-h-20 rounded-lg border py-3 pr-10 pl-3 text-left transition-colors ${
+                            className={`relative h-20 rounded-lg border py-2 pr-10 pl-3 text-left transition-colors ${
                               isSelected
                                 ? "border-registry bg-registry text-white shadow-sm"
                                 : "border-control bg-surface hover:border-registry hover:bg-registry/5"
@@ -560,10 +560,10 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                             onClick={() => selectOutcome(event, market)}
                             type="button"
                           >
-                            <span className="block text-sm font-semibold">
+                            <span className="block text-sm leading-5 font-semibold">
                               {market.proposition}
                             </span>
-                            <span className="mt-1 block font-mono text-xs">
+                            <span className="mt-1 block font-mono text-xs leading-4">
                               {formatOdds(market.americanOdds)}
                             </span>
                             {isSelected ? (

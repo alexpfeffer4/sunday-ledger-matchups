@@ -28,7 +28,7 @@ import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
 type DemoPhase = "BUILDING" | "LOCKED" | "FINAL";
 
 type DraftPosition = {
-  opportunityId: string;
+  opportunityId: string | null;
   stakeCredits: string;
 };
 
@@ -52,7 +52,7 @@ function createInitialDrafts(): Record<string, DraftPosition> {
       event.markets.map((market) => [
         marketKey(event.id, market.marketType),
         {
-          opportunityId: market.opportunities[0].id,
+          opportunityId: null,
           stakeCredits: "250",
         },
       ]),
@@ -131,11 +131,13 @@ function DemoMarketCard({
   const selectedOpportunity =
     market.opportunities.find(
       (opportunity) => opportunity.id === draft.opportunityId,
-    ) ?? market.opportunities[0];
-  const maximumStakeCredits = maximumStakeForOdds(
-    selectedOpportunity.americanOdds,
-    simulationSeason1Ruleset,
-  );
+    ) ?? null;
+  const maximumStakeCredits = selectedOpportunity
+    ? maximumStakeForOdds(
+        selectedOpportunity.americanOdds,
+        simulationSeason1Ruleset,
+      )
+    : null;
 
   return (
     <article
@@ -156,7 +158,7 @@ function DemoMarketCard({
             <button
               aria-label={`${opportunity.displayLine} ${formatOdds(opportunity.americanOdds)}`}
               aria-pressed={isSelected}
-              className={`relative min-h-20 rounded-lg border py-3 pr-10 pl-3 text-left transition-colors ${
+              className={`relative h-20 rounded-lg border py-2 pr-10 pl-3 text-left transition-colors ${
                 isSelected
                   ? "border-registry bg-registry text-white shadow-sm"
                   : "border-control bg-surface hover:border-registry hover:bg-registry/5"
@@ -170,10 +172,10 @@ function DemoMarketCard({
               }
               type="button"
             >
-              <span className="block text-sm font-semibold">
+              <span className="block text-sm leading-5 font-semibold">
                 {opportunity.displayLine}
               </span>
-              <span className="mt-1 block font-mono text-xs">
+              <span className="mt-1 block font-mono text-xs leading-4">
                 {formatOdds(opportunity.americanOdds)}
               </span>
               {isSelected ? (
@@ -196,11 +198,12 @@ function DemoMarketCard({
       </label>
       <div className="mt-2 flex flex-col gap-2 sm:flex-row">
         <input
-          className="border-control bg-surface focus:border-registry min-h-11 min-w-0 flex-1 rounded-lg border px-3 font-mono outline-none"
+          className="border-control bg-surface focus:border-registry disabled:bg-subtle disabled:text-muted min-h-11 min-w-0 flex-1 rounded-lg border px-3 font-mono outline-none disabled:cursor-not-allowed"
+          disabled={!selectedOpportunity}
           id={`demo-${key}`}
           inputMode="numeric"
           min={simulationSeason1Ruleset.card.minimumStakeCredits}
-          max={maximumStakeCredits}
+          max={maximumStakeCredits ?? undefined}
           onChange={(event) =>
             onDraftChange({
               ...draft,
@@ -215,8 +218,9 @@ function DemoMarketCard({
           className={
             isInCard
               ? "border-registry text-registry hover:bg-surface min-h-11 rounded-lg border px-4 text-sm font-semibold"
-              : "bg-registry hover:bg-registry-hover min-h-11 rounded-lg px-4 text-sm font-semibold text-white"
+              : "bg-registry hover:bg-registry-hover min-h-11 rounded-lg px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
           }
+          disabled={!selectedOpportunity}
           onClick={onToggleCard}
           type="button"
         >
@@ -224,7 +228,9 @@ function DemoMarketCard({
         </button>
       </div>
       <p className="text-muted mt-2 text-xs">
-        This selection’s cap is {maximumStakeCredits.toLocaleString()} credits.
+        {maximumStakeCredits === null
+          ? "Choose a side to set credits at risk."
+          : `This selection’s cap is ${maximumStakeCredits.toLocaleString()} credits.`}
       </p>
       {feedback?.marketKey === key ? (
         <p
@@ -299,7 +305,7 @@ export function InteractiveWeekDemo() {
   const accepted = acceptedCardPositions(positions);
   const draftItems = draftMarketKeys.flatMap((key, index) => {
     const draft = drafts[key];
-    const opportunity = draft
+    const opportunity = draft?.opportunityId
       ? getInteractiveDemoOpportunity(draft.opportunityId)
       : null;
     return draft && opportunity
@@ -369,7 +375,7 @@ export function InteractiveWeekDemo() {
       return;
     }
     const draft = drafts[key];
-    if (!draft) return;
+    if (!draft?.opportunityId) return;
     const opportunity = getInteractiveDemoOpportunity(draft.opportunityId);
     if (!opportunity) return;
     const proposedPositions = [
@@ -432,9 +438,9 @@ export function InteractiveWeekDemo() {
       return;
     }
     setPositions(
-      draftItems.map(({ draft }, index) => ({
+      draftItems.map(({ draft, opportunity }, index) => ({
         id: `demo-receipt-${String(index + 1).padStart(2, "0")}`,
-        opportunityId: draft.opportunityId,
+        opportunityId: opportunity.id,
         stakeCredits: Number(draft.stakeCredits),
       })),
     );
@@ -677,7 +683,7 @@ export function InteractiveWeekDemo() {
               {event.markets.map((market) => {
                 const key = marketKey(event.id, market.marketType);
                 const draft = drafts[key] ?? {
-                  opportunityId: market.opportunities[0].id,
+                  opportunityId: null,
                   stakeCredits: "250",
                 };
                 return (
