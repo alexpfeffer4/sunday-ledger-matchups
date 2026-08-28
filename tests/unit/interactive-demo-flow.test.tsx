@@ -50,9 +50,16 @@ describe("solo interactive demo flow", () => {
     fireEvent.click(
       within(buffaloCard).getByRole("button", { name: /^Kansas City −205$/ }),
     );
-    expect(
-      within(buffaloCard).getByRole("button", { name: /^Kansas City −205$/ }),
-    ).toHaveAttribute("aria-pressed", "true");
+    const selectedKansasCity = within(buffaloCard).getByRole("button", {
+      name: /^Kansas City −205$/,
+    });
+    expect(selectedKansasCity).toHaveAttribute("aria-pressed", "true");
+    expect(selectedKansasCity).toHaveClass(
+      "border-registry",
+      "bg-registry",
+      "text-white",
+    );
+    expect(within(selectedKansasCity).getByText("Selected")).toBeVisible();
     fireEvent.click(
       within(buffaloCard).getByRole("button", { name: /^Buffalo \+175$/ }),
     );

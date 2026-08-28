@@ -150,32 +150,50 @@ function DemoMarketCard({
         {isInCard ? <StatusBadge tone="positive">In card</StatusBadge> : null}
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
-        {market.opportunities.map((opportunity) => (
-          <button
-            aria-label={`${opportunity.displayLine} ${formatOdds(opportunity.americanOdds)}`}
-            aria-pressed={draft.opportunityId === opportunity.id}
-            className={`min-h-16 rounded-lg border px-3 py-2 text-left transition-colors ${
-              draft.opportunityId === opportunity.id
-                ? "border-registry bg-surface text-registry"
-                : "border-control bg-surface hover:border-registry"
-            }`}
-            key={opportunity.id}
-            onClick={() =>
-              onDraftChange({
-                ...draft,
-                opportunityId: opportunity.id,
-              })
-            }
-            type="button"
-          >
-            <span className="block text-sm font-semibold">
-              {opportunity.displayLine}
-            </span>
-            <span className="mt-1 block font-mono text-xs">
-              {formatOdds(opportunity.americanOdds)}
-            </span>
-          </button>
-        ))}
+        {market.opportunities.map((opportunity) => {
+          const isSelected = draft.opportunityId === opportunity.id;
+          return (
+            <button
+              aria-label={`${opportunity.displayLine} ${formatOdds(opportunity.americanOdds)}`}
+              aria-pressed={isSelected}
+              className={`min-h-16 rounded-lg border px-3 py-2 text-left transition-colors ${
+                isSelected
+                  ? "border-registry bg-registry ring-registry/20 text-white shadow-sm ring-2"
+                  : "border-control bg-surface hover:border-registry hover:bg-registry/5"
+              }`}
+              key={opportunity.id}
+              onClick={() =>
+                onDraftChange({
+                  ...draft,
+                  opportunityId: opportunity.id,
+                })
+              }
+              type="button"
+            >
+              <span className="flex items-start justify-between gap-2">
+                <span className="block text-sm font-semibold">
+                  {opportunity.displayLine}
+                </span>
+                {isSelected ? (
+                  <span
+                    aria-hidden="true"
+                    className="text-registry flex size-5 shrink-0 items-center justify-center rounded-full bg-white text-xs font-black"
+                  >
+                    ✓
+                  </span>
+                ) : null}
+              </span>
+              <span className="mt-1 block font-mono text-xs">
+                {formatOdds(opportunity.americanOdds)}
+              </span>
+              {isSelected ? (
+                <span className="mt-2 block text-[0.68rem] font-bold tracking-[0.08em] text-white/90 uppercase">
+                  Selected
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
       </div>
       <label
         className="mt-4 block text-xs font-semibold"
