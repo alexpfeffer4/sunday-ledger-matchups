@@ -33,9 +33,11 @@ function isActive(pathname: string, href: string): boolean {
 export function LeagueDesktopNav({
   leagueSlug,
   archiveMode = false,
+  isCommissioner = false,
 }: {
   leagueSlug: string;
   archiveMode?: boolean;
+  isCommissioner?: boolean;
 }) {
   const pathname = usePathname();
   const base = `/l/${leagueSlug}`;
@@ -98,7 +100,7 @@ export function LeagueDesktopNav({
       <ul className="space-y-1">
         {[
           { label: "Rules & trust", segment: "rules" },
-          ...(archiveMode
+          ...(archiveMode || !isCommissioner
             ? []
             : [{ label: "Commissioner", segment: "commissioner" }]),
         ].map((item) => {
@@ -143,7 +145,13 @@ export function LeagueMobileNav({
       <ul className="mx-auto grid max-w-xl grid-cols-5">
         {items.map((item) => {
           const href = `${base}/${item.segment}`;
-          const active = isActive(pathname, href);
+          const active =
+            isActive(pathname, href) ||
+            (!archiveMode &&
+              item.segment === "league" &&
+              secondaryItems.some((secondary) =>
+                isActive(pathname, `${base}/${secondary.segment}`),
+              ));
           return (
             <li key={item.segment}>
               <Link

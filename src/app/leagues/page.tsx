@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import { isDemoSeasonEnabled } from "@/application/demo/demo-season-availability";
+import { SignOutForm } from "@/components/auth/sign-out-form";
 import { DemoSeasonRunner } from "@/components/league/demo-season-runner";
 import { LeagueSetupForms } from "@/components/league/league-setup-forms";
 import { BrandLockup } from "@/components/ui/register-mark";
@@ -21,9 +22,20 @@ export default async function LeaguesPage() {
   return (
     <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">
       <div className="mx-auto max-w-5xl">
-        <Link href="/" aria-label="Sunday Ledger home">
-          <BrandLockup />
-        </Link>
+        <div className="flex items-center justify-between gap-4">
+          <Link href="/" aria-label="Sunday Ledger home">
+            <BrandLockup />
+          </Link>
+          <div className="flex items-center gap-1">
+            <Link
+              className="text-registry hover:bg-subtle inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold"
+              href="/account"
+            >
+              Account
+            </Link>
+            <SignOutForm className="text-muted hover:text-ink min-h-11 rounded-lg px-3 text-sm font-semibold" />
+          </div>
+        </div>
         <div className="mt-16">
           <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">
             League home
@@ -32,9 +44,8 @@ export default async function LeaguesPage() {
             Your leagues
           </h1>
           <p className="text-graphite mt-3 max-w-2xl leading-7">
-            Authenticated Supabase memberships. Simulation leagues remain
-            private and can publish either the interactive Week 1 demo or a
-            complete deterministic season archive.
+            Private leagues connected to this account. Simulation seasons stay
+            clearly labeled and separate from Live NFL competition.
           </p>
         </div>
 
@@ -51,7 +62,7 @@ export default async function LeaguesPage() {
                 Hands-on weekly flow
               </p>
               <h3 className="mt-2 text-lg font-bold">
-                Test betting, sealing, and settlement
+                Test positions, sealing, and settlement
               </h3>
               <p className="text-graphite mt-2 text-sm leading-6">
                 Build a 1,000-credit card against a fictional opponent, test the
@@ -62,7 +73,7 @@ export default async function LeaguesPage() {
                 className="bg-registry hover:bg-registry-hover mt-5 inline-flex min-h-11 items-center justify-center rounded-lg px-5 text-sm font-semibold text-white"
                 href="/leagues/demo"
               >
-                Start solo betting demo
+                Start solo position demo
               </Link>
             </article>
             <article className="border-champion/30 bg-surface rounded-xl border p-5">
@@ -96,7 +107,7 @@ export default async function LeaguesPage() {
                   key={league.id}
                 >
                   <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-                    {league.role} · Supabase
+                    {league.role === "COMMISSIONER" ? "Commissioner" : "Member"}
                   </p>
                   <h3 className="mt-2 text-lg font-bold">{league.name}</h3>
                   <Link
@@ -113,7 +124,7 @@ export default async function LeaguesPage() {
 
         <section className="border-registry bg-surface mt-8 rounded-xl border p-6 shadow-[var(--shadow-card)]">
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-            Legacy simulation · local fixture
+            Read-only simulation · fictional fixture
           </p>
           <div className="mt-3 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
             <div>

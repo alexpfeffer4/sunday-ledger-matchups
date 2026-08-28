@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
+import { SignOutForm } from "@/components/auth/sign-out-form";
 import {
   LeagueDesktopNav,
   LeagueMobileNav,
 } from "@/components/league/league-nav";
+import { LeagueMobileMore } from "@/components/league/league-mobile-more";
+import { LeagueMobileSecondaryNav } from "@/components/league/league-secondary-nav";
 import { BrandLockup, RegisterMark } from "@/components/ui/register-mark";
 
 function NavigationFallback() {
@@ -24,11 +27,11 @@ export function LeagueShell({
   week,
   nflYear,
   mode,
-  dataLabel,
   memberName,
   memberRole,
-  allocatedCredits,
+  cardStatusLabel,
   archiveMode = false,
+  isCommissioner = false,
 }: {
   children: ReactNode;
   leagueSlug: string;
@@ -36,11 +39,11 @@ export function LeagueShell({
   week: number;
   nflYear: number;
   mode: "LIVE" | "SIMULATION";
-  dataLabel: string;
   memberName: string;
   memberRole: string;
-  allocatedCredits: number;
+  cardStatusLabel: string;
   archiveMode?: boolean;
+  isCommissioner?: boolean;
 }) {
   return (
     <div className="bg-canvas min-h-screen lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
@@ -70,6 +73,7 @@ export function LeagueShell({
             <LeagueDesktopNav
               leagueSlug={leagueSlug}
               archiveMode={archiveMode}
+              isCommissioner={isCommissioner}
             />
           </Suspense>
         </div>
@@ -83,6 +87,13 @@ export function LeagueShell({
               <p className="text-muted text-xs">{memberRole}</p>
             </div>
           </div>
+          <Link
+            className="text-muted hover:text-ink mt-3 flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold"
+            href="/account"
+          >
+            Account
+          </Link>
+          <SignOutForm className="text-muted hover:text-ink min-h-11 w-full rounded-lg px-2 text-left text-sm font-semibold" />
         </div>
       </aside>
 
@@ -99,33 +110,49 @@ export function LeagueShell({
               </Link>
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold">{leagueName}</p>
-                <p className="text-muted text-xs">Week {week}</p>
+                <p className="text-muted max-w-[13rem] truncate text-xs">
+                  Week {week} · {archiveMode ? "Season final" : cardStatusLabel}
+                </p>
               </div>
             </div>
             <div className="hidden lg:block">
               <p className="text-sm font-semibold">
                 {leagueName} / {nflYear}
               </p>
-              <p className="text-muted text-xs">{dataLabel}</p>
+              <p className="text-muted text-xs">NFL · Week {week}</p>
             </div>
-            {archiveMode ? (
-              <span className="text-positive inline-flex min-h-11 items-center px-3 text-sm font-semibold">
-                Season final
-              </span>
-            ) : (
-              <Link
-                href={`/l/${leagueSlug}/card`}
-                className="text-registry hover:bg-subtle inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold"
+            <div className="flex items-center gap-2">
+              <span
+                className={`rounded px-2 py-1 text-[11px] font-bold tracking-[0.04em] uppercase ${
+                  mode === "SIMULATION"
+                    ? "border-pending/30 bg-pending/10 text-pending border"
+                    : "bg-subtle text-graphite"
+                }`}
               >
-                {allocatedCredits} / 1,000 allocated
-              </Link>
-            )}
+                {mode === "SIMULATION" ? "Simulation" : "Live season"}
+              </span>
+              {archiveMode ? (
+                <span className="text-positive hidden min-h-11 items-center px-3 text-sm font-semibold lg:inline-flex">
+                  Season final
+                </span>
+              ) : (
+                <Link
+                  href={`/l/${leagueSlug}/card`}
+                  className="text-registry hover:bg-subtle hidden min-h-11 items-center rounded-lg px-3 text-sm font-semibold lg:inline-flex"
+                >
+                  {cardStatusLabel}
+                </Link>
+              )}
+              <LeagueMobileMore
+                leagueSlug={leagueSlug}
+                isCommissioner={isCommissioner}
+              />
+            </div>
           </div>
         </header>
-        <div className="border-pending/20 bg-pending/10 text-pending border-b px-4 py-2 text-center text-xs font-semibold">
-          {mode === "SIMULATION" ? "Simulation mode" : "Live mode"} ·{" "}
-          {dataLabel} · no live or simulated data is mixed
-        </div>
+        <Suspense fallback={null}>
+          <LeagueMobileSecondaryNav leagueSlug={leagueSlug} />
+        </Suspense>
         {children}
       </div>
 

@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
   const tokenHash = request.nextUrl.searchParams.get("token_hash");
   const typeValue = request.nextUrl.searchParams.get("type");
   const code = request.nextUrl.searchParams.get("code");
+  const flow = request.nextUrl.searchParams.get("flow");
   const next = safeInternalPath(request.nextUrl.searchParams.get("next"));
 
   try {
@@ -41,7 +42,13 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
     const profileResult = await supabase.schema("api").rpc("ensure_profile");
     if (profileResult.error) throw profileResult.error;
-    return NextResponse.redirect(new URL(next, request.url));
+    const accountUrl = new URL("/account", request.url);
+    accountUrl.searchParams.set(
+      "setup",
+      flow === "recovery" || typeValue === "recovery" ? "password" : "1",
+    );
+    if (next !== "/account") accountUrl.searchParams.set("next", next);
+    return NextResponse.redirect(accountUrl);
   } catch {
     const signInUrl = new URL("/auth/sign-in", request.url);
     signInUrl.searchParams.set("error", "invalid_link");

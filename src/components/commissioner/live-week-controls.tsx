@@ -340,7 +340,7 @@ export function LiveWeekCommissionerControls({
           </div>
           {!liveWeekOperations ? (
             <p className="text-pending mt-4 text-sm">
-              The Live result read model is not available yet.
+              Current NFL result controls are not available yet.
             </p>
           ) : null}
           <ActionFeedback state={correctionState} />

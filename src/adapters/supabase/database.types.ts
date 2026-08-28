@@ -73,8 +73,40 @@ export type Database = {
         };
         Returns: string;
       };
+      get_league_invite_preview: {
+        Args: { p_token: string };
+        Returns: {
+          commissioner_name: string;
+          expires_at: string;
+          league_name: string;
+          member_count: number;
+          mode: string;
+          nfl_year: number;
+        }[];
+      };
+      list_league_invites: {
+        Args: { p_league_slug: string };
+        Returns: {
+          active: boolean;
+          created_at: string;
+          expires_at: string;
+          id: string;
+          max_uses: number;
+          revoked_at: string | null;
+          status: string;
+          uses: number;
+        }[];
+      };
+      revoke_league_invite: {
+        Args: { p_invite_id: string; p_league_id: string };
+        Returns: boolean;
+      };
       ensure_profile: {
         Args: { p_display_name?: string };
+        Returns: string;
+      };
+      update_profile_display_name: {
+        Args: { p_display_name: string };
         Returns: string;
       };
       join_league: {

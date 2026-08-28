@@ -33,7 +33,7 @@ export default async function HistoryPage({
       <Stage1DeferredView
         state={live}
         title="League history begins after Week 1 finalizes"
-        description="Stage 1 stores immutable Week 1 evidence; the season archive is not populated from provisional results."
+        description="League history publishes only from finalized results; provisional states never enter the season archive."
       />
     );
   }

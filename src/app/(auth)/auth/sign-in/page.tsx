@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import { MagicLinkForm } from "@/components/auth/magic-link-form";
+import { PasswordSignInForm } from "@/components/auth/password-sign-in-form";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -48,7 +49,8 @@ export default async function SignInPage({
             Sign in to Sunday Ledger
           </h1>
           <p className="text-graphite mt-3 leading-6">
-            Use the email attached to your league invitation or account.
+            Sign in with your password, or use an email link to create or
+            recover your account.
           </p>
           {hasLinkError ? (
             <p className="border-negative/25 bg-negative/10 text-negative mt-5 rounded-lg border px-4 py-3 text-sm leading-6">
@@ -56,11 +58,19 @@ export default async function SignInPage({
               below.
             </p>
           ) : null}
+          <PasswordSignInForm next={next} />
+          <div className="my-7 flex items-center gap-3" aria-hidden="true">
+            <span className="border-boundary flex-1 border-t" />
+            <span className="text-muted text-xs font-semibold uppercase">
+              Or use email
+            </span>
+            <span className="border-boundary flex-1 border-t" />
+          </div>
           <MagicLinkForm next={next} />
         </section>
         <p className="text-muted mt-5 text-center text-xs leading-5">
-          Authentication is provided by Supabase Auth. League data remains in
-          Supabase Postgres under membership-scoped Row Level Security.
+          Your email stays private. League members see only the username you
+          choose on Account.
         </p>
       </div>
     </main>

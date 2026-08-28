@@ -77,7 +77,7 @@ export function SeasonArchiveHome({
           <p className="text-graphite mt-2 text-sm leading-6">
             The engine generated this complete archive for{" "}
             {archive.members.length} fictional members. No invitations were sent
-            and no Supabase records were created.
+            and no live league records were created.
           </p>
           <p className="text-muted mt-3 font-mono text-xs">
             Output receipt · {demoRunReceipt}

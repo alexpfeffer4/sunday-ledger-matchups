@@ -28,14 +28,9 @@ export default async function LeagueLayout({
         week={archive.mode === "LIVE" ? 17 : 18}
         nflYear={archive.nflYear}
         mode={archive.mode}
-        dataLabel={
-          archive.mode === "LIVE"
-            ? "Immutable Live season archive"
-            : "Immutable full-season simulation archive"
-        }
         memberName={viewer?.displayName ?? "Member"}
         memberRole="Archived participant"
-        allocatedCredits={0}
+        cardStatusLabel="Season final"
         archiveMode
       >
         {children}
@@ -50,12 +45,18 @@ export default async function LeagueLayout({
         week={live.week?.nflWeek ?? 1}
         nflYear={live.league.nflYear}
         mode={live.league.mode}
-        dataLabel="Stored Stage 1 · Supabase"
         memberName={live.viewer.displayName}
         memberRole={
           live.league.role === "COMMISSIONER" ? "Commissioner" : "Member"
         }
-        allocatedCredits={live.ownerCard?.allocatedCredits ?? 0}
+        cardStatusLabel={
+          live.ownerCard
+            ? `${live.ownerCard.allocatedCredits} / 1,000 allocated`
+            : live.league.lifecycle === "PLAYOFFS"
+              ? "No card this round"
+              : "Card opens at roster lock"
+        }
+        isCommissioner={live.league.role === "COMMISSIONER"}
       >
         {children}
       </LeagueShell>
@@ -71,10 +72,10 @@ export default async function LeagueLayout({
       week={league.matchup.league.week}
       nflYear={2026}
       mode="SIMULATION"
-      dataLabel="Deterministic local preview"
       memberName="Pfeff"
-      memberRole="Simulation member"
-      allocatedCredits={league.matchup.allocation.allocatedCredits}
+      memberRole="Simulation host"
+      cardStatusLabel={`${league.matchup.allocation.allocatedCredits} / 1,000 allocated`}
+      isCommissioner
     >
       {children}
     </LeagueShell>

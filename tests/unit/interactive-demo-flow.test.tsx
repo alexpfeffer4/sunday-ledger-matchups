@@ -37,6 +37,34 @@ describe("solo interactive demo flow", () => {
   it("edits drafts, enforces a guardrail, and seals the complete card atomically", () => {
     render(<InteractiveWeekDemo />);
 
+    const openingCard = marketCard(/^Kansas City −205$/);
+    const openingOutcomes = within(openingCard).getAllByRole("button", {
+      pressed: false,
+    });
+    expect(openingOutcomes).toHaveLength(2);
+    expect(
+      within(openingCard).getByRole("button", { name: "Add to card" }),
+    ).toBeDisabled();
+
+    const buffaloSpread = screen.getByRole("button", {
+      name: /^Buffalo \+4.5 −110$/,
+    });
+    expect(within(buffaloSpread).getByText("Buffalo")).toBeVisible();
+    expect(within(buffaloSpread).getByText("+4.5 · −110")).toBeVisible();
+    expect(within(buffaloSpread).queryByText("Buffalo +4.5")).toBeNull();
+
+    const kansasCitySpread = screen.getByRole("button", {
+      name: /^Kansas City −4.5 −110$/,
+    });
+    expect(within(kansasCitySpread).getByText("Kansas City")).toBeVisible();
+    expect(within(kansasCitySpread).getByText("−4.5 · −110")).toBeVisible();
+
+    const underTotal = screen.getByRole("button", {
+      name: /^Under 47.5 −112$/,
+    });
+    expect(within(underTotal).getByText("Under")).toBeVisible();
+    expect(within(underTotal).getByText("47.5 · −112")).toBeVisible();
+
     addDraft(/^Kansas City −205$/, "1000");
     expect(screen.getByRole("alert")).toHaveTextContent(
       "this position may use at most 750 credits",
@@ -50,9 +78,19 @@ describe("solo interactive demo flow", () => {
     fireEvent.click(
       within(buffaloCard).getByRole("button", { name: /^Kansas City −205$/ }),
     );
-    expect(
-      within(buffaloCard).getByRole("button", { name: /^Kansas City −205$/ }),
-    ).toHaveAttribute("aria-pressed", "true");
+    const selectedKansasCity = within(buffaloCard).getByRole("button", {
+      name: /^Kansas City −205$/,
+    });
+    expect(selectedKansasCity).toHaveAttribute("aria-pressed", "true");
+    expect(selectedKansasCity).toHaveClass(
+      "border-registry",
+      "bg-registry",
+      "text-white",
+      "h-20",
+      "pr-10",
+    );
+    expect(within(selectedKansasCity).getByText("✓")).toBeVisible();
+    expect(within(selectedKansasCity).queryByText("Selected")).toBeNull();
     fireEvent.click(
       within(buffaloCard).getByRole("button", { name: /^Buffalo \+175$/ }),
     );
@@ -85,7 +123,7 @@ describe("solo interactive demo flow", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: "Betting flow completed successfully",
+        name: "Position flow completed successfully",
       }),
     ).toBeInTheDocument();
     expect(
