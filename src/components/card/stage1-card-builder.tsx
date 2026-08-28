@@ -550,9 +550,9 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                         return (
                           <button
                             aria-pressed={isSelected}
-                            className={`min-h-16 rounded-lg border px-3 py-2 text-left transition-colors ${
+                            className={`relative min-h-20 rounded-lg border py-3 pr-10 pl-3 text-left transition-colors ${
                               isSelected
-                                ? "border-registry bg-registry ring-registry/20 text-white shadow-sm ring-2"
+                                ? "border-registry bg-registry text-white shadow-sm"
                                 : "border-control bg-surface hover:border-registry hover:bg-registry/5"
                             }`}
                             disabled={market.qualityStatus !== "HEALTHY"}
@@ -560,25 +560,18 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                             onClick={() => selectOutcome(event, market)}
                             type="button"
                           >
-                            <span className="flex items-start justify-between gap-2">
-                              <span className="block text-sm font-semibold">
-                                {market.proposition}
-                              </span>
-                              {isSelected ? (
-                                <span
-                                  aria-hidden="true"
-                                  className="text-registry flex size-5 shrink-0 items-center justify-center rounded-full bg-white text-xs font-black"
-                                >
-                                  ✓
-                                </span>
-                              ) : null}
+                            <span className="block text-sm font-semibold">
+                              {market.proposition}
                             </span>
                             <span className="mt-1 block font-mono text-xs">
                               {formatOdds(market.americanOdds)}
                             </span>
                             {isSelected ? (
-                              <span className="mt-2 block text-[0.68rem] font-bold tracking-[0.08em] text-white/90 uppercase">
-                                Selected
+                              <span
+                                aria-hidden="true"
+                                className="text-registry absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-white text-xs font-black"
+                              >
+                                ✓
                               </span>
                             ) : null}
                           </button>

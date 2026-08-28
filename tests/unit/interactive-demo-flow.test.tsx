@@ -58,8 +58,11 @@ describe("solo interactive demo flow", () => {
       "border-registry",
       "bg-registry",
       "text-white",
+      "min-h-20",
+      "pr-10",
     );
-    expect(within(selectedKansasCity).getByText("Selected")).toBeVisible();
+    expect(within(selectedKansasCity).getByText("✓")).toBeVisible();
+    expect(within(selectedKansasCity).queryByText("Selected")).toBeNull();
     fireEvent.click(
       within(buffaloCard).getByRole("button", { name: /^Buffalo \+175$/ }),
     );
