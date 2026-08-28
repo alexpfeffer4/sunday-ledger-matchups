@@ -17,7 +17,7 @@ const liveEventResultSchema = z.object({
 });
 
 const liveWeekOperationsSchema = z.object({
-  weekState: z.enum(["OPEN", "LOCKED", "PROVISIONAL", "FINAL"]),
+  weekState: z.enum(["PLANNED", "OPEN", "LOCKED", "PROVISIONAL", "FINAL"]),
   correctionWindowClosesAt: z.string().nullable(),
   latestImportAt: z.string().nullable(),
   events: z.array(
