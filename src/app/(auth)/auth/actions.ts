@@ -1,6 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
@@ -80,4 +81,14 @@ export async function sendMagicLink(
         "Supabase is not connected in this environment yet. No sign-in email was sent.",
     };
   }
+}
+
+
+export async function signOutAction(): Promise<never> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase.auth.getClaims();
+  if (data?.claims?.sub) {
+    await supabase.auth.signOut({ scope: "local" });
+  }
+  redirect("/");
 }

@@ -308,7 +308,7 @@ export function Stage1CommissionerControls({
           <section className="border-boundary bg-surface rounded-xl border p-5">
             <h2 className="font-bold">Or publish interactive Week 1</h2>
             <p className="text-graphite mt-2 text-sm leading-6">
-              The original Stage 1 path requires exactly eight members. It
+              The hands-on Week 1 path requires exactly eight members. It
               freezes the Simulation rules, publishes four matchups, and grants
               1,000 credits to every entry for hands-on play.
             </p>

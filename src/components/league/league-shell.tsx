@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
+import { SignOutForm } from "@/components/auth/sign-out-form";
 import {
   LeagueDesktopNav,
   LeagueMobileNav,
 } from "@/components/league/league-nav";
+import { LeagueMobileMore } from "@/components/league/league-mobile-more";
 import { BrandLockup, RegisterMark } from "@/components/ui/register-mark";
 
 function NavigationFallback() {
@@ -27,8 +29,9 @@ export function LeagueShell({
   dataLabel,
   memberName,
   memberRole,
-  allocatedCredits,
+  cardStatusLabel,
   archiveMode = false,
+  isCommissioner = false,
 }: {
   children: ReactNode;
   leagueSlug: string;
@@ -39,8 +42,9 @@ export function LeagueShell({
   dataLabel: string;
   memberName: string;
   memberRole: string;
-  allocatedCredits: number;
+  cardStatusLabel: string;
   archiveMode?: boolean;
+  isCommissioner?: boolean;
 }) {
   return (
     <div className="bg-canvas min-h-screen lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
@@ -70,6 +74,7 @@ export function LeagueShell({
             <LeagueDesktopNav
               leagueSlug={leagueSlug}
               archiveMode={archiveMode}
+              isCommissioner={isCommissioner}
             />
           </Suspense>
         </div>
@@ -83,6 +88,7 @@ export function LeagueShell({
               <p className="text-muted text-xs">{memberRole}</p>
             </div>
           </div>
+          <SignOutForm className="text-muted hover:text-ink mt-3 min-h-11 w-full rounded-lg px-2 text-left text-sm font-semibold" />
         </div>
       </aside>
 
@@ -102,6 +108,10 @@ export function LeagueShell({
                 <p className="text-muted text-xs">Week {week}</p>
               </div>
             </div>
+            <LeagueMobileMore
+              leagueSlug={leagueSlug}
+              isCommissioner={isCommissioner}
+            />
             <div className="hidden lg:block">
               <p className="text-sm font-semibold">
                 {leagueName} / {nflYear}
@@ -109,19 +119,28 @@ export function LeagueShell({
               <p className="text-muted text-xs">{dataLabel}</p>
             </div>
             {archiveMode ? (
-              <span className="text-positive inline-flex min-h-11 items-center px-3 text-sm font-semibold">
+              <span className="text-positive hidden min-h-11 items-center px-3 text-sm font-semibold lg:inline-flex">
                 Season final
               </span>
             ) : (
               <Link
                 href={`/l/${leagueSlug}/card`}
-                className="text-registry hover:bg-subtle inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold"
+                className="text-registry hover:bg-subtle hidden min-h-11 items-center rounded-lg px-3 text-sm font-semibold lg:inline-flex"
               >
-                {allocatedCredits} / 1,000 allocated
+                {cardStatusLabel}
               </Link>
             )}
           </div>
         </header>
+        <div className="border-boundary bg-surface border-b px-4 py-2 text-center text-xs font-semibold lg:hidden">
+          {archiveMode ? (
+            <span className="text-positive">Season final</span>
+          ) : (
+            <Link className="text-registry" href={`/l/${leagueSlug}/card`}>
+              {cardStatusLabel}
+            </Link>
+          )}
+        </div>
         <div className="border-pending/20 bg-pending/10 text-pending border-b px-4 py-2 text-center text-xs font-semibold">
           {mode === "SIMULATION" ? "Simulation mode" : "Live mode"} ·{" "}
           {dataLabel} · no live or simulated data is mixed

@@ -85,7 +85,7 @@ describe("solo interactive demo flow", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: "Betting flow completed successfully",
+        name: "Position flow completed successfully",
       }),
     ).toBeInTheDocument();
     expect(

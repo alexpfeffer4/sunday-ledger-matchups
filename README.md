@@ -54,17 +54,17 @@ ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
   derives the champion and permanent member-visible record from immutable
   scores, receipts, standings, bracket rounds, and corrections before moving
   the season lifecycle to `FINAL`
+- Permission-aware desktop navigation, mobile access to Rules, Commissioner,
+  league switching, and sign-out, plus accurate no-card postseason status
 - Deterministic provider-fixture ports for healthy, stale, outlier, suspended,
   provider-degraded, live, final, void, and corrected states
 - Vitest unit/property coverage and Playwright configuration
 
 The simulation adapter is visibly labeled and never mixes with live data.
-Stages 1 and 2 are the Production baseline. Stage 3 begins on the isolated
-`stage-3-live-season` branch with a server-only The Odds API boundary and
-private import review; no live provider request is made unless the environment
-has an authorized API key. Imports remain noncompetitive until the commissioner
-publishes selected events, and that publication keeps cards closed until a
-valid even roster is locked.
+Stages 1 through 3 form the Production baseline. Live provider requests are
+made only when the environment has an authorized API key. Imports remain
+noncompetitive until the commissioner publishes selected events, and that
+publication keeps cards closed until a valid even roster is locked.
 
 ## Local development
 
@@ -118,9 +118,14 @@ After authorization, link the intended Supabase development project, apply the
 migrations, expose only the `api` schema, generate project types, and run the
 database tests. See `supabase/README.md` for the checkpoint sequence.
 
+## Commissioner operations
+
+Use [`docs/commissioner-runbook.md`](docs/commissioner-runbook.md) for the
+formation, weekly Live operation, playoff, correction, and archival sequence.
+
 ## Deployment
 
 Vercel is the only application deployment target. `main` is Production.
-Feature branches such as `stage-3-live-season` create Preview deployments
-through the connected Git integration; the obsolete `implementation` branch
-remains disabled. A Preview never promotes itself to Production.
+Feature branches create isolated Preview deployments through the connected Git
+integration; the obsolete `implementation` branch remains disabled. A Preview
+never promotes itself to Production.

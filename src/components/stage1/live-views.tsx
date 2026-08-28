@@ -876,7 +876,7 @@ export function Stage1DeferredView({
 }) {
   return (
     <PageFrame
-      eyebrow={`${state.league.name} · Stage 1 boundary`}
+      eyebrow={`${state.league.name} · Season boundary`}
       title={title}
       description={description}
       aside={<StatusBadge tone="pending">Not published</StatusBadge>}

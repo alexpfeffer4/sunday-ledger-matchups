@@ -453,7 +453,7 @@ export function InteractiveWeekDemo() {
                 Solo demo · final
               </p>
               <h2 className="mt-2 text-2xl font-bold">
-                Betting flow completed successfully
+                Position flow completed successfully
               </h2>
             </div>
             <StatusBadge tone="positive">Matchup final</StatusBadge>
@@ -512,7 +512,7 @@ export function InteractiveWeekDemo() {
             onClick={resetDemo}
             type="button"
           >
-            Run another betting demo
+            Run another position demo
           </button>
           <Link
             className="border-registry text-registry hover:bg-subtle inline-flex min-h-11 items-center justify-center rounded-lg border px-5 font-semibold"

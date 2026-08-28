@@ -33,9 +33,11 @@ function isActive(pathname: string, href: string): boolean {
 export function LeagueDesktopNav({
   leagueSlug,
   archiveMode = false,
+  isCommissioner = false,
 }: {
   leagueSlug: string;
   archiveMode?: boolean;
+  isCommissioner?: boolean;
 }) {
   const pathname = usePathname();
   const base = `/l/${leagueSlug}`;
@@ -98,7 +100,7 @@ export function LeagueDesktopNav({
       <ul className="space-y-1">
         {[
           { label: "Rules & trust", segment: "rules" },
-          ...(archiveMode
+          ...(archiveMode || !isCommissioner
             ? []
             : [{ label: "Commissioner", segment: "commissioner" }]),
         ].map((item) => {

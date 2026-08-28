@@ -3,7 +3,7 @@ import Link from "next/link";
 import { BrandLockup } from "@/components/ui/register-mark";
 import { pocSeason1Ruleset } from "@/rulesets/poc-season-1";
 
-export const metadata: Metadata = { title: "POC Season 1 rules" };
+export const metadata: Metadata = { title: "Season 1 rules" };
 
 const sections = [
   {
@@ -43,7 +43,7 @@ export default function RulesPage() {
           Frozen participant rulebook
         </p>
         <h1 className="mt-4 text-4xl font-bold tracking-[-0.04em]">
-          POC Season 1 rules
+          Season 1 rules
         </h1>
         <p className="text-graphite mt-5 text-lg leading-7">
           These values are visible before roster lock, freeze with the season,

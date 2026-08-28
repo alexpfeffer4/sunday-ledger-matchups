@@ -54,7 +54,7 @@ function mutationError(message: string): AppActionState {
     return {
       status: "error",
       message:
-        "Stage 1 starts when exactly eight members have joined this league.",
+        "Interactive Week 1 opens when exactly eight members have joined this league.",
     };
   }
   if (message.includes("even roster") || message.includes("4 through 16")) {
