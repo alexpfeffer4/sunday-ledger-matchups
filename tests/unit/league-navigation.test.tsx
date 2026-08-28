@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   LeagueDesktopNav,
@@ -30,12 +30,7 @@ vi.mock("@/app/(auth)/auth/actions", () => ({
 
 describe("league navigation permissions", () => {
   it("keeps commissioner navigation out of a regular member's UI", () => {
-    render(
-      <LeagueDesktopNav
-        leagueSlug="live-test"
-        isCommissioner={false}
-      />,
-    );
+    render(<LeagueDesktopNav leagueSlug="live-test" isCommissioner={false} />);
 
     expect(screen.getByRole("link", { name: "Rules & trust" })).toBeVisible();
     expect(
@@ -54,14 +49,18 @@ describe("league navigation permissions", () => {
     expect(
       screen.getByRole("navigation", { name: "Mobile league navigation" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Commissioner" })).toHaveAttribute(
-      "href",
-      "/l/live-test/commissioner",
+    const utilities = within(
+      screen.getByRole("navigation", { name: "League and account" }),
     );
-    expect(screen.getByRole("link", { name: "Rules & trust" })).toHaveAttribute(
-      "href",
-      "/l/live-test/rules",
-    );
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+
+    expect(
+      utilities.getByRole("link", { name: "Commissioner" }),
+    ).toHaveAttribute("href", "/l/live-test/commissioner");
+    expect(
+      utilities.getByRole("link", { name: "Rules & trust" }),
+    ).toHaveAttribute("href", "/l/live-test/rules");
+    expect(
+      screen.getByRole("button", { name: "Sign out" }),
+    ).toBeInTheDocument();
   });
 });

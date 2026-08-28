@@ -25,10 +25,7 @@ export function LeagueMobileMore({
             Rules &amp; trust
           </Link>
           {isCommissioner ? (
-            <Link
-              className={itemClass}
-              href={`/l/${leagueSlug}/commissioner`}
-            >
+            <Link className={itemClass} href={`/l/${leagueSlug}/commissioner`}>
               Commissioner
             </Link>
           ) : null}

@@ -10,6 +10,7 @@ describe("server actions", () => {
 
     expect(exportedValues).toEqual([
       expect.stringMatching(/^async function sendMagicLink\(/),
+      expect.stringMatching(/^async function signOutAction\(/),
     ]);
   });
 });

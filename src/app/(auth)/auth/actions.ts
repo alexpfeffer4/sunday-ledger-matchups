@@ -83,7 +83,6 @@ export async function sendMagicLink(
   }
 }
 
-
 export async function signOutAction(): Promise<never> {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.auth.getClaims();
