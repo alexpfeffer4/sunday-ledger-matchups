@@ -33,7 +33,7 @@ export default async function HistoryPage({
       <Stage1DeferredView
         state={live}
         title="League history begins after Week 1 finalizes"
-        description="League history publishes only from finalized results; provisional states never enter the season archive."
+        description="Final matchups will appear here after Week 1."
       />
     );
   }
@@ -44,7 +44,7 @@ export default async function HistoryPage({
     <PageFrame
       eyebrow="Season archive"
       title="League history"
-      description="Official results retain their competition scope. Regular season, playoffs, placement, and exhibition meetings never blur together."
+      description="Every final matchup, playoff result, and completed season in one place."
       aside={<StatusBadge tone="pending">2026 · in progress</StatusBadge>}
     >
       <section className="border-boundary bg-archive mt-7 rounded-xl border p-5 sm:p-7">

@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { hashRuleset } from "@/rulesets/canonicalize";
 import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
 
-export const metadata: Metadata = { title: "Frozen league rules" };
+export const metadata: Metadata = { title: "League rules" };
 
 export default async function LeagueRulesPage({
   params,
@@ -29,15 +29,15 @@ export default async function LeagueRulesPage({
   const rules = [
     {
       title: "Weekly card",
-      body: "Exactly 1,000 fresh virtual credits, 1–20 positions, 50-credit minimum, and whole-credit stakes. Nothing carries forward.",
+      body: "Exactly 1,000 fresh virtual credits, 1–20 picks, a 50-credit minimum, and whole-credit stakes. Nothing carries forward.",
     },
     {
       title: "Markets and concentration",
-      body: "Main pregame winner, spread, and total markets. One position per event-market. Favorites shorter than −200 are capped at 750 credits; every other eligible position is capped at 1,000.",
+      body: "Pregame winner, spread, and total markets. One pick per game and market. Favorites shorter than −200 are capped at 750 credits; every other eligible pick is capped at 1,000.",
     },
     {
-      title: "Common lock and reveal",
-      body: "Common lock is five minutes before the earliest designated game. Positions reveal only when their event is reliably live, never from scheduled time alone.",
+      title: "Card lock and reveal",
+      body: "Cards lock five minutes before the first selected game. Picks reveal only after their game kicks off.",
     },
     {
       title: "Scoring",
@@ -49,19 +49,19 @@ export default async function LeagueRulesPage({
     },
     {
       title: "Season and playoffs",
-      body: `The regular season is Weeks 1–14. This league qualifies the top ${qualifierCount} eligible entries under its frozen roster-size rule. Week 17 decides the champion and Week 18 is exhibition only.`,
+      body: `The regular season is Weeks 1–14. The top ${qualifierCount} eligible members qualify for this league’s playoffs. Week 17 decides the champion, and Week 18 is exhibition only.`,
     },
   ];
 
   return (
     <PageFrame
-      eyebrow={`${live?.league.name ?? (archive ? "West 21st Ledger Archive" : "West 21st Ledger")} · participant rulebook`}
-      title="Frozen simulation rules"
-      description="The canonical snapshot is visible to every member and remains linked to receipts, results, standings, brackets, corrections, and history."
-      aside={<StatusBadge tone="positive">Frozen</StatusBadge>}
+      eyebrow={`${live?.league.name ?? (archive ? "West 21st Ledger Archive" : "West 21st Ledger")} · league rules`}
+      title="League rules"
+      description="These rules apply to every member for the full season."
+      aside={<StatusBadge tone="positive">Set for 2026</StatusBadge>}
     >
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="border-boundary bg-surface divide-boundary divide-y rounded-xl border px-5 sm:px-6">
+        <div className="divide-boundary border-boundary divide-y border-y">
           {rules.map((rule) => (
             <section
               key={rule.title}
@@ -74,10 +74,10 @@ export default async function LeagueRulesPage({
         </div>
 
         <aside className="space-y-5">
-          <section className="border-boundary bg-surface rounded-xl border p-5">
-            <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-              Snapshot identity
-            </p>
+          <details className="border-boundary border-y py-4">
+            <summary className="cursor-pointer font-bold">
+              Technical details
+            </summary>
             <dl className="mt-4 space-y-4 text-sm">
               <div>
                 <dt className="text-muted">Ruleset</dt>
@@ -98,13 +98,13 @@ export default async function LeagueRulesPage({
                 </dd>
               </div>
             </dl>
-          </section>
-          <section className="border-boundary bg-subtle rounded-xl border p-5">
-            <h2 className="font-bold">Trust boundary</h2>
+          </details>
+          <section className="border-boundary border-t pt-5">
+            <h2 className="font-bold">Commissioner limits</h2>
             <p className="text-graphite mt-2 text-sm leading-6">
-              Commissioners cannot read sealed positions or edit weekly scores,
-              records, schedules, seeds, brackets, or winners. Corrections
-              append objective evidence and a reason.
+              Commissioners cannot read sealed picks or edit weekly scores,
+              records, schedules, seeds, brackets, or winners. Official
+              corrections stay visible.
             </p>
           </section>
         </aside>

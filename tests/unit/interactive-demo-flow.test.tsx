@@ -33,8 +33,8 @@ function addDraft(outcomeName: RegExp, stakeCredits: string) {
   fireEvent.click(within(card).getByRole("button", { name: "Add to card" }));
 }
 
-describe("solo interactive demo flow", () => {
-  it("edits drafts, enforces a guardrail, and seals the complete card atomically", () => {
+describe("practice week flow", () => {
+  it("edits picks, enforces the stake cap, and seals the complete card", () => {
     render(<InteractiveWeekDemo />);
 
     const openingCard = marketCard(/^Kansas City −205$/);
@@ -67,7 +67,7 @@ describe("solo interactive demo flow", () => {
 
     addDraft(/^Kansas City −205$/, "1000");
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "this position may use at most 750 credits",
+      "this pick may use at most 750 credits",
     );
 
     addDraft(/^Philadelphia −185$/, "500");
@@ -96,7 +96,7 @@ describe("solo interactive demo flow", () => {
     );
 
     const reviewButton = screen.getByRole("button", {
-      name: "Review & seal 3 positions",
+      name: "Review 3 picks",
     });
     expect(reviewButton).toBeEnabled();
     fireEvent.click(reviewButton);
@@ -104,9 +104,7 @@ describe("solo interactive demo flow", () => {
     expect(
       screen.getByRole("heading", { name: "Review your complete card" }),
     ).toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Confirm & seal entire card" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Confirm and seal" }));
 
     expect(
       screen.getByRole("heading", { name: "Your complete card is sealed" }),
@@ -117,18 +115,18 @@ describe("solo interactive demo flow", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Advance to kickoff, reveal & settle",
+        name: "See results",
       }),
     );
 
     expect(
       screen.getByRole("heading", {
-        name: "Position flow completed successfully",
+        name: "Practice matchup final",
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
-        name: "Opponent card · revealed after kickoff",
+        name: "Opponent’s final card",
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("Matchup final")).toBeInTheDocument();

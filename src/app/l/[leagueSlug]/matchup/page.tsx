@@ -50,21 +50,21 @@ export default async function MatchupPage({
     <PageFrame
       eyebrow={`Week ${matchup.league.week} · ${matchup.league.commonLockLabel} · cards open`}
       title="Your Week 6 matchup"
-      description="Both members begin with the same fresh weekly allocation. Your opponent’s card remains structurally absent until the rules allow a reveal."
+      description="You and your opponent each have 1,000 credits. Their picks stay hidden until kickoff."
     >
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
           <MatchupCard matchup={matchup} />
           <div className="flex flex-col gap-3 sm:flex-row">
             <ButtonLink href={`/l/${leagueSlug}/slate`} className="sm:min-w-56">
-              Allocate remaining 350
+              Use remaining 350
             </ButtonLink>
             <ButtonLink
               href={`/l/${leagueSlug}/card`}
               variant="secondary"
               className="sm:min-w-48"
             >
-              Review sealed positions
+              Review sealed picks
             </ButtonLink>
           </div>
 
@@ -72,20 +72,17 @@ export default async function MatchupPage({
             className="border-boundary border-t pt-6"
             aria-labelledby="stakes-title"
           >
-            <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-              Season consequence
-            </p>
-            <h2 id="stakes-title" className="mt-2 text-xl font-bold">
+            <h2 id="stakes-title" className="text-xl font-bold">
               What’s at stake
             </h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div className="border-boundary bg-surface rounded-lg border p-5">
+            <div className="divide-boundary border-boundary mt-4 grid divide-y border-y sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+              <div className="py-5 sm:pr-6">
                 <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
                   Record
                 </p>
                 <p className="mt-2 leading-6">{matchup.consequence.record}</p>
               </div>
-              <div className="border-boundary bg-surface rounded-lg border p-5">
+              <div className="py-5 sm:pl-6">
                 <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
                   Playoff race
                 </p>
@@ -103,10 +100,7 @@ export default async function MatchupPage({
           >
             <div className="flex items-end justify-between gap-4">
               <div>
-                <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-                  Designated slate
-                </p>
-                <h2 id="kickoff-title" className="mt-2 text-xl font-bold">
+                <h2 id="kickoff-title" className="text-xl font-bold">
                   Next kickoff
                 </h2>
               </div>
@@ -117,7 +111,7 @@ export default async function MatchupPage({
                 View full slate
               </Link>
             </div>
-            <div className="border-boundary bg-surface mt-4 rounded-lg border p-5">
+            <div className="border-boundary mt-4 border-y py-5">
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
                   <p className="font-bold">

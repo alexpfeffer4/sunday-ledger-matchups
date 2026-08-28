@@ -76,8 +76,8 @@ function FormationPanel({ state }: { state: Stage1StateDto }) {
       </h2>
       <p className="text-graphite mt-3 max-w-2xl leading-7">
         {liveSlatePublished
-          ? "The eligible NFL events and common lock are fixed. Competitive play remains closed until an even roster of 4–16 locks and the balanced schedule, matchups, and weekly cards publish."
-          : "A full season can publish with any even roster from 4 through 16; the interactive Week 1 demo publishes at exactly eight. Until a path is chosen, there is no schedule, slate, card, opponent readiness, or hidden competitive state to infer."}
+          ? "The Week 1 games and card-lock time are set. Cards open after an even roster of 4–16 members is locked."
+          : "Invite an even roster from 4 through 16 members, then open the season from the Commissioner page."}
       </p>
       {state.commissioner.isCommissioner ? (
         <Link
@@ -101,21 +101,20 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
       <PageFrame
         eyebrow={`${state.league.name} · Week ${state.week.nflWeek} ${state.week.scope.toLowerCase()}`}
         title="No matchup card this round"
-        description="Your entry is not scheduled in this round. That can mean a bye, an exhibition exclusion, or the end of its championship path."
+        description="You are not scheduled to play this round. You may have a bye or be out of the championship bracket."
         aside={liveStatus(state)}
       >
         <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">
           <h2 className="text-lg font-bold">The round still runs normally</h2>
           <p className="text-graphite mt-2 max-w-2xl text-sm leading-6">
-            No private card was created for this entry, so there is nothing to
-            seal. Published matchups and advancement remain visible on the
-            playoff ledger.
+            You do not need to build a card this round. Follow the bracket for
+            current matchups and advancement.
           </p>
           <Link
             className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
             href={`/l/${state.league.slug}/playoffs`}
           >
-            Open the playoff ledger
+            View playoffs
           </Link>
         </div>
       </PageFrame>
@@ -126,7 +125,7 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
       <PageFrame
         eyebrow={`${state.league.name} · Simulation`}
         title="Your matchup"
-        description="The first matchup appears when the eight-entry roster publishes."
+        description="Your first matchup appears when the commissioner opens the season."
       >
         <FormationPanel state={state} />
       </PageFrame>
@@ -154,7 +153,7 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
           }
         : {
             href: `/l/${state.league.slug}/slate`,
-            label: `Allocate remaining ${state.ownerCard.remainingCredits}`,
+            label: `Use remaining ${state.ownerCard.remainingCredits}`,
           }
       : state.week.state === "FINAL"
         ? {
@@ -215,7 +214,7 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
                 <p className="text-registry mt-3 text-sm font-semibold">
                   {result
                     ? formatScore(result.selfPointsForCenticredits)
-                    : `${state.ownerCard.allocatedCredits} allocated · ${state.ownerCard.remainingCredits} remaining`}
+                    : `${state.ownerCard.allocatedCredits} used · ${state.ownerCard.remainingCredits} left`}
                 </p>
               </div>
               <div className="pt-7 text-center">
@@ -250,7 +249,7 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
                         : state.matchup.opponentReadiness === "INCOMPLETE"
                           ? "Incomplete"
                           : "Pending"
-                      : "Sealed until common lock"}
+                      : "Sealed until cards lock"}
                 </p>
               </div>
             </div>
@@ -322,8 +321,8 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
           <section className="border-boundary bg-subtle rounded-xl border p-5">
             <h2 className="font-bold">Privacy</h2>
             <p className="text-graphite mt-2 text-sm leading-6">
-              Your opponent cannot inspect your future selections. Each position
-              reveals only when its game begins.
+              Your opponent cannot see your future picks. Each pick reveals only
+              when its game begins.
             </p>
           </section>
         </aside>
@@ -343,7 +342,7 @@ export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
       <PageFrame
         eyebrow={`${state.league.name} · Live Week 1`}
         title="Published NFL slate"
-        description={`The eligible event set is immutable. Common lock ${formatDate(state.week.commonLockAt)}; cards stay closed until the roster and schedule publish.`}
+        description={`Week 1 games are selected. Cards lock ${formatDate(state.week.commonLockAt)} and open after the roster is set.`}
         aside={liveStatus(state)}
       >
         <div className="mt-7 grid gap-4">
@@ -392,7 +391,7 @@ export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
       <PageFrame
         eyebrow={`${state.league.name} · Week ${state.week.nflWeek} ${state.week.scope.toLowerCase()}`}
         title="Published NFL slate"
-        description={`This round's event set is immutable. Your entry has no card this round, but the official markets and common lock remain visible.`}
+        description={`You do not have a card this round, but you can still view the selected games and card-lock time.`}
         aside={liveStatus(state)}
       >
         <div className="mt-7 grid gap-4">
@@ -445,20 +444,19 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
       <PageFrame
         eyebrow={`${state.league.name} · Week ${state.week.nflWeek} ${state.week.scope.toLowerCase()}`}
         title="No card assigned this round"
-        description="Cards are granted only to entries scheduled in the published postseason round."
+        description="Only members scheduled to play this round receive a card."
         aside={liveStatus(state)}
       >
         <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">
           <p className="text-graphite max-w-2xl leading-7">
-            There is no allocation to complete and no penalty for this entry.
-            Follow the official bracket for the current matchup field and
-            advancement.
+            There is no card to complete and no penalty this week. Follow the
+            bracket for current matchups and advancement.
           </p>
           <Link
             className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
             href={`/l/${state.league.slug}/playoffs`}
           >
-            Open the playoff ledger
+            View playoffs
           </Link>
         </div>
       </PageFrame>
@@ -469,7 +467,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
       <PageFrame
         eyebrow={`${state.league.name} · Formation`}
         title="My card"
-        description="The weekly card is granted when the commissioner publishes the operational slate."
+        description="Your weekly card appears when the commissioner opens the week."
       >
         <FormationPanel state={state} />
       </PageFrame>
@@ -479,14 +477,14 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
     <PageFrame
       eyebrow="Visible only to you"
       title={`My Week ${state.week.nflWeek} card`}
-      description="Your exact accepted terms are always visible to you and never available to the commissioner."
+      description="You can always see your sealed picks. The commissioner cannot."
       aside={
         <StatusBadge
           tone={
             state.ownerCard.compliance === "COMPLIANT" ? "positive" : "sealed"
           }
         >
-          {state.ownerCard.compliance}
+          {state.ownerCard.compliance === "COMPLIANT" ? "Ready" : "Incomplete"}
         </StatusBadge>
       }
     >
@@ -494,7 +492,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
         <div className="space-y-4">
           {state.ownerCard.positions.length === 0 ? (
             <p className="border-boundary bg-surface rounded-xl border p-6">
-              No accepted positions yet.
+              No sealed picks yet.
             </p>
           ) : (
             state.ownerCard.positions.map((position) => (
@@ -545,7 +543,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
                   className="text-action mt-4 inline-flex text-sm font-semibold hover:underline"
                   href={`/l/${state.league.slug}/receipt/${position.id}`}
                 >
-                  Open immutable receipt
+                  View receipt
                 </Link>
               </article>
             ))
@@ -553,14 +551,14 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
         </div>
         <aside className="border-boundary bg-surface h-fit rounded-xl border p-5">
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-            Allocation meter
+            Card total
           </p>
           <p className="mt-2 font-mono text-2xl font-bold">
             {state.ownerCard.allocatedCredits} / 1,000
           </p>
           <p className="text-muted mt-2 text-sm">
-            {state.ownerCard.remainingCredits} remaining · accepted decisions
-            cannot be canceled.
+            {state.ownerCard.remainingCredits} left · sealed picks cannot be
+            changed.
           </p>
         </aside>
       </div>
@@ -585,15 +583,13 @@ export function Stage1LiveView({ state }: { state: Stage1StateDto }) {
     <PageFrame
       eyebrow={hasLiveEvent ? "Live now" : "Game-day matchup"}
       title={`${state.viewer.displayName} vs ${state.matchup.opponentName}`}
-      description="Positions reveal game by game after actual kickoff. Future selections remain sealed."
+      description="Picks reveal game by game after kickoff. Future picks remain sealed."
       aside={liveStatus(state)}
       dark={hasLiveEvent}
     >
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section className="border-boundary bg-surface rounded-xl border p-5">
-          <h2 className="text-lg font-bold">
-            Opponent positions revealed by event
-          </h2>
+          <h2 className="text-lg font-bold">Opponent picks revealed by game</h2>
           <div className="mt-4 space-y-3">
             {state.matchup.opponentRevealedPositions.map((position) => (
               <article
@@ -611,24 +607,23 @@ export function Stage1LiveView({ state }: { state: Stage1StateDto }) {
             ))}
             {state.matchup.futureSealed ? (
               <div className="border-boundary bg-subtle rounded-lg border px-4 py-5 text-center">
-                <p className="font-semibold">Future positions sealed</p>
+                <p className="font-semibold">Future picks sealed</p>
                 <p className="text-muted mt-1 text-xs">
-                  One generic placeholder; no hidden count, allocation, market,
-                  or geometry.
+                  Unstarted games remain private.
                 </p>
               </div>
             ) : null}
             {state.matchup.opponentRevealedPositions.length === 0 &&
             !state.matchup.futureSealed ? (
-              <p className="text-muted">No opponent positions were accepted.</p>
+              <p className="text-muted">No opponent picks were sealed.</p>
             ) : null}
           </div>
         </section>
         <aside className="border-boundary bg-surface h-fit rounded-xl border p-5">
           <h2 className="font-bold">What remains private</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Only selections tied to games that have started appear here. No
-            future position count, allocation, or outcome is disclosed.
+            Only picks tied to games that have started appear here. Everything
+            else remains private.
           </p>
         </aside>
       </div>
@@ -643,8 +638,8 @@ export function Stage1LeagueView({ state }: { state: Stage1StateDto }) {
       title="Around the league"
       description={
         state.league.lifecycle === "PLAYOFFS"
-          ? "The published postseason pairings and latest result versions; sealed terms never enter this scoreboard."
-          : "Frozen scheduled matchups; sealed terms never enter this scoreboard."
+          ? "Current playoff matchups and final scores."
+          : "This week’s league matchups and scores."
       }
       aside={liveStatus(state)}
     >
@@ -695,8 +690,8 @@ export function Stage1StandingsView({ state }: { state: Stage1StateDto }) {
       title="Standings"
       description={
         state.league.lifecycle === "PLAYOFFS"
-          ? "The regular-season ordering is frozen. Postseason results advance the bracket without rewriting these standings."
-          : "The latest snapshot derives from the newest official result-version chain."
+          ? "The final regular-season table. Playoff results appear in the bracket."
+          : "Updated after the latest final matchup."
       }
       aside={liveStatus(state)}
     >
@@ -1097,19 +1092,16 @@ export function Stage1DeferredView({
 }) {
   return (
     <PageFrame
-      eyebrow={`${state.league.name} · Season boundary`}
+      eyebrow={state.league.name}
       title={title}
       description={description}
       aside={<StatusBadge tone="pending">Not published</StatusBadge>}
     >
       <section className="border-boundary bg-surface mt-7 max-w-3xl rounded-xl border p-6">
-        <h2 className="font-bold">
-          Week {state.week?.nflWeek ?? 1} remains the source of truth
-        </h2>
+        <h2 className="font-bold">Current season</h2>
         <p className="text-graphite mt-3 leading-7">
-          The current operational week and latest official standings snapshot
-          remain authoritative. No placeholder history or postseason fact is
-          inferred from private or incomplete data.
+          This page will fill in when the required week or season result is
+          final.
         </p>
         <Link
           className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
@@ -1134,8 +1126,8 @@ export function Stage1EventView({
   return (
     <PageFrame
       eyebrow={`${event.awayTeam} at ${event.homeTeam}`}
-      title="Event market sheet"
-      description={`${formatDate(event.scheduledStartAt)} · ${event.state} · ${event.providerHealth}`}
+      title="Game picks"
+      description={`${formatDate(event.scheduledStartAt)} · ${event.state}`}
       aside={
         <Link
           className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
@@ -1154,7 +1146,10 @@ export function Stage1EventView({
             <div className="flex justify-between gap-4">
               <div>
                 <p className="text-muted text-xs">
-                  {market.marketType} · {market.qualityStatus}
+                  {market.marketType} ·{" "}
+                  {market.qualityStatus === "HEALTHY"
+                    ? "Available"
+                    : "Unavailable"}
                 </p>
                 <h2 className="mt-2 font-bold">{market.proposition}</h2>
               </div>
@@ -1168,7 +1163,7 @@ export function Stage1EventView({
                 className="border-registry text-registry hover:bg-subtle mt-4 inline-flex min-h-11 items-center rounded-lg border px-4 text-sm font-semibold"
                 href={`/l/${state.league.slug}/slate`}
               >
-                Select in Card Builder
+                Select on slate
               </Link>
             ) : null}
           </article>
@@ -1191,10 +1186,10 @@ export function Stage1ReceiptView({
   if (!receipt) return null;
   return (
     <PageFrame
-      eyebrow="Immutable position receipt"
+      eyebrow="Sealed pick"
       title={receipt.proposition}
-      description="Accepted terms are permanent; corrections append downstream versions without changing this artifact."
-      aside={<StatusBadge tone="sealed">SEALED</StatusBadge>}
+      description="The accepted line, odds, stake, and time for this pick."
+      aside={<StatusBadge tone="sealed">Sealed</StatusBadge>}
     >
       <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">
         <dl className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -1225,15 +1220,18 @@ export function Stage1ReceiptView({
             </dd>
           </div>
           <div>
-            <dt className="text-muted text-xs uppercase">Current settlement</dt>
+            <dt className="text-muted text-xs uppercase">Result</dt>
             <dd className="mt-1 font-semibold">
               {receipt.settlement?.outcome ?? "Pending"}
             </dd>
           </div>
         </dl>
-        <p className="border-boundary text-muted mt-6 border-t pt-4 font-mono text-xs break-all">
-          Receipt hash · {receipt.receiptHash}
-        </p>
+        <details className="border-boundary text-muted mt-6 border-t pt-4 text-xs">
+          <summary className="cursor-pointer font-semibold">
+            Technical receipt ID
+          </summary>
+          <p className="mt-3 font-mono break-all">{receipt.receiptHash}</p>
+        </details>
       </div>
     </PageFrame>
   );

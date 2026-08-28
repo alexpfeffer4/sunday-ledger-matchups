@@ -88,7 +88,9 @@ export default async function JoinLeaguePage({
                   <dt className="text-muted">Season</dt>
                   <dd className="mt-1 font-semibold">
                     NFL {preview.nfl_year} ·{" "}
-                    {preview.mode === "LIVE" ? "Live season" : "Simulation"}
+                    {preview.mode === "LIVE"
+                      ? "Live season"
+                      : "Practice season"}
                   </dd>
                 </div>
                 <div>
@@ -122,8 +124,8 @@ export default async function JoinLeaguePage({
                 </Link>
               )}
               <p className="text-muted mt-4 text-center text-xs leading-5">
-                Accepted positions stay private until their games begin.
-                Commissioners cannot inspect sealed cards.
+                Sealed picks stay private until their games begin. Commissioners
+                cannot inspect sealed cards.
               </p>
             </div>
           </section>

@@ -129,7 +129,7 @@ export function LeagueShell({
                     : "bg-subtle text-graphite"
                 }`}
               >
-                {mode === "SIMULATION" ? "Simulation" : "Live season"}
+                {mode === "SIMULATION" ? "Practice" : "Live season"}
               </span>
               {archiveMode ? (
                 <span className="text-positive hidden min-h-11 items-center px-3 text-sm font-semibold lg:inline-flex">

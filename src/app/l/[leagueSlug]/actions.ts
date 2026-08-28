@@ -94,14 +94,14 @@ function mutationError(message: string): AppActionState {
     return {
       status: "error",
       message:
-        "The full-season simulation can publish only before interactive Week 1 begins.",
+        "A full practice season can run only before Practice Week 1 begins.",
     };
   }
   if (message.includes("Common lock has not arrived")) {
     return {
       status: "error",
       message:
-        "Advance the simulation clock to common lock before locking cards.",
+        "Advance the practice clock to the card-lock time before locking cards.",
     };
   }
   if (message.includes("cannot finalize before its correction window")) {
@@ -126,27 +126,26 @@ function mutationError(message: string): AppActionState {
   if (message.includes("exactly 1,000")) {
     return {
       status: "error",
-      message: "Allocate exactly 1,000 credits before sealing the card.",
+      message: "Use all 1,000 credits before sealing the card.",
     };
   }
   if (message.includes("live odds event count")) {
     return {
       status: "error",
-      message:
-        "The provider returned too many games for one weekly import. No odds were stored.",
+      message: "Too many games were returned for one week. No odds were saved.",
     };
   }
   if (message.includes("Select between one and 32")) {
     return {
       status: "error",
-      message: "Select at least one imported NFL event before publishing.",
+      message: "Select at least one NFL game before publishing.",
     };
   }
   if (message.includes("already reached common lock")) {
     return {
       status: "error",
       message:
-        "At least one selected event has reached common lock. Import current markets and review a future slate.",
+        "At least one selected game has reached the card-lock time. Import a future slate instead.",
     };
   }
   if (message.includes("already published")) {
@@ -159,34 +158,34 @@ function mutationError(message: string): AppActionState {
     return {
       status: "error",
       message:
-        "A newer NFL market import is available. Refresh the commissioner page and review it before publishing.",
+        "Newer NFL odds are available. Refresh the Commissioner page before publishing.",
     };
   }
   if (message.includes("live score batch must match")) {
     return {
       status: "error",
       message:
-        "The provider did not return every published game. The existing quotes remain current and unchanged.",
+        "Not every published game was returned. The current odds were left unchanged.",
     };
   }
   if (message.includes("cannot change a published event")) {
     return {
       status: "error",
       message:
-        "The provider changed a published game identity or kickoff. No quote was refreshed.",
+        "A published game or kickoff time changed unexpectedly. No odds were updated.",
     };
   }
   if (message.includes("cannot move an observation backward")) {
     return {
       status: "error",
       message:
-        "The provider returned an older observation. The newer stored quotes remain current.",
+        "The returned odds were older than the current ones, so nothing changed.",
     };
   }
   if (message.includes("reached common lock")) {
     return {
       status: "error",
-      message: "Odds cannot refresh after the published common lock.",
+      message: "Odds cannot refresh after cards lock.",
     };
   }
   if (message.includes("six fresh healthy current quotes")) {
@@ -212,15 +211,14 @@ function mutationError(message: string): AppActionState {
   if (message.includes("14-week regular season is complete")) {
     return {
       status: "error",
-      message:
-        "Week 14 is complete; the next operation is playoff qualification.",
+      message: "Week 14 is complete. Confirm the playoff field next.",
     };
   }
   if (message.includes("Week 14 must be final")) {
     return {
       status: "error",
       message:
-        "Finalize Week 14 and its correction window before freezing playoff qualification.",
+        "Finalize Week 14 after its correction window before confirming the playoff field.",
     };
   }
   if (message.includes("No additional competitive postseason")) {
@@ -247,14 +245,14 @@ function mutationError(message: string): AppActionState {
     return {
       status: "error",
       message:
-        "The final competitive ledger is incomplete. No archive was published and the season remains in playoffs.",
+        "The final season record is incomplete. The season remains in the playoffs.",
     };
   }
   if (message.includes("frozen playoff field is incomplete")) {
     return {
       status: "error",
       message:
-        "The frozen playoff field is incomplete, so the rules do not allow a replacement qualifier.",
+        "The playoff field is incomplete, and the rules do not allow a replacement qualifier.",
     };
   }
   if (
@@ -271,7 +269,7 @@ function mutationError(message: string): AppActionState {
     return {
       status: "error",
       message:
-        "Import a fresh NFL market batch after the prior week before publishing the postseason slate.",
+        "Import current NFL odds after the prior week before opening the next playoff round.",
     };
   }
   if (message.includes("locked cards and an unfinalized week")) {
@@ -284,15 +282,13 @@ function mutationError(message: string): AppActionState {
   if (message.includes("exactly the published event set")) {
     return {
       status: "error",
-      message:
-        "The provider did not return every published game. No result was imported.",
+      message: "Not every published game was returned. No scores were updated.",
     };
   }
   if (message.includes("live score import is not fresh")) {
     return {
       status: "error",
-      message:
-        "The provider result batch was stale. Request current scores again.",
+      message: "Those scores were out of date. Refresh them again.",
     };
   }
   if (message.includes("48-hour postponement window")) {
@@ -322,7 +318,7 @@ function mutationError(message: string): AppActionState {
   }
   return {
     status: "error",
-    message: "The command was rejected without changing competitive history.",
+    message: "Nothing changed. Refresh the page and try again.",
   };
 }
 
@@ -350,7 +346,7 @@ export async function publishSimulationSeasonArchiveAction(
   }
   if (state.league.lifecycle !== "DRAFT" || state.week) {
     return mutationError(
-      "A simulation archive must publish before interactive play begins.",
+      "A full practice season must run before Practice Week 1 begins.",
     );
   }
   if (
@@ -359,7 +355,7 @@ export async function publishSimulationSeasonArchiveAction(
     state.league.memberCount % 2 !== 0
   ) {
     return mutationError(
-      "A simulation archive requires an even roster from 4 through 16.",
+      "A practice season requires an even roster from 4 through 16.",
     );
   }
   if (state.members.some((member) => member.entryId === null)) {
@@ -581,7 +577,7 @@ export async function importLiveOddsAction(
       return {
         status: "error",
         message:
-          "The provider response failed validation. No odds were stored or published.",
+          "The odds response was incomplete. No odds were saved or published.",
       };
     }
     return mutationError("The live odds import failed.");
@@ -632,7 +628,7 @@ export async function publishLiveWeekSlateAction(
   revalidatePath(`/l/${context.data.leagueSlug}/commissioner`);
   return {
     status: "success",
-    message: `${selection.data.externalEventIds.length} NFL events published to the immutable Week 1 slate. Cards remain closed until the roster and schedule are locked.`,
+    message: `${selection.data.externalEventIds.length} NFL games published for Week 1. Cards remain closed until the roster is locked.`,
     href: `/l/${context.data.leagueSlug}/slate`,
     hrefLabel: "Review the published slate",
   };
@@ -692,7 +688,7 @@ export async function publishNextLiveWeekSlateAction(
   revalidatePath(`/l/${context.data.leagueSlug}/commissioner`);
   return {
     status: "success",
-    message: `Week ${nextWeek} is open: the frozen matchup and fresh 1,000-credit cards are published with ${selection.data.externalEventIds.length} NFL events.`,
+    message: `Week ${nextWeek} is open with ${selection.data.externalEventIds.length} NFL games and a fresh 1,000-credit card for every member.`,
     href: `/l/${context.data.leagueSlug}/slate`,
     hrefLabel: `Build the Week ${nextWeek} card`,
   };
@@ -741,7 +737,7 @@ export async function publishLivePlayoffQualificationAction(
   return {
     status: "success",
     message:
-      "The Week 14 ordering, attendance eligibility, qualification seeds, and bracket template are now immutable.",
+      "The playoff field is set from the final Week 14 standings and eligibility results.",
     href: `/l/${context.data.leagueSlug}/playoffs`,
     hrefLabel: "Open the official bracket",
   };
@@ -809,7 +805,7 @@ export async function publishNextLivePostseasonWeekAction(
   }
   return {
     status: "success",
-    message: `Week ${nextWeek} is open from the frozen playoff bracket. Only this round's participants received fresh 1,000-credit cards.`,
+    message: `Playoff Week ${nextWeek} is open. Only members playing this round received fresh 1,000-credit cards.`,
     href: `/l/${context.data.leagueSlug}/playoffs`,
     hrefLabel: `Review the Week ${nextWeek} bracket`,
   };
@@ -861,7 +857,7 @@ export async function publishLiveSeasonArchiveAction(
   return {
     status: "success",
     message:
-      "The champion and complete final ledger are now preserved in the immutable season archive.",
+      "The season is closed. The champion and complete season history are now final.",
     href: `/l/${context.data.leagueSlug}/matchup`,
     hrefLabel: "Open the completed season",
   };
@@ -949,7 +945,7 @@ export async function refreshLiveWeekQuotesAction(
     revalidatePath(`/l/${context.data.leagueSlug}/commissioner`);
     return {
       status: "success",
-      message: `${eventCount} published games refreshed. The eligible games and common lock did not change.`,
+      message: `${eventCount} published games refreshed. The selected games and card-lock time did not change.`,
     };
   } catch (error) {
     console.error(
@@ -967,7 +963,7 @@ export async function refreshLiveWeekQuotesAction(
       return {
         status: "error",
         message:
-          "The provider did not return a complete valid quote set. Existing published quotes were not changed.",
+          "Complete current odds were not available. The published odds were left unchanged.",
       };
     }
     if (error instanceof LiveQuoteRefreshRejectedError) {
@@ -1045,7 +1041,7 @@ export async function lockLiveRosterAndOpenWeekAction(
       return {
         status: "error",
         message:
-          "The provider did not return a complete valid quote set. The roster remains unlocked.",
+          "Complete current odds were not available. The roster remains unlocked.",
       };
     }
     if (error instanceof LiveQuoteRefreshRejectedError) {
@@ -1126,8 +1122,7 @@ export async function importLiveScoresAction(
     if (error instanceof OddsProviderPayloadError) {
       return {
         status: "error",
-        message:
-          "The provider returned an incomplete or inconsistent score slate. No result was imported.",
+        message: "The score update was incomplete. No results were changed.",
       };
     }
     return mutationError("The live score import failed.");
@@ -1177,7 +1172,7 @@ export async function correctLiveEventResultAction(
   if (result.error) return mutationError(result.error.message);
   return finish(
     context.data.leagueSlug,
-    "The objective correction was appended. Receipts remained immutable while every downstream competitive version replayed.",
+    "The correction was recorded, and the affected scores and standings were updated.",
   );
 }
 
@@ -1223,7 +1218,7 @@ export async function initializeStage1WeekAction(
   if (result.error) return mutationError(result.error.message);
   return finish(
     context.data.leagueSlug,
-    "Week 1 published: four matchups, eight 1,000-credit grants, and the deterministic slate are stored.",
+    "Week 1 is open with four matchups and a 1,000-credit card for every member.",
   );
 }
 
@@ -1367,7 +1362,7 @@ export async function advanceStage1ClockAction(
   if (result.error) return mutationError(result.error.message);
   return finish(
     context.data.leagueSlug,
-    "Simulation clock advanced. No result was created automatically.",
+    "Practice clock advanced. No score was created.",
   );
 }
 
@@ -1394,7 +1389,7 @@ export async function setStage1EventLiveAction(
   if (result.error) return mutationError(result.error.message);
   return finish(
     context.data.leagueSlug,
-    "Actual kickoff confirmed. Associated positions are now revealable.",
+    "Kickoff confirmed. Picks for this game can now reveal.",
   );
 }
 
@@ -1450,7 +1445,7 @@ export async function recordStage1ResultAction(
   if (result.error) return mutationError(result.error.message);
   return finish(
     context.data.leagueSlug,
-    "Objective result stored and the affected competitive versions replayed.",
+    "Final score recorded. The affected matchup and standings were updated.",
   );
 }
 
@@ -1476,7 +1471,7 @@ export async function correctStage1ResultAction(
   if (result.error) return mutationError(result.error.message);
   return finish(
     context.data.leagueSlug,
-    "Correction appended. Receipts stayed immutable while settlements and standings replayed.",
+    "Correction recorded. The affected picks, scores, and standings were updated.",
   );
 }
 

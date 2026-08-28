@@ -18,34 +18,33 @@ export default function TrustPage() {
           Trust is part of the game.
         </h1>
         <p className="text-graphite mt-5 text-lg leading-7">
-          Sunday Ledger keeps competitive truth narrow, private, and
-          explainable.
+          Your card stays private, and the league record stays clear.
         </p>
-        <div className="mt-10 grid gap-5 sm:grid-cols-2">
+        <div className="divide-boundary border-boundary mt-10 divide-y border-y">
           {[
             [
               "Sealed means sealed",
-              "You can always see your accepted card. Opponents and commissioners receive no unrevealed position content or hidden-count metadata.",
+              "You can always see your own card. Opponents and commissioners cannot see your picks before they are revealed.",
             ],
             [
               "Receipts do not change",
-              "Each accepted proposition, line, price, stake, source time, and ruleset stays attached to one permanent receipt.",
+              "Every accepted pick keeps its original line, odds, stake, and acceptance time.",
             ],
             [
               "Corrections stay visible",
-              "An objective result correction appends a new version and explains every score, matchup, standings, eligibility, or bracket consequence.",
+              "If an official result changes, the correction stays visible and the affected scores and standings are recalculated.",
             ],
             [
               "Commissioners host",
-              "Commissioners operate named league actions. They cannot view sealed cards, rewrite receipts, select winners, or privately waive rules.",
+              "Commissioners invite members and keep the season moving. They cannot view sealed cards, change scores, or choose winners.",
             ],
           ].map(([title, body]) => (
             <section
               key={title}
-              className="border-boundary bg-surface rounded-xl border p-6"
+              className="grid gap-2 py-6 sm:grid-cols-[190px_1fr] sm:gap-8"
             >
-              <h2 className="text-lg font-bold">{title}</h2>
-              <p className="text-graphite mt-3 leading-6">{body}</p>
+              <h2 className="font-bold">{title}</h2>
+              <p className="text-graphite leading-6">{body}</p>
             </section>
           ))}
         </div>

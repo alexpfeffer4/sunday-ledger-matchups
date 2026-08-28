@@ -8,7 +8,7 @@ import { Stage1ReceiptView } from "@/components/stage1/live-views";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
 
-export const metadata: Metadata = { title: "Position receipt" };
+export const metadata: Metadata = { title: "Pick receipt" };
 
 function formatOdds(odds: number): string {
   return odds > 0 ? `+${odds}` : `−${Math.abs(odds)}`;
@@ -34,8 +34,8 @@ export default async function ReceiptPage({
   if (!receipt) notFound();
 
   const facts = [
-    ["Position", receipt.displayLine],
-    ["Normalized proposition", receipt.proposition],
+    ["Pick", receipt.displayLine],
+    ["Selection", receipt.proposition],
     ["Market", receipt.marketLabel],
     ["Stake", `${receipt.stakeCredits} credits`],
     ["Accepted odds", formatOdds(receipt.americanOdds)],
@@ -50,9 +50,9 @@ export default async function ReceiptPage({
 
   return (
     <PageFrame
-      eyebrow="Week 6 · immutable evidence"
-      title="Position receipt"
-      description="This simulation receipt preserves the exact terms used by the shared acceptance and settlement contract."
+      eyebrow="Week 6 · sealed pick"
+      title="Pick receipt"
+      description="The line, odds, stake, and acceptance time for this pick."
       aside={<StatusBadge tone="sealed">Accepted · sealed</StatusBadge>}
     >
       <div className="mt-7 max-w-4xl">
@@ -79,7 +79,7 @@ export default async function ReceiptPage({
           </dl>
           <div className="border-boundary mt-2 rounded-lg border p-4">
             <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
-              Request evidence
+              Receipt ID
             </p>
             <p className="mt-2 font-mono text-xs leading-5 break-all">
               {receipt.receiptHash}
@@ -87,9 +87,8 @@ export default async function ReceiptPage({
           </div>
           <div className="border-boundary mt-6 border-t pt-5">
             <p className="text-graphite text-sm leading-6">
-              Sealed until the event is reliably live. After reveal, settlement
-              and any correction append to this lifecycle; the accepted terms do
-              not change.
+              This pick stays sealed until kickoff. Its accepted terms do not
+              change, and any official correction remains visible.
             </p>
             <Link
               className="text-action mt-3 inline-flex min-h-11 items-center text-sm font-semibold hover:underline"

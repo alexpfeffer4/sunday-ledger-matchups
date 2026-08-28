@@ -23,7 +23,7 @@ export default async function RivalryPage({
       <Stage1DeferredView
         state={live}
         title="No official rivalry record yet"
-        description="Rivalry facts begin only after final matchup versions exist; member names in this URL do not create a record."
+        description="Final head-to-head matchups will appear here."
       />
     );
   }
@@ -38,7 +38,7 @@ export default async function RivalryPage({
     <PageFrame
       eyebrow="Official head to head"
       title="Pfeff vs Mia"
-      description="Competition scope is preserved so future exhibitions and placement games cannot alter this regular-season record."
+      description="Regular-season meetings are tracked separately from playoffs and exhibitions."
     >
       <div className="mt-7 max-w-4xl">
         <section className="border-boundary bg-surface rounded-xl border p-5 sm:p-7">

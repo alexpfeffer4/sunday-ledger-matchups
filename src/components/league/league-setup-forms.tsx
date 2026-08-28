@@ -26,15 +26,14 @@ export function LeagueSetupForms() {
         </p>
         <h2 className="mt-2 text-xl font-bold">Create a private league</h2>
         <p className="text-graphite mt-2 text-sm leading-6">
-          Choose Live for real NFL markets or Simulation for fictional test
-          data. Both modes support an even roster from 4 through 16 and keep
-          their records strictly separated.
+          Choose a live NFL season or a practice season. Leagues support any
+          even roster from 4 through 16 members.
         </p>
         <label
           className="mt-5 block text-sm font-semibold"
           htmlFor="league-mode"
         >
-          Season mode
+          League type
         </label>
         <select
           className="border-control bg-surface focus:border-registry mt-2 min-h-11 w-full rounded-lg border px-3 outline-none"
@@ -42,8 +41,8 @@ export function LeagueSetupForms() {
           id="league-mode"
           name="mode"
         >
-          <option value="SIMULATION">Simulation · fictional data</option>
-          <option value="LIVE">Live · real NFL markets</option>
+          <option value="SIMULATION">Practice season</option>
+          <option value="LIVE">Live NFL season</option>
         </select>
         <label
           className="mt-4 block text-sm font-semibold"
@@ -57,13 +56,13 @@ export function LeagueSetupForms() {
           name="name"
           required
           maxLength={80}
-          placeholder="West 21st Ledger"
+          placeholder="Sunday League"
         />
         <label
           className="mt-4 block text-sm font-semibold"
           htmlFor="league-slug"
         >
-          URL slug
+          League URL
         </label>
         <input
           className="border-control bg-surface focus:border-registry mt-2 min-h-11 w-full rounded-lg border px-3 font-mono text-sm outline-none"
@@ -71,7 +70,7 @@ export function LeagueSetupForms() {
           name="slug"
           required
           pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-          placeholder="west-21st-ledger"
+          placeholder="sunday-league"
         />
         <button
           className="bg-registry hover:bg-registry-hover mt-5 min-h-11 w-full rounded-lg px-4 font-semibold text-white disabled:opacity-60"
@@ -92,8 +91,7 @@ export function LeagueSetupForms() {
         </p>
         <h2 className="mt-2 text-xl font-bold">Join an existing league</h2>
         <p className="text-graphite mt-2 text-sm leading-6">
-          Paste the private code your commissioner shared. The code—not your
-          magic-link email—belongs here.
+          Paste the invitation code your commissioner sent you.
         </p>
         <label
           className="mt-5 block text-sm font-semibold"

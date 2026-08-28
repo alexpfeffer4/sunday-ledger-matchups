@@ -130,14 +130,13 @@ export function LiveWeekCommissionerControls({
         </p>
         <h2 className="mt-2 font-bold">
           {state.week.state === "OPEN"
-            ? "Cards remain open until common lock"
-            : "Card compliance is frozen"}
+            ? "Cards remain open until the published deadline"
+            : "Cards are locked"}
         </h2>
         <p className="text-graphite mt-2 text-sm leading-6">
-          Common lock is{" "}
-          {timestampFormatter.format(new Date(state.week.commonLockAt))} ET. The
-          database rejects late positions even if the explicit lock command runs
-          afterward.
+          Cards lock at{" "}
+          {timestampFormatter.format(new Date(state.week.commonLockAt))} ET.
+          Picks cannot be added or changed after that time.
         </p>
         {state.week.state === "OPEN" ? (
           <>
@@ -164,7 +163,7 @@ export function LiveWeekCommissionerControls({
           </>
         ) : (
           <p className="text-positive mt-4 text-sm font-semibold">
-            No position can now be added or changed.
+            No pick can now be added or changed.
           </p>
         )}
       </section>
@@ -174,7 +173,7 @@ export function LiveWeekCommissionerControls({
           <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
             <div>
               <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-                The Odds API · official score feed
+                NFL score updates
               </p>
               <h2 className="mt-2 font-bold">NFL event results</h2>
             </div>
@@ -189,9 +188,9 @@ export function LiveWeekCommissionerControls({
             ) : null}
           </div>
           <p className="text-graphite mt-2 text-sm leading-6">
-            One refresh checks exactly the published games. Completed scores
-            settle immutable receipts; changed provider finals append visible
-            corrections. Each refresh uses two provider credits.
+            Refresh the published games for live and final scores. Completed
+            games score the affected picks, and official changes remain visible
+            as corrections.
           </p>
           <form action={scoreAction} className="mt-4">
             <ContextFields state={state} />
@@ -245,7 +244,7 @@ export function LiveWeekCommissionerControls({
                     <p className="font-semibold">
                       Version {event.result.version} ·{" "}
                       {event.result.source === "THE_ODDS_API"
-                        ? "Provider"
+                        ? "Official feed"
                         : "Objective correction"}
                       {event.correctionCount > 0
                         ? " · " +
@@ -357,14 +356,14 @@ export function LiveWeekCommissionerControls({
           </h2>
           <p className="text-graphite mt-2 text-sm leading-6">
             {state.week.state === "FINAL"
-              ? "Final score, matchup, and standings versions are append-only."
+              ? "The matchup score and standings are final."
               : "Initial settlement is provisional through " +
                 (state.week.correctionWindowClosesAt
                   ? timestampFormatter.format(
                       new Date(state.week.correctionWindowClosesAt),
                     )
                   : "the published closing time") +
-                " ET. The database rejects early finalization."}
+                " ET. The week cannot be finalized before then."}
           </p>
           {state.week.state === "PROVISIONAL" ? (
             <form action={finalizeAction} className="mt-4">
@@ -385,14 +384,13 @@ export function LiveWeekCommissionerControls({
       {state.week.state === "FINAL" && weekNumber < 14 ? (
         <section className="border-registry bg-surface rounded-xl border p-5">
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-            Week {nextWeekNumber} · operational publication
+            Week {nextWeekNumber} setup
           </p>
-          <h2 className="mt-2 font-bold">Open the next weekly ledger</h2>
+          <h2 className="mt-2 font-bold">Open Week {nextWeekNumber}</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Import current NFL markets, review the eligible event set, and
-            publish once. The database takes the Week {nextWeekNumber} pairing
-            from the frozen schedule and creates one fresh 1,000-credit card per
-            member in the same transaction.
+            Import current NFL markets, review the selected games, and publish
+            the week. Matchups come from the season schedule, and every member
+            receives a fresh 1,000-credit card.
           </p>
           <form action={oddsImportAction} className="mt-4">
             <ContextFields state={state} />
@@ -408,8 +406,7 @@ export function LiveWeekCommissionerControls({
           </form>
           {!providerConfigured ? (
             <p className="text-pending mt-3 text-xs leading-5 font-semibold">
-              The server-side provider key is not configured in this
-              environment.
+              Odds are not connected for this league yet.
             </p>
           ) : null}
           <ActionFeedback state={oddsImportState} />
@@ -467,7 +464,7 @@ export function LiveWeekCommissionerControls({
                             {event.awayTeam} at {event.homeTeam}
                           </span>
                           <span className="text-muted mt-1 block text-xs">
-                            {event.markets.length} main-market outcomes ·{" "}
+                            {event.markets.length} available lines ·{" "}
                             {timestampFormatter.format(
                               new Date(event.scheduledStartAt),
                             )}{" "}
@@ -479,9 +476,8 @@ export function LiveWeekCommissionerControls({
                   </div>
                 </fieldset>
                 <p className="text-negative mt-4 text-sm leading-6 font-semibold">
-                  Irreversible: publication fixes the event set and common lock,
-                  opens every card, and advances the operational league to Week{" "}
-                  {nextWeekNumber}.
+                  Once published, the selected games and card-lock time cannot
+                  be changed. Every Week {nextWeekNumber} card will open.
                 </p>
                 <button
                   className={`${buttonClass} mt-4`}
@@ -497,8 +493,8 @@ export function LiveWeekCommissionerControls({
             </div>
           ) : (
             <p className="text-muted mt-4 text-sm leading-6">
-              Import a new market batch after Week {weekNumber} common lock to
-              enable the Week {nextWeekNumber} review.
+              Import current odds after Week {weekNumber} cards lock to prepare
+              Week {nextWeekNumber}.
             </p>
           )}
         </section>
@@ -509,13 +505,13 @@ export function LiveWeekCommissionerControls({
       weekNumber < 17 ? (
         <section className="border-registry bg-surface rounded-xl border p-5">
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-            Week {nextWeekNumber} · postseason publication
+            Week {nextWeekNumber} playoff setup
           </p>
-          <h2 className="mt-2 font-bold">Open the next playoff ledger</h2>
+          <h2 className="mt-2 font-bold">Open playoff Week {nextWeekNumber}</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Import current NFL markets and review the event set. The database
-            takes the participants from the immutable bracket and prior final
-            results, then grants cards only to entries playing in this round.
+            Import current NFL markets and review the selected games. Matchups
+            come from the bracket, and only members playing this round receive a
+            new card.
             {weekNumber === 14 && state.league.memberCount <= 8
               ? " Week 15 is the required non-elimination exhibition round."
               : null}
@@ -534,8 +530,7 @@ export function LiveWeekCommissionerControls({
           </form>
           {!providerConfigured ? (
             <p className="text-pending mt-3 text-xs leading-5 font-semibold">
-              The server-side provider key is not configured in this
-              environment.
+              Odds are not connected for this league yet.
             </p>
           ) : null}
           <ActionFeedback state={oddsImportState} />
@@ -593,7 +588,7 @@ export function LiveWeekCommissionerControls({
                             {event.awayTeam} at {event.homeTeam}
                           </span>
                           <span className="text-muted mt-1 block text-xs">
-                            {event.markets.length} main-market outcomes ·{" "}
+                            {event.markets.length} available lines ·{" "}
                             {timestampFormatter.format(
                               new Date(event.scheduledStartAt),
                             )}{" "}
@@ -605,9 +600,8 @@ export function LiveWeekCommissionerControls({
                   </div>
                 </fieldset>
                 <p className="text-negative mt-4 text-sm leading-6 font-semibold">
-                  Irreversible: publication fixes the event set, matchup field,
-                  and common lock for Week {nextWeekNumber}. Prior results and
-                  qualification seeds cannot be edited.
+                  Once published, the selected games, matchups, and card-lock
+                  time for Week {nextWeekNumber} cannot be changed.
                 </p>
                 <button
                   className={`${buttonClass} mt-4`}
@@ -616,15 +610,15 @@ export function LiveWeekCommissionerControls({
                 >
                   {publishingPostseasonWeek
                     ? `Publishing Week ${nextWeekNumber}…`
-                    : `Publish Week ${nextWeekNumber} postseason ledger`}
+                    : `Publish playoff Week ${nextWeekNumber}`}
                 </button>
               </form>
               <ActionFeedback state={postseasonWeekState} />
             </div>
           ) : (
             <p className="text-muted mt-4 text-sm leading-6">
-              Import a new market batch after Week {weekNumber} common lock to
-              enable the Week {nextWeekNumber} postseason review.
+              Import current odds after Week {weekNumber} cards lock to prepare
+              the next playoff round.
             </p>
           )}
         </section>
@@ -639,16 +633,15 @@ export function LiveWeekCommissionerControls({
           </p>
           <h2 className="mt-2 font-bold">Week 17 results are final</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            The championship and third-place result versions are immutable. The
-            archive command derives the champion, final standings, schedule,
-            bracket, cards, receipts, and correction evidence from those final
-            records. No competitive value can be supplied or edited here.
+            The championship and third-place games are final. Close the season
+            to publish the champion, final standings, bracket, cards, and
+            history.
           </p>
           <form action={archiveAction} className="mt-4">
             <ContextFields state={state} />
             <p className="text-negative text-sm leading-6 font-semibold">
-              Irreversible: publishing closes the Live season and preserves its
-              permanent member-visible archive.
+              Once closed, the champion and final season record cannot be
+              changed.
             </p>
             <button
               className={`${buttonClass} mt-4`}
@@ -657,7 +650,7 @@ export function LiveWeekCommissionerControls({
             >
               {publishingArchive
                 ? "Publishing final archive…"
-                : "Publish champion & final season archive"}
+                : "Close season & publish champion"}
             </button>
           </form>
           <ActionFeedback state={archiveState} />
@@ -675,18 +668,17 @@ export function LiveWeekCommissionerControls({
           <p className="text-copper text-xs font-bold tracking-[0.08em] uppercase">
             Regular season complete
           </p>
-          <h2 className="mt-2 font-bold">Week 14 standings are frozen</h2>
+          <h2 className="mt-2 font-bold">Week 14 standings are final</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            No Week 15 regular-season slate can publish. Playoff qualification
-            is the next lifecycle operation.
+            The regular season is complete. Next, confirm the playoff field.
           </p>
           {state.league.lifecycle === "REGULAR" ? (
             <>
               <form action={playoffQualificationAction} className="mt-4">
                 <ContextFields state={state} />
                 <p className="text-negative text-sm leading-6 font-semibold">
-                  Irreversible: this freezes Week 14 ordering, attendance
-                  eligibility, qualification seeds, and the bracket template.
+                  Once confirmed, the Week 14 order, eligibility, seeds, and
+                  bracket cannot be changed.
                 </p>
                 <button
                   className={`${buttonClass} mt-4`}
@@ -694,8 +686,8 @@ export function LiveWeekCommissionerControls({
                   type="submit"
                 >
                   {publishingPlayoffQualification
-                    ? "Freezing playoff field…"
-                    : "Confirm & freeze playoff field"}
+                    ? "Confirming playoff field…"
+                    : "Confirm playoff field"}
                 </button>
               </form>
               <ActionFeedback state={playoffQualificationState} />

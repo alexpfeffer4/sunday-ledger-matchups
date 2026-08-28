@@ -57,8 +57,8 @@ export function SeasonArchiveHome({
       title={`${champion} won the Ledger`}
       description={
         archive.mode === "LIVE"
-          ? "Fourteen regular-season weeks and the complete frozen playoff bracket are preserved from final accepted cards, official results, and visible corrections."
-          : "Fourteen regular-season weeks, the complete frozen playoff bracket, and Week 18 exhibitions were generated through the same scoring and standings rules as the weekly game."
+          ? "The complete regular season, playoff bracket, champion, and official corrections are saved here."
+          : "This practice season includes the complete regular season, playoffs, champion, and Week 18 exhibitions."
       }
       aside={<StatusBadge tone="positive">Season final</StatusBadge>}
     >
@@ -69,19 +69,21 @@ export function SeasonArchiveHome({
           role="status"
         >
           <p className="text-positive text-xs font-bold tracking-[0.09em] uppercase">
-            Preview demo completed
+            Practice season complete
           </p>
           <h2 id="demo-run-title" className="mt-2 text-lg font-bold">
-            All 18 weeks ran successfully
+            All 18 weeks are ready
           </h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            The engine generated this complete archive for{" "}
-            {archive.members.length} fictional members. No invitations were sent
-            and no live league records were created.
+            This practice season used {archive.members.length} sample members.
+            It did not invite anyone or change a live league.
           </p>
-          <p className="text-muted mt-3 font-mono text-xs">
-            Output receipt · {demoRunReceipt}
-          </p>
+          <details className="text-muted mt-3 text-xs">
+            <summary className="cursor-pointer font-semibold">
+              Technical run ID
+            </summary>
+            <p className="mt-2 font-mono">{demoRunReceipt}</p>
+          </details>
         </section>
       ) : null}
 
@@ -110,17 +112,14 @@ export function SeasonArchiveHome({
         </div>
       </section>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="border-boundary mt-6 grid gap-x-6 border-y sm:grid-cols-2 xl:grid-cols-4">
         {[
           ["Regular season", "14 weeks"],
           ["Official matchups", `${archive.schedule.matchups.length}`],
           ["Playoff field", `Top ${archive.playoffs.qualifierCount} eligible`],
           ["Week 18", `${archive.week18.length} exhibitions`],
         ].map(([label, value]) => (
-          <section
-            className="border-boundary bg-surface rounded-xl border p-5"
-            key={label}
-          >
+          <section className="p-5" key={label}>
             <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
               {label}
             </p>
@@ -132,17 +131,15 @@ export function SeasonArchiveHome({
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section className="border-boundary bg-surface rounded-xl border p-6">
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-            Permanent season record
+            Season record
           </p>
           <h2 className="mt-2 text-xl font-bold">
-            Every scoring week survived
+            The full season at a glance
           </h2>
           <p className="text-graphite mt-3 max-w-3xl leading-7">
-            The archive retains {archive.regularSeason.weeks.length} ordered
-            standings snapshots, {archive.schedule.matchups.length}{" "}
-            regular-season matchups, immutable receipt terms for every{" "}
-            {archive.mode === "LIVE" ? "accepted" : "simulated"} card, playoff
-            advancement reasons, and exhibitions that cannot alter the champion.
+            Review all {archive.regularSeason.weeks.length} regular-season
+            weeks, {archive.schedule.matchups.length} matchups, every final
+            card, the playoff path, and the Week 18 exhibitions.
           </p>
           <div className="mt-5 flex flex-wrap gap-4">
             <Link
@@ -209,8 +206,11 @@ export function SeasonArchiveSchedule({
       description="One opponent per member in every scoring week. Pairing frequencies are balanced, consecutive rematches are absent, and the publication remained unchanged through the season."
       aside={<StatusBadge tone="positive">14 weeks final</StatusBadge>}
     >
-      <section className="border-boundary bg-surface mt-7 rounded-xl border p-5">
-        <dl className="grid gap-4 text-sm sm:grid-cols-3">
+      <details className="border-boundary mt-7 border-y py-4">
+        <summary className="cursor-pointer font-bold">
+          Technical schedule details
+        </summary>
+        <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
           <div>
             <dt className="text-muted">Algorithm</dt>
             <dd className="mt-1 font-semibold">
@@ -230,7 +230,7 @@ export function SeasonArchiveSchedule({
             </dd>
           </div>
         </dl>
-      </section>
+      </details>
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {archive.regularSeason.weeks.map((week) => (
           <section
@@ -297,7 +297,7 @@ export function SeasonArchiveStandings({
     <PageFrame
       eyebrow="Official through Week 14"
       title="Final regular-season standings"
-      description="Record leads the frozen tiebreak order. Points For, all-play, attendance, and the stored deterministic value resolve the rest."
+      description="Record comes first, followed by Points For, all-play, attendance, and the league’s published final tiebreaker."
       aside={<StatusBadge tone="positive">Qualification final</StatusBadge>}
     >
       <div className="border-boundary bg-surface mt-7 overflow-hidden rounded-xl border">
@@ -485,9 +485,9 @@ export function SeasonArchiveHistory({
 
   return (
     <PageFrame
-      eyebrow="Permanent season archive"
+      eyebrow="Season history"
       title={`${viewer}’s ${archive.nflYear} matchup history`}
-      description="Regular season, playoffs, placement, and exhibition meetings retain their competition scope instead of being blended into one record."
+      description="Regular season, playoff, placement, and exhibition results are tracked separately."
       aside={<StatusBadge tone="positive">Archive complete</StatusBadge>}
     >
       <section className="border-boundary bg-surface mt-7 overflow-hidden rounded-xl border">
