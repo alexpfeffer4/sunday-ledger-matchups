@@ -93,6 +93,17 @@ export type Database = {
         Args: { p_league_slug: string };
         Returns: Json;
       };
+      get_live_regular_season_schedule: {
+        Args: { p_league_slug: string };
+        Returns: Json | null;
+      };
+      lock_live_roster_and_open_week: {
+        Args: {
+          p_idempotency_key: string;
+          p_league_id: string;
+        };
+        Returns: Json;
+      };
       refresh_live_week_quotes: {
         Args: {
           p_idempotency_key: string;

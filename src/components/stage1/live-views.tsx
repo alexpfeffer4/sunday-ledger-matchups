@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import type { LiveOddsImportReview } from "@/application/queries/get-live-odds-import";
+import type { LiveRegularSeasonSchedule } from "@/application/queries/get-live-regular-season-schedule";
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
 import { Stage1CommissionerControls } from "@/components/commissioner/stage1-controls";
 import { PageFrame } from "@/components/league/page-frame";
@@ -595,7 +596,111 @@ export function Stage1CommissionerView({
   );
 }
 
-export function Stage1ScheduleView({ state }: { state: Stage1StateDto }) {
+export function Stage1ScheduleView({
+  liveSchedule,
+  state,
+}: {
+  liveSchedule?: LiveRegularSeasonSchedule | null;
+  state: Stage1StateDto;
+}) {
+  if (state.league.mode === "LIVE") {
+    return (
+      <PageFrame
+        eyebrow="Published at roster lock"
+        title="2026 regular-season schedule"
+        description="One matchup per member per week. The complete 14-week publication is deterministic and immutable; future weekly NFL slates do not change these opponents."
+        aside={liveStatus(state)}
+      >
+        {!liveSchedule ? (
+          <FormationPanel state={state} />
+        ) : (
+          <>
+            <section className="border-boundary bg-surface mt-7 rounded-xl border p-5">
+              <dl className="grid gap-4 text-sm sm:grid-cols-3">
+                <div>
+                  <dt className="text-muted">Algorithm</dt>
+                  <dd className="mt-1 font-semibold">
+                    {liveSchedule.algorithmVersion}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted">Publication</dt>
+                  <dd className="mt-1 font-semibold">14 weeks · frozen</dd>
+                </div>
+                <div>
+                  <dt className="text-muted">Output evidence</dt>
+                  <dd
+                    className="mt-1 truncate font-mono text-xs"
+                    title={liveSchedule.outputHash}
+                  >
+                    {liveSchedule.outputHash}
+                  </dd>
+                </div>
+              </dl>
+              <p className="text-muted mt-4 text-xs">
+                Published {formatDate(liveSchedule.publishedAt)}
+              </p>
+            </section>
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 14 }, (_, index) => index + 1).map(
+                (week) => {
+                  const matchups = liveSchedule.matchups.filter(
+                    (matchup) => matchup.week === week,
+                  );
+                  return (
+                    <section
+                      aria-labelledby={`live-schedule-week-${week}`}
+                      className={`rounded-xl border p-5 ${
+                        week === 1
+                          ? "border-registry bg-registry/5"
+                          : "border-boundary bg-surface"
+                      }`}
+                      key={week}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <h2
+                          className="font-bold"
+                          id={`live-schedule-week-${week}`}
+                        >
+                          Week {week}
+                        </h2>
+                        <span className="text-muted text-xs font-semibold">
+                          {week === 1 ? "Open" : "Scheduled"}
+                        </span>
+                      </div>
+                      <div className="divide-boundary mt-3 divide-y">
+                        {matchups.map((matchup) => {
+                          const isViewerMatchup = [
+                            matchup.sideAEntryId,
+                            matchup.sideBEntryId,
+                          ].includes(state.viewer.entryId);
+                          return (
+                            <p
+                              className={`py-2.5 text-sm ${
+                                isViewerMatchup
+                                  ? "text-registry font-bold"
+                                  : "text-graphite"
+                              }`}
+                              key={`${matchup.sideAEntryId}-${matchup.sideBEntryId}`}
+                            >
+                              {matchup.sideAName}{" "}
+                              <span className="text-muted">vs</span>{" "}
+                              {matchup.sideBName}
+                            </p>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  );
+                },
+              )}
+            </div>
+          </>
+        )}
+      </PageFrame>
+    );
+  }
+
   return (
     <PageFrame
       eyebrow="Published at roster lock"

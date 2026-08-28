@@ -8,6 +8,7 @@ import {
   finalizeStage1WeekAction,
   importLiveOddsAction,
   initializeStage1WeekAction,
+  lockLiveRosterAndOpenWeekAction,
   lockStage1WeekAction,
   publishLiveWeekSlateAction,
   publishSimulationSeasonArchiveAction,
@@ -94,6 +95,8 @@ export function Stage1CommissionerControls({
     useActionState(publishLiveWeekSlateAction, initialAppActionState);
   const [refreshQuotesState, refreshQuotesAction, refreshingQuotes] =
     useActionState(refreshLiveWeekQuotesAction, initialAppActionState);
+  const [liveRosterLockState, liveRosterLockAction, lockingLiveRoster] =
+    useActionState(lockLiveRosterAndOpenWeekAction, initialAppActionState);
   const [clockState, clockAction, advancing] = useActionState(
     advanceStage1ClockAction,
     initialAppActionState,
@@ -125,13 +128,22 @@ export function Stage1CommissionerControls({
       <section className="border-boundary bg-surface rounded-xl border p-5">
         <h2 className="font-bold">Private invitation</h2>
         <p className="text-graphite mt-2 text-sm leading-6">
-          One code admits up to 15 members and expires in seven days. The
-          database stops the roster at 16 total members.
+          {state.league.lifecycle === "DRAFT"
+            ? "One code admits up to 15 members and expires in seven days. The database stops the roster at 16 total members."
+            : "The competitive roster is frozen. Existing members keep access, but no additional member can join this season."}
         </p>
         <form action={inviteAction} className="mt-4">
           <ContextFields state={state} />
-          <button className={buttonClass} disabled={inviting} type="submit">
-            {inviting ? "Creating…" : "Create 15-use invite"}
+          <button
+            className={buttonClass}
+            disabled={inviting || state.league.lifecycle !== "DRAFT"}
+            type="submit"
+          >
+            {inviting
+              ? "Creating…"
+              : state.league.lifecycle === "DRAFT"
+                ? "Create 15-use invite"
+                : "Roster locked"}
           </button>
         </form>
         <ActionFeedback state={inviteState} />
@@ -389,11 +401,35 @@ export function Stage1CommissionerControls({
               rule.
             </p>
           </div>
-          <p className="text-muted mt-4 text-xs leading-5">
-            The next irreversible Stage 3 command will lock the valid roster,
-            publish the balanced schedule, and open cards using the current
-            quote heads.
-          </p>
+          <form action={liveRosterLockAction} className="mt-4">
+            <ContextFields state={state} />
+            <p className="text-negative text-xs leading-5 font-semibold">
+              Irreversible: this freezes the roster, rules, and complete 14-week
+              schedule. It then opens every Week 1 card with 1,000 fresh credits
+              after one final automatic odds refresh.
+            </p>
+            <button
+              className={`${buttonClass} mt-3`}
+              disabled={
+                !providerConfigured ||
+                lockingLiveRoster ||
+                state.league.lifecycle !== "DRAFT" ||
+                state.league.memberCount < 4 ||
+                state.league.memberCount > 16 ||
+                state.league.memberCount % 2 !== 0
+              }
+              type="submit"
+            >
+              {lockingLiveRoster
+                ? "Refreshing odds and locking…"
+                : state.league.memberCount >= 4 &&
+                    state.league.memberCount <= 16 &&
+                    state.league.memberCount % 2 === 0
+                  ? `Lock ${state.league.memberCount}-member roster & open Week 1`
+                  : `Waiting for even roster · ${state.league.memberCount}/4 minimum`}
+            </button>
+          </form>
+          <ActionFeedback state={liveRosterLockState} />
         </section>
       ) : (
         <>

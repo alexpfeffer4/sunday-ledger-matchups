@@ -33,6 +33,14 @@ quote refresh, current-head enforcement, idempotent replay, append-only history,
 zero-card solo publication, least-privilege grants, and commissioner-only RLS.
 It also runs inside a rollback transaction.
 
+`tests/stage3_live_roster_lock.test.sql` contains 34 assertions for the
+commissioner-only roster lock, one-member and stale-quote rejection, exact
+TypeScript/Postgres `circle-v1` parity, a complete immutable 14-week schedule,
+Week 1-only operational materialization, equal 1,000-credit grants, idempotent
+replay, member schedule reads, and the post-lock membership boundary. It runs
+inside a rollback transaction and does not alter the one-member Live test
+league.
+
 The hosted Stage 2 migrations are:
 
 - `stage2_simulation_season_archives`
@@ -45,6 +53,7 @@ The hosted Stage 3 import migrations are:
 - `stage3_live_slate_publication`
 - `stage3_live_quote_refresh`
 - `stage3_live_quote_heads_fk_index`
+- `stage3_live_roster_lock`
 
 After application, the security advisor reports no Stage 2 or Stage 3 issue and
 the performance advisor reports no unindexed Stage 2 or Stage 3 foreign key.

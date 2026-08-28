@@ -59,8 +59,7 @@ function mutationError(message: string): AppActionState {
   if (message.includes("even roster") || message.includes("4 through 16")) {
     return {
       status: "error",
-      message:
-        "A full-season simulation requires an even roster from 4 through 16 members.",
+      message: "The season requires an even roster from 4 through 16 members.",
     };
   }
   if (message.includes("before interactive play begins")) {
@@ -155,6 +154,13 @@ function mutationError(message: string): AppActionState {
     return {
       status: "error",
       message: "Odds cannot refresh after the published common lock.",
+    };
+  }
+  if (message.includes("six fresh healthy current quotes")) {
+    return {
+      status: "error",
+      message:
+        "Every published game needs a complete current quote set. Refresh the odds and try the roster lock again.",
     };
   }
   return {
@@ -415,6 +421,54 @@ export async function publishLiveWeekSlateAction(
 
 const storedLiveImportSchema = z.object({ importId: z.uuid() });
 
+class LiveQuoteRefreshRejectedError extends Error {}
+
+async function refreshPublishedLiveQuoteHeads(params: {
+  eventIds: string[];
+  leagueId: string;
+}): Promise<number> {
+  const liveImport = await fetchNflOdds({ eventIds: params.eventIds });
+  const payloadHash = createHash("sha256")
+    .update(JSON.stringify(liveImport))
+    .digest("hex");
+  const supabase = await createSupabaseServerClient();
+  const stored = await supabase.schema("api").rpc("store_live_odds_import", {
+    p_league_id: params.leagueId,
+    p_import: liveImport as unknown as Json,
+    p_idempotency_key: `live-odds:${payloadHash}`,
+  });
+  if (stored.error) {
+    throw new LiveQuoteRefreshRejectedError(stored.error.message);
+  }
+
+  const importReceipt = storedLiveImportSchema.safeParse(stored.data);
+  if (!importReceipt.success) {
+    throw new LiveQuoteRefreshRejectedError(
+      "The stored import receipt is invalid.",
+    );
+  }
+  const refreshed = await supabase
+    .schema("api")
+    .rpc("refresh_live_week_quotes", {
+      p_league_id: params.leagueId,
+      p_import_id: importReceipt.data.importId,
+      p_idempotency_key: `refresh-live:${payloadHash}`,
+    });
+  if (refreshed.error) {
+    console.error(
+      JSON.stringify({
+        level: "error",
+        message: "Live quote refresh rejected",
+        code: refreshed.error.code,
+        databaseMessage: refreshed.error.message,
+      }),
+    );
+    throw new LiveQuoteRefreshRejectedError(refreshed.error.message);
+  }
+
+  return liveImport.events.length;
+}
+
 export async function refreshLiveWeekQuotesAction(
   _state: AppActionState,
   formData: FormData,
@@ -436,42 +490,10 @@ export async function refreshLiveWeekQuotesAction(
   }
 
   try {
-    const liveImport = await fetchNflOdds({
+    const eventCount = await refreshPublishedLiveQuoteHeads({
+      leagueId: context.data.leagueId,
       eventIds: state.slate.map((event) => event.key),
     });
-    const payloadHash = createHash("sha256")
-      .update(JSON.stringify(liveImport))
-      .digest("hex");
-    const supabase = await createSupabaseServerClient();
-    const stored = await supabase.schema("api").rpc("store_live_odds_import", {
-      p_league_id: context.data.leagueId,
-      p_import: liveImport as unknown as Json,
-      p_idempotency_key: `live-odds:${payloadHash}`,
-    });
-    if (stored.error) return mutationError(stored.error.message);
-
-    const importReceipt = storedLiveImportSchema.safeParse(stored.data);
-    if (!importReceipt.success) {
-      return mutationError("The stored import receipt is invalid.");
-    }
-    const refreshed = await supabase
-      .schema("api")
-      .rpc("refresh_live_week_quotes", {
-        p_league_id: context.data.leagueId,
-        p_import_id: importReceipt.data.importId,
-        p_idempotency_key: `refresh-live:${payloadHash}`,
-      });
-    if (refreshed.error) {
-      console.error(
-        JSON.stringify({
-          level: "error",
-          message: "Live quote refresh rejected",
-          code: refreshed.error.code,
-          databaseMessage: refreshed.error.message,
-        }),
-      );
-      return mutationError(refreshed.error.message);
-    }
 
     revalidatePath(`/l/${context.data.leagueSlug}`);
     revalidatePath(`/l/${context.data.leagueSlug}/slate`);
@@ -479,7 +501,7 @@ export async function refreshLiveWeekQuotesAction(
     revalidatePath(`/l/${context.data.leagueSlug}/commissioner`);
     return {
       status: "success",
-      message: `${liveImport.events.length} published games refreshed. The eligible games and common lock did not change.`,
+      message: `${eventCount} published games refreshed. The eligible games and common lock did not change.`,
     };
   } catch (error) {
     console.error(
@@ -500,7 +522,88 @@ export async function refreshLiveWeekQuotesAction(
           "The provider did not return a complete valid quote set. Existing published quotes were not changed.",
       };
     }
+    if (error instanceof LiveQuoteRefreshRejectedError) {
+      return mutationError(error.message);
+    }
     return mutationError("The live quote refresh failed.");
+  }
+}
+
+export async function lockLiveRosterAndOpenWeekAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  if (!context.success) return mutationError("invalid context");
+
+  const state = await getLiveStage1League(context.data.leagueSlug);
+  if (
+    !state ||
+    state.league.id !== context.data.leagueId ||
+    !state.commissioner.isCommissioner ||
+    state.league.mode !== "LIVE" ||
+    state.league.lifecycle !== "DRAFT" ||
+    state.week?.state !== "PLANNED" ||
+    state.slate.length === 0
+  ) {
+    return mutationError("A planned Live Week 1 slate is required.");
+  }
+  if (
+    state.league.memberCount < 4 ||
+    state.league.memberCount > 16 ||
+    state.league.memberCount % 2 !== 0 ||
+    state.members.some((member) => member.entryId === null)
+  ) {
+    return mutationError(
+      "Roster lock requires one season entry per member and an even roster from 4 through 16.",
+    );
+  }
+
+  try {
+    await refreshPublishedLiveQuoteHeads({
+      leagueId: context.data.leagueId,
+      eventIds: state.slate.map((event) => event.key),
+    });
+
+    const supabase = await createSupabaseServerClient();
+    const locked = await supabase
+      .schema("api")
+      .rpc("lock_live_roster_and_open_week", {
+        p_league_id: context.data.leagueId,
+        p_idempotency_key: idempotencyKey("lock-live-roster"),
+      });
+    if (locked.error) return mutationError(locked.error.message);
+
+    revalidatePath(`/l/${context.data.leagueSlug}/schedule`);
+    revalidatePath(`/l/${context.data.leagueSlug}/slate`);
+    revalidatePath("/leagues");
+    return finish(
+      context.data.leagueSlug,
+      `Roster locked at ${state.league.memberCount} members. The complete 14-week schedule is frozen and every Week 1 card is open with 1,000 credits.`,
+    );
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        level: "error",
+        message: "Live roster lock failed",
+        errorName: error instanceof Error ? error.name : "UnknownError",
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
+      }),
+    );
+    if (error instanceof OddsProviderRequestError) {
+      return { status: "error", message: error.message };
+    }
+    if (error instanceof OddsProviderPayloadError) {
+      return {
+        status: "error",
+        message:
+          "The provider did not return a complete valid quote set. The roster remains unlocked.",
+      };
+    }
+    if (error instanceof LiveQuoteRefreshRejectedError) {
+      return mutationError(error.message);
+    }
+    return mutationError("The Live roster lock failed.");
   }
 }
 
