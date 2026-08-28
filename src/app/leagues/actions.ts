@@ -8,14 +8,11 @@ import {
   createFullSeasonSimulationArchive,
   fullSeasonSimulationSlug,
 } from "@/adapters/simulation/full-season";
-import type { Json } from "@/adapters/supabase/database.types";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import type { AppActionState } from "@/application/actions/action-state";
 import { isDemoSeasonEnabled } from "@/application/demo/demo-season-availability";
 import { simulationSeasonArchiveSchema } from "@/application/queries/season-archive-dtos";
 import { createLeagueSlug } from "@/domain/leagues/league-slug";
-import { canonicalizeRuleset, hashRuleset } from "@/rulesets/canonicalize";
-import { pocSeason1Ruleset } from "@/rulesets/poc-season-1";
 
 const createLeagueSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -127,9 +124,6 @@ export async function createLeagueAction(
 
   try {
     const supabase = await createSupabaseServerClient();
-    const ruleset = pocSeason1Ruleset;
-    const canonicalRuleset = canonicalizeRuleset(ruleset);
-    const rulesetHash = await hashRuleset(ruleset);
     const slug = createLeagueSlug(
       parsed.data.name,
       randomBytes(3).toString("hex"),
@@ -139,12 +133,6 @@ export async function createLeagueAction(
       p_slug: slug,
       p_mode: "LIVE",
       p_nfl_year: 2026,
-      p_ruleset_id: ruleset.id,
-      p_ruleset_version: ruleset.version,
-      p_product_bible_id: ruleset.productBibleId,
-      p_product_bible_version: ruleset.productBibleVersion,
-      p_canonical_ruleset: JSON.parse(canonicalRuleset) as Json,
-      p_ruleset_sha256: rulesetHash,
     });
     if (result.error || !result.data[0]) {
       return {

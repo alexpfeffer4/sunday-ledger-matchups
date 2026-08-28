@@ -1,11 +1,22 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { fullSeasonSimulationSlug } from "@/adapters/simulation/full-season";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
+import { getSeasonRuleset } from "@/application/queries/get-season-ruleset";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
 import { getSimulationSeasonArchive } from "@/application/queries/get-simulation-season-archive";
 import { PageFrame } from "@/components/league/page-frame";
+import {
+  exampleRulesetPresentation,
+  seasonRulesetPresentation,
+  StandingsRulesetSummary,
+  type RulesetPresentation,
+} from "@/components/rules/ruleset-presentation";
 import { SeasonArchiveStandings } from "@/components/season/archive-views";
 import { Stage1StandingsView } from "@/components/stage1/live-views";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { hashRuleset } from "@/rulesets/canonicalize";
+import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
 
 export const metadata: Metadata = { title: "Official standings" };
 
@@ -15,34 +26,43 @@ export default async function StandingsPage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
-  const [live, archive] = await Promise.all([
+  const [live, archive, persistedSnapshot] = await Promise.all([
     getLiveStage1League(leagueSlug),
     getSimulationSeasonArchive(leagueSlug),
+    getSeasonRuleset(leagueSlug),
   ]);
-  if (archive) return <SeasonArchiveStandings archive={archive} />;
-  if (live) return <Stage1StandingsView state={live} />;
   const league = getSimulationLeague(leagueSlug);
+  const isExample = Boolean(league) || leagueSlug === fullSeasonSimulationSlug;
+  if (!live && !archive && !league) notFound();
+  let presentation: RulesetPresentation;
+  if (isExample) {
+    presentation = exampleRulesetPresentation(
+      simulationSeason1Ruleset,
+      await hashRuleset(simulationSeason1Ruleset),
+    );
+  } else if (persistedSnapshot) {
+    presentation = seasonRulesetPresentation(persistedSnapshot);
+  } else {
+    throw new Error("The persisted season Ruleset is unavailable.");
+  }
+  if (archive) {
+    return <SeasonArchiveStandings archive={archive} ruleset={presentation} />;
+  }
+  if (live) return <Stage1StandingsView ruleset={presentation} state={live} />;
   if (!league) notFound();
 
   return (
     <PageFrame
-      eyebrow="Official through Week 5"
+      eyebrow="Example through Week 5"
       title="Standings"
-      description="Week 6 is still open, so the standings remain official through Week 5."
-      aside={
-        <div className="border-control bg-surface inline-flex rounded-lg border p-1 text-sm font-semibold">
-          <span className="bg-registry rounded-md px-4 py-2 text-white">
-            Official
-          </span>
-          <span className="text-muted px-4 py-2">Live</span>
-        </div>
-      }
+      description="Read-only illustrative standings through Week 5."
+      aside={<StatusBadge tone="pending">Example</StatusBadge>}
     >
       <div className="border-boundary bg-surface mt-7 overflow-hidden rounded-xl border">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] border-collapse text-left text-sm">
             <caption className="sr-only">
-              Official sample standings through Week 5
+              Example standings through Week 5
             </caption>
             <thead className="bg-subtle text-muted text-xs tracking-[0.08em] uppercase">
               <tr>
@@ -109,7 +129,7 @@ export default async function StandingsPage({
         </p>
       </div>
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-2">
+      <div className="mt-6 max-w-2xl">
         <section className="border-boundary bg-surface rounded-xl border p-5">
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
             Your standing
@@ -120,15 +140,8 @@ export default async function StandingsPage({
             positions after Week 5.
           </p>
         </section>
-        <section className="border-boundary bg-subtle rounded-xl border p-5">
-          <h2 className="font-bold">Tiebreakers</h2>
-          <p className="text-graphite mt-2 text-sm leading-6">
-            Win percentage, Points For, all-play percentage, balanced head to
-            head when applicable, fewer misses, highest official weekly score,
-            then the league’s published final tiebreaker.
-          </p>
-        </section>
       </div>
+      <StandingsRulesetSummary presentation={presentation} />
     </PageFrame>
   );
 }

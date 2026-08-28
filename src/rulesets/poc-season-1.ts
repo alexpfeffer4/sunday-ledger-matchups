@@ -2,7 +2,7 @@ import { seasonRulesetSchema } from "@/rulesets/schema";
 
 export const pocSeason1Ruleset = seasonRulesetSchema.parse({
   id: "SUNDAY-LEDGER-POC-SEASON-RULESET-V1",
-  version: "1.0",
+  version: "1.1",
   productBibleId: "SUNDAY-LEDGER-PRODUCT-BIBLE-V3",
   productBibleVersion: "3.0",
   format: "SUNDAY_LEDGER_MATCHUPS",
@@ -25,13 +25,17 @@ export const pocSeason1Ruleset = seasonRulesetSchema.parse({
     minimumPositions: 1,
     maximumPositions: 20,
     stakePrecision: "WHOLE_CREDITS",
+    carryoverCredits: false,
+    acceptanceUnit: "WHOLE_CARD_ATOMIC",
+    irreversibleAction: "CONFIRM_AND_SEAL_CARD",
   },
   markets: {
     eligible: ["MONEYLINE", "SPREAD", "TOTAL"],
     referenceBook: "draftkings",
   },
   concentration: {
-    // Approved by the controlling architecture: shorter than −200 is capped.
+    // D-002 was ratified by the Ruleset owner on August 28, 2026.
+    status: "SETTLED_FOR_POC_V1",
     heavyFavoriteThresholdAmerican: -200,
     heavyFavoriteSinglePositionCapCredits: 750,
     standardSinglePositionCapCredits: 1_000,
@@ -44,15 +48,34 @@ export const pocSeason1Ruleset = seasonRulesetSchema.parse({
     standardSundayStartHourEastern: 13,
     includesMondayNight: true,
     earlyGamesRequireCommissionerSelection: true,
+    revealTrigger: "EVENT_START",
   },
   settlement: {
     precisionCenticredits: 1,
     rounding: "HALF_UP",
     postponementWindowHours: 48,
     correctionWindowHours: 24,
+    winReturn: "STAKE_PLUS_PROFIT",
+    lossReturn: "ZERO",
+    pushVoidReturn: "STAKE",
   },
   attendance: {
     playoffIneligibilityAtMisses: 3,
+    incompleteCardDecision: "LOSS",
+    incompleteCardPointsForCenticredits: 0,
+    incompleteCardMisses: 1,
+    dualIncompleteDecisions: ["LOSS", "LOSS"],
+  },
+  standings: {
+    tiebreakOrder: [
+      "MATCHUP_WIN_PERCENTAGE",
+      "POINTS_FOR",
+      "ALL_PLAY_PERCENTAGE",
+      "BALANCED_HEAD_TO_HEAD",
+      "FEWER_ATTENDANCE_MISSES",
+      "HIGHEST_SINGLE_WEEK_SCORE",
+      "STORED_DETERMINISTIC_RANDOM",
+    ],
   },
   playoffs: {
     smallLeagueMaximumSize: 8,
