@@ -6,7 +6,7 @@ import {
 } from "@/adapters/supabase/config";
 import type { Database } from "@/adapters/supabase/database.types";
 
-const protectedPrefixes = ["/account", "/l/", "/join/", "/leagues"];
+const protectedPrefixes = ["/account", "/l/", "/leagues"];
 
 export async function updateSupabaseSession(request: NextRequest) {
   if (!isSupabaseConfigured()) return NextResponse.next({ request });

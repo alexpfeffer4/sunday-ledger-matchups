@@ -19,6 +19,17 @@ export default async function AccountPage({
   }>;
 }) {
   const query = await searchParams;
+  const next = safeInternalPath(
+    Array.isArray(query.next) ? query.next[0] : query.next,
+  );
+  const setup = Array.isArray(query.setup) ? query.setup[0] : query.setup;
+  if (setup === "1") {
+    redirect(`/account/setup?next=${encodeURIComponent(next)}`);
+  }
+  if (setup === "password") {
+    redirect(`/account/recover-password?next=${encodeURIComponent(next)}`);
+  }
+
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.auth.getClaims();
   if (!data?.claims?.sub) {
@@ -33,49 +44,8 @@ export default async function AccountPage({
     .select("display_name")
     .maybeSingle();
   if (profileResult.error) throw profileResult.error;
-
   const currentUsername =
     profileResult.data?.display_name ?? email.split("@")[0] ?? "Member";
-  const setup = Array.isArray(query.setup) ? query.setup[0] : query.setup;
-  const next = safeInternalPath(
-    Array.isArray(query.next) ? query.next[0] : query.next,
-  );
-  const recoveringPassword = setup === "password";
-
-  const usernameSection = (
-    <section className="border-boundary bg-surface mt-6 rounded-xl border p-6 shadow-[var(--shadow-card)] sm:p-8">
-      <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">
-        Public identity
-      </p>
-      <h2 className="mt-3 text-3xl font-bold tracking-[-0.04em]">
-        Choose your username
-      </h2>
-      <p className="text-graphite mt-3 leading-6">
-        Sunday Ledger uses your email only for private account access. Your
-        username appears in matchups, standings, history, and league member
-        lists.
-      </p>
-      <UsernameForm currentUsername={currentUsername} />
-    </section>
-  );
-
-  const passwordSection = (
-    <section className="border-boundary bg-surface mt-6 rounded-xl border p-6 shadow-[var(--shadow-card)] sm:p-8">
-      <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">
-        Account security
-      </p>
-      <h2 className="mt-3 text-3xl font-bold tracking-[-0.04em]">
-        {recoveringPassword
-          ? "Choose your new password"
-          : "Set or change your password"}
-      </h2>
-      <p className="text-graphite mt-3 leading-6">
-        Your private sign-in email is {email}. Use a password of at least eight
-        characters for future sign-ins.
-      </p>
-      <SetPasswordForm />
-    </section>
-  );
 
   return (
     <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">
@@ -92,44 +62,33 @@ export default async function AccountPage({
           </Link>
         </div>
 
-        {setup === "1" || recoveringPassword ? (
-          <section className="border-positive/25 bg-positive/10 mt-10 rounded-xl border p-5">
-            <p className="text-positive text-xs font-bold tracking-[0.1em] uppercase">
-              You are signed in
-            </p>
-            <h1 className="mt-2 text-2xl font-bold tracking-[-0.03em]">
-              {recoveringPassword
-                ? "Reset your password"
-                : "Finish account setup"}
-            </h1>
-            <p className="text-graphite mt-2 leading-6">
-              {recoveringPassword
-                ? "Choose a new password below. The recovery link has already signed you in securely."
-                : "Choose the username your league will see, then create a password so future sign-ins do not require another email link."}
-            </p>
-          </section>
-        ) : null}
+        <section className="border-boundary bg-surface mt-10 rounded-xl border p-6 shadow-[var(--shadow-card)] sm:p-8">
+          <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">
+            Public identity
+          </p>
+          <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em]">
+            Account
+          </h1>
+          <p className="text-graphite mt-3 leading-6">
+            Sunday Ledger uses your email only for private account access. Your
+            username appears in league member lists and season records.
+          </p>
+          <UsernameForm currentUsername={currentUsername} />
+        </section>
 
-        {recoveringPassword ? (
-          <>
-            {passwordSection}
-            {usernameSection}
-          </>
-        ) : (
-          <>
-            {usernameSection}
-            {passwordSection}
-          </>
-        )}
-
-        {setup === "1" || recoveringPassword ? (
-          <Link
-            className="bg-registry hover:bg-registry-hover mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-lg px-5 text-sm font-semibold text-white"
-            href={next}
-          >
-            Continue to Sunday Ledger
-          </Link>
-        ) : null}
+        <section className="border-boundary bg-surface mt-6 rounded-xl border p-6 shadow-[var(--shadow-card)] sm:p-8">
+          <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">
+            Account security
+          </p>
+          <h2 className="mt-3 text-2xl font-bold tracking-[-0.03em]">
+            Change password
+          </h2>
+          <p className="text-graphite mt-3 leading-6">
+            Your private sign-in email is {email}. Use a password of at least
+            eight characters for future sign-ins.
+          </p>
+          <SetPasswordForm />
+        </section>
 
         <div className="mt-5 flex justify-end">
           <SignOutForm className="text-muted hover:text-ink min-h-11 rounded-lg px-3 text-sm font-semibold" />

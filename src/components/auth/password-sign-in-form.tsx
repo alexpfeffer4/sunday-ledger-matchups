@@ -10,6 +10,8 @@ export function PasswordSignInForm({ next }: { next: string }) {
     signInWithPassword,
     initialPasswordActionState,
   );
+  const emailError = state.status === "error" && state.field === "email";
+  const passwordError = state.status === "error" && state.field === "password";
 
   return (
     <form action={formAction} className="mt-7 space-y-5">
@@ -26,7 +28,14 @@ export function PasswordSignInForm({ next }: { next: string }) {
           required
           className="border-control bg-surface focus:border-action mt-2 min-h-12 w-full rounded-lg border px-3 text-base"
           placeholder="you@example.com"
+          aria-describedby={emailError ? "password-email-error" : undefined}
+          aria-invalid={emailError}
         />
+        {emailError ? (
+          <p className="text-negative mt-2 text-sm" id="password-email-error">
+            {state.message}
+          </p>
+        ) : null}
       </div>
       <div>
         <div className="flex items-center justify-between gap-3">
@@ -35,7 +44,7 @@ export function PasswordSignInForm({ next }: { next: string }) {
           </label>
           <Link
             className="text-action min-h-11 content-center text-xs font-semibold hover:underline"
-            href="/auth/recover"
+            href={`/auth/recover?next=${encodeURIComponent(next)}`}
           >
             Forgot password?
           </Link>
@@ -48,7 +57,14 @@ export function PasswordSignInForm({ next }: { next: string }) {
           minLength={8}
           required
           className="border-control bg-surface focus:border-action mt-2 min-h-12 w-full rounded-lg border px-3 text-base"
+          aria-describedby={passwordError ? "password-error" : undefined}
+          aria-invalid={passwordError}
         />
+        {passwordError ? (
+          <p className="text-negative mt-2 text-sm" id="password-error">
+            {state.message}
+          </p>
+        ) : null}
       </div>
       <button
         type="submit"
@@ -57,9 +73,9 @@ export function PasswordSignInForm({ next }: { next: string }) {
       >
         {pending ? "Signing in…" : "Sign in with password"}
       </button>
-      {state.status === "error" ? (
+      {state.status === "error" && !emailError && !passwordError ? (
         <p
-          role="status"
+          role="alert"
           className="border-negative/25 bg-negative/10 text-negative rounded-lg border px-4 py-3 text-sm leading-6"
         >
           {state.message}

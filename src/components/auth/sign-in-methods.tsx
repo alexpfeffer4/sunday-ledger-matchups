@@ -18,53 +18,37 @@ export function SignInMethods({
   return (
     <div className="mt-7">
       <div
-        aria-label="Sign-in method"
+        aria-label="Choose a sign-in method"
         className="border-boundary bg-subtle grid grid-cols-2 rounded-lg border p-1"
-        role="tablist"
+        role="group"
       >
         <button
-          aria-controls="password-sign-in-panel"
-          aria-selected={method === "password"}
-          className={`min-h-10 rounded-md px-3 text-sm font-semibold transition-colors ${
+          aria-pressed={method === "password"}
+          className={`min-h-11 rounded-md border px-3 text-sm font-semibold transition-colors ${
             method === "password"
-              ? "bg-surface text-ink shadow-sm"
-              : "text-muted hover:text-ink"
+              ? "border-registry bg-surface text-ink shadow-sm"
+              : "text-muted hover:text-ink border-transparent"
           }`}
-          id="password-sign-in-tab"
           onClick={() => setMethod("password")}
-          role="tab"
           type="button"
         >
-          Password
+          {method === "password" ? "✓ " : ""}Password
         </button>
         <button
-          aria-controls="email-sign-in-panel"
-          aria-selected={method === "email"}
-          className={`min-h-10 rounded-md px-3 text-sm font-semibold transition-colors ${
+          aria-pressed={method === "email"}
+          className={`min-h-11 rounded-md border px-3 text-sm font-semibold transition-colors ${
             method === "email"
-              ? "bg-surface text-ink shadow-sm"
-              : "text-muted hover:text-ink"
+              ? "border-registry bg-surface text-ink shadow-sm"
+              : "text-muted hover:text-ink border-transparent"
           }`}
-          id="email-sign-in-tab"
           onClick={() => setMethod("email")}
-          role="tab"
           type="button"
         >
-          Email link
+          {method === "email" ? "✓ " : ""}Email link
         </button>
       </div>
 
-      <div
-        aria-labelledby={
-          method === "password" ? "password-sign-in-tab" : "email-sign-in-tab"
-        }
-        id={
-          method === "password"
-            ? "password-sign-in-panel"
-            : "email-sign-in-panel"
-        }
-        role="tabpanel"
-      >
+      <div>
         {method === "password" ? (
           <PasswordSignInForm next={next} />
         ) : (

@@ -1,6 +1,7 @@
 export type MagicLinkState = {
   status: "idle" | "error" | "sent";
   message: string;
+  field?: "email";
 };
 
 export const initialMagicLinkState: MagicLinkState = {
@@ -11,6 +12,7 @@ export const initialMagicLinkState: MagicLinkState = {
 export type PasswordActionState = {
   status: "idle" | "error" | "success";
   message: string;
+  field?: "email" | "password" | "confirmPassword";
 };
 
 export const initialPasswordActionState: PasswordActionState = {

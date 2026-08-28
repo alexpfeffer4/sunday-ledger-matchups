@@ -93,6 +93,9 @@ function MatchupPreview() {
 export default async function HomePage() {
   const authenticated = await isAuthenticated();
   const accountHref = authenticated ? "/leagues" : "/auth/sign-in";
+  const startHref = authenticated
+    ? "/leagues"
+    : "/auth/create-account?next=%2Fleagues";
 
   return (
     <main className="bg-canvas min-h-screen">
@@ -135,7 +138,7 @@ export default async function HomePage() {
             across real NFL lines. Returned credits become the score.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <ButtonLink href={accountHref} className="sm:min-w-48">
+            <ButtonLink href={startHref} className="sm:min-w-48">
               {authenticated ? "Open your leagues" : "Start a league"}
             </ButtonLink>
             <ButtonLink

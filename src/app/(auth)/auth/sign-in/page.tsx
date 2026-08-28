@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import { SignInMethods } from "@/components/auth/sign-in-methods";
+import { LinkErrorNotice } from "@/components/auth/link-error-notice";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -43,19 +44,20 @@ export default async function SignInPage({
         <section className="border-boundary bg-surface mt-16 rounded-xl border p-6 shadow-[var(--shadow-card)] sm:p-8">
           <h1 className="text-3xl font-bold tracking-[-0.04em]">Sign in</h1>
           <p className="text-graphite mt-3 leading-6">
-            Use your password, or get an email link to create an account or
-            recover access.
+            Use your password or request a one-time email link for an existing
+            account.
           </p>
-          {hasLinkError ? (
-            <p className="border-negative/25 bg-negative/10 text-negative mt-5 rounded-lg border px-4 py-3 text-sm leading-6">
-              That sign-in link is invalid or expired. Request a fresh one
-              below.
-            </p>
-          ) : null}
+          {hasLinkError ? <LinkErrorNotice /> : null}
           <SignInMethods
             next={next}
             defaultMethod={hasLinkError ? "email" : "password"}
           />
+          <Link
+            className="text-action mt-5 inline-flex min-h-11 items-center font-semibold hover:underline"
+            href={`/auth/create-account?next=${encodeURIComponent(next)}`}
+          >
+            New here? Create account
+          </Link>
         </section>
         <p className="text-muted mt-5 text-center text-xs leading-5">
           League members see your username—not your email.

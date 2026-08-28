@@ -10,7 +10,7 @@ import type {
   PasswordActionState,
 } from "@/app/(auth)/auth/state";
 
-const magicLinkSchema = z.object({
+const emailLinkSchema = z.object({
   email: z.email("Enter a valid email address.").trim().toLowerCase(),
   next: z.string().optional(),
 });
@@ -28,6 +28,7 @@ const passwordUpdateSchema = z
       .min(8, "Use at least 8 characters.")
       .max(128, "Use no more than 128 characters."),
     confirmPassword: z.string(),
+    next: z.string().optional(),
   })
   .refine((value) => value.password === value.confirmPassword, {
     message: "The passwords do not match.",
@@ -36,6 +37,7 @@ const passwordUpdateSchema = z
 
 const passwordRecoverySchema = z.object({
   email: z.email("Enter a valid email address.").trim().toLowerCase(),
+  next: z.string().optional(),
 });
 
 async function requestOrigin(): Promise<string> {
@@ -57,11 +59,12 @@ async function requestOrigin(): Promise<string> {
   return `${protocol}://${host}`;
 }
 
-export async function sendMagicLink(
-  _state: MagicLinkState,
+async function sendEmailLink(
   formData: FormData,
+  intent: "create-account" | "sign-in",
+  shouldCreateUser: boolean,
 ): Promise<MagicLinkState> {
-  const parsed = magicLinkSchema.safeParse({
+  const parsed = emailLinkSchema.safeParse({
     email: formData.get("email"),
     next: formData.get("next") ?? undefined,
   });
@@ -70,6 +73,7 @@ export async function sendMagicLink(
     return {
       status: "error",
       message: parsed.error.issues[0]?.message ?? "Check the email address.",
+      field: "email",
     };
   }
 
@@ -80,12 +84,13 @@ export async function sendMagicLink(
     ]);
     const next = safeInternalPath(parsed.data.next);
     const confirmUrl = new URL("/auth/confirm", origin);
+    confirmUrl.searchParams.set("flow", intent);
     confirmUrl.searchParams.set("next", next);
     const { error } = await supabase.auth.signInWithOtp({
       email: parsed.data.email,
       options: {
         emailRedirectTo: confirmUrl.toString(),
-        shouldCreateUser: true,
+        shouldCreateUser,
       },
     });
 
@@ -94,34 +99,53 @@ export async function sendMagicLink(
         return {
           status: "error",
           message:
-            "A sign-in email was just requested. Use the newest email or wait before requesting another.",
+            "An email was just requested. Use the newest email or wait before requesting another.",
         };
       }
       if (error.code === "email_address_not_authorized") {
         return {
           status: "error",
           message:
-            "Email delivery is not connected for that address yet. Ask the commissioner to finish custom email setup.",
+            "Email delivery is not available for that address yet. Ask the commissioner for help.",
         };
       }
       return {
         status: "error",
-        message: "The sign-in email could not be sent. Try again shortly.",
+        message:
+          intent === "create-account"
+            ? "The account email could not be sent. Try again shortly."
+            : "The sign-in email could not be sent. Check that the account already exists, then try again.",
       };
     }
 
     return {
       status: "sent",
       message:
-        "Check your email for a one-time sign-in link. New members can choose a username and password after signing in.",
+        intent === "create-account"
+          ? "Check your email for a one-time account link. It continues to required username and password setup."
+          : "Check your email for a one-time sign-in link. It returns you directly to where you left off.",
     };
   } catch {
     return {
       status: "error",
       message:
-        "Sign-in email is not connected in this environment yet. No email was sent.",
+        "Email access is temporarily unavailable. No email was sent; try again shortly.",
     };
   }
+}
+
+export async function sendCreateAccountLink(
+  _state: MagicLinkState,
+  formData: FormData,
+): Promise<MagicLinkState> {
+  return sendEmailLink(formData, "create-account", true);
+}
+
+export async function sendSignInLink(
+  _state: MagicLinkState,
+  formData: FormData,
+): Promise<MagicLinkState> {
+  return sendEmailLink(formData, "sign-in", false);
 }
 
 export async function requestPasswordReset(
@@ -130,11 +154,13 @@ export async function requestPasswordReset(
 ): Promise<PasswordActionState> {
   const parsed = passwordRecoverySchema.safeParse({
     email: formData.get("email"),
+    next: formData.get("next") ?? undefined,
   });
   if (!parsed.success) {
     return {
       status: "error",
       message: parsed.error.issues[0]?.message ?? "Check the email address.",
+      field: "email",
     };
   }
 
@@ -145,7 +171,7 @@ export async function requestPasswordReset(
     ]);
     const confirmUrl = new URL("/auth/confirm", origin);
     confirmUrl.searchParams.set("flow", "recovery");
-    confirmUrl.searchParams.set("next", "/leagues");
+    confirmUrl.searchParams.set("next", safeInternalPath(parsed.data.next));
     const { error } = await supabase.auth.resetPasswordForEmail(
       parsed.data.email,
       { redirectTo: confirmUrl.toString() },
@@ -163,7 +189,7 @@ export async function requestPasswordReset(
         return {
           status: "error",
           message:
-            "Email delivery is not connected for that address yet. Ask the commissioner to finish custom email setup.",
+            "Email delivery is not available for that address yet. Ask the commissioner for help.",
         };
       }
       return {
@@ -175,7 +201,7 @@ export async function requestPasswordReset(
     return {
       status: "success",
       message:
-        "Check your email for a password-recovery link. The link opens Account so you can choose a new password.",
+        "Check your email for a password-recovery link. It opens a secure password setup screen, then returns you where you left off.",
     };
   } catch {
     return {
@@ -196,9 +222,11 @@ export async function signInWithPassword(
   });
 
   if (!parsed.success) {
+    const issue = parsed.error.issues[0];
     return {
       status: "error",
-      message: parsed.error.issues[0]?.message ?? "Check your sign-in details.",
+      message: issue?.message ?? "Check your sign-in details.",
+      field: issue?.path[0] === "email" ? "email" : "password",
     };
   }
 
@@ -235,9 +263,12 @@ export async function updatePassword(
   });
 
   if (!parsed.success) {
+    const issue = parsed.error.issues[0];
     return {
       status: "error",
-      message: parsed.error.issues[0]?.message ?? "Check the new password.",
+      message: issue?.message ?? "Check the new password.",
+      field:
+        issue?.path[0] === "confirmPassword" ? "confirmPassword" : "password",
     };
   }
 
@@ -271,6 +302,53 @@ export async function updatePassword(
     status: "success",
     message: "Password saved. You can use it the next time you sign in.",
   };
+}
+
+export async function finishPasswordRecovery(
+  _state: PasswordActionState,
+  formData: FormData,
+): Promise<PasswordActionState> {
+  const parsed = passwordUpdateSchema.safeParse({
+    password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
+    next: formData.get("next") ?? undefined,
+  });
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return {
+      status: "error",
+      message: issue?.message ?? "Check the new password.",
+      field:
+        issue?.path[0] === "confirmPassword" ? "confirmPassword" : "password",
+    };
+  }
+
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase.auth.getClaims();
+    if (!data?.claims?.sub) {
+      return {
+        status: "error",
+        message: "Request a new recovery link before setting a password.",
+      };
+    }
+    const { error } = await supabase.auth.updateUser({
+      password: parsed.data.password,
+    });
+    if (error) {
+      return {
+        status: "error",
+        message: "The password could not be updated. Try again shortly.",
+      };
+    }
+  } catch {
+    return {
+      status: "error",
+      message: "The password could not be updated. Try again shortly.",
+    };
+  }
+
+  redirect(safeInternalPath(parsed.data.next));
 }
 
 export async function signOutAction(): Promise<never> {

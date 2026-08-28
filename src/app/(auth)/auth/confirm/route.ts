@@ -42,13 +42,17 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
     const profileResult = await supabase.schema("api").rpc("ensure_profile");
     if (profileResult.error) throw profileResult.error;
-    const accountUrl = new URL("/account", request.url);
-    accountUrl.searchParams.set(
-      "setup",
-      flow === "recovery" || typeValue === "recovery" ? "password" : "1",
-    );
-    if (next !== "/account") accountUrl.searchParams.set("next", next);
-    return NextResponse.redirect(accountUrl);
+    if (flow === "create-account") {
+      const setupUrl = new URL("/account/setup", request.url);
+      setupUrl.searchParams.set("next", next);
+      return NextResponse.redirect(setupUrl);
+    }
+    if (flow === "recovery" || typeValue === "recovery") {
+      const recoveryUrl = new URL("/account/recover-password", request.url);
+      recoveryUrl.searchParams.set("next", next);
+      return NextResponse.redirect(recoveryUrl);
+    }
+    return NextResponse.redirect(new URL(next, request.url));
   } catch {
     const signInUrl = new URL("/auth/sign-in", request.url);
     signInUrl.searchParams.set("error", "invalid_link");

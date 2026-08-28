@@ -178,8 +178,16 @@ export async function joinLeagueAction(
     return { status: "error", message: "Enter the complete invitation code." };
   }
 
+  let leagueSlug: string;
   try {
     const supabase = await createSupabaseServerClient();
+    const claims = await supabase.auth.getClaims();
+    if (!claims.data?.claims?.sub) {
+      return {
+        status: "error",
+        message: "Sign in before accepting this invitation.",
+      };
+    }
     const result = await supabase.schema("api").rpc("join_league", {
       p_token: parsed.data.token,
     });
@@ -190,21 +198,16 @@ export async function joinLeagueAction(
       };
     }
 
-    revalidatePath("/leagues");
-    return {
-      status: "success",
-      message: result.data[0].joined
-        ? "You joined the league."
-        : "You are already a member of this league.",
-      href: `/l/${result.data[0].league_slug}/matchup`,
-      hrefLabel: "Open league",
-    };
+    leagueSlug = result.data[0].league_slug;
   } catch {
     return {
       status: "error",
       message: "The invitation could not be accepted. Sign in again and retry.",
     };
   }
+
+  revalidatePath("/leagues");
+  redirect(`/l/${leagueSlug}/matchup`);
 }
 
 export async function renameLeagueAction(
