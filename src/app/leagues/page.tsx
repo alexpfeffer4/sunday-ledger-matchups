@@ -26,7 +26,15 @@ export default async function LeaguesPage() {
           <Link href="/" aria-label="Sunday Ledger home">
             <BrandLockup />
           </Link>
-          <SignOutForm className="text-muted hover:text-ink min-h-11 rounded-lg px-3 text-sm font-semibold" />
+          <div className="flex items-center gap-1">
+            <Link
+              className="text-registry hover:bg-subtle inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold"
+              href="/account"
+            >
+              Account
+            </Link>
+            <SignOutForm className="text-muted hover:text-ink min-h-11 rounded-lg px-3 text-sm font-semibold" />
+          </div>
         </div>
         <div className="mt-16">
           <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">

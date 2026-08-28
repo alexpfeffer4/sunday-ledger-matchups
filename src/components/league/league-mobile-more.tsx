@@ -21,6 +21,9 @@ export function LeagueMobileMore({
           <Link className={itemClass} href="/leagues">
             Your leagues
           </Link>
+          <Link className={itemClass} href="/account">
+            Account
+          </Link>
           <Link className={itemClass} href={`/l/${leagueSlug}/rules`}>
             Rules &amp; trust
           </Link>

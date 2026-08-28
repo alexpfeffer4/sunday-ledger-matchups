@@ -88,7 +88,13 @@ export function LeagueShell({
               <p className="text-muted text-xs">{memberRole}</p>
             </div>
           </div>
-          <SignOutForm className="text-muted hover:text-ink mt-3 min-h-11 w-full rounded-lg px-2 text-left text-sm font-semibold" />
+          <Link
+            className="text-muted hover:text-ink mt-3 flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold"
+            href="/account"
+          >
+            Account
+          </Link>
+          <SignOutForm className="text-muted hover:text-ink min-h-11 w-full rounded-lg px-2 text-left text-sm font-semibold" />
         </div>
       </aside>
 
