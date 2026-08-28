@@ -31,7 +31,7 @@ export type Stage1CommissionerControlState = {
   >;
   week: Pick<
     NonNullable<Stage1StateDto["week"]>,
-    "state" | "commonLockAt" | "correctionWindowClosesAt"
+    "nflWeek" | "state" | "commonLockAt" | "correctionWindowClosesAt"
   > | null;
   slate: Array<
     Pick<
@@ -437,6 +437,7 @@ export function Stage1CommissionerControls({
         </section>
       ) : state.league.mode === "LIVE" ? (
         <LiveWeekCommissionerControls
+          latestLiveImport={latestLiveImport}
           liveWeekOperations={liveWeekOperations}
           providerConfigured={providerConfigured}
           state={state}

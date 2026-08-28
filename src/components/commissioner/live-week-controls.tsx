@@ -4,12 +4,16 @@ import { useActionState } from "react";
 import {
   correctLiveEventResultAction,
   finalizeStage1WeekAction,
+  importLiveOddsAction,
   importLiveScoresAction,
   lockStage1WeekAction,
+  publishNextLiveWeekSlateAction,
   refreshLiveWeekQuotesAction,
   voidLiveEventAfterPostponementAction,
 } from "@/app/l/[leagueSlug]/actions";
 import { initialAppActionState } from "@/application/actions/action-state";
+import { isStandardLiveSlateEvent } from "@/application/providers/select-standard-live-slate";
+import type { LiveOddsImportReview } from "@/application/queries/get-live-odds-import";
 import type { LiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import type { Stage1CommissionerControlState } from "@/components/commissioner/stage1-controls";
 import { ActionFeedback } from "@/components/forms/action-feedback";
@@ -47,10 +51,12 @@ function scoreLine(event: LiveWeekOperations["events"][number]): string {
 }
 
 export function LiveWeekCommissionerControls({
+  latestLiveImport,
   liveWeekOperations,
   providerConfigured,
   state,
 }: {
+  latestLiveImport: LiveOddsImportReview | null;
   liveWeekOperations: LiveWeekOperations | null;
   providerConfigured: boolean;
   state: Stage1CommissionerControlState;
@@ -79,14 +85,30 @@ export function LiveWeekCommissionerControls({
     finalizeStage1WeekAction,
     initialAppActionState,
   );
+  const [oddsImportState, oddsImportAction, importingOdds] = useActionState(
+    importLiveOddsAction,
+    initialAppActionState,
+  );
+  const [nextWeekState, nextWeekAction, publishingNextWeek] = useActionState(
+    publishNextLiveWeekSlateAction,
+    initialAppActionState,
+  );
 
   if (!state.week) return null;
+  const weekNumber = state.week.nflWeek;
+  const nextWeekNumber = weekNumber + 1;
+  const nextWeekImport =
+    latestLiveImport &&
+    new Date(latestLiveImport.fetchedAt).getTime() >
+      new Date(state.week.commonLockAt).getTime()
+      ? latestLiveImport
+      : null;
 
   return (
     <>
       <section className="border-boundary bg-surface rounded-xl border p-5">
         <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-          Week 1 · Live controls
+          Week {weekNumber} · Live controls
         </p>
         <h2 className="mt-2 font-bold">
           {state.week.state === "OPEN"
@@ -116,7 +138,7 @@ export function LiveWeekCommissionerControls({
             <form action={lockAction} className="mt-3">
               <ContextFields state={state} />
               <button className={buttonClass} disabled={locking} type="submit">
-                {locking ? "Locking…" : "Lock all Week 1 cards"}
+                {locking ? "Locking…" : `Lock all Week ${weekNumber} cards`}
               </button>
             </form>
             <ActionFeedback state={quoteState} />
@@ -312,7 +334,7 @@ export function LiveWeekCommissionerControls({
         <section className="border-copper bg-surface rounded-xl border p-5">
           <h2 className="font-bold">
             {state.week.state === "FINAL"
-              ? "Week 1 is final"
+              ? `Week ${weekNumber} is final`
               : "24-hour correction window"}
           </h2>
           <p className="text-graphite mt-2 text-sm leading-6">
@@ -334,11 +356,146 @@ export function LiveWeekCommissionerControls({
                 disabled={finalizing}
                 type="submit"
               >
-                {finalizing ? "Finalizing…" : "Finalize Week 1"}
+                {finalizing ? "Finalizing…" : `Finalize Week ${weekNumber}`}
               </button>
             </form>
           ) : null}
           <ActionFeedback state={finalizeState} />
+        </section>
+      ) : null}
+
+      {state.week.state === "FINAL" && weekNumber < 14 ? (
+        <section className="border-registry bg-surface rounded-xl border p-5">
+          <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+            Week {nextWeekNumber} · operational publication
+          </p>
+          <h2 className="mt-2 font-bold">Open the next weekly ledger</h2>
+          <p className="text-graphite mt-2 text-sm leading-6">
+            Import current NFL markets, review the eligible event set, and
+            publish once. The database takes the Week {nextWeekNumber} pairing
+            from the frozen schedule and creates one fresh 1,000-credit card per
+            member in the same transaction.
+          </p>
+          <form action={oddsImportAction} className="mt-4">
+            <ContextFields state={state} />
+            <button
+              className={buttonClass}
+              disabled={!providerConfigured || importingOdds}
+              type="submit"
+            >
+              {importingOdds
+                ? "Importing current markets…"
+                : `Import Week ${nextWeekNumber} NFL markets for review`}
+            </button>
+          </form>
+          {!providerConfigured ? (
+            <p className="text-pending mt-3 text-xs leading-5 font-semibold">
+              The server-side provider key is not configured in this
+              environment.
+            </p>
+          ) : null}
+          <ActionFeedback state={oddsImportState} />
+
+          {nextWeekImport ? (
+            <div className="border-boundary mt-5 border-t pt-5">
+              <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+                <div>
+                  <p className="text-sm font-bold">
+                    Latest reviewed import · {nextWeekImport.eventCount} events
+                  </p>
+                  <p className="text-muted mt-1 text-xs">
+                    Fetched{" "}
+                    {timestampFormatter.format(
+                      new Date(nextWeekImport.fetchedAt),
+                    )}{" "}
+                    ET · not yet member-visible
+                  </p>
+                </div>
+                <span className="text-positive text-xs font-semibold">
+                  Ready for review
+                </span>
+              </div>
+              <form action={nextWeekAction} className="mt-4">
+                <ContextFields state={state} />
+                <input
+                  name="importId"
+                  type="hidden"
+                  value={nextWeekImport.importId}
+                />
+                <fieldset>
+                  <legend className="text-sm font-bold">
+                    Select the eligible Week {nextWeekNumber} games
+                  </legend>
+                  <p className="text-muted mt-1 text-xs leading-5">
+                    Standard Sunday games at 1:00 p.m. ET or later and Monday
+                    games start selected. Earlier and Thursday games require an
+                    affirmative selection.
+                  </p>
+                  <div className="divide-boundary mt-3 divide-y">
+                    {nextWeekImport.events.map((event) => (
+                      <label
+                        className="flex min-h-14 cursor-pointer items-start gap-3 py-3 first:pt-0 last:pb-0"
+                        key={event.externalEventId}
+                      >
+                        <input
+                          className="border-control text-registry mt-1 size-4 rounded"
+                          defaultChecked={isStandardLiveSlateEvent(event)}
+                          name="externalEventId"
+                          type="checkbox"
+                          value={event.externalEventId}
+                        />
+                        <span>
+                          <span className="block text-sm font-semibold">
+                            {event.awayTeam} at {event.homeTeam}
+                          </span>
+                          <span className="text-muted mt-1 block text-xs">
+                            {event.markets.length} main-market outcomes ·{" "}
+                            {timestampFormatter.format(
+                              new Date(event.scheduledStartAt),
+                            )}{" "}
+                            ET
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <p className="text-negative mt-4 text-sm leading-6 font-semibold">
+                  Irreversible: publication fixes the event set and common lock,
+                  opens every card, and advances the operational league to Week{" "}
+                  {nextWeekNumber}.
+                </p>
+                <button
+                  className={`${buttonClass} mt-4`}
+                  disabled={publishingNextWeek}
+                  type="submit"
+                >
+                  {publishingNextWeek
+                    ? `Publishing Week ${nextWeekNumber}…`
+                    : `Publish Week ${nextWeekNumber} & open all cards`}
+                </button>
+              </form>
+              <ActionFeedback state={nextWeekState} />
+            </div>
+          ) : (
+            <p className="text-muted mt-4 text-sm leading-6">
+              Import a new market batch after Week {weekNumber} common lock to
+              enable the Week {nextWeekNumber} review.
+            </p>
+          )}
+        </section>
+      ) : null}
+
+      {state.week.state === "FINAL" && weekNumber === 14 ? (
+        <section className="border-copper bg-surface rounded-xl border p-5">
+          <p className="text-copper text-xs font-bold tracking-[0.08em] uppercase">
+            Regular season complete
+          </p>
+          <h2 className="mt-2 font-bold">Week 14 standings are frozen</h2>
+          <p className="text-graphite mt-2 text-sm leading-6">
+            No Week 15 regular-season slate can publish. Playoff qualification
+            is the next lifecycle operation.
+          </p>
         </section>
       ) : null}
     </>

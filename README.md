@@ -36,6 +36,11 @@ ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
 - Exact-set NFL score refresh for the locked Live slate, provisional receipt
   settlement, visible provider/manual correction versions, the frozen 48-hour
   postponement rule, and database-enforced 24-hour finalization
+- Week 2–14 Live progression after each prior final: commissioner-reviewed NFL
+  slates, frozen-schedule matchup materialization, fresh equal 1,000-credit
+  cards, generalized card/lock/result RPCs, and cumulative standings with the
+  ordered win percentage, points-for, all-play, balanced head-to-head,
+  attendance, high-week, and deterministic tiebreak chain
 - Deterministic provider-fixture ports for healthy, stale, outlier, suspended,
   provider-degraded, live, final, void, and corrected states
 - Vitest unit/property coverage and Playwright configuration
@@ -88,10 +93,11 @@ rejects mutation of a full-season archive; the Stage 3 suite verifies guarded
 live imports, immutable event selection, noncompetitive solo publication,
 current-quote refresh, idempotency, append-only storage, and commissioner-only
 RLS; the result suite verifies official-score provenance, correction replay,
-postponement voids, and final competitive snapshots. All run inside rollback
-transactions. The `api` schema is the reviewed Data API boundary; base
-relations live in the non-exposed `private` schema and remain protected by
-grants and Row Level Security.
+postponement voids, and final competitive snapshots; the progression suite
+verifies the Week 2–14 operational boundary and cumulative ledger. All run
+inside rollback transactions. The `api` schema is the reviewed Data API
+boundary; base relations live in the non-exposed `private` schema and remain
+protected by grants and Row Level Security.
 
 After authorization, link the intended Supabase development project, apply the
 migrations, expose only the `api` schema, generate project types, and run the

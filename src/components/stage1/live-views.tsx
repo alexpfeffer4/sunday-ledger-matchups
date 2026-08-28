@@ -88,7 +88,7 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
   const result = state.matchup.result;
   return (
     <PageFrame
-      eyebrow={`${state.league.name} · Week 1`}
+      eyebrow={`${state.league.name} · Week ${state.week.nflWeek}`}
       title={`${state.viewer.displayName} vs ${state.matchup.opponentName}`}
       description="Matchup-first status from the sealed server read model."
       aside={liveStatus(state)}
@@ -217,7 +217,7 @@ export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
   return (
     <PageFrame
       eyebrow="Stored deterministic provider fixture"
-      title="Week 1 slate"
+      title={`Week ${state.week.nflWeek} slate`}
       description={`Common lock ${formatDate(state.week.commonLockAt)}. Build an editable private draft, then review and seal the complete 1,000-credit card at once.`}
       aside={liveStatus(state)}
     >
@@ -232,7 +232,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
       <PageFrame
         eyebrow={`${state.league.name} · Formation`}
         title="My card"
-        description="The weekly card is granted when Week 1 publishes."
+        description="The weekly card is granted when the commissioner publishes the operational slate."
       >
         <FormationPanel state={state} />
       </PageFrame>
@@ -241,7 +241,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
   return (
     <PageFrame
       eyebrow="Private owner read model"
-      title="My Week 1 card"
+      title={`My Week ${state.week.nflWeek} card`}
       description="Your exact accepted terms are always visible to you and never available to the commissioner."
       aside={
         <StatusBadge
@@ -400,9 +400,9 @@ export function Stage1LiveView({ state }: { state: Stage1StateDto }) {
 export function Stage1LeagueView({ state }: { state: Stage1StateDto }) {
   return (
     <PageFrame
-      eyebrow={`${state.league.name} · Week 1`}
+      eyebrow={`${state.league.name} · Week ${state.week?.nflWeek ?? 1}`}
       title="Around the league"
-      description="Four deterministic matchups; sealed terms never enter this scoreboard."
+      description="Frozen scheduled matchups; sealed terms never enter this scoreboard."
       aside={liveStatus(state)}
     >
       {!state.week ? (
@@ -444,14 +444,17 @@ export function Stage1LeagueView({ state }: { state: Stage1StateDto }) {
 export function Stage1StandingsView({ state }: { state: Stage1StateDto }) {
   return (
     <PageFrame
-      eyebrow="Week 1 stored snapshot"
+      eyebrow={`Official through Week ${state.week?.nflWeek ?? 1}`}
       title="Standings"
       description="The latest snapshot derives from the newest official result-version chain."
       aside={liveStatus(state)}
     >
       {state.standings.length === 0 ? (
         <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">
-          <p>Standings publish after all four Week 1 matchups complete.</p>
+          <p>
+            Standings publish after every Week {state.week?.nflWeek ?? 1}
+            matchup completes.
+          </p>
         </div>
       ) : (
         <div className="border-boundary bg-surface mt-7 overflow-x-auto rounded-xl border">
@@ -545,6 +548,7 @@ export function Stage1CommissionerView({
             },
             week: state.week
               ? {
+                  nflWeek: state.week.nflWeek,
                   state: state.week.state,
                   commonLockAt: state.week.commonLockAt,
                   correctionWindowClosesAt: state.week.correctionWindowClosesAt,
@@ -655,7 +659,7 @@ export function Stage1ScheduleView({
                     <section
                       aria-labelledby={`live-schedule-week-${week}`}
                       className={`rounded-xl border p-5 ${
-                        week === 1
+                        week === state.week?.nflWeek
                           ? "border-registry bg-registry/5"
                           : "border-boundary bg-surface"
                       }`}
@@ -669,7 +673,11 @@ export function Stage1ScheduleView({
                           Week {week}
                         </h2>
                         <span className="text-muted text-xs font-semibold">
-                          {week === 1 ? "Open" : "Scheduled"}
+                          {week === state.week?.nflWeek
+                            ? state.week.state
+                            : week < (state.week?.nflWeek ?? 1)
+                              ? "Final"
+                              : "Scheduled"}
                         </span>
                       </div>
                       <div className="divide-boundary mt-3 divide-y">
@@ -774,17 +782,19 @@ export function Stage1DeferredView({
       aside={<StatusBadge tone="pending">Not published</StatusBadge>}
     >
       <section className="border-boundary bg-surface mt-7 max-w-3xl rounded-xl border p-6">
-        <h2 className="font-bold">Week 1 remains the source of truth</h2>
+        <h2 className="font-bold">
+          Week {state.week?.nflWeek ?? 1} remains the source of truth
+        </h2>
         <p className="text-graphite mt-3 leading-7">
-          This Stage 1 vertical slice intentionally stops at the first official
-          weekly result and standings snapshot. No placeholder history or
-          postseason fact is inferred from private or incomplete data.
+          The current operational week and latest official standings snapshot
+          remain authoritative. No placeholder history or postseason fact is
+          inferred from private or incomplete data.
         </p>
         <Link
           className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
           href={`/l/${state.league.slug}/matchup`}
         >
-          Return to Week 1 matchup
+          Return to current matchup
         </Link>
       </section>
     </PageFrame>

@@ -169,10 +169,31 @@ function mutationError(message: string): AppActionState {
         "Every published game needs a complete current quote set. Refresh the odds and try the roster lock again.",
     };
   }
+  if (message.includes("six fresh current quotes")) {
+    return {
+      status: "error",
+      message:
+        "The reviewed odds are no longer fresh enough to open cards. Import current NFL markets and publish again.",
+    };
+  }
+  if (message.includes("current week must be final")) {
+    return {
+      status: "error",
+      message: "Finalize the current week before publishing the next slate.",
+    };
+  }
+  if (message.includes("14-week regular season is complete")) {
+    return {
+      status: "error",
+      message:
+        "Week 14 is complete; the next operation is playoff qualification.",
+    };
+  }
   if (message.includes("locked cards and an unfinalized week")) {
     return {
       status: "error",
-      message: "Lock all Week 1 cards before importing NFL results.",
+      message:
+        "Lock every card in the current week before importing NFL results.",
     };
   }
   if (message.includes("exactly the published event set")) {
@@ -467,6 +488,66 @@ export async function publishLiveWeekSlateAction(
     message: `${selection.data.externalEventIds.length} NFL events published to the immutable Week 1 slate. Cards remain closed until the roster and schedule are locked.`,
     href: `/l/${context.data.leagueSlug}/slate`,
     hrefLabel: "Review the published slate",
+  };
+}
+
+export async function publishNextLiveWeekSlateAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  const selection = z
+    .object({
+      importId: z.uuid(),
+      externalEventIds: z.array(z.string().min(1).max(160)).min(1).max(32),
+    })
+    .safeParse({
+      importId: formData.get("importId"),
+      externalEventIds: formData.getAll("externalEventId"),
+    });
+  if (!context.success || !selection.success) {
+    return mutationError("Select between one and 32 imported events.");
+  }
+
+  const state = await getLiveStage1League(context.data.leagueSlug);
+  if (
+    !state ||
+    state.league.id !== context.data.leagueId ||
+    !state.commissioner.isCommissioner ||
+    state.league.mode !== "LIVE" ||
+    state.league.lifecycle !== "REGULAR" ||
+    state.week?.state !== "FINAL" ||
+    state.week.nflWeek >= 14
+  ) {
+    return mutationError(
+      "The current week must be final before the next week can publish.",
+    );
+  }
+
+  const nextWeek = state.week.nflWeek + 1;
+  const supabase = await createSupabaseServerClient();
+  const result = await supabase
+    .schema("api")
+    .rpc("publish_next_live_week_slate", {
+      p_league_id: context.data.leagueId,
+      p_import_id: selection.data.importId,
+      p_external_event_ids: selection.data.externalEventIds,
+      p_idempotency_key: idempotencyKey(`publish-live-week-${nextWeek}`),
+    });
+  if (result.error) return mutationError(result.error.message);
+
+  revalidatePath(`/l/${context.data.leagueSlug}`);
+  revalidatePath(`/l/${context.data.leagueSlug}/matchup`);
+  revalidatePath(`/l/${context.data.leagueSlug}/slate`);
+  revalidatePath(`/l/${context.data.leagueSlug}/card`);
+  revalidatePath(`/l/${context.data.leagueSlug}/schedule`);
+  revalidatePath(`/l/${context.data.leagueSlug}/standings`);
+  revalidatePath(`/l/${context.data.leagueSlug}/commissioner`);
+  return {
+    status: "success",
+    message: `Week ${nextWeek} is open: the frozen matchup and fresh 1,000-credit cards are published with ${selection.data.externalEventIds.length} NFL events.`,
+    href: `/l/${context.data.leagueSlug}/slate`,
+    hrefLabel: `Build the Week ${nextWeek} card`,
   };
 }
 
@@ -1007,6 +1088,8 @@ export async function lockStage1WeekAction(
 ): Promise<AppActionState> {
   const context = parseContext(formData);
   if (!context.success) return mutationError("invalid context");
+  const state = await getLiveStage1League(context.data.leagueSlug);
+  const weekNumber = state?.week?.nflWeek ?? 1;
 
   const supabase = await createSupabaseServerClient();
   const result = await supabase.schema("api").rpc("lock_stage1_week", {
@@ -1016,7 +1099,7 @@ export async function lockStage1WeekAction(
   if (result.error) return mutationError(result.error.message);
   return finish(
     context.data.leagueSlug,
-    "Week 1 locked. Only readiness—not sealed terms—is now visible.",
+    `Week ${weekNumber} locked. Only readiness—not sealed terms—is now visible.`,
   );
 }
 
@@ -1087,6 +1170,8 @@ export async function finalizeStage1WeekAction(
 ): Promise<AppActionState> {
   const context = parseContext(formData);
   if (!context.success) return mutationError("invalid context");
+  const state = await getLiveStage1League(context.data.leagueSlug);
+  const weekNumber = state?.week?.nflWeek ?? 1;
 
   const supabase = await createSupabaseServerClient();
   const result = await supabase.schema("api").rpc("finalize_stage1_week", {
@@ -1096,6 +1181,6 @@ export async function finalizeStage1WeekAction(
   if (result.error) return mutationError(result.error.message);
   return finish(
     context.data.leagueSlug,
-    "Week 1 finalized with append-only final score, matchup, and standings versions.",
+    `Week ${weekNumber} finalized with append-only final score, matchup, and cumulative standings versions.`,
   );
 }
