@@ -3,18 +3,12 @@
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { SignOutForm } from "@/components/auth/sign-out-form";
+import { initials } from "@/components/league/initials";
 import { LeagueNavIcon } from "@/components/league/league-nav-icon";
 import { InterfaceIcon } from "@/components/ui/interface-icon";
 
 const itemClass =
   "text-graphite hover:bg-subtle hover:text-ink flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold";
-
-export function initials(displayName: string): string {
-  const parts = displayName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "SL";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0] ?? ""}${parts.at(-1)?.[0] ?? ""}`.toUpperCase();
-}
 
 function useProfileMenu() {
   const [open, setOpen] = useState(false);
