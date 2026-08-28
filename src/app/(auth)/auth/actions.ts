@@ -113,7 +113,7 @@ export async function sendMagicLink(
     return {
       status: "sent",
       message:
-        "Check your email for a one-time sign-in link. It opens Account, where you can choose a username and create a password.",
+        "Check your email for a one-time sign-in link. New members can choose a username and password after signing in.",
     };
   } catch {
     return {

@@ -47,7 +47,15 @@ export function MatchupCard({ matchup }: { matchup: MatchupHomeDto }) {
           </p>
           <p className="text-graphite mt-1 text-sm">{matchup.rivalryLabel}</p>
         </div>
-        <StatusBadge tone="sealed" icon={<span aria-hidden="true">●</span>}>
+        <StatusBadge
+          tone="sealed"
+          icon={
+            <span
+              aria-hidden="true"
+              className="bg-sealed size-1.5 rounded-full"
+            />
+          }
+        >
           Cards open
         </StatusBadge>
       </div>

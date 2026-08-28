@@ -5,11 +5,12 @@ import {
   LeagueMobileNav,
 } from "@/components/league/league-nav";
 import {
-  initials,
   LeagueDesktopProfileMenu,
   LeagueMobileMore,
 } from "@/components/league/league-mobile-more";
+import { initials } from "@/components/league/initials";
 import { LeagueMobileSecondaryNav } from "@/components/league/league-secondary-nav";
+import { InterfaceIcon } from "@/components/ui/interface-icon";
 import { BrandLockup, RegisterMark } from "@/components/ui/register-mark";
 
 function NavigationFallback() {
@@ -76,11 +77,8 @@ export function LeagueShell({
               {nflYear} · Week {week}
             </span>
           </span>
-          <span
-            aria-hidden="true"
-            className="text-muted hidden text-xs xl:block"
-          >
-            ↕
+          <span aria-hidden="true" className="text-muted hidden xl:block">
+            <InterfaceIcon name="switch" />
           </span>
         </Link>
 

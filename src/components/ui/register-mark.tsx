@@ -12,9 +12,9 @@ export function RegisterMark({
       xmlns="http://www.w3.org/2000/svg"
     >
       <path
-        d="M13 9V54H55M29 25H52M29 45H55"
+        d="M11 8V55H56M27 24H48M27 46H56"
         stroke="currentColor"
-        strokeWidth="7"
+        strokeWidth="6"
         strokeLinecap="square"
         strokeLinejoin="round"
       />
@@ -24,10 +24,10 @@ export function RegisterMark({
 
 export function BrandLockup({ compact = false }: { compact?: boolean }) {
   return (
-    <span className="text-registry inline-flex items-center gap-2.5">
-      <RegisterMark className="h-7 w-7 shrink-0" />
+    <span className="text-registry inline-flex items-center gap-3">
+      <RegisterMark className="h-[1.875rem] w-[1.875rem] shrink-0" />
       {!compact ? (
-        <span className="text-ink text-[17px] font-bold tracking-[-0.025em]">
+        <span className="text-ink text-[17px] font-[750] tracking-[-0.03em]">
           Sunday Ledger
         </span>
       ) : null}

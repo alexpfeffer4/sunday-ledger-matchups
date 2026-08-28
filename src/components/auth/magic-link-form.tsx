@@ -28,9 +28,8 @@ export function MagicLinkForm({ next }: { next: string }) {
           aria-describedby="email-help"
         />
         <p id="email-help" className="text-muted mt-2 text-xs leading-5">
-          Use a one-time link to create your account or recover access. It will
-          open Account so you can choose a username and create a password. Each
-          link works once.
+          New here? The link signs you in, then lets you choose a username and
+          password.
         </p>
       </div>
       <button
@@ -38,7 +37,7 @@ export function MagicLinkForm({ next }: { next: string }) {
         disabled={pending}
         className="border-registry bg-registry hover:border-registry-hover hover:bg-registry-hover min-h-12 w-full rounded-lg border px-5 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-70"
       >
-        {pending ? "Sending…" : "Email me a sign-in link"}
+        {pending ? "Sending…" : "Send sign-in link"}
       </button>
       {state.status !== "idle" ? (
         <p

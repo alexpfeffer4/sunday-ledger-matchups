@@ -29,7 +29,15 @@ function MatchupPreview() {
             Cards lock Sunday · 12:55 PM ET
           </p>
         </div>
-        <StatusBadge tone="sealed" icon={<span aria-hidden="true">●</span>}>
+        <StatusBadge
+          tone="sealed"
+          icon={
+            <span
+              aria-hidden="true"
+              className="bg-sealed size-1.5 rounded-full"
+            />
+          }
+        >
           Cards open
         </StatusBadge>
       </div>
@@ -116,23 +124,22 @@ export default async function HomePage() {
 
       <section className="mx-auto grid max-w-7xl gap-12 px-5 pt-16 pb-20 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-16 lg:pt-24 lg:pb-28">
         <div>
-          <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">
-            Private NFL leagues · virtual credits only
+          <p className="text-registry text-sm font-semibold">
+            Weekly NFL matchup leagues
           </p>
           <h1 className="text-ink mt-5 max-w-3xl text-[2.5rem] leading-[1.05] font-bold tracking-[-0.045em] sm:text-6xl">
-            Beat one friend every week. Build a season worth remembering.
+            Build your card. Beat your matchup.
           </h1>
           <p className="text-graphite mt-6 max-w-xl text-lg leading-7">
-            Start with the same fresh 1,000 credits. Build a sealed card at real
-            pregame odds. Turn every Sunday into a matchup, a record, and a
-            playoff race.
+            Every week, each member gets 1,000 virtual credits to allocate
+            across real NFL lines. Returned credits become the score.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <ButtonLink href={accountHref} className="sm:min-w-48">
-              {authenticated ? "Open your leagues" : "Start an NFL league"}
+              {authenticated ? "Open your leagues" : "Start a league"}
             </ButtonLink>
             <ButtonLink
-              href="/l/west-21st-ledger/matchup"
+              href="/leagues/demo"
               variant="secondary"
               className="sm:min-w-48"
             >
@@ -140,7 +147,7 @@ export default async function HomePage() {
             </ButtonLink>
           </div>
           <p className="text-muted mt-5 text-sm">
-            Free · private · no purchases · virtual credits have no cash value
+            Free to play · virtual credits have no cash value
           </p>
         </div>
         <MatchupPreview />
@@ -182,26 +189,30 @@ export default async function HomePage() {
       </section>
 
       <section className="mx-auto max-w-5xl px-5 py-16 text-center sm:px-8 md:py-24">
-        <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">
-          Fair play
-        </p>
+        <p className="text-registry text-sm font-semibold">Fair play</p>
         <h2 className="mx-auto mt-4 max-w-3xl text-3xl font-bold tracking-[-0.035em] sm:text-4xl">
-          Your decisions stay private. The season stays on the record.
+          Sealed picks. Transparent scoring.
         </h2>
         <p className="text-graphite mx-auto mt-5 max-w-2xl leading-7">
-          Opponents and commissioners cannot inspect unrevealed cards. Every
-          pick keeps its original line and odds, and official corrections stay
-          visible.
+          Picks stay hidden until their events begin. Every card keeps the
+          accepted line and odds, and any official correction remains visible.
         </p>
         <ButtonLink href="/trust" variant="tertiary" className="mt-6">
-          Read rules &amp; trust
+          See rules &amp; scoring
         </ButtonLink>
       </section>
 
       <footer className="border-boundary border-t">
         <div className="text-muted mx-auto flex max-w-7xl flex-col justify-between gap-4 px-5 py-8 text-sm sm:flex-row sm:px-8">
           <BrandLockup />
-          <p>Free · private · virtual credits only · no cash value</p>
+          <div className="flex items-center gap-5">
+            <Link className="hover:text-ink" href="/rules">
+              Rules
+            </Link>
+            <Link className="hover:text-ink" href="/trust">
+              Trust
+            </Link>
+          </div>
         </div>
       </footer>
     </main>

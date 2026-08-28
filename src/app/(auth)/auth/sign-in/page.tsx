@@ -4,8 +4,7 @@ import { redirect } from "next/navigation";
 import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
-import { MagicLinkForm } from "@/components/auth/magic-link-form";
-import { PasswordSignInForm } from "@/components/auth/password-sign-in-form";
+import { SignInMethods } from "@/components/auth/sign-in-methods";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -42,15 +41,10 @@ export default async function SignInPage({
           <BrandLockup />
         </Link>
         <section className="border-boundary bg-surface mt-16 rounded-xl border p-6 shadow-[var(--shadow-card)] sm:p-8">
-          <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">
-            Private league access
-          </p>
-          <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em]">
-            Sign in to Sunday Ledger
-          </h1>
+          <h1 className="text-3xl font-bold tracking-[-0.04em]">Sign in</h1>
           <p className="text-graphite mt-3 leading-6">
-            Sign in with your password, or use an email link to create or
-            recover your account.
+            Use your password, or get an email link to create an account or
+            recover access.
           </p>
           {hasLinkError ? (
             <p className="border-negative/25 bg-negative/10 text-negative mt-5 rounded-lg border px-4 py-3 text-sm leading-6">
@@ -58,19 +52,13 @@ export default async function SignInPage({
               below.
             </p>
           ) : null}
-          <PasswordSignInForm next={next} />
-          <div className="my-7 flex items-center gap-3" aria-hidden="true">
-            <span className="border-boundary flex-1 border-t" />
-            <span className="text-muted text-xs font-semibold uppercase">
-              Or use email
-            </span>
-            <span className="border-boundary flex-1 border-t" />
-          </div>
-          <MagicLinkForm next={next} />
+          <SignInMethods
+            next={next}
+            defaultMethod={hasLinkError ? "email" : "password"}
+          />
         </section>
         <p className="text-muted mt-5 text-center text-xs leading-5">
-          Your email stays private. League members see only the username you
-          choose on Account.
+          League members see your username—not your email.
         </p>
       </div>
     </main>
