@@ -174,7 +174,7 @@ describe("league navigation", () => {
     expect(screen.queryByText("Live season")).not.toBeInTheDocument();
   });
 
-  it("retains a small Practice label for practice leagues", () => {
+  it("reserves an explicit Simulation label for authoritative Simulation", () => {
     render(
       <LeagueShell
         cardStatusLabel="Card ready"
@@ -190,6 +190,30 @@ describe("league navigation", () => {
       </LeagueShell>,
     );
 
-    expect(screen.getByText("Practice", { selector: "span" })).toBeVisible();
+    expect(screen.getByText("Simulation", { selector: "span" })).toBeVisible();
+  });
+
+  it("keeps Example Season separate from Simulation", () => {
+    const { container } = render(
+      <LeagueShell
+        archiveMode
+        cardStatusLabel="Read-only"
+        exampleMode
+        leagueName="Example Season"
+        leagueSlug="example-season"
+        memberName="North Club"
+        memberRole="Example participant"
+        mode="SIMULATION"
+        nflYear={2026}
+        week={18}
+      >
+        <p>Example content</p>
+      </LeagueShell>,
+    );
+
+    expect(
+      within(container).getByText("Example Season · Read-only"),
+    ).toBeVisible();
+    expect(within(container).queryByText("Simulation")).not.toBeInTheDocument();
   });
 });

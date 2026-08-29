@@ -28,6 +28,7 @@ export function LeagueShell({
   memberRole,
   cardStatusLabel,
   archiveMode = false,
+  exampleMode = false,
   isCommissioner = false,
 }: {
   children: ReactNode;
@@ -40,6 +41,7 @@ export function LeagueShell({
   memberRole: string;
   cardStatusLabel: string;
   archiveMode?: boolean;
+  exampleMode?: boolean;
   isCommissioner?: boolean;
 }) {
   return (
@@ -125,9 +127,13 @@ export function LeagueShell({
               <p className="text-muted text-xs">NFL · Week {week}</p>
             </div>
             <div className="flex items-center gap-2">
-              {mode === "SIMULATION" ? (
+              {exampleMode ? (
                 <span className="border-pending/30 bg-pending/10 text-pending rounded border px-2 py-1 text-[11px] font-bold tracking-[0.04em] uppercase">
-                  Practice
+                  Example Season · Read-only
+                </span>
+              ) : mode === "SIMULATION" ? (
+                <span className="border-pending/30 bg-pending/10 text-pending rounded border px-2 py-1 text-[11px] font-bold tracking-[0.04em] uppercase">
+                  Simulation
                 </span>
               ) : null}
               {archiveMode ? (

@@ -93,9 +93,15 @@ export function RulesetAuditDetails({
           </dd>
         </div>
         <div>
-          <dt className="text-muted">Mode</dt>
+          <dt className="text-muted">
+            {presentation.context === "EXAMPLE" ? "Context" : "Mode"}
+          </dt>
           <dd className="mt-1 font-semibold">
-            {presentation.mode === "LIVE" ? "Live" : "Simulation"}
+            {presentation.context === "EXAMPLE"
+              ? "Example Season · read-only"
+              : presentation.mode === "LIVE"
+                ? "Live"
+                : "Simulation"}
           </dd>
         </div>
         <div>

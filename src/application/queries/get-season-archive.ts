@@ -2,20 +2,22 @@ import "server-only";
 
 import { cache } from "react";
 import {
-  fullSeasonSimulationArchive,
-  fullSeasonSimulationSlug,
-} from "@/adapters/simulation/full-season";
+  exampleSeasonArchive,
+  exampleSeasonSlug,
+} from "@/adapters/example/example-season";
+import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import {
   simulationSeasonArchiveSchema,
   type SimulationSeasonArchiveDto,
 } from "@/application/queries/season-archive-dtos";
 
-export const getSimulationSeasonArchive = cache(
+export const getSeasonArchive = cache(
   async (leagueSlug: string): Promise<SimulationSeasonArchiveDto | null> => {
-    if (leagueSlug === fullSeasonSimulationSlug) {
-      return simulationSeasonArchiveSchema.parse(fullSeasonSimulationArchive);
+    if (leagueSlug === exampleSeasonSlug) {
+      return simulationSeasonArchiveSchema.parse(exampleSeasonArchive);
     }
+    if (!isSupabaseConfigured()) return null;
 
     const supabase = await createSupabaseServerClient();
     const claims = await supabase.auth.getClaims();
@@ -31,6 +33,8 @@ export const getSimulationSeasonArchive = cache(
       throw new Error("The season archive could not be loaded.");
     }
     if (result.data === null) return null;
-    return simulationSeasonArchiveSchema.parse(result.data);
+
+    const archive = simulationSeasonArchiveSchema.parse(result.data);
+    return archive.mode === "LIVE" ? archive : null;
   },
 );

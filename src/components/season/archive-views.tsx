@@ -39,13 +39,12 @@ function matchupLine(
 
 export function SeasonArchiveHome({
   archive,
-  demoRunReceipt,
   leagueSlug,
 }: {
   archive: SimulationSeasonArchiveDto;
-  demoRunReceipt?: string;
   leagueSlug: string;
 }) {
+  const isExample = archive.mode === "SIMULATION";
   const champion = memberName(archive, archive.playoffs.championEntryId);
   const runnerUp = memberName(archive, archive.playoffs.runnerUpEntryId);
   const third = archive.playoffs.thirdPlaceEntryId
@@ -57,43 +56,30 @@ export function SeasonArchiveHome({
 
   return (
     <PageFrame
-      eyebrow={`${archive.nflYear} season · official archive`}
-      title={`${champion} won the Ledger`}
-      description={
-        archive.mode === "LIVE"
-          ? "The complete regular season, playoff bracket, champion, and official corrections are saved here."
-          : "This practice season includes the complete regular season, playoffs, champion, and Week 18 exhibitions."
+      eyebrow={
+        isExample
+          ? "Example Season · read-only illustration"
+          : `${archive.nflYear} season · official archive`
       }
-      aside={<StatusBadge tone="positive">Season final</StatusBadge>}
+      title={
+        isExample
+          ? `${champion} won this Example Season`
+          : `${champion} won the Ledger`
+      }
+      description={
+        isExample
+          ? "A neutral, noncompetitive illustration of a complete regular season, playoffs, champion, and Week 18 exhibitions. Nothing here can be changed."
+          : "The complete regular season, playoff bracket, champion, and official corrections are saved here."
+      }
+      aside={
+        <StatusBadge tone={isExample ? "pending" : "positive"}>
+          {isExample ? "Example Season" : "Season final"}
+        </StatusBadge>
+      }
     >
-      {demoRunReceipt ? (
-        <section
-          aria-labelledby="demo-run-title"
-          className="border-positive/30 bg-positive/10 mt-7 rounded-xl border p-5"
-          role="status"
-        >
-          <p className="text-positive text-xs font-bold tracking-[0.09em] uppercase">
-            Practice season complete
-          </p>
-          <h2 id="demo-run-title" className="mt-2 text-lg font-bold">
-            All 18 weeks are ready
-          </h2>
-          <p className="text-graphite mt-2 text-sm leading-6">
-            This practice season used {archive.members.length} sample members.
-            It did not invite anyone or change a live league.
-          </p>
-          <details className="text-muted mt-3 text-xs">
-            <summary className="cursor-pointer font-semibold">
-              Technical run ID
-            </summary>
-            <p className="mt-2 font-mono">{demoRunReceipt}</p>
-          </details>
-        </section>
-      ) : null}
-
       <section className="border-champion bg-archive mt-7 rounded-xl border-2 p-6 sm:p-8">
         <p className="text-champion text-xs font-bold tracking-[0.12em] uppercase">
-          {archive.nflYear} champion
+          {isExample ? "Example champion" : `${archive.nflYear} champion`}
         </p>
         <div className="mt-4 grid gap-6 sm:grid-cols-[1fr_auto] sm:items-end">
           <div>
@@ -119,7 +105,10 @@ export function SeasonArchiveHome({
       <div className="border-boundary mt-6 grid gap-x-6 border-y sm:grid-cols-2 xl:grid-cols-4">
         {[
           ["Regular season", "14 weeks"],
-          ["Official matchups", `${archive.schedule.matchups.length}`],
+          [
+            isExample ? "Illustrative matchups" : "Official matchups",
+            `${archive.schedule.matchups.length}`,
+          ],
           ["Playoff field", `Top ${archive.playoffs.qualifierCount} eligible`],
           ["Week 18", `${archive.week18.length} exhibitions`],
         ].map(([label, value]) => (
@@ -203,12 +192,25 @@ export function SeasonArchiveSchedule({
 }: {
   archive: SimulationSeasonArchiveDto;
 }) {
+  const isExample = archive.mode === "SIMULATION";
   return (
     <PageFrame
-      eyebrow="Published at roster lock · final"
+      eyebrow={
+        isExample
+          ? "Example Season · read-only schedule"
+          : "Published at roster lock · final"
+      }
       title={`${archive.nflYear} regular-season schedule`}
-      description="One opponent per member in every scoring week. Pairing frequencies are balanced, consecutive rematches are absent, and the publication remained unchanged through the season."
-      aside={<StatusBadge tone="positive">14 weeks final</StatusBadge>}
+      description={
+        isExample
+          ? "Illustrative neutral pairings for all 14 regular-season weeks. This static schedule is not Live or authoritative Simulation competition."
+          : "One opponent per member in every scoring week. Pairing frequencies are balanced, consecutive rematches are absent, and the publication remained unchanged through the season."
+      }
+      aside={
+        <StatusBadge tone={isExample ? "pending" : "positive"}>
+          {isExample ? "Example Season" : "14 weeks final"}
+        </StatusBadge>
+      }
     >
       <details className="border-boundary mt-7 border-y py-4">
         <summary className="cursor-pointer font-bold">
@@ -320,7 +322,9 @@ export function SeasonArchiveStandings({
         <StatusBadge
           tone={ruleset.context === "EXAMPLE" ? "pending" : "positive"}
         >
-          {ruleset.context === "EXAMPLE" ? "Example" : "Qualification final"}
+          {ruleset.context === "EXAMPLE"
+            ? "Example Season"
+            : "Qualification final"}
         </StatusBadge>
       }
     >
@@ -397,13 +401,26 @@ export function SeasonArchivePlayoffs({
 }: {
   archive: SimulationSeasonArchiveDto;
 }) {
+  const isExample = archive.mode === "SIMULATION";
   const champion = memberName(archive, archive.playoffs.championEntryId);
   return (
     <PageFrame
-      eyebrow={`${archive.nflYear} playoffs · official`}
-      title={`${champion} completed the bracket`}
-      description="Qualification froze after Week 14. Opening-round winners were reseeded, an exact tie would have advanced the higher qualification seed, and Week 18 remained outside the title path."
-      aside={<StatusBadge tone="positive">Bracket final</StatusBadge>}
+      eyebrow={
+        isExample
+          ? "Example Season · illustrative playoffs"
+          : `${archive.nflYear} playoffs · official`
+      }
+      title={`${champion} completed ${isExample ? "this example bracket" : "the bracket"}`}
+      description={
+        isExample
+          ? "A read-only illustration of qualification, reseeding, the title path, and separate Week 18 exhibitions."
+          : "Qualification froze after Week 14. Opening-round winners were reseeded, an exact tie would have advanced the higher qualification seed, and Week 18 remained outside the title path."
+      }
+      aside={
+        <StatusBadge tone={isExample ? "pending" : "positive"}>
+          {isExample ? "Example Season" : "Bracket final"}
+        </StatusBadge>
+      }
     >
       <div className="mt-7 grid gap-5 lg:grid-cols-3">
         {[15, 16, 17].map((week) => {
@@ -497,6 +514,7 @@ export function SeasonArchiveHistory({
 }: {
   archive: SimulationSeasonArchiveDto;
 }) {
+  const isExample = archive.mode === "SIMULATION";
   const games = [
     ...archive.regularSeason.weeks.flatMap((week) => week.matchups),
     ...archive.playoffs.games,
@@ -510,10 +528,20 @@ export function SeasonArchiveHistory({
 
   return (
     <PageFrame
-      eyebrow="Season history"
+      eyebrow={
+        isExample ? "Example Season · read-only history" : "Season history"
+      }
       title={`${viewer}’s ${archive.nflYear} matchup history`}
-      description="Regular season, playoff, placement, and exhibition results are tracked separately."
-      aside={<StatusBadge tone="positive">Archive complete</StatusBadge>}
+      description={
+        isExample
+          ? "Illustrative regular-season, playoff, placement, and exhibition results are labelled separately."
+          : "Regular season, playoff, placement, and exhibition results are tracked separately."
+      }
+      aside={
+        <StatusBadge tone={isExample ? "pending" : "positive"}>
+          {isExample ? "Example Season" : "Archive complete"}
+        </StatusBadge>
+      }
     >
       <section className="border-boundary bg-surface mt-7 overflow-hidden rounded-xl border">
         <div className="divide-boundary divide-y">

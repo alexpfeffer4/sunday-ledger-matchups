@@ -116,8 +116,9 @@ export default async function LeaguesPage() {
       ];
     },
   );
-  const activeLeagues = leagues.filter((league) => !league.archived_at);
-  const archivedLeagues = leagues.filter((league) => league.archived_at);
+  const liveLeagues = leagues.filter((league) => league.mode === "LIVE");
+  const activeLeagues = liveLeagues.filter((league) => !league.archived_at);
+  const archivedLeagues = liveLeagues.filter((league) => league.archived_at);
 
   return (
     <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">
@@ -186,16 +187,16 @@ export default async function LeaguesPage() {
               </Link>
             </article>
             <article className="border-boundary bg-surface rounded-xl border p-5">
-              <h3 className="font-bold">View a sample season</h3>
+              <h3 className="font-bold">View an Example Season</h3>
               <p className="text-graphite mt-2 text-sm leading-6">
-                See final standings, playoffs, a champion, and completed season
-                history.
+                Explore one neutral, read-only illustration of final standings,
+                playoffs, a champion, and season history.
               </p>
               <Link
-                href="/l/west-21st-ledger-archive/matchup"
+                href="/l/example-season/matchup"
                 className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
               >
-                View sample season
+                View Example Season
               </Link>
             </article>
           </div>

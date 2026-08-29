@@ -29,9 +29,9 @@ export default async function LeagueRulesPage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
-  const { live, archive, persistedSnapshot, exampleLeague, isExample } =
+  const { live, archive, persistedSnapshot, isExample } =
     await getRulesAndStandingsContext(leagueSlug);
-  if (!live && !exampleLeague && !archive) notFound();
+  if (!live && !archive) notFound();
 
   let presentation: RulesetPresentation;
   if (isExample) {
@@ -106,7 +106,7 @@ export default async function LeagueRulesPage({
 
   return (
     <PageFrame
-      eyebrow={`${leagueLabel} · ${presentation.mode === "LIVE" ? "Live" : "Simulation"} rules`}
+      eyebrow={`${leagueLabel} · ${presentation.context === "EXAMPLE" ? "illustrative" : presentation.mode === "LIVE" ? "Live" : "Simulation"} rules`}
       title={
         presentation.context === "EXAMPLE" ? "Example rules" : "League rules"
       }
@@ -128,7 +128,7 @@ export default async function LeagueRulesPage({
           }
         >
           {presentation.context === "EXAMPLE"
-            ? "Example"
+            ? "Example Season"
             : presentation.frozenAt
               ? "Frozen"
               : "Published"}

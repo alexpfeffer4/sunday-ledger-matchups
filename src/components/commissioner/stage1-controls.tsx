@@ -11,7 +11,6 @@ import {
   lockLiveRosterAndOpenWeekAction,
   lockStage1WeekAction,
   publishLiveWeekSlateAction,
-  publishSimulationSeasonArchiveAction,
   recordStage1ResultAction,
   refreshLiveWeekQuotesAction,
   revokeLeagueInviteAction,
@@ -129,13 +128,12 @@ function commissionerNextStep({
 
   if (!state.week) {
     return {
-      detail:
-        "Run a full practice season, or open an eight-member practice Week 1.",
+      detail: "Open an eight-member practice Week 1.",
       prerequisites:
         state.league.memberCount === 8
-          ? "Both practice formats are available"
-          : "Full practice season is available",
-      title: "Choose how to begin the season",
+          ? "Practice Week 1 is available"
+          : `${state.league.memberCount}/8 members`,
+      title: "Open Practice Week 1",
     };
   }
 
@@ -221,10 +219,6 @@ export function Stage1CommissionerControls({
     useActionState(revokeLeagueInviteAction, initialAppActionState);
   const [initializeState, initializeAction, initializing] = useActionState(
     initializeStage1WeekAction,
-    initialAppActionState,
-  );
-  const [archiveState, archiveAction, publishingArchive] = useActionState(
-    publishSimulationSeasonArchiveAction,
     initialAppActionState,
   );
   const [importState, importAction, importing] = useActionState(
@@ -563,60 +557,26 @@ export function Stage1CommissionerControls({
           )}
         </section>
       ) : !state.week ? (
-        <>
-          <section className="border-registry bg-surface rounded-xl border p-5">
-            <h2 className="font-bold">Run a full practice season</h2>
-            <p className="text-graphite mt-2 text-sm leading-6">
-              Use an even roster from 4 through 16. This completes Weeks 1–18,
-              including the playoffs and champion, so you can explore a finished
-              season.
-            </p>
-            <p className="text-negative mt-3 text-sm leading-6 font-semibold">
-              Publishing freezes the roster and rules, finalizes the season, and
-              cannot be undone.
-            </p>
-            <form action={archiveAction} className="mt-4">
-              <ContextFields state={state} />
-              <button
-                className={buttonClass}
-                disabled={
-                  publishingArchive ||
-                  state.league.lifecycle !== "DRAFT" ||
-                  state.league.memberCount < 4 ||
-                  state.league.memberCount > 16 ||
-                  state.league.memberCount % 2 !== 0
-                }
-                type="submit"
-              >
-                {publishingArchive
-                  ? "Running practice season…"
-                  : `Run practice season · ${state.league.memberCount} members`}
-              </button>
-            </form>
-            <ActionFeedback state={archiveState} />
-          </section>
-
-          <section className="border-boundary bg-surface rounded-xl border p-5">
-            <h2 className="font-bold">Or open a practice Week 1</h2>
-            <p className="text-graphite mt-2 text-sm leading-6">
-              This option requires exactly eight members. It creates four
-              matchups and gives every member 1,000 credits to build a card.
-            </p>
-            <form action={initializeAction} className="mt-4">
-              <ContextFields state={state} />
-              <button
-                className={buttonClass}
-                disabled={initializing || state.league.memberCount !== 8}
-                type="submit"
-              >
-                {initializing
-                  ? "Publishing…"
-                  : `Publish Week 1 · ${state.league.memberCount}/8 members`}
-              </button>
-            </form>
-            <ActionFeedback state={initializeState} />
-          </section>
-        </>
+        <section className="border-boundary bg-surface rounded-xl border p-5">
+          <h2 className="font-bold">Open a practice Week 1</h2>
+          <p className="text-graphite mt-2 text-sm leading-6">
+            This option requires exactly eight members. It creates four matchups
+            and gives every member 1,000 credits to build a card.
+          </p>
+          <form action={initializeAction} className="mt-4">
+            <ContextFields state={state} />
+            <button
+              className={buttonClass}
+              disabled={initializing || state.league.memberCount !== 8}
+              type="submit"
+            >
+              {initializing
+                ? "Publishing…"
+                : `Publish Week 1 · ${state.league.memberCount}/8 members`}
+            </button>
+          </form>
+          <ActionFeedback state={initializeState} />
+        </section>
       ) : state.league.mode === "LIVE" && state.week.state === "PLANNED" ? (
         <section className="border-registry bg-surface rounded-xl border p-5">
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">

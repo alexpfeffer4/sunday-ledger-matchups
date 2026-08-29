@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
-import { fullSeasonSimulationSlug } from "@/adapters/simulation/full-season";
+import { exampleSeasonSlug } from "@/adapters/example/example-season";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
-import { getSimulationLeague } from "@/application/queries/get-simulation-league";
-import { getSimulationSeasonArchive } from "@/application/queries/get-simulation-season-archive";
+import { getSeasonArchive } from "@/application/queries/get-season-archive";
 import { LeagueShell } from "@/components/league/league-shell";
 
 export default async function LeagueLayout({
@@ -14,27 +13,8 @@ export default async function LeagueLayout({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
-  const league = getSimulationLeague(leagueSlug);
-  if (league) {
-    return (
-      <LeagueShell
-        leagueSlug={leagueSlug}
-        leagueName={league.matchup.league.name}
-        week={league.matchup.league.week}
-        nflYear={2026}
-        mode="SIMULATION"
-        memberName="Pfeff"
-        memberRole="Practice commissioner"
-        cardStatusLabel={`${league.matchup.allocation.allocatedCredits} / 1,000 used`}
-        isCommissioner
-      >
-        {children}
-      </LeagueShell>
-    );
-  }
-
-  if (leagueSlug === fullSeasonSimulationSlug) {
-    const archive = await getSimulationSeasonArchive(leagueSlug);
+  if (leagueSlug === exampleSeasonSlug) {
+    const archive = await getSeasonArchive(leagueSlug);
     if (!archive) notFound();
 
     const viewer = archive.members.find(
@@ -43,14 +23,15 @@ export default async function LeagueLayout({
     return (
       <LeagueShell
         leagueSlug={leagueSlug}
-        leagueName="Sample Season"
-        week={archive.mode === "LIVE" ? 17 : 18}
+        leagueName="Example Season"
+        week={18}
         nflYear={archive.nflYear}
         mode={archive.mode}
         memberName={viewer?.displayName ?? "Member"}
-        memberRole="Archived participant"
-        cardStatusLabel="Season final"
+        memberRole="Example participant"
+        cardStatusLabel="Read-only"
         archiveMode
+        exampleMode
       >
         {children}
       </LeagueShell>
@@ -59,7 +40,7 @@ export default async function LeagueLayout({
 
   const [live, archive] = await Promise.all([
     getLiveStage1League(leagueSlug),
-    getSimulationSeasonArchive(leagueSlug),
+    getSeasonArchive(leagueSlug),
   ]);
   if (archive) {
     const viewer = archive.members.find(
@@ -68,8 +49,8 @@ export default async function LeagueLayout({
     return (
       <LeagueShell
         leagueSlug={leagueSlug}
-        leagueName={live?.league.name ?? "Sample Season"}
-        week={archive.mode === "LIVE" ? 17 : 18}
+        leagueName={live?.league.name ?? "League archive"}
+        week={17}
         nflYear={archive.nflYear}
         mode={archive.mode}
         memberName={viewer?.displayName ?? "Member"}
