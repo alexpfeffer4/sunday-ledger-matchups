@@ -10,6 +10,10 @@ import { Stage1CommissionerControls } from "@/components/commissioner/stage1-con
 import { LeagueSettings } from "@/components/commissioner/league-settings";
 import type { MyLeagueSummary } from "@/application/queries/get-my-league-summary";
 import { PageFrame } from "@/components/league/page-frame";
+import {
+  StandingsRulesetSummary,
+  type RulesetPresentation,
+} from "@/components/rules/ruleset-presentation";
 import { AllocationMeter } from "@/components/matchup/allocation-meter";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCenticredits } from "@/domain/odds/american";
@@ -681,7 +685,13 @@ export function Stage1LeagueView({ state }: { state: Stage1StateDto }) {
   );
 }
 
-export function Stage1StandingsView({ state }: { state: Stage1StateDto }) {
+export function Stage1StandingsView({
+  ruleset,
+  state,
+}: {
+  ruleset: RulesetPresentation;
+  state: Stage1StateDto;
+}) {
   return (
     <PageFrame
       eyebrow={
@@ -802,6 +812,7 @@ export function Stage1StandingsView({ state }: { state: Stage1StateDto }) {
           </div>
         </>
       )}
+      <StandingsRulesetSummary presentation={ruleset} />
     </PageFrame>
   );
 }

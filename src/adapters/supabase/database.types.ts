@@ -55,15 +55,15 @@ export type Database = {
     Functions: {
       create_league: {
         Args: {
-          p_canonical_ruleset: Json;
+          p_canonical_ruleset?: Json;
           p_mode: string;
           p_name: string;
           p_nfl_year: number;
-          p_product_bible_id: string;
-          p_product_bible_version: string;
-          p_ruleset_id: string;
-          p_ruleset_sha256: string;
-          p_ruleset_version: string;
+          p_product_bible_id?: string;
+          p_product_bible_version?: string;
+          p_ruleset_id?: string;
+          p_ruleset_sha256?: string;
+          p_ruleset_version?: string;
           p_slug: string;
         };
         Returns: {
@@ -157,6 +157,10 @@ export type Database = {
         Returns: Json | null;
       };
       get_season_archive: {
+        Args: { p_league_slug: string };
+        Returns: Json | null;
+      };
+      get_season_ruleset: {
         Args: { p_league_slug: string };
         Returns: Json | null;
       };

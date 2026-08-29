@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { fullSeasonSimulationSlug } from "@/adapters/simulation/full-season";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSimulationLeague } from "@/application/queries/get-simulation-league";
 import { getSimulationSeasonArchive } from "@/application/queries/get-simulation-season-archive";
@@ -13,6 +14,49 @@ export default async function LeagueLayout({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
+  const league = getSimulationLeague(leagueSlug);
+  if (league) {
+    return (
+      <LeagueShell
+        leagueSlug={leagueSlug}
+        leagueName={league.matchup.league.name}
+        week={league.matchup.league.week}
+        nflYear={2026}
+        mode="SIMULATION"
+        memberName="Pfeff"
+        memberRole="Practice commissioner"
+        cardStatusLabel={`${league.matchup.allocation.allocatedCredits} / 1,000 used`}
+        isCommissioner
+      >
+        {children}
+      </LeagueShell>
+    );
+  }
+
+  if (leagueSlug === fullSeasonSimulationSlug) {
+    const archive = await getSimulationSeasonArchive(leagueSlug);
+    if (!archive) notFound();
+
+    const viewer = archive.members.find(
+      (member) => member.entryId === archive.viewerEntryId,
+    );
+    return (
+      <LeagueShell
+        leagueSlug={leagueSlug}
+        leagueName="Sample Season"
+        week={archive.mode === "LIVE" ? 17 : 18}
+        nflYear={archive.nflYear}
+        mode={archive.mode}
+        memberName={viewer?.displayName ?? "Member"}
+        memberRole="Archived participant"
+        cardStatusLabel="Season final"
+        archiveMode
+      >
+        {children}
+      </LeagueShell>
+    );
+  }
+
   const [live, archive] = await Promise.all([
     getLiveStage1League(leagueSlug),
     getSimulationSeasonArchive(leagueSlug),
@@ -62,22 +106,5 @@ export default async function LeagueLayout({
       </LeagueShell>
     );
   }
-  const league = getSimulationLeague(leagueSlug);
-  if (!league) notFound();
-
-  return (
-    <LeagueShell
-      leagueSlug={leagueSlug}
-      leagueName={league.matchup.league.name}
-      week={league.matchup.league.week}
-      nflYear={2026}
-      mode="SIMULATION"
-      memberName="Pfeff"
-      memberRole="Practice commissioner"
-      cardStatusLabel={`${league.matchup.allocation.allocatedCredits} / 1,000 used`}
-      isCommissioner
-    >
-      {children}
-    </LeagueShell>
-  );
+  notFound();
 }

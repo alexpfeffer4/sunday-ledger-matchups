@@ -1,14 +1,27 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
-import { getSimulationLeague } from "@/application/queries/get-simulation-league";
-import { getSimulationSeasonArchive } from "@/application/queries/get-simulation-season-archive";
+import { getRulesAndStandingsContext } from "@/application/queries/get-rules-and-standings-context";
 import { PageFrame } from "@/components/league/page-frame";
+import {
+  exampleRulesetPresentation,
+  RulesetAuditDetails,
+  rulesetTiebreakLabels,
+  seasonRulesetPresentation,
+  type RulesetPresentation,
+} from "@/components/rules/ruleset-presentation";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { hashRuleset } from "@/rulesets/canonicalize";
 import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
 
 export const metadata: Metadata = { title: "League rules" };
+
+function credits(value: number): string {
+  return new Intl.NumberFormat("en-US").format(value);
+}
+
+function odds(value: number): string {
+  return value < 0 ? `−${Math.abs(value)}` : `+${value}`;
+}
 
 export default async function LeagueRulesPage({
   params,
@@ -16,49 +29,111 @@ export default async function LeagueRulesPage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
-  const [live, archive] = await Promise.all([
-    getLiveStage1League(leagueSlug),
-    getSimulationSeasonArchive(leagueSlug),
-  ]);
-  const league = getSimulationLeague(leagueSlug);
-  if (!live && !league && !archive) notFound();
-  const rulesetHash = await hashRuleset(simulationSeason1Ruleset);
-  const rosterSize = archive?.members.length ?? live?.members.length ?? 10;
-  const qualifierCount = rosterSize <= 8 ? 4 : 6;
+  const { live, archive, persistedSnapshot, exampleLeague, isExample } =
+    await getRulesAndStandingsContext(leagueSlug);
+  if (!live && !exampleLeague && !archive) notFound();
 
+  let presentation: RulesetPresentation;
+  if (isExample) {
+    presentation = exampleRulesetPresentation(
+      simulationSeason1Ruleset,
+      await hashRuleset(simulationSeason1Ruleset),
+    );
+  } else if (persistedSnapshot) {
+    presentation = seasonRulesetPresentation(persistedSnapshot);
+  } else {
+    throw new Error("The persisted season Ruleset is unavailable.");
+  }
+  const ruleset = presentation.canonicalJson;
+  const isV11 = ruleset.version === "1.1";
+  const rosterSize = archive?.members.length ?? live?.members.length ?? 10;
+  const qualifierCount =
+    rosterSize <= ruleset.playoffs.smallLeagueMaximumSize
+      ? ruleset.playoffs.smallLeagueQualifiers
+      : ruleset.playoffs.largeLeagueQualifiers;
+  const tiebreakers = rulesetTiebreakLabels(ruleset);
+  const marketNames = ruleset.markets.eligible
+    .map((market) =>
+      market === "MONEYLINE"
+        ? "game winner"
+        : market === "SPREAD"
+          ? "spread"
+          : "total",
+    )
+    .join(", ");
   const rules = [
     {
       title: "Weekly card",
-      body: "Exactly 1,000 fresh virtual credits, 1–20 picks, a 50-credit minimum, and whole-credit stakes. Nothing carries forward.",
+      body: `${credits(ruleset.card.weeklyAllocationCredits)} fresh virtual credits, ${ruleset.card.minimumPositions}–${ruleset.card.maximumPositions} picks, a ${credits(ruleset.card.minimumStakeCredits)}-credit minimum, and whole-credit stakes.${isV11 && !ruleset.card.carryoverCredits ? " Nothing carries forward." : ""}${isV11 && ruleset.card.acceptanceUnit === "WHOLE_CARD_ATOMIC" ? " Picks stay editable until Confirm and seal card accepts the complete card at once." : ""}`,
     },
     {
-      title: "Markets and concentration",
-      body: "Pregame winner, spread, and total markets. One pick per game and market. Favorites shorter than −200 are capped at 750 credits; every other eligible pick is capped at 1,000.",
+      title: "Markets and big-favorite limit",
+      body: `${marketNames}. A favorite shorter than ${odds(ruleset.concentration.heavyFavoriteThresholdAmerican)} may use at most ${credits(ruleset.concentration.heavyFavoriteSinglePositionCapCredits)} credits; a price at ${odds(ruleset.concentration.heavyFavoriteThresholdAmerican)} or longer may use up to ${credits(ruleset.concentration.standardSinglePositionCapCredits)}. There is no blanket odds band or aggregate favorite cap.${isV11 ? " This package is settled for POC V1." : ""}`,
     },
     {
       title: "Card lock and reveal",
-      body: "Cards lock five minutes before the first selected game. Picks reveal only after their game kicks off.",
+      body: `Cards lock ${ruleset.slate.commonLockOffsetMinutes} minutes before the first selected game.${isV11 && ruleset.slate.revealTrigger === "EVENT_START" ? " Each pick reveals when its game begins." : ""}`,
     },
     {
       title: "Scoring",
-      body: "A win returns stake plus profit, a loss returns zero, and a push or void returns stake. Receipt returns round half up to 0.01 credit.",
+      body: isV11
+        ? `A win returns stake plus profit, a loss returns zero, and a push or void returns stake. Returns round half up to ${(ruleset.settlement.precisionCenticredits / 100).toFixed(2)} credit.`
+        : `Returns round half up to ${(ruleset.settlement.precisionCenticredits / 100).toFixed(2)} credit under this historical snapshot.`,
     },
     {
       title: "Attendance",
-      body: "An incomplete card receives an automatic loss, zero Points For, and one miss. A third regular-season miss removes playoff eligibility.",
+      body: isV11
+        ? `An incomplete card records a loss, ${ruleset.attendance.incompleteCardPointsForCenticredits} Points For, and ${ruleset.attendance.incompleteCardMisses} miss. If both cards are incomplete, both members lose. Reaching ${ruleset.attendance.playoffIneligibilityAtMisses} regular-season misses removes playoff eligibility.`
+        : `Reaching ${ruleset.attendance.playoffIneligibilityAtMisses} regular-season misses removes playoff eligibility.`,
     },
     {
-      title: "Season and playoffs",
-      body: `The regular season is Weeks 1–14. The top ${qualifierCount} eligible members qualify for this league’s playoffs. Week 17 decides the champion, and Week 18 is exhibition only.`,
+      title: "Standings and playoffs",
+      body:
+        tiebreakers.length > 0
+          ? `${tiebreakers.join(", ")}. The mini-table applies only when every tied pair has the same positive meeting count. After Week ${ruleset.schedule.regularSeasonWeeks}, the top ${qualifierCount} eligible members qualify; Week ${ruleset.schedule.championshipWeek} decides the champion and Week ${ruleset.schedule.exhibitionWeek} is exhibition only.`
+          : `This historical V1.0 snapshot did not persist tiebreak metadata. Its identity remains preserved below. The regular season ends after Week ${ruleset.schedule.regularSeasonWeeks}.`,
+    },
+    {
+      title: "Corrections and finality",
+      body: `Documented NFL score corrections remain visible for ${ruleset.settlement.correctionWindowHours} hours. Season rules do not change after the snapshot freezes at roster lock.`,
     },
   ];
+  const leagueLabel =
+    live?.league.name ??
+    (presentation.context === "EXAMPLE"
+      ? "Example Season"
+      : ruleset.seasonLabel);
 
   return (
     <PageFrame
-      eyebrow={`${live?.league.name ?? (archive ? "Sample Season" : "Sample League")} · league rules`}
-      title="League rules"
-      description="These rules apply to every member for the full season."
-      aside={<StatusBadge tone="positive">Set for 2026</StatusBadge>}
+      eyebrow={`${leagueLabel} · ${presentation.mode === "LIVE" ? "Live" : "Simulation"} rules`}
+      title={
+        presentation.context === "EXAMPLE" ? "Example rules" : "League rules"
+      }
+      description={
+        presentation.context === "EXAMPLE"
+          ? "Illustrative Ruleset values for this read-only Example Season."
+          : presentation.frozenAt
+            ? "These season rules were frozen at roster lock."
+            : "These persisted season rules are published now and freeze at roster lock."
+      }
+      aside={
+        <StatusBadge
+          tone={
+            presentation.context === "EXAMPLE"
+              ? "pending"
+              : presentation.frozenAt
+                ? "positive"
+                : "sealed"
+          }
+        >
+          {presentation.context === "EXAMPLE"
+            ? "Example"
+            : presentation.frozenAt
+              ? "Frozen"
+              : "Published"}
+        </StatusBadge>
+      }
     >
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="divide-boundary border-boundary divide-y border-y">
@@ -74,39 +149,15 @@ export default async function LeagueRulesPage({
         </div>
 
         <aside className="space-y-5">
-          <details className="border-boundary border-y py-4">
-            <summary className="cursor-pointer font-bold">
-              Technical details
-            </summary>
-            <dl className="mt-4 space-y-4 text-sm">
-              <div>
-                <dt className="text-muted">Ruleset</dt>
-                <dd className="mt-1 font-semibold break-words">
-                  {simulationSeason1Ruleset.id}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted">Product baseline</dt>
-                <dd className="mt-1 font-semibold">
-                  {simulationSeason1Ruleset.productBibleId}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted">SHA-256</dt>
-                <dd className="mt-1 font-mono text-xs leading-5 break-all">
-                  {rulesetHash}
-                </dd>
-              </div>
-            </dl>
-          </details>
           <section className="border-boundary border-t pt-5">
             <h2 className="font-bold">Commissioner limits</h2>
             <p className="text-graphite mt-2 text-sm leading-6">
-              Commissioners cannot read sealed picks or edit weekly scores,
+              Commissioners cannot read sealed picks or directly edit scores,
               records, schedules, seeds, brackets, or winners. Official
               corrections stay visible.
             </p>
           </section>
+          <RulesetAuditDetails presentation={presentation} />
         </aside>
       </div>
     </PageFrame>

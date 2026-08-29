@@ -1,6 +1,10 @@
 import Link from "next/link";
 import type { SimulationSeasonArchiveDto } from "@/application/queries/season-archive-dtos";
 import { PageFrame } from "@/components/league/page-frame";
+import {
+  StandingsRulesetSummary,
+  type RulesetPresentation,
+} from "@/components/rules/ruleset-presentation";
 import { StatusBadge } from "@/components/ui/status-badge";
 
 function score(centicredits: number): string {
@@ -287,18 +291,38 @@ export function SeasonArchiveSchedule({
 
 export function SeasonArchiveStandings({
   archive,
+  ruleset,
 }: {
   archive: SimulationSeasonArchiveDto;
+  ruleset: RulesetPresentation;
 }) {
   const qualifierIds = new Set(
     archive.playoffs.qualifiers.map((qualifier) => qualifier.entryId),
   );
   return (
     <PageFrame
-      eyebrow="Official through Week 14"
-      title="Final regular-season standings"
-      description="Record comes first, followed by Points For, all-play, attendance, and the league’s published final tiebreaker."
-      aside={<StatusBadge tone="positive">Qualification final</StatusBadge>}
+      eyebrow={
+        ruleset.context === "EXAMPLE"
+          ? "Example Season through Week 14"
+          : "Official through Week 14"
+      }
+      title={
+        ruleset.context === "EXAMPLE"
+          ? "Example regular-season standings"
+          : "Final regular-season standings"
+      }
+      description={
+        ruleset.context === "EXAMPLE"
+          ? "Read-only illustrative standings with the complete published tiebreak chain below."
+          : "Record comes first, followed by Points For, all-play, attendance, and the league’s published final tiebreaker."
+      }
+      aside={
+        <StatusBadge
+          tone={ruleset.context === "EXAMPLE" ? "pending" : "positive"}
+        >
+          {ruleset.context === "EXAMPLE" ? "Example" : "Qualification final"}
+        </StatusBadge>
+      }
     >
       <div className="border-boundary bg-surface mt-7 overflow-hidden rounded-xl border">
         <div className="overflow-x-auto">
@@ -363,6 +387,7 @@ export function SeasonArchiveStandings({
           </table>
         </div>
       </div>
+      <StandingsRulesetSummary presentation={ruleset} />
     </PageFrame>
   );
 }

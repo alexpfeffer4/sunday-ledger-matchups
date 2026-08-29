@@ -7,6 +7,8 @@ export type WeeklyStandingInput = {
   pointsForCenticredits: bigint;
 };
 
+type StandingDecision = WeeklyStandingInput["decision"];
+
 export type StandingRow = {
   entryId: string;
   wins: number;
@@ -20,7 +22,10 @@ export type StandingRow = {
   deterministicTiebreak: string;
 };
 
-type HeadToHeadMeeting = { decision: "WIN" | "LOSS" | "TIE" };
+type HeadToHeadMeeting = {
+  firstDecision: StandingDecision;
+  secondDecision: StandingDecision;
+};
 
 function compareRatioDescending(
   leftNumerator: number,
@@ -116,12 +121,8 @@ function balancedHeadToHeadScores(
       for (const meeting of pairMeetings) {
         const rowWasFirst = row.entryId === first;
         const rowDecision = rowWasFirst
-          ? meeting.decision
-          : meeting.decision === "WIN"
-            ? "LOSS"
-            : meeting.decision === "LOSS"
-              ? "WIN"
-              : "TIE";
+          ? meeting.firstDecision
+          : meeting.secondDecision;
         const score = scores.get(row.entryId);
         if (!score) continue;
         score.halfGameUnits += 2;
@@ -193,13 +194,32 @@ export function calculateStandings(params: {
     }
   }
 
-  const meetingMap = new Map<string, HeadToHeadMeeting[]>();
+  const meetingsByPairAndWeek = new Map<
+    string,
+    Map<number, Partial<HeadToHeadMeeting>>
+  >();
   for (const result of params.weeklyResults) {
-    if (result.entryId > result.opponentEntryId) continue;
-    const key = `${result.entryId}:${result.opponentEntryId}`;
-    const existing = meetingMap.get(key) ?? [];
-    existing.push({ decision: result.decision });
-    meetingMap.set(key, existing);
+    const [first, second] = [result.entryId, result.opponentEntryId].sort();
+    if (!first || !second) continue;
+    const key = `${first}:${second}`;
+    const byWeek = meetingsByPairAndWeek.get(key) ?? new Map();
+    const meeting = byWeek.get(result.week) ?? {};
+    if (result.entryId === first) meeting.firstDecision = result.decision;
+    else meeting.secondDecision = result.decision;
+    byWeek.set(result.week, meeting);
+    meetingsByPairAndWeek.set(key, byWeek);
+  }
+
+  const meetingMap = new Map<string, HeadToHeadMeeting[]>();
+  for (const [key, byWeek] of meetingsByPairAndWeek) {
+    const completeMeetings = [...byWeek.entries()]
+      .sort(([leftWeek], [rightWeek]) => leftWeek - rightWeek)
+      .flatMap(([, meeting]) =>
+        meeting.firstDecision && meeting.secondDecision
+          ? [meeting as HeadToHeadMeeting]
+          : [],
+      );
+    meetingMap.set(key, completeMeetings);
   }
 
   const coreSorted = [...rows.values()].sort(compareCore);
