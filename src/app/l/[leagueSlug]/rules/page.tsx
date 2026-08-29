@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { fullSeasonSimulationSlug } from "@/adapters/simulation/full-season";
-import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
-import { getSeasonRuleset } from "@/application/queries/get-season-ruleset";
-import { getSimulationLeague } from "@/application/queries/get-simulation-league";
-import { getSimulationSeasonArchive } from "@/application/queries/get-simulation-season-archive";
+import { getRulesAndStandingsContext } from "@/application/queries/get-rules-and-standings-context";
 import { PageFrame } from "@/components/league/page-frame";
 import {
   exampleRulesetPresentation,
@@ -33,16 +29,10 @@ export default async function LeagueRulesPage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
-  const [live, archive, persistedSnapshot] = await Promise.all([
-    getLiveStage1League(leagueSlug),
-    getSimulationSeasonArchive(leagueSlug),
-    getSeasonRuleset(leagueSlug),
-  ]);
-  const exampleLeague = getSimulationLeague(leagueSlug);
+  const { live, archive, persistedSnapshot, exampleLeague, isExample } =
+    await getRulesAndStandingsContext(leagueSlug);
   if (!live && !exampleLeague && !archive) notFound();
 
-  const isExample =
-    Boolean(exampleLeague) || leagueSlug === fullSeasonSimulationSlug;
   let presentation: RulesetPresentation;
   if (isExample) {
     presentation = exampleRulesetPresentation(

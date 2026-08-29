@@ -18,22 +18,51 @@ select table_privs_are(
 select has_function(
   'api',
   'create_league',
-  array['text', 'text', 'text', 'integer'],
-  'league creation accepts no caller-authored Ruleset fields'
+  array[
+    'text', 'text', 'text', 'integer', 'text',
+    'text', 'text', 'text', 'jsonb', 'text'
+  ],
+  'one compatibility signature fronts trusted league creation'
 );
 select hasnt_function(
+  'api',
+  'create_league',
+  array['text', 'text', 'text', 'integer'],
+  'the exposed API has no unsupported create_league overload'
+);
+select has_function(
+  'private',
+  'create_league_from_authoritative_ruleset',
+  array['text', 'text', 'text', 'integer'],
+  'the trusted four-argument implementation is private'
+);
+select function_privs_are(
+  'private',
+  'create_league_from_authoritative_ruleset',
+  array['text', 'text', 'text', 'integer'],
+  'authenticated',
+  array[]::text[],
+  'members cannot call the trusted implementation directly'
+);
+select is(
+  (
+    select procedure.pronargdefaults
+    from pg_catalog.pg_proc as procedure
+    join pg_catalog.pg_namespace as namespace
+      on namespace.oid = procedure.pronamespace
+    where namespace.nspname = 'api'
+      and procedure.proname = 'create_league'
+  ),
+  6::smallint,
+  'legacy Ruleset fields are optional compatibility inputs'
+);
+select function_privs_are(
   'api',
   'create_league',
   array[
     'text', 'text', 'text', 'integer', 'text',
     'text', 'text', 'text', 'jsonb', 'text'
   ],
-  'the forgeable creation signature no longer exists'
-);
-select function_privs_are(
-  'api',
-  'create_league',
-  array['text', 'text', 'text', 'integer'],
   'authenticated',
   array['EXECUTE'],
   'authenticated members can use trusted league creation'
@@ -41,7 +70,10 @@ select function_privs_are(
 select function_privs_are(
   'api',
   'create_league',
-  array['text', 'text', 'text', 'integer'],
+  array[
+    'text', 'text', 'text', 'integer', 'text',
+    'text', 'text', 'text', 'jsonb', 'text'
+  ],
   'anon',
   array[]::text[],
   'anonymous callers cannot create a league'
@@ -134,6 +166,22 @@ select lives_ok(
   'member UI creation constructs the authoritative snapshot in the database'
 );
 
+select lives_ok(
+  $$select api.create_league(
+    'Phase 2 Legacy Compatibility',
+    'phase-2-legacy-compatibility',
+    'LIVE',
+    2026,
+    'FORGED-RULESET',
+    '999.0',
+    'FORGED-PRODUCT-BIBLE',
+    '999.0',
+    '{"mode":"LIVE","forged":true}'::jsonb,
+    'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+  )$$,
+  'legacy member UI fields cannot select the persisted Ruleset identity'
+);
+
 select is(
   (
     select snapshot.ruleset_version
@@ -157,6 +205,30 @@ select is(
   ),
   '4bba08222402fbe24f706cbb5c6bd7b9aa7c50da5bc8c039f7929aaf4cfcb629',
   'trusted Live creation stores the allowlisted canonical digest'
+);
+select is(
+  (
+    select snapshot.ruleset_id
+    from private.leagues as league
+    join private.seasons as season on season.league_id = league.id
+    join private.season_ruleset_snapshots as snapshot
+      on snapshot.id = season.ruleset_snapshot_id
+    where league.slug = 'phase-2-legacy-compatibility'
+  ),
+  'SUNDAY-LEDGER-POC-SEASON-RULESET-V1',
+  'legacy compatibility ignores a forged Ruleset identifier'
+);
+select is(
+  (
+    select snapshot.sha256_hash
+    from private.leagues as league
+    join private.seasons as season on season.league_id = league.id
+    join private.season_ruleset_snapshots as snapshot
+      on snapshot.id = season.ruleset_snapshot_id
+    where league.slug = 'phase-2-legacy-compatibility'
+  ),
+  '4bba08222402fbe24f706cbb5c6bd7b9aa7c50da5bc8c039f7929aaf4cfcb629',
+  'legacy compatibility stores the authoritative Live digest'
 );
 
 set local role authenticated;
