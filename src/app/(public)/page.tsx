@@ -23,7 +23,7 @@ function MatchupPreview() {
       <div className="border-boundary mb-5 flex flex-wrap items-center justify-between gap-3 border-b pb-4">
         <div>
           <p className="text-muted text-xs font-semibold tracking-[0.08em] uppercase">
-            Sample League · Week 6
+            Example League · Week 6
           </p>
           <p className="text-graphite mt-1 text-sm">
             Cards lock Sunday · 12:55 PM ET
@@ -45,9 +45,9 @@ function MatchupPreview() {
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-7">
         <div className="min-w-0 text-center">
           <div className="border-registry bg-subtle text-registry mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 text-lg font-bold">
-            AP
+            MA
           </div>
-          <p className="mt-3 truncate font-bold">Pfeff</p>
+          <p className="mt-3 truncate font-bold">Member A</p>
           <p className="text-graphite text-sm">3–2 · No. 5 seed</p>
         </div>
         <div className="text-center">
@@ -60,9 +60,9 @@ function MatchupPreview() {
         </div>
         <div className="min-w-0 text-center">
           <div className="border-copper bg-subtle text-copper mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 text-lg font-bold">
-            MC
+            MB
           </div>
-          <p className="mt-3 truncate font-bold">Mia</p>
+          <p className="mt-3 truncate font-bold">Member B</p>
           <p className="text-graphite text-sm">4–1 · No. 2 seed</p>
         </div>
       </div>
@@ -142,7 +142,7 @@ export default async function HomePage() {
               {authenticated ? "Open your leagues" : "Start a league"}
             </ButtonLink>
             <ButtonLink
-              href="/leagues/demo"
+              href="/practice"
               variant="secondary"
               className="sm:min-w-48"
             >
@@ -174,7 +174,7 @@ export default async function HomePage() {
             ],
             [
               "03",
-              "Climb the table",
+              "Climb the standings",
               "Build your record, track the playoff race, and play through Week 17 for the championship.",
             ],
           ].map(([number, title, description]) => (
