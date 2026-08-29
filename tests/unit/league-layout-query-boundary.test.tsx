@@ -3,12 +3,11 @@
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fullSeasonSimulationSlug } from "@/adapters/simulation/full-season";
-import { simulationLeagueSlug } from "@/adapters/simulation/poc-week-six";
+import { exampleSeasonSlug } from "@/adapters/example/example-season";
 
 const queryMocks = vi.hoisted(() => ({
   getLiveStage1League: vi.fn(),
-  getSimulationSeasonArchive: vi.fn(),
+  getSeasonArchive: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -20,8 +19,8 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/application/queries/get-live-stage1-league", () => ({
   getLiveStage1League: queryMocks.getLiveStage1League,
 }));
-vi.mock("@/application/queries/get-simulation-season-archive", () => ({
-  getSimulationSeasonArchive: queryMocks.getSimulationSeasonArchive,
+vi.mock("@/application/queries/get-season-archive", () => ({
+  getSeasonArchive: queryMocks.getSeasonArchive,
 }));
 vi.mock("@/components/league/league-shell", () => ({
   LeagueShell: ({
@@ -45,23 +44,9 @@ describe("league layout query boundary", () => {
     vi.clearAllMocks();
   });
 
-  it("renders the Week 6 Example without member RPCs", async () => {
-    const layout = await LeagueLayout({
-      children: <p>Example content</p>,
-      params: Promise.resolve({ leagueSlug: simulationLeagueSlug }),
-    });
-
-    render(layout);
-
-    expect(screen.getByText("Sample League")).toBeVisible();
-    expect(screen.getByText("Example content")).toBeVisible();
-    expect(queryMocks.getLiveStage1League).not.toHaveBeenCalled();
-    expect(queryMocks.getSimulationSeasonArchive).not.toHaveBeenCalled();
-  });
-
-  it("loads only the bundled archive for the full-season Example", async () => {
-    queryMocks.getSimulationSeasonArchive.mockResolvedValueOnce({
-      members: [{ entryId: "viewer", displayName: "Pfeff" }],
+  it("loads only the bundled archive for the Example Season", async () => {
+    queryMocks.getSeasonArchive.mockResolvedValueOnce({
+      members: [{ entryId: "viewer", displayName: "North Club" }],
       viewerEntryId: "viewer",
       mode: "SIMULATION",
       nflYear: 2026,
@@ -69,17 +54,15 @@ describe("league layout query boundary", () => {
 
     const layout = await LeagueLayout({
       children: <p>Archive content</p>,
-      params: Promise.resolve({ leagueSlug: fullSeasonSimulationSlug }),
+      params: Promise.resolve({ leagueSlug: exampleSeasonSlug }),
     });
 
     render(layout);
 
-    expect(screen.getByText("Sample Season")).toBeVisible();
+    expect(screen.getByText("Example Season")).toBeVisible();
     expect(queryMocks.getLiveStage1League).not.toHaveBeenCalled();
-    expect(queryMocks.getSimulationSeasonArchive).toHaveBeenCalledOnce();
-    expect(queryMocks.getSimulationSeasonArchive).toHaveBeenCalledWith(
-      fullSeasonSimulationSlug,
-    );
+    expect(queryMocks.getSeasonArchive).toHaveBeenCalledOnce();
+    expect(queryMocks.getSeasonArchive).toHaveBeenCalledWith(exampleSeasonSlug);
   });
 
   it("retains persisted lookups for a member league", async () => {
@@ -95,7 +78,7 @@ describe("league layout query boundary", () => {
       viewer: { displayName: "Member" },
       ownerCard: null,
     });
-    queryMocks.getSimulationSeasonArchive.mockResolvedValueOnce(null);
+    queryMocks.getSeasonArchive.mockResolvedValueOnce(null);
 
     const layout = await LeagueLayout({
       children: <p>Member content</p>,
@@ -108,8 +91,6 @@ describe("league layout query boundary", () => {
     expect(queryMocks.getLiveStage1League).toHaveBeenCalledWith(
       "member-league",
     );
-    expect(queryMocks.getSimulationSeasonArchive).toHaveBeenCalledWith(
-      "member-league",
-    );
+    expect(queryMocks.getSeasonArchive).toHaveBeenCalledWith("member-league");
   });
 });

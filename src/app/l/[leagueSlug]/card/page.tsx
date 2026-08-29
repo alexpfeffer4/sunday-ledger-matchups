@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
-import { getSimulationLeague } from "@/application/queries/get-simulation-league";
-import { CardPositionRow } from "@/components/card/card-position-row";
-import { AllocationMeter } from "@/components/matchup/allocation-meter";
-import { PageFrame } from "@/components/league/page-frame";
 import { Stage1CardView } from "@/components/stage1/live-views";
-import { ButtonLink } from "@/components/ui/button-link";
 
-export const metadata: Metadata = { title: "Week 6 card" };
+export const metadata: Metadata = { title: "Card" };
 
 export default async function CardPage({
   params,
@@ -18,76 +13,5 @@ export default async function CardPage({
   const { leagueSlug } = await params;
   const live = await getLiveStage1League(leagueSlug);
   if (live) return <Stage1CardView state={live} />;
-  const league = getSimulationLeague(leagueSlug);
-  if (!league) notFound();
-  const allocation = league.matchup.allocation;
-
-  return (
-    <PageFrame
-      eyebrow="Week 6 · your private card"
-      title={`${allocation.remainingCredits} credits still to allocate`}
-      description="Only you can see your sealed picks before kickoff."
-      aside={
-        <ButtonLink href={`/l/${leagueSlug}/slate`}>
-          Use remaining {allocation.remainingCredits}
-        </ButtonLink>
-      }
-    >
-      <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-4">
-          <section className="border-boundary bg-surface rounded-xl border p-5 sm:p-6">
-            <AllocationMeter
-              {...allocation}
-              commonLockLabel={league.matchup.league.commonLockLabel}
-            />
-            <p className="text-pending border-pending/25 bg-pending/10 mt-5 rounded-lg border px-4 py-3 text-sm leading-6">
-              You can finish this card with one 350-credit pick from any unused
-              game and market on the slate.
-            </p>
-          </section>
-
-          {league.cardPositions.map((position) => (
-            <CardPositionRow
-              key={position.id}
-              leagueSlug={leagueSlug}
-              position={position}
-            />
-          ))}
-        </div>
-
-        <aside className="space-y-5" aria-label="Card summary">
-          <section className="border-boundary bg-surface rounded-xl border p-5">
-            <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-              Card summary
-            </p>
-            <dl className="divide-boundary mt-4 divide-y text-sm">
-              <div className="flex justify-between gap-4 py-3 first:pt-0">
-                <dt className="text-graphite">Picks</dt>
-                <dd className="font-semibold">3 of 20</dd>
-              </div>
-              <div className="flex justify-between gap-4 py-3">
-                <dt className="text-graphite">Largest stake</dt>
-                <dd className="font-semibold">250 credits</dd>
-              </div>
-              <div className="flex justify-between gap-4 py-3">
-                <dt className="text-graphite">Markets used</dt>
-                <dd className="font-semibold">3</dd>
-              </div>
-              <div className="flex justify-between gap-4 py-3 last:pb-0">
-                <dt className="text-graphite">Mode</dt>
-                <dd className="font-semibold">Practice</dd>
-              </div>
-            </dl>
-          </section>
-          <section className="border-boundary bg-subtle rounded-xl border p-5 text-sm leading-6">
-            <h2 className="font-bold">Privacy before reveal</h2>
-            <p className="text-graphite mt-2">
-              Your opponent cannot see your picks, stakes, lines, or odds before
-              kickoff.
-            </p>
-          </section>
-        </aside>
-      </div>
-    </PageFrame>
-  );
+  notFound();
 }

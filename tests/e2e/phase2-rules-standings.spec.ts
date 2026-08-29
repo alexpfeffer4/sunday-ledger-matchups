@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const exampleSlug = "west-21st-ledger";
+const exampleSlug = "example-season";
 
 test.describe("Phase 2 Rules and Standings", () => {
   test("renders human rules with technical evidence disclosed second", async ({
@@ -34,7 +34,10 @@ test.describe("Phase 2 Rules and Standings", () => {
     await page.goto(`/l/${exampleSlug}/standings`);
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "Standings" }),
+      page.getByRole("heading", {
+        level: 1,
+        name: "Example regular-season standings",
+      }),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { level: 2, name: "How ties are ordered" }),

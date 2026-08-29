@@ -12,13 +12,13 @@ select has_function(
   'api',
   'publish_simulation_season_archive',
   array['uuid', 'jsonb', 'text'],
-  'the guarded archive publication command is exposed'
+  'the retired publication definition remains for frozen-history compatibility'
 );
 select has_function(
   'api',
   'get_simulation_season_archive',
   array['text'],
-  'the member-scoped archive read model is exposed'
+  'the retired legacy read definition remains for frozen-history compatibility'
 );
 select policies_are(
   'private',
@@ -30,8 +30,8 @@ select table_privs_are(
   'private',
   'simulation_season_archives',
   'authenticated',
-  array['SELECT'],
-  'participants cannot mutate the archive directly'
+  array[]::text[],
+  'legacy archives have no participant table access'
 );
 select function_privs_are(
   'api',
@@ -46,8 +46,16 @@ select function_privs_are(
   'publish_simulation_season_archive',
   array['uuid', 'jsonb', 'text'],
   'authenticated',
-  array['EXECUTE'],
-  'authenticated callers can invoke the guarded command'
+  array[]::text[],
+  'authenticated callers cannot invoke the retired publication command'
+);
+select function_privs_are(
+  'api',
+  'get_simulation_season_archive',
+  array['text'],
+  'authenticated',
+  array[]::text[],
+  'authenticated callers cannot invoke the retired legacy read model'
 );
 
 insert into auth.users (id, email)
@@ -219,19 +227,40 @@ as $$
   from members, weeks, schedule_matchups, final_standings;
 $$;
 
-select set_config(
-  'request.jwt.claims',
-  '{"sub":"51000000-0000-4000-8000-000000000001","role":"authenticated"}',
-  true
-);
+update private.season_ruleset_snapshots
+set frozen_at = '2026-08-27T20:36:04Z'
+where id = '53000000-0000-4000-8000-000000000001';
 
-select lives_ok(
-  $$select api.publish_simulation_season_archive(
-    '52000000-0000-4000-8000-000000000001',
-    pg_temp.stage2_archive(),
-    'publish-stage2-archive'
-  )$$,
-  'the commissioner can publish a complete full-season Simulation archive'
+update private.seasons
+set
+  lifecycle = 'FINAL',
+  roster_locked_at = '2026-08-27T20:36:04Z'
+where id = '54000000-0000-4000-8000-000000000001';
+
+insert into private.simulation_season_archives (
+  id,
+  season_id,
+  league_id,
+  ruleset_snapshot_id,
+  roster_size,
+  schedule_output_hash,
+  archive_hash,
+  archive_json,
+  champion_entry_id,
+  published_by,
+  published_at
+) values (
+  '56000000-0000-4000-8000-000000000001',
+  '54000000-0000-4000-8000-000000000001',
+  '52000000-0000-4000-8000-000000000001',
+  '53000000-0000-4000-8000-000000000001',
+  4,
+  repeat('d', 64),
+  repeat('e', 64),
+  pg_temp.stage2_archive(),
+  '55000000-0000-4000-8000-000000000001',
+  '51000000-0000-4000-8000-000000000001',
+  '2026-08-27T20:36:04Z'
 );
 
 select is(
@@ -255,7 +284,7 @@ select is(
     where id = '54000000-0000-4000-8000-000000000001'
   ),
   'FINAL',
-  'archive publication finalizes the simulated season'
+  'the existing frozen season remains final'
 );
 select ok(
   (
@@ -263,21 +292,7 @@ select ok(
     from private.season_ruleset_snapshots
     where id = '53000000-0000-4000-8000-000000000001'
   ),
-  'archive publication freezes the attached ruleset'
-);
-
-select lives_ok(
-  $$select api.publish_simulation_season_archive(
-    '52000000-0000-4000-8000-000000000001',
-    pg_temp.stage2_archive(),
-    'publish-stage2-archive'
-  )$$,
-  'the exact publication command replays idempotently'
-);
-select is(
-  (select count(*) from private.simulation_season_archives),
-  1::bigint,
-  'idempotent replay does not duplicate the archive'
+  'the existing frozen ruleset remains frozen'
 );
 
 select throws_ok(
@@ -290,18 +305,41 @@ select throws_ok(
 
 select set_config(
   'request.jwt.claims',
-  '{"sub":"51000000-0000-4000-8000-000000000002","role":"authenticated"}',
+  '{"sub":"51000000-0000-4000-8000-000000000001","role":"authenticated"}',
   true
 );
-select is(
-  api.get_simulation_season_archive('stage2-database-test') ->> 'mode',
-  'SIMULATION',
-  'a league member can read the completed archive'
+set local role authenticated;
+select throws_ok(
+  $$select api.publish_simulation_season_archive(
+    '52000000-0000-4000-8000-000000000001',
+    '{}'::jsonb,
+    'arbitrary-authenticated-publication'
+  )$$,
+  '42501',
+  'permission denied for function publish_simulation_season_archive',
+  'direct authenticated arbitrary publication fails'
+);
+select throws_ok(
+  $$select api.get_simulation_season_archive('stage2-database-test')$$,
+  '42501',
+  'permission denied for function get_simulation_season_archive',
+  'direct authenticated legacy archive reads fail'
 );
 select is(
-  api.get_simulation_season_archive('stage2-database-test') ->> 'viewerEntryId',
-  '55000000-0000-4000-8000-000000000002',
-  'the archive read model scopes personal history to the current member'
+  api.get_season_archive('stage2-database-test'),
+  null::jsonb,
+  'the unified trusted archive read model hides legacy Simulation output'
+);
+reset role;
+
+select is(
+  (
+    select archive_hash
+    from private.simulation_season_archives
+    where id = '56000000-0000-4000-8000-000000000001'
+  ),
+  repeat('e', 64),
+  'containment leaves the existing frozen archive unchanged'
 );
 
 select set_config(
@@ -310,10 +348,10 @@ select set_config(
   true
 );
 select throws_ok(
-  $$select api.get_simulation_season_archive('stage2-database-test')$$,
+  $$select api.get_season_archive('stage2-database-test')$$,
   '42501',
   'League membership required.',
-  'a nonmember cannot read the archive'
+  'a nonmember still cannot query another league archive'
 );
 
 select * from finish();

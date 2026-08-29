@@ -22,7 +22,6 @@ vi.mock("@/app/l/[leagueSlug]/actions", () => ({
   lockLiveRosterAndOpenWeekAction: vi.fn(),
   lockStage1WeekAction: vi.fn(),
   publishLiveWeekSlateAction: vi.fn(),
-  publishSimulationSeasonArchiveAction: vi.fn(),
   recordStage1ResultAction: vi.fn(),
   refreshLiveWeekQuotesAction: vi.fn(),
   revokeLeagueInviteAction: vi.fn(),

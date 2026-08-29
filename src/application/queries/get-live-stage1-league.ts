@@ -29,7 +29,8 @@ export const getLiveStage1League = cache(
     }
 
     const state = stage1StateSchema.parse(result.data);
-    if (state.league.mode !== "LIVE" || !state.week) return state;
+    if (state.league.mode !== "LIVE") return null;
+    if (!state.week) return state;
 
     const currentQuotes = await supabase
       .schema("api")

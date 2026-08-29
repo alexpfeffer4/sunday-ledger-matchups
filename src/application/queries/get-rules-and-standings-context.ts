@@ -1,36 +1,23 @@
 import "server-only";
 
-import { fullSeasonSimulationSlug } from "@/adapters/simulation/full-season";
+import { exampleSeasonSlug } from "@/adapters/example/example-season";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
 import { getSeasonRuleset } from "@/application/queries/get-season-ruleset";
-import { getSimulationLeague } from "@/application/queries/get-simulation-league";
-import { getSimulationSeasonArchive } from "@/application/queries/get-simulation-season-archive";
+import { getSeasonArchive } from "@/application/queries/get-season-archive";
 
 export async function getRulesAndStandingsContext(leagueSlug: string) {
-  const exampleLeague = getSimulationLeague(leagueSlug);
-  if (exampleLeague) {
+  if (leagueSlug === exampleSeasonSlug) {
     return {
       live: null,
-      archive: null,
+      archive: await getSeasonArchive(leagueSlug),
       persistedSnapshot: null,
-      exampleLeague,
-      isExample: true,
-    };
-  }
-
-  if (leagueSlug === fullSeasonSimulationSlug) {
-    return {
-      live: null,
-      archive: await getSimulationSeasonArchive(leagueSlug),
-      persistedSnapshot: null,
-      exampleLeague: null,
       isExample: true,
     };
   }
 
   const [live, archive, persistedSnapshot] = await Promise.all([
     getLiveStage1League(leagueSlug),
-    getSimulationSeasonArchive(leagueSlug),
+    getSeasonArchive(leagueSlug),
     getSeasonRuleset(leagueSlug),
   ]);
 
@@ -38,7 +25,6 @@ export async function getRulesAndStandingsContext(leagueSlug: string) {
     live,
     archive,
     persistedSnapshot,
-    exampleLeague: null,
     isExample: false,
   };
 }
