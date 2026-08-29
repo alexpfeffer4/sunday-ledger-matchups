@@ -10,7 +10,7 @@ import {
   validateProposedPosition,
 } from "@/domain/cards/validate-position";
 import { weeklyScore } from "@/domain/settlement/settle";
-import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
+import { pocSeason1Ruleset } from "@/rulesets/poc-season-1";
 
 describe("solo interactive demo", () => {
   it("offers both sides of all three eligible markets across three games", () => {
@@ -24,7 +24,7 @@ describe("solo interactive demo", () => {
     ).toBe(true);
   });
 
-  it("uses the real heavy-favorite cap for the Kansas City moneyline", () => {
+  it("uses the governing heavy-favorite cap for the neutral favorite", () => {
     const opportunity = getInteractiveDemoOpportunity("demo-kc-ml");
     expect(opportunity).not.toBeNull();
     if (!opportunity) return;
@@ -44,7 +44,7 @@ describe("solo interactive demo", () => {
           americanOdds: opportunity.americanOdds,
         },
       ],
-      ruleset: simulationSeason1Ruleset,
+      ruleset: pocSeason1Ruleset,
     });
 
     expect(validation).toMatchObject({
@@ -62,16 +62,14 @@ describe("solo interactive demo", () => {
         eventId: opportunity.eventId,
         marketType: opportunity.marketType,
         stakeCredits: position.stakeCredits,
-        americanOdds: opportunity.americanOdds,
+        americanOdds: position.americanOdds,
       };
     });
     const settled = settleInteractiveDemoPositions(
       interactiveDemoOpponentPositions,
     );
 
-    expect(cardCompliance(accepted, simulationSeason1Ruleset)).toBe(
-      "COMPLIANT",
-    );
+    expect(cardCompliance(accepted, pocSeason1Ruleset)).toBe("COMPLIANT");
     expect(settled.map((position) => position.settlement.outcome)).toEqual([
       "LOSS",
       "WIN",
