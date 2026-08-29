@@ -21,6 +21,7 @@ import type { LiveOddsImportReview } from "@/application/queries/get-live-odds-i
 import type { LiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import type { Stage1CommissionerControlState } from "@/components/commissioner/stage1-controls";
 import { ActionFeedback } from "@/components/forms/action-feedback";
+import { AuditDetails } from "@/components/ui/audit-details";
 
 const buttonClass =
   "border-control hover:border-registry hover:text-registry min-h-11 w-full rounded-lg border px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
@@ -241,26 +242,47 @@ export function LiveWeekCommissionerControls({
 
                 {event.result ? (
                   <div className="border-boundary bg-subtle mt-3 rounded-lg border p-3 text-xs leading-5">
-                    <p className="font-semibold">
-                      Version {event.result.version} ·{" "}
-                      {event.result.source === "THE_ODDS_API"
-                        ? "Official feed"
-                        : "Objective correction"}
-                      {event.correctionCount > 0
-                        ? " · " +
-                          event.correctionCount +
-                          " correction" +
-                          (event.correctionCount === 1 ? "" : "s")
-                        : ""}
-                    </p>
-                    <p className="text-muted mt-1">{event.result.reason}</p>
+                    <p className="font-semibold">{event.result.reason}</p>
+                    <AuditDetails
+                      className="mt-2 border-b-0 pb-0"
+                      context="This evidence identifies the stored result behind the score and correction reason shown above."
+                    >
+                      <dl className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <dt className="text-muted">Result version</dt>
+                          <dd className="mt-1 font-semibold">
+                            {event.result.version}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted">Source</dt>
+                          <dd className="mt-1 font-semibold">
+                            {event.result.source === "THE_ODDS_API"
+                              ? "Official feed"
+                              : "Objective correction"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted">Corrections</dt>
+                          <dd className="mt-1 font-semibold">
+                            {event.correctionCount}
+                          </dd>
+                        </div>
+                        <div className="min-w-0">
+                          <dt className="text-muted">Event ID</dt>
+                          <dd className="mt-1 font-mono break-all">
+                            {event.id}
+                          </dd>
+                        </div>
+                      </dl>
+                    </AuditDetails>
                   </div>
                 ) : null}
 
                 {event.result?.status === "FINAL" &&
                 state.week?.state !== "FINAL" ? (
                   <details className="mt-3">
-                    <summary className="text-action cursor-pointer text-sm font-semibold">
+                    <summary className="text-action inline-flex min-h-11 cursor-pointer items-center text-sm font-semibold">
                       Record an objective correction
                     </summary>
                     <form

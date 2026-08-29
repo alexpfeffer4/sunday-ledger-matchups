@@ -16,6 +16,8 @@ import {
 } from "@/components/rules/ruleset-presentation";
 import { AllocationMeter } from "@/components/matchup/allocation-meter";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { AuditDetails } from "@/components/ui/audit-details";
+import { ReceiptPanel } from "@/components/ui/receipt-panel";
 import { formatCenticredits } from "@/domain/odds/american";
 
 function formatDate(value: string): string {
@@ -734,7 +736,9 @@ export function Stage1StandingsView({
                         {row.seed}
                       </span>
                       <div className="min-w-0">
-                        <p className="truncate font-bold">{row.displayName}</p>
+                        <p className="font-bold break-words">
+                          {row.displayName}
+                        </p>
                         <p className="text-muted mt-1 text-xs">
                           {row.wins}–{row.losses}
                           {row.ties ? `–${row.ties}` : ""} ·{" "}
@@ -768,16 +772,36 @@ export function Stage1StandingsView({
               );
             })}
           </div>
-          <div className="border-boundary bg-surface mt-7 hidden overflow-x-auto rounded-xl border sm:block">
+          <div
+            aria-label="Scrollable official standings table"
+            className="border-boundary bg-surface mt-7 hidden overflow-x-auto rounded-xl border sm:block"
+            role="region"
+            tabIndex={0}
+          >
             <table className="w-full min-w-[720px] text-left text-sm">
+              <caption className="sr-only">
+                Official league standings through the latest final matchup
+              </caption>
               <thead className="bg-subtle text-muted text-xs uppercase">
                 <tr>
-                  <th className="px-4 py-3">Seed</th>
-                  <th className="px-4 py-3">Member</th>
-                  <th className="px-4 py-3">Record</th>
-                  <th className="px-4 py-3">Points For</th>
-                  <th className="px-4 py-3">All-play</th>
-                  <th className="px-4 py-3">Misses</th>
+                  <th className="px-4 py-3" scope="col">
+                    Seed
+                  </th>
+                  <th className="px-4 py-3" scope="col">
+                    Member
+                  </th>
+                  <th className="px-4 py-3" scope="col">
+                    Record
+                  </th>
+                  <th className="px-4 py-3" scope="col">
+                    Points For
+                  </th>
+                  <th className="px-4 py-3" scope="col">
+                    All-play
+                  </th>
+                  <th className="px-4 py-3" scope="col">
+                    Misses
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-boundary divide-y">
@@ -793,7 +817,9 @@ export function Stage1StandingsView({
                     <td className="px-4 py-4 font-mono font-semibold">
                       {row.seed}
                     </td>
-                    <th className="px-4 py-4">{row.displayName}</th>
+                    <th className="px-4 py-4" scope="row">
+                      {row.displayName}
+                    </th>
                     <td className="px-4 py-4">
                       {row.wins}-{row.losses}-{row.ties}
                     </td>
@@ -976,11 +1002,11 @@ export function Stage1ScheduleView({
                 </div>
                 <StatusBadge tone="positive">Verified</StatusBadge>
               </div>
-              <details className="border-boundary mt-4 border-t pt-4 text-sm">
-                <summary className="cursor-pointer font-semibold">
-                  Schedule verification
-                </summary>
-                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+              <AuditDetails
+                className="mt-4 border-b-0 pb-0"
+                context="This evidence verifies the same 14-week schedule shown below and the method used to publish it at roster lock."
+              >
+                <dl className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <dt className="text-muted">Method</dt>
                     <dd className="mt-1 font-semibold">
@@ -989,15 +1015,12 @@ export function Stage1ScheduleView({
                   </div>
                   <div className="min-w-0">
                     <dt className="text-muted">Verification code</dt>
-                    <dd
-                      className="mt-1 truncate font-mono text-xs"
-                      title={liveSchedule.outputHash}
-                    >
+                    <dd className="mt-1 font-mono text-xs break-all">
                       {liveSchedule.outputHash}
                     </dd>
                   </div>
                 </dl>
-              </details>
+              </AuditDetails>
             </section>
             <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 14 }, (_, index) => index + 1).map(
@@ -1074,11 +1097,11 @@ export function Stage1ScheduleView({
         <FormationPanel state={state} />
       ) : (
         <>
-          <details className="border-boundary bg-surface mt-7 rounded-xl border p-5 text-sm">
-            <summary className="cursor-pointer font-semibold">
-              Schedule verification
-            </summary>
-            <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+          <AuditDetails
+            className="bg-surface mt-7 rounded-xl border px-5"
+            context="This evidence verifies the Week 1 pairings shown below. It does not reveal private card terms."
+          >
+            <dl className="grid gap-4 sm:grid-cols-2">
               <div>
                 <dt className="text-muted">Method</dt>
                 <dd className="mt-1 font-semibold">Circle schedule</dd>
@@ -1090,7 +1113,7 @@ export function Stage1ScheduleView({
                 </dd>
               </div>
             </dl>
-          </details>
+          </AuditDetails>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {state.schedule.map((matchup) => (
               <article
@@ -1228,7 +1251,23 @@ export function Stage1ReceiptView({
       description="The accepted line, odds, stake, and time for this pick."
       aside={<StatusBadge tone="sealed">Sealed</StatusBadge>}
     >
-      <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">
+      <ReceiptPanel
+        audit={
+          <AuditDetails
+            className="border-b-0 pb-0"
+            context="This identifier verifies the accepted receipt described above. It does not change the stored pick or its result."
+          >
+            <dl>
+              <div>
+                <dt className="text-muted">Receipt ID</dt>
+                <dd className="mt-1 font-mono text-xs break-all">
+                  {receipt.receiptHash}
+                </dd>
+              </div>
+            </dl>
+          </AuditDetails>
+        }
+      >
         <dl className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <dt className="text-muted text-xs uppercase">Event</dt>
@@ -1263,13 +1302,7 @@ export function Stage1ReceiptView({
             </dd>
           </div>
         </dl>
-        <details className="border-boundary text-muted mt-6 border-t pt-4 text-xs">
-          <summary className="cursor-pointer font-semibold">
-            Technical receipt ID
-          </summary>
-          <p className="mt-3 font-mono break-all">{receipt.receiptHash}</p>
-        </details>
-      </div>
+      </ReceiptPanel>
     </PageFrame>
   );
 }

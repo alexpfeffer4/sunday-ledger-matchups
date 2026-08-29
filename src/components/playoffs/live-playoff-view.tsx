@@ -1,6 +1,7 @@
 import type { LivePlayoffState } from "@/application/queries/live-playoff-dtos";
 import { PageFrame } from "@/components/league/page-frame";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { AuditDetails } from "@/components/ui/audit-details";
 import { formatCenticredits } from "@/domain/odds/american";
 
 type BracketEntry =
@@ -25,7 +26,7 @@ function EntryLine({ entry }: { entry: BracketEntry }) {
           ? `No. ${entry.qualificationSeed}`
           : `RS ${entry.regularSeasonSeed}`}
       </span>
-      <span className="truncate font-semibold">{entry.displayName}</span>
+      <span className="font-semibold break-words">{entry.displayName}</span>
     </span>
   );
 }
@@ -167,7 +168,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
                     {qualifier.qualificationSeed}
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold">
+                    <span className="block text-sm font-semibold break-words">
                       {qualifier.displayName}
                     </span>
                     <span className="text-muted text-xs">
@@ -191,7 +192,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
                   key={standing.entryId}
                 >
                   <span className="font-mono">{standing.seed}</span>
-                  <span className="min-w-0 truncate">
+                  <span className="min-w-0 break-words">
                     {standing.displayName}
                   </span>
                   <span
@@ -219,9 +220,16 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
             </div>
           </section>
 
-          <p className="text-muted font-mono text-xs break-all">
-            Qualification hash · {publication.inputHash}
-          </p>
+          <AuditDetails context="This evidence verifies the official field and final Week 14 standings shown above.">
+            <dl>
+              <div>
+                <dt className="text-muted">Qualification hash</dt>
+                <dd className="mt-1 font-mono text-xs break-all">
+                  {publication.inputHash}
+                </dd>
+              </div>
+            </dl>
+          </AuditDetails>
         </aside>
       </div>
     </PageFrame>
@@ -299,9 +307,19 @@ function PublishedRoundCard({ round }: { round: PublishedRound }) {
           );
         })}
       </div>
-      <p className="text-muted mt-4 font-mono text-[0.6875rem] break-all">
-        Round hash · {round.inputHash}
-      </p>
+      <AuditDetails
+        className="mt-4 border-b-0 pb-0"
+        context="This evidence verifies the published round and results shown above."
+      >
+        <dl>
+          <div>
+            <dt className="text-muted">Round hash</dt>
+            <dd className="mt-1 font-mono text-[0.6875rem] break-all">
+              {round.inputHash}
+            </dd>
+          </div>
+        </dl>
+      </AuditDetails>
     </article>
   );
 }
@@ -321,7 +339,7 @@ function RoundEntryLine({
     <div
       className={`flex items-center justify-between gap-3 rounded-md px-2 py-1.5 ${advances ? "bg-positive/10 text-positive" : ""}`}
     >
-      <span className="min-w-0 truncate text-sm font-semibold">
+      <span className="min-w-0 text-sm font-semibold break-words">
         {entry.qualificationSeed ? `No. ${entry.qualificationSeed} · ` : ""}
         {entry.displayName}
       </span>

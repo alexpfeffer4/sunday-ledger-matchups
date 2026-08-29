@@ -6,6 +6,7 @@ import {
   type RulesetPresentation,
 } from "@/components/rules/ruleset-presentation";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { AuditDetails } from "@/components/ui/audit-details";
 
 function score(centicredits: number): string {
   return (centicredits / 100).toLocaleString("en-US", {
@@ -212,11 +213,11 @@ export function SeasonArchiveSchedule({
         </StatusBadge>
       }
     >
-      <details className="border-boundary mt-7 border-y py-4">
-        <summary className="cursor-pointer font-bold">
-          Technical schedule details
-        </summary>
-        <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
+      <AuditDetails
+        className="mt-7"
+        context="This evidence verifies the final schedule shown below and the publication that remained fixed throughout the season."
+      >
+        <dl className="grid gap-4 text-sm sm:grid-cols-3">
           <div>
             <dt className="text-muted">Algorithm</dt>
             <dd className="mt-1 font-semibold">
@@ -225,18 +226,18 @@ export function SeasonArchiveSchedule({
           </div>
           <div>
             <dt className="text-muted">Schedule seed</dt>
-            <dd className="mt-1 truncate font-mono text-xs">
+            <dd className="mt-1 font-mono text-xs break-all">
               {archive.schedule.seed}
             </dd>
           </div>
           <div>
             <dt className="text-muted">Output hash</dt>
-            <dd className="mt-1 truncate font-mono text-xs">
+            <dd className="mt-1 font-mono text-xs break-all">
               {archive.schedule.outputHash}
             </dd>
           </div>
         </dl>
-      </details>
+      </AuditDetails>
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {archive.regularSeason.weeks.map((week) => (
           <section
@@ -328,8 +329,66 @@ export function SeasonArchiveStandings({
         </StatusBadge>
       }
     >
-      <div className="border-boundary bg-surface mt-7 overflow-hidden rounded-xl border">
-        <div className="overflow-x-auto">
+      <div className="mt-7 space-y-3 sm:hidden">
+        {archive.regularSeason.finalStandings.map((standing) => (
+          <details
+            className={`border-boundary bg-surface rounded-xl border ${
+              standing.entryId === archive.viewerEntryId
+                ? "border-l-registry border-l-4"
+                : ""
+            }`}
+            key={standing.entryId}
+          >
+            <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 px-4 [&::-webkit-details-marker]:hidden">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="text-registry w-7 shrink-0 font-mono font-bold">
+                  {standing.seed}
+                </span>
+                <div className="min-w-0">
+                  <p className="font-bold break-words">
+                    {standing.displayName}
+                  </p>
+                  <p className="text-muted mt-1 text-xs">
+                    {standing.wins}–{standing.losses}
+                    {standing.ties > 0 ? `–${standing.ties}` : ""} ·{" "}
+                    {score(standing.pointsForCenticredits)} PF
+                  </p>
+                </div>
+              </div>
+              <span className="text-muted shrink-0 text-xs font-semibold">
+                {!standing.playoffEligible
+                  ? "Ineligible"
+                  : qualifierIds.has(standing.entryId)
+                    ? "Qualified"
+                    : "Outside field"}
+              </span>
+            </summary>
+            <dl className="border-boundary grid grid-cols-2 gap-4 border-t px-4 py-4 text-sm">
+              <div>
+                <dt className="text-muted text-xs">All-play</dt>
+                <dd className="mt-1 font-semibold">
+                  {standing.allPlayHalfWinUnits / 2}–
+                  {standing.allPlayComparisonCount -
+                    standing.allPlayHalfWinUnits / 2}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted text-xs">Attendance misses</dt>
+                <dd className="mt-1 font-semibold">
+                  {standing.attendanceMisses}
+                </dd>
+              </div>
+            </dl>
+          </details>
+        ))}
+      </div>
+      <div className="border-boundary bg-surface mt-7 hidden overflow-hidden rounded-xl border sm:block">
+        <div
+          aria-label="Scrollable final standings table"
+          className="overflow-x-auto"
+          role="region"
+          tabIndex={0}
+        >
           <table className="w-full min-w-[860px] border-collapse text-left text-sm">
             <caption className="sr-only">
               Final {archive.nflYear} season standings
@@ -364,7 +423,9 @@ export function SeasonArchiveStandings({
                   <td className="px-4 py-4 font-mono font-semibold">
                     {standing.seed}
                   </td>
-                  <th className="px-4 py-4">{standing.displayName}</th>
+                  <th className="px-4 py-4" scope="row">
+                    {standing.displayName}
+                  </th>
                   <td className="px-4 py-4">
                     {standing.wins}–{standing.losses}
                     {standing.ties > 0 ? `–${standing.ties}` : ""}
@@ -497,6 +558,33 @@ export function SeasonArchivePlayoffs({
           );
         })}
       </div>
+      <AuditDetails
+        className="mt-6"
+        context="This evidence identifies the stored playoff field and games behind the human-readable bracket above."
+      >
+        <dl className="grid gap-4 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-muted">Stored qualifier count</dt>
+            <dd className="mt-1 font-semibold">
+              {archive.playoffs.qualifierCount}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted">Stored playoff games</dt>
+            <dd className="mt-1 font-semibold">
+              {archive.playoffs.games.length}
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="text-muted">Qualifier entry IDs</dt>
+            <dd className="mt-1 font-mono text-xs leading-5 break-all">
+              {archive.playoffs.qualifiers
+                .map((qualifier) => qualifier.entryId)
+                .join(" · ")}
+            </dd>
+          </div>
+        </dl>
+      </AuditDetails>
       <section className="border-boundary bg-archive mt-6 rounded-xl border p-5">
         <h2 className="font-bold">Week 18 stayed exhibition-only</h2>
         <p className="text-graphite mt-2 text-sm leading-6">

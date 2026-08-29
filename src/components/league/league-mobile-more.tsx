@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { SignOutForm } from "@/components/auth/sign-out-form";
 import { initials } from "@/components/league/initials";
 import { LeagueNavIcon } from "@/components/league/league-nav-icon";
+import { Dialog } from "@/components/ui/dialog";
 import { InterfaceIcon } from "@/components/ui/interface-icon";
 
 const itemClass =
   "text-graphite hover:bg-subtle hover:text-ink flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold";
 
-function useProfileMenu() {
+function useProfileMenu(focusFirstItem = false) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -20,6 +20,12 @@ function useProfileMenu() {
 
   useEffect(() => {
     if (!open) return;
+
+    if (focusFirstItem) {
+      panelRef.current
+        ?.querySelector<HTMLElement>("[role='menuitem']")
+        ?.focus();
+    }
 
     function handlePointerDown(event: PointerEvent) {
       const target = event.target as Node;
@@ -45,7 +51,7 @@ function useProfileMenu() {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open]);
+  }, [focusFirstItem, open]);
 
   return { containerRef, menuId, open, panelRef, setOpen, triggerRef };
 }
@@ -63,8 +69,8 @@ function ProfileHeader({
         {initials(memberName)}
       </span>
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold">{memberName}</p>
-        <p className="text-muted truncate text-xs">{memberRole}</p>
+        <p className="text-sm font-semibold break-words">{memberName}</p>
+        <p className="text-muted text-xs break-words">{memberRole}</p>
       </div>
     </div>
   );
@@ -81,13 +87,11 @@ export function LeagueMobileMore({
   memberName: string;
   memberRole: string;
 }) {
-  const { containerRef, menuId, open, panelRef, setOpen, triggerRef } =
-    useProfileMenu();
+  const { containerRef, open, setOpen, triggerRef } = useProfileMenu();
 
   return (
     <div className="relative lg:hidden" ref={containerRef}>
       <button
-        aria-controls={menuId}
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label="Open profile menu"
@@ -98,83 +102,54 @@ export function LeagueMobileMore({
       >
         {initials(memberName)}
       </button>
-      {open
-        ? createPortal(
-            <>
-              <button
-                aria-label="Close profile menu"
-                className="bg-ink/15 fixed inset-0 z-40 cursor-default backdrop-blur-[1px]"
-                onClick={() => setOpen(false)}
-                type="button"
-              />
-              <div
-                className="border-boundary bg-surface fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl border p-3 shadow-[var(--shadow-modal)]"
-                id={menuId}
-                aria-label="Profile menu"
-                aria-modal="true"
-                ref={panelRef}
-                role="dialog"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <ProfileHeader
-                      memberName={memberName}
-                      memberRole={memberRole}
-                    />
-                  </div>
-                  <button
-                    aria-label="Close profile menu"
-                    className="text-muted hover:bg-subtle hover:text-ink flex size-10 shrink-0 items-center justify-center rounded-full"
-                    onClick={() => setOpen(false)}
-                    type="button"
-                  >
-                    <InterfaceIcon name="close" />
-                  </button>
-                </div>
-                <nav aria-label="League and account" className="mt-2">
-                  <Link
-                    className={itemClass}
-                    href="/leagues"
-                    onClick={() => setOpen(false)}
-                  >
-                    <LeagueNavIcon name="league" />
-                    Your leagues
-                  </Link>
-                  <Link
-                    className={itemClass}
-                    href="/account"
-                    onClick={() => setOpen(false)}
-                  >
-                    <LeagueNavIcon name="account" />
-                    Account
-                  </Link>
-                  <Link
-                    className={itemClass}
-                    href={`/l/${leagueSlug}/rules`}
-                    onClick={() => setOpen(false)}
-                  >
-                    <LeagueNavIcon name="rules" />
-                    Rules &amp; trust
-                  </Link>
-                  {isCommissioner ? (
-                    <Link
-                      className={itemClass}
-                      href={`/l/${leagueSlug}/commissioner`}
-                      onClick={() => setOpen(false)}
-                    >
-                      <LeagueNavIcon name="commissioner" />
-                      Commissioner
-                    </Link>
-                  ) : null}
-                </nav>
-                <div className="border-boundary mt-2 border-t pt-2">
-                  <SignOutForm className={`${itemClass} w-full`} />
-                </div>
-              </div>
-            </>,
-            document.body,
-          )
-        : null}
+      <Dialog
+        description={memberRole}
+        onClose={() => setOpen(false)}
+        open={open}
+        returnFocusRef={triggerRef}
+        title={memberName}
+        variant="sheet"
+      >
+        <nav aria-label="League and account">
+          <Link
+            className={itemClass}
+            href="/leagues"
+            onClick={() => setOpen(false)}
+          >
+            <LeagueNavIcon name="league" />
+            Your leagues
+          </Link>
+          <Link
+            className={itemClass}
+            href="/account"
+            onClick={() => setOpen(false)}
+          >
+            <LeagueNavIcon name="account" />
+            Account
+          </Link>
+          <Link
+            className={itemClass}
+            href={`/l/${leagueSlug}/rules`}
+            onClick={() => setOpen(false)}
+          >
+            <LeagueNavIcon name="rules" />
+            Rules &amp; trust
+          </Link>
+          {isCommissioner ? (
+            <Link
+              className={itemClass}
+              href={`/l/${leagueSlug}/commissioner`}
+              onClick={() => setOpen(false)}
+            >
+              <LeagueNavIcon name="commissioner" />
+              Commissioner
+            </Link>
+          ) : null}
+        </nav>
+        <div className="border-boundary mt-2 border-t pt-2">
+          <SignOutForm className={`${itemClass} w-full`} />
+        </div>
+      </Dialog>
     </div>
   );
 }
@@ -186,14 +161,34 @@ export function LeagueDesktopProfileMenu({
   memberName: string;
   memberRole: string;
 }) {
-  const { containerRef, menuId, open, setOpen, triggerRef } = useProfileMenu();
+  const { containerRef, menuId, open, panelRef, setOpen, triggerRef } =
+    useProfileMenu(true);
+
+  function moveMenuFocus(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+    const items = Array.from(
+      event.currentTarget.querySelectorAll<HTMLElement>("[role='menuitem']"),
+    );
+    if (!items.length) return;
+    event.preventDefault();
+    const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+    const nextIndex =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? items.length - 1
+          : event.key === "ArrowDown"
+            ? (currentIndex + 1) % items.length
+            : (currentIndex - 1 + items.length) % items.length;
+    items[nextIndex]?.focus();
+  }
 
   return (
     <div className="relative hidden lg:block" ref={containerRef}>
       <button
         aria-controls={menuId}
         aria-expanded={open}
-        aria-haspopup="dialog"
+        aria-haspopup="menu"
         aria-label="Open account menu"
         className="hover:bg-subtle flex min-h-12 w-full items-center justify-center rounded-lg px-2 xl:justify-start xl:gap-3"
         onClick={() => setOpen((current) => !current)}
@@ -204,10 +199,10 @@ export function LeagueDesktopProfileMenu({
           {initials(memberName)}
         </span>
         <span className="hidden min-w-0 flex-1 text-left xl:block">
-          <span className="block truncate text-sm font-semibold">
+          <span className="block text-sm font-semibold break-words">
             {memberName}
           </span>
-          <span className="text-muted block truncate text-xs">
+          <span className="text-muted block text-xs break-words">
             {memberRole}
           </span>
         </span>
@@ -219,31 +214,38 @@ export function LeagueDesktopProfileMenu({
       {open ? (
         <div
           className="border-boundary bg-surface absolute bottom-full left-0 z-50 mb-2 w-56 rounded-xl border p-2 shadow-[var(--shadow-card)]"
-          id={menuId}
-          aria-label="Account menu"
-          role="dialog"
+          ref={panelRef}
         >
           <ProfileHeader memberName={memberName} memberRole={memberRole} />
-          <nav aria-label="Account options" className="mt-2">
-            <Link
-              className={itemClass}
-              href="/leagues"
-              onClick={() => setOpen(false)}
-            >
-              <LeagueNavIcon name="league" />
-              Your leagues
-            </Link>
-            <Link
-              className={itemClass}
-              href="/account"
-              onClick={() => setOpen(false)}
-            >
-              <LeagueNavIcon name="account" />
-              Account
-            </Link>
-          </nav>
-          <div className="border-boundary mt-2 border-t pt-2">
-            <SignOutForm className={`${itemClass} w-full`} />
+          <div
+            aria-label="Account menu"
+            id={menuId}
+            onKeyDown={moveMenuFocus}
+            role="menu"
+          >
+            <div className="mt-2" role="group">
+              <Link
+                className={itemClass}
+                href="/leagues"
+                onClick={() => setOpen(false)}
+                role="menuitem"
+              >
+                <LeagueNavIcon name="league" />
+                Your leagues
+              </Link>
+              <Link
+                className={itemClass}
+                href="/account"
+                onClick={() => setOpen(false)}
+                role="menuitem"
+              >
+                <LeagueNavIcon name="account" />
+                Account
+              </Link>
+            </div>
+            <div className="border-boundary mt-2 border-t pt-2" role="group">
+              <SignOutForm className={`${itemClass} w-full`} role="menuitem" />
+            </div>
           </div>
         </div>
       ) : null}

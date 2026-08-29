@@ -19,7 +19,7 @@ export function PageFrame({
     <main
       className={
         dark
-          ? "broadcast-dark bg-canvas min-h-[calc(100vh-6.5rem)]"
+          ? "broadcast-dark bg-canvas min-h-[calc(100vh-6.5rem)] pb-24 lg:pb-12"
           : "pb-24 lg:pb-12"
       }
     >

@@ -71,9 +71,9 @@ describe("league lifecycle experience", () => {
     expect(
       screen.getByRole("button", { name: "Archive league" }),
     ).toBeVisible();
-    expect(screen.getByRole("button", { name: "Remove" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Remove Jordan" })).toBeVisible();
     expect(
-      screen.getByRole("button", { name: "Make commissioner" }),
+      screen.getByRole("button", { name: "Make Jordan commissioner" }),
     ).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Delete league permanently" }),
