@@ -88,7 +88,7 @@ export function validateProposedPosition(params: {
     return {
       accepted: false,
       code: "BELOW_MINIMUM",
-      message: `The minimum position is ${minimumStakeCredits} credits.`,
+      message: `This pick must use at least ${minimumStakeCredits} credits.`,
     };
   }
 
@@ -109,7 +109,7 @@ export function validateProposedPosition(params: {
     return {
       accepted: false,
       code: "POSITION_LIMIT",
-      message: `A weekly card may contain at most ${maximumPositions} positions.`,
+      message: `A weekly card may contain at most ${maximumPositions} picks.`,
     };
   }
 
@@ -130,7 +130,7 @@ export function validateProposedPosition(params: {
     return {
       accepted: false,
       code: "OVER_ALLOCATION",
-      message: `This position exceeds the ${weeklyAllocationCredits}-credit weekly allocation.`,
+      message: `This pick exceeds the ${weeklyAllocationCredits}-credit weekly allocation.`,
     };
   }
 
@@ -160,7 +160,7 @@ export function validateProposedPosition(params: {
       message:
         remainingCredits > 0 && remainingCredits < minimumStakeCredits
           ? `${proposedPosition.stakeCredits} would leave ${remainingCredits} credits, below the ${minimumStakeCredits}-credit minimum.`
-          : "This pick would leave no way to use all 1,000 credits.",
+          : `This pick would leave no way to use all ${weeklyAllocationCredits.toLocaleString()} credits.`,
     };
   }
 
