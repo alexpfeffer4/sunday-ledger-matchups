@@ -2,6 +2,7 @@
   --app-canvas: #f4f6f3;
   --app-surface: #ffffff;
   --app-subtle: #e9efeb;
+  --app-selected: #e5eee9;
   --archive-cream: #f5f0e6;
   --ink-primary: #18201d;
   --ink-secondary: #46524d;
@@ -46,6 +47,7 @@
   --color-canvas: var(--app-canvas);
   --color-surface: var(--app-surface);
   --color-subtle: var(--app-subtle);
+  --color-selected: var(--app-selected);
   --color-archive: var(--archive-cream);
   --color-ink: var(--ink-primary);
   --color-graphite: var(--ink-secondary);
