@@ -366,9 +366,10 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
       (total, position) => total + position.stakeCredits,
       0,
     );
-  const editorMaximumStake = editorMarket
-    ? maximumStakeForOdds(editorMarket.americanOdds, pocSeason1Ruleset)
-    : null;
+  const editorMaximumStake =
+    editorMarket?.qualityStatus === "HEALTHY"
+      ? maximumStakeForOdds(editorMarket.americanOdds, pocSeason1Ruleset)
+      : null;
   const editorOptions: OutcomeSelectorOption[] =
     editorEvent && editor
       ? editorEvent.markets
@@ -421,6 +422,10 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
 
   function saveEditor() {
     if (!editor || !editorEvent || !editorMarket) return;
+    if (editorMarket.qualityStatus !== "HEALTHY") {
+      setEditorError("Choose an available outcome before saving this pick.");
+      return;
+    }
     const stakeCredits = Number(editor.stakeCredits);
     const validation = validateProposedPosition({
       acceptedPositions: editorAcceptedPositions,
@@ -929,7 +934,11 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
         open={Boolean(editor)}
         outcomes={editorOptions}
         remainingCredits={Math.max(0, editorAvailableCredits)}
-        selectedOutcomeId={editor?.marketSnapshotId ?? null}
+        selectedOutcomeId={
+          editorMarket?.qualityStatus === "HEALTHY"
+            ? (editor?.marketSnapshotId ?? null)
+            : null
+        }
         stakeCredits={editor?.stakeCredits ?? ""}
         title={editor ? marketLabels[editor.marketType] : "Pick"}
       />
