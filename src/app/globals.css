@@ -42,6 +42,58 @@ a {
   touch-action: manipulation;
 }
 
+.outcome-selector-group {
+  container-type: inline-size;
+}
+
+.outcome-selector-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@container (max-width: 279px) {
+  .outcome-selector-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.practice-position-dialog {
+  inset: auto 0 0;
+  width: 100%;
+  max-height: 92dvh;
+  color: var(--ink-primary);
+  background: var(--app-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px 16px 0 0;
+  box-shadow: var(--shadow-modal);
+}
+
+.practice-position-dialog::backdrop {
+  background: rgb(13 21 17 / 56%);
+}
+
+.practice-position-dialog-footer {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+@media (min-width: 1280px) {
+  .practice-position-dialog {
+    inset: 0;
+    width: min(560px, calc(100% - 48px));
+    max-height: min(760px, calc(100dvh - 48px));
+    margin: auto;
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 1279px) and (max-height: 600px) {
+  .practice-position-dialog {
+    inset: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+}
+
 .broadcast-dark {
   --app-canvas: var(--dark-canvas);
   --app-surface: var(--dark-surface);
