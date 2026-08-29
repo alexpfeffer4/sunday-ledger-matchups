@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { InteractiveWeekDemo } from "@/components/demo/interactive-week-demo";
 
 vi.mock("next/link", () => ({
@@ -16,48 +16,52 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-function marketCard(outcomeName: RegExp): HTMLElement {
-  const outcome = screen.getByRole("button", { name: outcomeName });
-  const card = outcome.closest("article");
-  if (!card) throw new Error("The market card was not rendered.");
-  return card;
+beforeAll(() => {
+  Object.defineProperties(HTMLDialogElement.prototype, {
+    close: {
+      configurable: true,
+      value() {
+        this.removeAttribute("open");
+      },
+    },
+    showModal: {
+      configurable: true,
+      value() {
+        this.setAttribute("open", "");
+      },
+    },
+  });
+});
+
+function openEditor(outcomeName: RegExp) {
+  fireEvent.click(screen.getByRole("button", { name: outcomeName }));
+  return screen.getByRole("dialog");
 }
 
 function addDraft(outcomeName: RegExp, stakeCredits: string) {
-  const card = marketCard(outcomeName);
-  const outcome = within(card).getByRole("button", { name: outcomeName });
-  fireEvent.click(outcome);
-  fireEvent.change(within(card).getByLabelText("Credits at risk"), {
+  const dialog = openEditor(outcomeName);
+  fireEvent.change(within(dialog).getByLabelText("Stake in credits"), {
     target: { value: stakeCredits },
   });
-  fireEvent.click(within(card).getByRole("button", { name: "Add to card" }));
+  const form = dialog.querySelector("form");
+  if (!form) throw new Error("The pick editor form was not rendered.");
+  fireEvent.submit(form);
 }
 
 describe("practice week flow", () => {
-  it("edits picks, enforces the stake cap, and seals the complete card", () => {
+  it("edits picks, reconciles an updated quote, and seals one complete card", () => {
     render(<InteractiveWeekDemo />);
 
-    const openingCard = marketCard(/^Kansas City −205$/);
-    const openingOutcomes = within(openingCard).getAllByRole("button", {
-      pressed: false,
+    const capitalFavorite = screen.getByRole("button", {
+      name: /^Capital Club −205$/,
     });
-    expect(openingOutcomes).toHaveLength(2);
-    expect(
-      within(openingCard).getByRole("button", { name: "Add to card" }),
-    ).toBeDisabled();
+    expect(capitalFavorite).toHaveAttribute("aria-pressed", "false");
 
-    const buffaloSpread = screen.getByRole("button", {
-      name: /^Buffalo \+4.5 −110$/,
+    const riverSpread = screen.getByRole("button", {
+      name: /^River Club \+4.5 −110$/,
     });
-    expect(within(buffaloSpread).getByText("Buffalo")).toBeVisible();
-    expect(within(buffaloSpread).getByText("+4.5 · −110")).toBeVisible();
-    expect(within(buffaloSpread).queryByText("Buffalo +4.5")).toBeNull();
-
-    const kansasCitySpread = screen.getByRole("button", {
-      name: /^Kansas City −4.5 −110$/,
-    });
-    expect(within(kansasCitySpread).getByText("Kansas City")).toBeVisible();
-    expect(within(kansasCitySpread).getByText("−4.5 · −110")).toBeVisible();
+    expect(within(riverSpread).getByText("River Club")).toBeVisible();
+    expect(within(riverSpread).getByText("+4.5 · −110")).toBeVisible();
 
     const underTotal = screen.getByRole("button", {
       name: /^Under 47.5 −112$/,
@@ -65,69 +69,75 @@ describe("practice week flow", () => {
     expect(within(underTotal).getByText("Under")).toBeVisible();
     expect(within(underTotal).getByText("47.5 · −112")).toBeVisible();
 
-    addDraft(/^Kansas City −205$/, "1000");
-    expect(screen.getByRole("alert")).toHaveTextContent(
+    const cappedDialog = openEditor(/^Capital Club −205$/);
+    fireEvent.change(within(cappedDialog).getByLabelText("Stake in credits"), {
+      target: { value: "1000" },
+    });
+    const cappedForm = cappedDialog.querySelector("form");
+    if (!cappedForm) throw new Error("The pick editor form was not rendered.");
+    fireEvent.submit(cappedForm);
+    expect(within(cappedDialog).getByRole("alert")).toHaveTextContent(
       "this pick may use at most 750 credits",
     );
+    fireEvent.click(
+      within(cappedDialog).getByRole("button", {
+        name: "Close pick editor",
+      }),
+    );
 
-    addDraft(/^Philadelphia −185$/, "500");
-    addDraft(/^Buffalo \+175$/, "250");
+    addDraft(/^Harbor Club −185$/, "500");
+    addDraft(/^River Club \+175$/, "250");
     addDraft(/^Under 42.5 −110$/, "250");
 
-    const buffaloCard = marketCard(/^Buffalo \+175$/);
+    const switchDialog = openEditor(/^Capital Club −205$/);
+    expect(
+      within(switchDialog).getByRole("button", {
+        name: /^Capital Club −205$/,
+      }),
+    ).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(
-      within(buffaloCard).getByRole("button", { name: /^Kansas City −205$/ }),
+      within(switchDialog).getByRole("button", { name: /^River Club \+175$/ }),
     );
-    const selectedKansasCity = within(buffaloCard).getByRole("button", {
-      name: /^Kansas City −205$/,
-    });
-    expect(selectedKansasCity).toHaveAttribute("aria-pressed", "true");
-    expect(selectedKansasCity).toHaveClass(
-      "border-registry",
-      "bg-registry",
-      "text-white",
-      "h-20",
-      "pr-10",
-    );
-    expect(within(selectedKansasCity).getByText("✓")).toBeVisible();
-    expect(within(selectedKansasCity).queryByText("Selected")).toBeNull();
-    fireEvent.click(
-      within(buffaloCard).getByRole("button", { name: /^Buffalo \+175$/ }),
-    );
+    const switchForm = switchDialog.querySelector("form");
+    if (!switchForm) throw new Error("The pick editor form was not rendered.");
+    fireEvent.submit(switchForm);
+    expect(
+      screen.getByRole("button", { name: /^River Club \+175$/ }),
+    ).toHaveAttribute("aria-pressed", "true");
 
-    const reviewButton = screen.getByRole("button", {
-      name: "Review 3 picks",
-    });
-    expect(reviewButton).toBeEnabled();
-    fireEvent.click(reviewButton);
+    const tray = screen.getByRole("region", { name: "Working card" });
+    expect(tray).toHaveTextContent("3 picks · 1,000 allocated");
+    fireEvent.click(within(tray).getByRole("button", { name: "Review card" }));
 
     expect(
       screen.getByRole("heading", { name: "Review your complete card" }),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Confirm and seal" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "One example quote changed",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Use updated odds" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm and seal card" }),
+    );
 
     expect(
-      screen.getByRole("heading", { name: "Your complete card is sealed" }),
+      screen.getByRole("heading", { name: "Your practice card is sealed" }),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText("Opponent card · revealed after kickoff"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText(/Practice receipt 01/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Not saved/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/opponent.*pick 01/i)).not.toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "See results",
+        name: "Reveal kickoff and see results",
       }),
     );
 
     expect(
-      screen.getByRole("heading", {
-        name: "Practice matchup final",
-      }),
+      screen.getByRole("heading", { name: "Practice matchup final" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", {
-        name: "Opponent’s final card",
-      }),
+      screen.getByRole("heading", { name: "Opponent’s final card" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Matchup final")).toBeInTheDocument();
   });
