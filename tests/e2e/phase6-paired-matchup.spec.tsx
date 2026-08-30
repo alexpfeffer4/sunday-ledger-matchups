@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { PairedMatchupDto } from "@/application/queries/project-paired-matchup";
 import { PairedMatchupView } from "@/components/matchup/paired-matchup-view";
@@ -11,17 +12,18 @@ import {
 
 function matchupMarkup(matchup: PairedMatchupDto): string {
   return renderToStaticMarkup(
-    <PairedMatchupView
-      matchup={matchup}
-      refreshControl={
-        <button
-          className="bg-registry text-canvas min-h-11 rounded-lg px-4 text-sm font-semibold"
-          type="button"
-        >
-          Refresh matchup
-        </button>
-      }
-    />,
+    createElement(PairedMatchupView, {
+      matchup,
+      refreshControl: createElement(
+        "button",
+        {
+          className:
+            "bg-registry text-canvas min-h-11 rounded-lg px-4 text-sm font-semibold",
+          type: "button",
+        },
+        "Refresh matchup",
+      ),
+    }),
   );
 }
 
