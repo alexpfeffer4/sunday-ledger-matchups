@@ -29,9 +29,7 @@ export function LeagueScoreboard({ matchup }: { matchup: PairedMatchupDto }) {
                 {game.selected ? "Your matchup" : game.state}
               </p>
               {game.selected ? (
-                <span className="text-registry text-xs font-bold">
-                  {game.state}
-                </span>
+                <span className="text-ink text-xs font-bold">{game.state}</span>
               ) : null}
             </div>
             <div className="mt-2 flex justify-between gap-3 text-sm">

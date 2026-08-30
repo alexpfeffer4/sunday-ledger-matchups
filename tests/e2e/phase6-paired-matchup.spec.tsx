@@ -94,9 +94,11 @@ test("stored Live updates preserve identity and progress to provisional and fina
   page,
 }) => {
   await mountMatchup(page, "LIVE");
-  const initialNames = await page
-    .locator('[aria-labelledby="paired-matchup-heading"] h2:not(.sr-only)')
-    .allTextContents();
+  const identityHeadings = page.locator(
+    '[aria-labelledby="paired-matchup-heading"] h2:not(.sr-only)',
+  );
+  await expect(identityHeadings).toHaveCount(2);
+  const initialNames = await identityHeadings.allTextContents();
 
   await mountMatchup(page, "LIVE_UPDATE");
   await expect(

@@ -167,6 +167,7 @@ a {
   --state-sealed: var(--dark-text-secondary);
   --matchup-self: var(--dark-brand);
   --matchup-opponent: #e2a06e;
+  color: var(--ink-primary);
   color-scheme: dark;
 }
 
