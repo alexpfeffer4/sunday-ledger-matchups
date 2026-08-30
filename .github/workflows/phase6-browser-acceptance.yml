@@ -1,0 +1,53 @@
+name: Phase 6 browser acceptance
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/phase6-browser-acceptance.yml"
+      - "playwright.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "src/application/queries/project-paired-matchup.ts"
+      - "src/components/matchup/**"
+      - "src/components/ui/status-badge.tsx"
+      - "src/app/globals.css"
+      - "src/design/tokens.css"
+      - "tests/e2e/phase6-paired-matchup.spec.tsx"
+      - "tests/fixtures/phase6-paired-matchup.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase6-browser-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  phase6-browser:
+    name: Desktop and mobile privacy/accessibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Render Phase 6 browser fixtures
+        run: npx vitest run tests/e2e/phase6-markup.test.tsx
+
+      - name: Run Phase 6 browser acceptance
+        run: npx playwright test tests/e2e/phase6-paired-matchup.spec.tsx --reporter=github
