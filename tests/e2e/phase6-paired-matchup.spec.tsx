@@ -1,36 +1,20 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import type { PairedMatchupDto } from "@/application/queries/project-paired-matchup";
-import { PairedMatchupView } from "@/components/matchup/paired-matchup-view";
-import {
-  makePhase6LiveUpdate,
-  makePhase6Matchup,
-  unrevealableReceiptText,
-} from "../fixtures/phase6-paired-matchup";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { unrevealableReceiptText } from "../fixtures/phase6-paired-matchup";
 
-function matchupMarkup(matchup: PairedMatchupDto): string {
-  return renderToStaticMarkup(
-    createElement(PairedMatchupView, {
-      matchup,
-      refreshControl: createElement(
-        "button",
-        {
-          className:
-            "bg-registry text-canvas min-h-11 rounded-lg px-4 text-sm font-semibold",
-          type: "button",
-        },
-        "Refresh matchup",
-      ),
-    }),
-  );
-}
+type FixtureName =
+  "FINAL" | "LIVE" | "LIVE_UPDATE" | "PARTIAL_REVEAL" | "PROVISIONAL";
 
-async function mountMatchup(page: Page, matchup: PairedMatchupDto) {
+const fixtureMarkup = JSON.parse(
+  readFileSync(resolve("test-results/phase6-matchup-markup.json"), "utf8"),
+) as Record<FixtureName, string>;
+
+async function mountMatchup(page: Page, fixture: FixtureName) {
   await page.evaluate((markup) => {
     document.body.innerHTML = markup;
-  }, matchupMarkup(matchup));
+  }, fixtureMarkup[fixture]);
 }
 
 async function expectNoSeriousAccessibilityViolations(page: Page) {
@@ -55,7 +39,7 @@ test.beforeEach(async ({ page }) => {
 test("partial reveal keeps sealed receipt data out of DOM and accessible names", async ({
   page,
 }) => {
-  await mountMatchup(page, makePhase6Matchup("PARTIAL_REVEAL"));
+  await mountMatchup(page, "PARTIAL_REVEAL");
 
   await expect(page.getByText("Partial reveal")).toBeVisible();
   const placeholder = page.getByTestId("future-sealed-placeholder");
@@ -78,7 +62,7 @@ test("Live remains paired, mobile-safe, keyboard-visible, and reduced-motion saf
 }) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await mountMatchup(page, makePhase6Matchup("LIVE"));
+  await mountMatchup(page, "LIVE");
 
   await expect(page.locator("main.broadcast-dark")).toBeVisible();
   await expect(
@@ -106,12 +90,12 @@ test("Live remains paired, mobile-safe, keyboard-visible, and reduced-motion saf
 test("stored Live updates preserve identity and progress to provisional and final", async ({
   page,
 }) => {
-  await mountMatchup(page, makePhase6Matchup("LIVE"));
+  await mountMatchup(page, "LIVE");
   const initialNames = await page
     .locator('[aria-labelledby="paired-matchup-heading"] h2:not(.sr-only)')
     .allTextContents();
 
-  await mountMatchup(page, makePhase6LiveUpdate());
+  await mountMatchup(page, "LIVE_UPDATE");
   await expect(
     page.getByLabel("Alex Ledger score 200.00 credits"),
   ).toBeVisible();
@@ -122,7 +106,7 @@ test("stored Live updates preserve identity and progress to provisional and fina
   ).toEqual(initialNames);
   await expect(page.locator('[data-position-id$="13"]')).toBeVisible();
 
-  await mountMatchup(page, makePhase6Matchup("PROVISIONAL"));
+  await mountMatchup(page, "PROVISIONAL");
   await expect(
     page.getByText("Provisional", { exact: true }).first(),
   ).toBeVisible();
@@ -130,7 +114,7 @@ test("stored Live updates preserve identity and progress to provisional and fina
     page.getByLabel("Alex Ledger score 400.00 credits"),
   ).toBeVisible();
 
-  await mountMatchup(page, makePhase6Matchup("FINAL"));
+  await mountMatchup(page, "FINAL");
   await expect(page.getByText("Final", { exact: true }).first()).toBeVisible();
   await expect(
     page.getByLabel("Jordan Rival score 200.00 credits"),

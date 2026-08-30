@@ -46,5 +46,8 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium webkit
 
+      - name: Render Phase 6 browser fixtures
+        run: npx vitest run tests/e2e/phase6-markup.test.tsx
+
       - name: Run Phase 6 browser acceptance
         run: npx playwright test tests/e2e/phase6-paired-matchup.spec.tsx --reporter=github
