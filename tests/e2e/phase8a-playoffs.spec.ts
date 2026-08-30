@@ -32,11 +32,15 @@ for (const width of [390, 320]) {
     ).toBeVisible();
     await expect(page.getByText("Vacant").first()).toBeVisible();
     await expect(page.getByText("Exhibition miss · 0")).toBeVisible();
-    const audit = page.getByText("Audit details").first();
+    const bracketVersion = page.getByText("Effective bracket version");
+    const publicationAudit = page
+      .locator("details")
+      .filter({ has: bracketVersion });
+    const audit = publicationAudit.locator("summary");
     await audit.focus();
     await expect(audit).toBeFocused();
     await page.keyboard.press("Enter");
-    await expect(page.getByText("Effective bracket version")).toBeVisible();
+    await expect(bracketVersion).toBeVisible();
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,

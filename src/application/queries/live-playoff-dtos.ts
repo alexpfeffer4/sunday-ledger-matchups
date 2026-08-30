@@ -54,7 +54,11 @@ const phase8BracketSchema = z.object({
       entry: qualifiedEntrySchema,
       fromWeek: z.literal(15),
       toWeek: z.literal(16),
-      reason: z.enum(["TOP_TWO_SEED_BYE", "VACANT_OPPONENT"]),
+      reason: z.enum([
+        "FOUR_SLOT_EXHIBITION_BYE",
+        "TOP_TWO_SEED_BYE",
+        "VACANT_OPPONENT",
+      ]),
     }),
   ),
   championshipAdvancementRule: z.string(),

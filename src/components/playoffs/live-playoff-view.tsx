@@ -138,7 +138,9 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
                     {advance.entry.displayName}
                     {advance.reason === "TOP_TWO_SEED_BYE"
                       ? " — Week 15 bracket bye; receives a separate bye exhibition."
-                      : " — advances through the vacant opposing slot."}
+                      : advance.reason === "FOUR_SLOT_EXHIBITION_BYE"
+                        ? " — advances automatically through the Week 15 bye exhibition."
+                        : " — advances through the vacant opposing slot."}
                   </li>
                 ))}
               </ul>
