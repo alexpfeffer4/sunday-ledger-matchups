@@ -55,6 +55,53 @@ describe("Phase 6 paired matchup projection", () => {
     );
   });
 
+  it("keeps settled returns factual while incomplete cards score zero", () => {
+    const ownIncomplete = makePhase6State("FINAL");
+    if (!ownIncomplete.state.ownerCard || !ownIncomplete.state.matchup?.result)
+      throw new Error("Final fixture state missing.");
+    ownIncomplete.state.ownerCard.compliance = "INCOMPLETE";
+    ownIncomplete.state.matchup.result.selfPointsForCenticredits = 0;
+    ownIncomplete.state.matchup.result.selfDecision = "LOSS";
+    ownIncomplete.state.matchup.result.opponentDecision = "WIN";
+
+    const ownMatchup = projectPairedMatchup(
+      ownIncomplete.state,
+      ownIncomplete.operations,
+      ownIncomplete.now,
+    );
+    expect(ownMatchup?.self.scoreCenticredits).toBe(0);
+    expect(ownMatchup?.scorePath.selfSettledCenticredits).toBe(40_000);
+    expect(ownMatchup?.scorePath.selfRemainingMaximumCenticredits).toBe(0);
+
+    const opponentIncomplete = makePhase6State("FINAL");
+    if (!opponentIncomplete.state.matchup?.result)
+      throw new Error("Final fixture result missing.");
+    opponentIncomplete.state.matchup.opponentReadiness = "INCOMPLETE";
+    opponentIncomplete.state.matchup.result.opponentPointsForCenticredits = 0;
+
+    const opponentMatchup = projectPairedMatchup(
+      opponentIncomplete.state,
+      opponentIncomplete.operations,
+      opponentIncomplete.now,
+    );
+    expect(opponentMatchup?.opponent.scoreCenticredits).toBe(0);
+    expect(opponentMatchup?.scorePath.opponentSettledCenticredits).toBe(20_000);
+    expect(
+      opponentMatchup?.scorePath.opponentRemainingMaximumCenticredits,
+    ).toBe(0);
+  });
+
+  it("states an exact path when sealed picks cannot change an incomplete score", () => {
+    const { now, operations, state } = makePhase6State("PARTIAL_REVEAL");
+    if (!state.matchup) throw new Error("Partial fixture matchup missing.");
+    state.matchup.opponentReadiness = "INCOMPLETE";
+
+    const matchup = projectPairedMatchup(state, operations, now);
+    expect(matchup?.futureSealed).toBe(true);
+    expect(matchup?.scorePath.opponentRemainingMaximumCenticredits).toBe(0);
+    expect(matchup?.scorePath.sentence).toMatch(/has clinched/);
+  });
+
   it("stops when an official paired score cannot be reproduced", () => {
     const { now, operations, state } = makePhase6State("FINAL");
     if (!state.matchup?.result)

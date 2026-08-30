@@ -142,6 +142,15 @@ function sumRemainingMaximum(
   }, 0);
 }
 
+function officialScoreFromSettlements(
+  compliance: "COMPLIANT" | "INCOMPLETE" | "PENDING" | null,
+  settledCenticredits: number,
+): number | null {
+  if (compliance === "INCOMPLETE") return 0;
+  if (compliance === "COMPLIANT") return settledCenticredits;
+  return null;
+}
+
 function cardStatus(
   card: NonNullable<Stage1StateDto["ownerCard"]>,
   weekState: NonNullable<Stage1StateDto["week"]>["state"],
@@ -168,7 +177,6 @@ function remainingPathSentence(params: {
   opponentScore: number;
   selfRemainingMaximum: number;
   opponentRemainingMaximum: number | null;
-  futureSealed: boolean;
   result: NonNullable<Stage1StateDto["matchup"]>["result"];
   scope: NonNullable<Stage1StateDto["week"]>["scope"];
 }): string | null {
@@ -186,7 +194,7 @@ function remainingPathSentence(params: {
     return `${leader} leads the official result by ${formatCredits(margin)} credits.`;
   }
 
-  if (params.futureSealed || params.opponentRemainingMaximum === null) {
+  if (params.opponentRemainingMaximum === null) {
     return "Future picks remain sealed, so an exact remaining path is not available yet.";
   }
 
@@ -316,22 +324,48 @@ export function projectPairedMatchup(
 
   const selfSettled = sumSettled(allRows, "SELF");
   const opponentSettled = sumSettled(allRows, "OPPONENT");
+  const derivedSelfScore =
+    officialScoreFromSettlements(state.ownerCard.compliance, selfSettled) ??
+    selfSettled;
+  const derivedOpponentScore =
+    officialScoreFromSettlements(
+      state.matchup.opponentReadiness,
+      opponentSettled,
+    ) ?? opponentSettled;
   const selfScore =
-    state.matchup.result?.selfPointsForCenticredits ?? selfSettled;
+    state.matchup.result?.selfPointsForCenticredits ?? derivedSelfScore;
   const opponentScore =
-    state.matchup.result?.opponentPointsForCenticredits ?? opponentSettled;
-  if (
-    state.matchup.result &&
-    (selfScore !== selfSettled || opponentScore !== opponentSettled)
-  ) {
-    throw new Error(
-      "The official paired score does not reproduce from authorized settlements.",
+    state.matchup.result?.opponentPointsForCenticredits ?? derivedOpponentScore;
+  if (state.matchup.result) {
+    const expectedSelfScore = officialScoreFromSettlements(
+      state.ownerCard.compliance,
+      selfSettled,
     );
+    const expectedOpponentScore = officialScoreFromSettlements(
+      state.matchup.opponentReadiness,
+      opponentSettled,
+    );
+    if (
+      expectedSelfScore === null ||
+      expectedOpponentScore === null ||
+      selfScore !== expectedSelfScore ||
+      opponentScore !== expectedOpponentScore
+    ) {
+      throw new Error(
+        "The official paired score does not reproduce from authorized settlements and card compliance.",
+      );
+    }
   }
-  const selfRemainingMaximum = sumRemainingMaximum(allRows, "SELF");
-  const opponentRemainingMaximum = state.matchup.futureSealed
-    ? null
-    : sumRemainingMaximum(allRows, "OPPONENT");
+  const selfRemainingMaximum =
+    state.ownerCard.compliance === "INCOMPLETE"
+      ? 0
+      : sumRemainingMaximum(allRows, "SELF");
+  const opponentRemainingMaximum =
+    state.matchup.opponentReadiness === "INCOMPLETE"
+      ? 0
+      : state.matchup.futureSealed
+        ? null
+        : sumRemainingMaximum(allRows, "OPPONENT");
 
   const relevantEventIds = new Set(allRows.map((row) => row.eventId));
   const correctedCount = [...correctedEventIds].filter((eventId) =>
@@ -474,7 +508,6 @@ export function projectPairedMatchup(
         opponentScore,
         selfRemainingMaximum,
         opponentRemainingMaximum,
-        futureSealed: state.matchup.futureSealed,
         result,
         scope: state.week.scope,
       }),
