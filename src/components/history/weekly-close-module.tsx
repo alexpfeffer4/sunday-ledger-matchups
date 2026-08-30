@@ -131,7 +131,7 @@ export function WeeklyCloseModule({
         </div>
       </div>
 
-      <p className="text-muted mt-3 text-xs leading-5">
+      <p className="text-graphite mt-3 text-xs leading-5">
         {matchup.status === "PROVISIONAL"
           ? bridge.correctionWindowClosesAt
             ? `Correction window closes ${timeLabel(bridge.correctionWindowClosesAt)} UTC.`

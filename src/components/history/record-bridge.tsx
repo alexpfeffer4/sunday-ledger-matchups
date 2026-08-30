@@ -51,7 +51,7 @@ function Cutline({ cutline }: { cutline: PlayoffCutlineFact }) {
       aria-labelledby="playoff-cutline-heading"
       className="border-boundary bg-subtle rounded-lg border p-4"
     >
-      <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
+      <p className="text-graphite text-xs font-bold tracking-[0.08em] uppercase">
         {cutline.kind === "FROZEN"
           ? "Official playoff field"
           : "Current stored playoff field"}
@@ -68,7 +68,7 @@ function Cutline({ cutline }: { cutline: PlayoffCutlineFact }) {
           : "Every stored member is inside the field."}
       </p>
       {cutline.kind === "CURRENT" ? (
-        <p className="text-muted mt-2 text-xs">
+        <p className="text-graphite mt-2 text-xs">
           Current position only; this is not a clinch or elimination claim.
         </p>
       ) : null}
@@ -138,7 +138,7 @@ export function RecordBridge({
             Before and after Week {bridge.matchup.nflWeek}
           </h3>
         </div>
-        <p className="text-muted text-sm font-semibold">
+        <p className="text-graphite text-sm font-semibold">
           {deltaLabel(bridge.before, bridge.after)}
         </p>
       </div>

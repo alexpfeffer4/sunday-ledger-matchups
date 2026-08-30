@@ -83,7 +83,9 @@ test("provisional close states only supported cutline and preserves next access"
   await page.setViewportSize({ width: 320, height: 800 });
   await mount(page, "PROVISIONAL");
 
-  await expect(page.getByText("Provisional", { exact: true })).toBeVisible();
+  await expect(
+    page.getByTestId("weekly-close-module").getByText(/Provisional/),
+  ).toBeVisible();
   await expect(page.getByText("Current stored playoff field")).toBeVisible();
   await expect(
     page.getByText(/not a clinch or elimination claim/),
@@ -107,7 +109,9 @@ test("history and rivalry label every stored competition scope", async ({
   await expect(page.getByText("Official result receipt")).toBeVisible();
 
   await mount(page, "RIVALRY");
-  await expect(page.getByText("Competitive H2H")).toBeVisible();
+  await expect(
+    page.getByText("Competitive H2H", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText(/Regular season/).first()).toBeVisible();
   await expect(page.getByText(/Playoff/).last()).toBeVisible();
   await expect(page.getByText(/Placement/).last()).toBeVisible();
