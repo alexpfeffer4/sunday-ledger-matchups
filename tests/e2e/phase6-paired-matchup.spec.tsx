@@ -36,6 +36,9 @@ async function expectNoHorizontalOverflow(page: Page) {
 }
 
 test.beforeEach(async ({ page }) => {
+  await page.route(/\/_next\/static\/chunks\/.*\.js(?:\?.*)?$/, (route) =>
+    route.abort(),
+  );
   await page.goto("/");
 });
 
