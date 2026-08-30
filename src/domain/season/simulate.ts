@@ -415,7 +415,14 @@ function qualifiedEntry(
   if (!qualificationSeed) {
     throw new Error(`No qualification seed exists for ${entryId}.`);
   }
-  return { entryId, qualificationSeed };
+  return {
+    entryId,
+    regularSeasonSeed: qualificationSeed,
+    qualificationSeed,
+    eligibilityStatus: "ELIGIBLE",
+    selectionReason: "ELIGIBLE_STANDINGS",
+    attendanceMissesUsedByQualification: 0,
+  };
 }
 
 export function simulateSeason(params: {

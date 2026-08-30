@@ -91,8 +91,41 @@ insert into private.season_ruleset_snapshots (
   mode, canonical_json, sha256_hash, frozen_at
 ) values (
   'a3000000-0000-4000-8000-000000000001',
-  'live-season-1', '1.0', 'sunday-ledger-product-bible', '3.0',
-  'LIVE', '{"mode":"LIVE"}', repeat('a', 64), now() - interval '16 weeks'
+  'live-season-1', '1.1', 'sunday-ledger-product-bible', '3.0',
+  'LIVE', jsonb_build_object(
+    'version', '1.1',
+    'mode', 'LIVE',
+    'attendance', jsonb_build_object('playoffIneligibilityAtMisses', 3),
+    'playoffs', jsonb_build_object(
+      'minimumChampionshipField', 4,
+      'selectionOrder', 'ELIGIBLE_BEFORE_REINSTATED',
+      'reinstatementReason', 'MINIMUM_FOUR_CHAMPIONSHIP_FIELD',
+      'noReinstatementAtOrAboveEligibleCount', 4,
+      'sixSlotVacancyBehavior', jsonb_build_object(
+        'vacantSlotsRemainVacant', true,
+        'fourParticipantsVacantSeeds', jsonb_build_array(5, 6),
+        'fourParticipantsAutomaticAdvances', jsonb_build_array(3, 4),
+        'fiveParticipantsVacantSeeds', jsonb_build_array(6),
+        'fiveParticipantsAutomaticAdvances', jsonb_build_array(3)
+      ),
+      'everyMemberPostseasonParticipation', jsonb_build_object(
+        'weeks', jsonb_build_array(15, 16, 17),
+        'cardsPerMemberPerWeek', 1,
+        'matchupsPerMemberPerWeek', 1,
+        'remainingPairingOrder', 'ADJACENT_FROZEN_WEEK_14_ORDER',
+        'byeExhibitions', true,
+        'rematchesAllowed', true
+      ),
+      'regularSeasonAttendanceFrozenAfterWeek', 14,
+      'exhibitionMiss', jsonb_build_object('marker', 'EXHIBITION_MISS', 'scoreCenticredits', 0, 'affectsOfficialCompetition', false),
+      'postseasonRoles', jsonb_build_array('CHAMPIONSHIP', 'THIRD_PLACE', 'PLACEMENT', 'EXHIBITION'),
+      'championshipAdvancement', jsonb_build_object(
+        'advancingRole', 'CHAMPIONSHIP', 'higherSeedAdvancesExactTie', true,
+        'singleIncompleteEliminated', true, 'dualIncompleteAdvancesHigherSeed', true,
+        'reseedSemifinals', 'SEED_1_VS_LOWEST_REMAINING'
+      )
+    )
+  ), repeat('a', 64), now() - interval '16 weeks'
 );
 
 insert into private.seasons (
@@ -229,17 +262,17 @@ select is(
   'the fourth eligible qualifier retains its regular-season seed evidence'
 );
 select is(
-  (select bracket_json ->> 'format' from private.playoff_publications where season_id = 'a3500000-0000-4000-8000-000000000001'),
-  'SMALL_FOUR',
+  (select bracket_state ->> 'format' from private.playoff_publications where season_id = 'a3500000-0000-4000-8000-000000000001'),
+  'FOUR_SLOT',
   'the publication chooses the small-league bracket'
 );
 select is(
-  (select jsonb_array_length(bracket_json #> '{stages,0,games}') from private.playoff_publications where season_id = 'a3500000-0000-4000-8000-000000000001'),
-  3,
-  'Week 15 publishes one exhibition for every pair of final standings'
+  (select jsonb_array_length(bracket_state -> 'slots') from private.playoff_publications where season_id = 'a3500000-0000-4000-8000-000000000001'),
+  4,
+  'the four-slot representation stores every occupied slot'
 );
 select is(
-  (select bracket_json #>> '{stages,1,games,0,sideB,regularSeasonSeed}' from private.playoff_publications where season_id = 'a3500000-0000-4000-8000-000000000001'),
+  (select bracket_state #>> '{slots,3,entry,regularSeasonSeed}' from private.playoff_publications where season_id = 'a3500000-0000-4000-8000-000000000001'),
   '5',
   'the 1-vs-4 semifinal uses the frozen eligible field'
 );

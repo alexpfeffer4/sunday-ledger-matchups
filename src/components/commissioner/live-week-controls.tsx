@@ -9,7 +9,6 @@ import {
   importLiveScoresAction,
   lockStage1WeekAction,
   publishLivePlayoffQualificationAction,
-  publishLiveSeasonArchiveAction,
   publishNextLivePostseasonWeekAction,
   publishNextLiveWeekSlateAction,
   refreshLiveWeekQuotesAction,
@@ -100,10 +99,6 @@ export function LiveWeekCommissionerControls({
   );
   const [postseasonWeekState, postseasonWeekAction, publishingPostseasonWeek] =
     useActionState(publishNextLivePostseasonWeekAction, initialAppActionState);
-  const [archiveState, archiveAction, publishingArchive] = useActionState(
-    publishLiveSeasonArchiveAction,
-    initialAppActionState,
-  );
   const [
     playoffQualificationState,
     playoffQualificationAction,
@@ -532,8 +527,8 @@ export function LiveWeekCommissionerControls({
           <h2 className="mt-2 font-bold">Open playoff Week {nextWeekNumber}</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
             Import current NFL markets and review the selected games. Matchups
-            come from the bracket, and only members playing this round receive a
-            new card.
+            are derived from the terminal bracket and results. Every member
+            receives exactly one matchup and one new card.
             {weekNumber === 14 && state.league.memberCount <= 8
               ? " Week 15 is the required non-elimination exhibition round."
               : null}
@@ -655,27 +650,13 @@ export function LiveWeekCommissionerControls({
           </p>
           <h2 className="mt-2 font-bold">Week 17 results are final</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            The championship and third-place games are final. Close the season
-            to publish the champion, final standings, bracket, cards, and
-            history.
+            The championship and third-place games are final for Phase 8A. The
+            effective bracket version and all Week 15–17 assignments remain
+            available under Playoffs and Audit details.
           </p>
-          <form action={archiveAction} className="mt-4">
-            <ContextFields state={state} />
-            <p className="text-negative text-sm leading-6 font-semibold">
-              Once closed, the champion and final season record cannot be
-              changed.
-            </p>
-            <button
-              className={`${buttonClass} mt-4`}
-              disabled={publishingArchive}
-              type="submit"
-            >
-              {publishingArchive
-                ? "Publishing final archive…"
-                : "Close season & publish champion"}
-            </button>
-          </form>
-          <ActionFeedback state={archiveState} />
+          <p className="text-muted mt-3 text-sm leading-6">
+            Week 18 and archive finality are intentionally outside this phase.
+          </p>
           <Link
             className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
             href={`/l/${state.league.slug}/playoffs`}
@@ -699,8 +680,9 @@ export function LiveWeekCommissionerControls({
               <form action={playoffQualificationAction} className="mt-4">
                 <ContextFields state={state} />
                 <p className="text-negative text-sm leading-6 font-semibold">
-                  Once confirmed, the Week 14 order, eligibility, seeds, and
-                  bracket cannot be changed.
+                  Qualification is derived automatically. An authorized Week 14
+                  correction appends a new bracket version before any downstream
+                  card seals; prior versions remain visible.
                 </p>
                 <button
                   className={`${buttonClass} mt-4`}

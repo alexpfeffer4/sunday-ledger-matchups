@@ -22,6 +22,50 @@ export const standingsTiebreakSchema = z.enum([
   "STORED_DETERMINISTIC_RANDOM",
 ]);
 
+const phase8PlayoffRulesSchema = z.object({
+  smallLeagueMaximumSize: rosterSizeSchema,
+  smallLeagueQualifiers: z.literal(4),
+  largeLeagueQualifiers: z.literal(6),
+  minimumChampionshipField: z.literal(4),
+  selectionOrder: z.literal("ELIGIBLE_BEFORE_REINSTATED"),
+  reinstatementReason: z.literal("MINIMUM_FOUR_CHAMPIONSHIP_FIELD"),
+  noReinstatementAtOrAboveEligibleCount: z.literal(4),
+  sixSlotVacancyBehavior: z.object({
+    vacantSlotsRemainVacant: z.literal(true),
+    fourParticipantsVacantSeeds: z.tuple([z.literal(5), z.literal(6)]),
+    fourParticipantsAutomaticAdvances: z.tuple([z.literal(3), z.literal(4)]),
+    fiveParticipantsVacantSeeds: z.tuple([z.literal(6)]),
+    fiveParticipantsAutomaticAdvances: z.tuple([z.literal(3)]),
+  }),
+  everyMemberPostseasonParticipation: z.object({
+    weeks: z.tuple([z.literal(15), z.literal(16), z.literal(17)]),
+    cardsPerMemberPerWeek: z.literal(1),
+    matchupsPerMemberPerWeek: z.literal(1),
+    remainingPairingOrder: z.literal("ADJACENT_FROZEN_WEEK_14_ORDER"),
+    byeExhibitions: z.literal(true),
+    rematchesAllowed: z.literal(true),
+  }),
+  regularSeasonAttendanceFrozenAfterWeek: z.literal(14),
+  exhibitionMiss: z.object({
+    marker: z.literal("EXHIBITION_MISS"),
+    scoreCenticredits: z.literal(0),
+    affectsOfficialCompetition: z.literal(false),
+  }),
+  postseasonRoles: z.tuple([
+    z.literal("CHAMPIONSHIP"),
+    z.literal("THIRD_PLACE"),
+    z.literal("PLACEMENT"),
+    z.literal("EXHIBITION"),
+  ]),
+  championshipAdvancement: z.object({
+    advancingRole: z.literal("CHAMPIONSHIP"),
+    higherSeedAdvancesExactTie: z.literal(true),
+    singleIncompleteEliminated: z.literal(true),
+    dualIncompleteAdvancesHigherSeed: z.literal(true),
+    reseedSemifinals: z.literal("SEED_1_VS_LOWEST_REMAINING"),
+  }),
+});
+
 export const seasonRulesetSchema = z.object({
   id: z.string().min(1),
   version: z.literal("1.1"),
@@ -100,6 +144,14 @@ export const seasonRulesetSchema = z.object({
       ])
       .readonly(),
   }),
+  playoffs: phase8PlayoffRulesSchema,
+});
+
+export type RosterSize = z.infer<typeof rosterSizeSchema>;
+export type MarketType = z.infer<typeof marketTypeSchema>;
+export type SeasonRuleset = z.infer<typeof seasonRulesetSchema>;
+
+const legacySeasonRulesetV11Schema = seasonRulesetSchema.extend({
   playoffs: z.object({
     smallLeagueMaximumSize: rosterSizeSchema,
     smallLeagueQualifiers: z.number().int().positive(),
@@ -108,11 +160,7 @@ export const seasonRulesetSchema = z.object({
   }),
 });
 
-export type RosterSize = z.infer<typeof rosterSizeSchema>;
-export type MarketType = z.infer<typeof marketTypeSchema>;
-export type SeasonRuleset = z.infer<typeof seasonRulesetSchema>;
-
-const historicalSeasonRulesetV1Schema = seasonRulesetSchema.extend({
+const historicalSeasonRulesetV1Schema = legacySeasonRulesetV11Schema.extend({
   version: z.literal("1.0"),
   card: seasonRulesetSchema.shape.card.omit({
     carryoverCredits: true,
@@ -137,6 +185,7 @@ const historicalSeasonRulesetV1Schema = seasonRulesetSchema.extend({
 
 export const persistedSeasonRulesetSchema = z.union([
   seasonRulesetSchema,
+  legacySeasonRulesetV11Schema,
   historicalSeasonRulesetV1Schema,
 ]);
 

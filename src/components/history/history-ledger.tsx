@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { SeasonMemoryProjection } from "@/domain/history/project-season-memory";
-import { scopeLabels } from "@/domain/history/project-season-memory";
+import { matchupScopeLabel } from "@/domain/history/project-season-memory";
 import { formatCenticredits } from "@/domain/odds/american";
 import { PageFrame } from "@/components/league/page-frame";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -53,7 +53,7 @@ export function HistoryLedger({
                   <div>
                     <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
                       {matchup.nflYear} · Week {matchup.nflWeek} ·{" "}
-                      {scopeLabels[matchup.scope]}
+                      {matchupScopeLabel(matchup)}
                     </p>
                     <h2
                       className="mt-1 text-lg font-bold"
@@ -73,11 +73,20 @@ export function HistoryLedger({
                             : "void"
                     }
                   >
-                    {matchup.corrected
-                      ? `Corrected ${resultLabel(matchup.self.decision)}`
-                      : resultLabel(matchup.self.decision)}
+                    {matchup.self.participation === "EXHIBITION_MISS"
+                      ? "Exhibition miss"
+                      : matchup.corrected
+                        ? `Corrected ${resultLabel(matchup.self.decision)}`
+                        : resultLabel(matchup.self.decision)}
                   </StatusBadge>
                 </div>
+                {matchup.self.participation === "EXHIBITION_MISS" ? (
+                  <p className="text-copper mt-3 text-sm font-semibold">
+                    Exhibition miss · zero for this exhibition only. Official
+                    record, Points For, all-play, eligibility, seed, and bracket
+                    are unchanged.
+                  </p>
+                ) : null}
                 <p
                   aria-label={`${matchup.self.name} ${score(matchup.self.scoreCenticredits)} credits, ${matchup.opponent.name} ${score(matchup.opponent.scoreCenticredits)} credits`}
                   className="mt-4 font-mono text-xl font-bold"

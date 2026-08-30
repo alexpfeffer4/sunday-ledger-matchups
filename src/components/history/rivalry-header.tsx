@@ -1,5 +1,5 @@
 import type { RivalryProjection } from "@/domain/history/project-season-memory";
-import { scopeLabels } from "@/domain/history/project-season-memory";
+import { matchupScopeLabel } from "@/domain/history/project-season-memory";
 import { formatCenticredits } from "@/domain/odds/american";
 import { PageFrame } from "@/components/league/page-frame";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -65,7 +65,7 @@ export function RivalryHeader({
         </p>
         {last ? (
           <p className="mt-2 font-semibold">
-            {last.nflYear} Week {last.nflWeek} · {scopeLabels[last.scope]} ·{" "}
+            {last.nflYear} Week {last.nflWeek} · {matchupScopeLabel(last)} ·{" "}
             {last.sideA.name} {score(last.sideA.scoreCenticredits)}–
             {score(last.sideB.scoreCenticredits)} {last.sideB.name}
           </p>
@@ -73,9 +73,9 @@ export function RivalryHeader({
           <p className="text-graphite mt-2">No finalized meetings yet.</p>
         )}
         <p className="text-graphite mt-2 text-xs">
-          {rivalry.placementMeetings} placement · {rivalry.exhibitionMeetings}{" "}
-          exhibition. These remain visible below but do not enter competitive
-          H2H.
+          {rivalry.thirdPlaceMeetings} third place · {rivalry.placementMeetings}{" "}
+          placement · {rivalry.exhibitionMeetings} exhibition. These remain
+          visible below but do not enter competitive H2H.
         </p>
       </section>
 
@@ -100,7 +100,7 @@ export function RivalryHeader({
                 <div>
                   <p className="text-muted text-xs font-bold tracking-[0.07em] uppercase">
                     {matchup.nflYear} · Week {matchup.nflWeek} ·{" "}
-                    {scopeLabels[matchup.scope]}
+                    {matchupScopeLabel(matchup)}
                   </p>
                   <p className="mt-1 font-semibold">
                     {matchup.sideA.name} vs. {matchup.sideB.name}
@@ -111,6 +111,10 @@ export function RivalryHeader({
                     {score(matchup.sideA.scoreCenticredits)}–
                     {score(matchup.sideB.scoreCenticredits)}
                   </p>
+                  {matchup.sideA.participation === "EXHIBITION_MISS" ||
+                  matchup.sideB.participation === "EXHIBITION_MISS" ? (
+                    <StatusBadge tone="pending">Exhibition miss</StatusBadge>
+                  ) : null}
                   {matchup.corrected ? (
                     <StatusBadge tone="corrected">Corrected</StatusBadge>
                   ) : null}

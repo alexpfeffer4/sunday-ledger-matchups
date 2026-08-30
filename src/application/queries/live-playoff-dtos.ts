@@ -21,30 +21,43 @@ const playoffStandingSchema = z.object({
 const qualifiedEntrySchema = playoffStandingSchema.extend({
   qualificationSeed: z.number().int().positive(),
   regularSeasonSeed: z.number().int().positive(),
+  eligibilityStatus: z.enum(["ELIGIBLE", "INELIGIBLE"]).optional(),
+  selectionReason: z
+    .enum(["ELIGIBLE_STANDINGS", "MINIMUM_FOUR_CHAMPIONSHIP_FIELD"])
+    .optional(),
+  attendanceMissesUsedByQualification: z
+    .number()
+    .int()
+    .nonnegative()
+    .optional(),
 });
 
-const bracketEntrySchema = z.object({
-  entryId: z.uuid(),
-  displayName: z.string(),
-  regularSeasonSeed: z.number().int().positive(),
-  qualificationSeed: z.number().int().positive().optional(),
+const legacyBracketSchema = z.object({
+  format: z.enum(["SMALL_FOUR", "LARGE_SIX"]),
+  tieRule: z.string(),
+  stages: z.array(z.unknown()),
 });
 
-const bracketGameSchema = z.object({
-  game: z.number().int().positive(),
-  label: z.string(),
-  scope: z.enum(["PLAYOFF", "EXHIBITION"]).optional(),
-  sideA: bracketEntrySchema.nullable(),
-  sideB: bracketEntrySchema.nullable(),
-});
-
-const bracketStageSchema = z.object({
-  week: z.union([z.literal(15), z.literal(16), z.literal(17)]),
-  label: z.string(),
-  scope: z.enum(["PLAYOFF", "EXHIBITION"]),
-  byes: z.array(bracketEntrySchema.nullable()).optional(),
-  reseedRule: z.literal("NO_1_FACES_LOWEST_REMAINING_SEED").optional(),
-  games: z.array(bracketGameSchema),
+const phase8BracketSchema = z.object({
+  format: z.enum(["FOUR_SLOT", "SIX_SLOT"]),
+  minimumFieldSize: z.literal(4),
+  maximumFieldSize: z.union([z.literal(4), z.literal(6)]),
+  slots: z.array(
+    z.object({
+      slot: z.number().int().positive(),
+      state: z.enum(["OCCUPIED", "VACANT"]),
+      entry: qualifiedEntrySchema.nullable(),
+    }),
+  ),
+  automaticWeek15Advancements: z.array(
+    z.object({
+      entry: qualifiedEntrySchema,
+      fromWeek: z.literal(15),
+      toWeek: z.literal(16),
+      reason: z.enum(["TOP_TWO_SEED_BYE", "VACANT_OPPONENT"]),
+    }),
+  ),
+  championshipAdvancementRule: z.string(),
 });
 
 const publishedRoundEntrySchema = z.object({
@@ -55,6 +68,8 @@ const publishedRoundEntrySchema = z.object({
 
 const publishedRoundSchema = z.object({
   id: z.uuid(),
+  version: z.number().int().positive(),
+  supersedesId: z.uuid().nullable(),
   week: z.union([z.literal(15), z.literal(16), z.literal(17)]),
   scope: z.enum(["PLAYOFF", "EXHIBITION"]),
   state: z.enum(["PLANNED", "OPEN", "LOCKED", "PROVISIONAL", "FINAL"]),
@@ -66,18 +81,24 @@ const publishedRoundSchema = z.object({
     z.object({
       id: z.uuid(),
       game: z.number().int().positive(),
+      role: z
+        .enum(["CHAMPIONSHIP", "THIRD_PLACE", "PLACEMENT", "EXHIBITION"])
+        .nullable(),
       scope: z.enum(["PLAYOFF", "PLACEMENT", "EXHIBITION"]),
       label: z.string(),
+      byeExhibition: z.boolean(),
       sideA: publishedRoundEntrySchema,
       sideB: publishedRoundEntrySchema,
       result: z
         .object({
           id: z.uuid(),
           status: z.enum(["PROVISIONAL", "FINAL"]),
-          sideADecision: z.enum(["WIN", "LOSS", "TIE"]),
-          sideBDecision: z.enum(["WIN", "LOSS", "TIE"]),
+          sideADecision: z.enum(["WIN", "LOSS", "TIE"]).nullable(),
+          sideBDecision: z.enum(["WIN", "LOSS", "TIE"]).nullable(),
           sideAScoreCenticredits: z.number().int().nonnegative(),
           sideBScoreCenticredits: z.number().int().nonnegative(),
+          sideAParticipation: z.enum(["COMPLETED", "EXHIBITION_MISS"]),
+          sideBParticipation: z.enum(["COMPLETED", "EXHIBITION_MISS"]),
           advancingEntryId: z.uuid().nullable(),
         })
         .nullable(),
@@ -95,26 +116,30 @@ export const livePlayoffStateSchema = z.object({
   }),
   publication: z.object({
     id: z.uuid(),
+    version: z.number().int().positive(),
+    supersedesId: z.uuid().nullable(),
     publishedAt: z.string(),
     inputHash: z.string().length(64),
+    sourceResultVersionIds: z.array(z.uuid()),
     rosterSize: z.number().int().positive(),
     expectedQualifierCount: z.union([z.literal(4), z.literal(6)]),
     actualQualifierCount: z.number().int().nonnegative(),
     standings: z.array(playoffStandingSchema),
     qualifiers: z.array(qualifiedEntrySchema),
-    bracket: z.object({
-      format: z.enum(["SMALL_FOUR", "LARGE_SIX"]),
-      tieRule: z.literal("HIGHER_QUALIFICATION_SEED_ADVANCES"),
-      stages: z.array(bracketStageSchema).length(3),
-    }),
-    tieRule: z.literal("HIGHER_QUALIFICATION_SEED_ADVANCES"),
+    bracket: z.union([phase8BracketSchema, legacyBracketSchema]),
+    legacy: z.boolean(),
+    tieRule: z.string(),
     attendanceMissLimit: z.literal(3),
+    correctionEvidence: z.object({
+      effectiveVersion: z.number().int().positive(),
+      supersedesVersionId: z.uuid().nullable(),
+      priorVersionCount: z.number().int().nonnegative(),
+      sourceResultVersionIds: z.array(z.uuid()),
+    }),
   }),
   rounds: z.array(publishedRoundSchema),
-  viewer: z.object({
-    userId: z.uuid(),
-    isCommissioner: z.boolean(),
-  }),
+  viewer: z.object({ userId: z.uuid(), isCommissioner: z.boolean() }),
 });
 
 export type LivePlayoffState = z.infer<typeof livePlayoffStateSchema>;
+export type Phase8Bracket = z.infer<typeof phase8BracketSchema>;
