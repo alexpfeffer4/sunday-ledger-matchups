@@ -147,6 +147,7 @@ a {
   --app-canvas: var(--dark-canvas);
   --app-surface: var(--dark-surface);
   --app-subtle: var(--dark-surface-raised);
+  --app-selected: var(--dark-selected);
   --ink-primary: var(--dark-text);
   --ink-secondary: var(--dark-text-secondary);
   --ink-muted: var(--dark-text-muted);
@@ -154,6 +155,7 @@ a {
   --border-control: var(--dark-text-muted);
   --brand-primary: var(--dark-brand);
   --brand-hover: var(--dark-brand);
+  --brand-copper: var(--matchup-opponent);
   --interactive-link: var(--dark-link);
   --focus-ring: var(--dark-link);
   --state-positive: var(--dark-positive);
@@ -161,6 +163,8 @@ a {
   --state-pending: var(--dark-pending);
   --state-void: var(--dark-void);
   --state-live: var(--dark-live);
+  --state-corrected: #d9a7ce;
+  --state-sealed: var(--dark-text-secondary);
   --matchup-self: var(--dark-brand);
   --matchup-opponent: #e2a06e;
   color-scheme: dark;

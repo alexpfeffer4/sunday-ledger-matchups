@@ -1,7 +1,13 @@
 import type { ReactNode } from "react";
 
 type StatusTone =
-  "positive" | "negative" | "pending" | "void" | "live" | "sealed";
+  | "positive"
+  | "negative"
+  | "pending"
+  | "void"
+  | "live"
+  | "sealed"
+  | "corrected";
 
 const tones: Record<StatusTone, string> = {
   positive: "border-positive/25 bg-positive/10 text-positive",
@@ -10,6 +16,7 @@ const tones: Record<StatusTone, string> = {
   void: "border-void/25 bg-void/10 text-void",
   live: "border-live/25 bg-live/10 text-live",
   sealed: "border-sealed/25 bg-sealed/10 text-sealed",
+  corrected: "border-corrected/25 bg-corrected/10 text-corrected",
 };
 
 const cues: Record<StatusTone, string> = {
@@ -19,6 +26,7 @@ const cues: Record<StatusTone, string> = {
   void: "○",
   live: "●",
   sealed: "◆",
+  corrected: "↺",
 };
 
 export function StatusBadge({
