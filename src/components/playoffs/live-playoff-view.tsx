@@ -303,7 +303,7 @@ function PublishedRoundCard({ round }: { round: PublishedRound }) {
               className="border-boundary bg-subtle rounded-lg border p-3"
               key={matchup.id}
             >
-              <p className="text-muted text-xs font-semibold">
+              <p className="text-graphite text-xs font-semibold">
                 {matchup.label} · {roleLabels[role]}
               </p>
               {matchup.byeExhibition ? (
