@@ -9,7 +9,7 @@ import {
   makePhase6Matchup,
 } from "../fixtures/phase6-paired-matchup";
 
-const outputPath = resolve("test-results/phase6-matchup-markup.json");
+const outputPath = resolve("tests/e2e/generated/phase6-matchup-markup.json");
 
 function renderMatchup(matchup: PairedMatchupDto): string {
   return renderToStaticMarkup(

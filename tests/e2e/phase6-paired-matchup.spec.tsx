@@ -8,7 +8,10 @@ type FixtureName =
   "FINAL" | "LIVE" | "LIVE_UPDATE" | "PARTIAL_REVEAL" | "PROVISIONAL";
 
 const fixtureMarkup = JSON.parse(
-  readFileSync(resolve("test-results/phase6-matchup-markup.json"), "utf8"),
+  readFileSync(
+    resolve("tests/e2e/generated/phase6-matchup-markup.json"),
+    "utf8",
+  ),
 ) as Record<FixtureName, string>;
 
 async function mountMatchup(page: Page, fixture: FixtureName) {
