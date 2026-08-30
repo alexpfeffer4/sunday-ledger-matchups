@@ -5,6 +5,7 @@ import { SignOutForm } from "@/components/auth/sign-out-form";
 import { LeagueListActions } from "@/components/league/league-list-actions";
 import { LeagueSetupForms } from "@/components/league/league-setup-forms";
 import { BrandLockup } from "@/components/ui/register-mark";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 export const metadata: Metadata = { title: "Your leagues" };
 
@@ -50,6 +51,9 @@ function LeagueList({
                   Practice
                 </span>
               ) : null}
+              {archived ? (
+                <StatusBadge tone="void">Archived</StatusBadge>
+              ) : null}
             </div>
             <p className="text-muted mt-1 text-xs font-semibold">
               {leagueStatus(league)} · {league.member_count} member
@@ -66,6 +70,7 @@ function LeagueList({
             </Link>
             <LeagueListActions
               archived={archived}
+              leagueName={league.name}
               lifecycle={league.lifecycle}
               role={league.role}
               slug={league.slug}
@@ -204,7 +209,7 @@ export default async function LeaguesPage() {
 
         {archivedLeagues.length > 0 ? (
           <details className="border-boundary mt-8 border-t pt-6">
-            <summary className="cursor-pointer text-sm font-semibold">
+            <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm font-semibold">
               Archived leagues ({archivedLeagues.length})
             </summary>
             <div className="mt-4">

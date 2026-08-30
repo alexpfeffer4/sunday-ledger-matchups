@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { BrandLockup } from "@/components/ui/register-mark";
+import { Button, buttonClassName } from "@/components/ui/button";
 
 export function BrandedRouteState({
   actionLabel,
+  backLabel = "Return home",
   backHref = "/",
   description,
   eyebrow,
@@ -12,6 +14,7 @@ export function BrandedRouteState({
   title,
 }: {
   actionLabel?: string;
+  backLabel?: string;
   backHref?: string;
   description: string;
   eyebrow: string;
@@ -26,6 +29,7 @@ export function BrandedRouteState({
         </Link>
         <section
           aria-busy={eyebrow === "Loading"}
+          aria-live={eyebrow === "Loading" ? "polite" : undefined}
           className="border-boundary bg-surface mt-16 rounded-xl border p-6 shadow-[var(--shadow-card)] sm:p-8"
         >
           <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">
@@ -36,19 +40,18 @@ export function BrandedRouteState({
           </h1>
           <p className="text-graphite mt-3 leading-7">{description}</p>
           {onAction && actionLabel ? (
-            <button
-              className="bg-registry hover:bg-registry-hover mt-6 min-h-12 w-full rounded-lg px-5 text-sm font-semibold text-white"
-              onClick={onAction}
-              type="button"
-            >
+            <Button className="mt-6 w-full" onClick={onAction} type="button">
               {actionLabel}
-            </button>
+            </Button>
           ) : null}
           <Link
-            className="text-action mt-5 inline-flex min-h-11 items-center font-semibold hover:underline"
+            className={buttonClassName({
+              className: "mt-4 w-full",
+              intent: "quiet",
+            })}
             href={backHref}
           >
-            Return home
+            {backLabel}
           </Link>
         </section>
       </div>

@@ -97,8 +97,7 @@ describe("league navigation", () => {
     expect(profileTrigger).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(profileTrigger);
     expect(profileTrigger).toHaveAttribute("aria-expanded", "true");
-    const profileMenu = screen.getByRole("dialog", { name: "Profile menu" });
-    expect(profileMenu.parentElement).toBe(document.body);
+    const profileMenu = screen.getByRole("dialog", { name: "Alex Pfeffer" });
     const utilities = within(
       screen.getByRole("navigation", { name: "League and account" }),
     );
@@ -133,15 +132,21 @@ describe("league navigation", () => {
     });
     expect(accountTrigger).toHaveTextContent("AP");
     fireEvent.click(accountTrigger);
-    const account = screen.getByRole("navigation", { name: "Account options" });
-    expect(account.getAttribute("class")).toContain("mt-2");
+    const menu = screen.getByRole("menu", { name: "Account menu" });
     expect(
-      within(account).getByRole("link", { name: "Your leagues" }),
+      within(menu).getByRole("menuitem", { name: "Your leagues" }),
     ).toHaveAttribute("href", "/leagues");
-    const menu = account.closest('[role="dialog"]');
-    expect(menu).not.toBeNull();
     expect(
-      within(menu as HTMLElement).getByRole("button", { name: "Sign out" }),
+      within(menu).getByRole("menuitem", {
+        name: "Your leagues",
+      }),
+    ).toHaveFocus();
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(
+      within(menu).getByRole("menuitem", { name: "Account" }),
+    ).toHaveFocus();
+    expect(
+      within(menu).getByRole("menuitem", { name: "Sign out" }),
     ).toBeInTheDocument();
   });
 

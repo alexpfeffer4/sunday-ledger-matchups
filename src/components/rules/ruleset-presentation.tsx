@@ -1,5 +1,6 @@
 import type { SeasonRulesetSnapshotDto } from "@/application/queries/season-ruleset-dtos";
 import type { PersistedSeasonRuleset, SeasonRuleset } from "@/rulesets/schema";
+import { AuditDetails } from "@/components/ui/audit-details";
 
 export type RulesetPresentation = {
   context: "SEASON" | "EXAMPLE";
@@ -83,9 +84,8 @@ export function RulesetAuditDetails({
         : "Published · freezes at roster lock";
 
   return (
-    <details className="border-boundary border-y py-4">
-      <summary className="cursor-pointer font-bold">Audit details</summary>
-      <dl className="mt-4 space-y-4 text-sm">
+    <AuditDetails context="This evidence identifies the published rules behind the human-readable league rules above.">
+      <dl className="space-y-4 text-sm">
         <div>
           <dt className="text-muted">Ruleset</dt>
           <dd className="mt-1 font-semibold break-words">
@@ -121,7 +121,7 @@ export function RulesetAuditDetails({
           </dd>
         </div>
       </dl>
-    </details>
+    </AuditDetails>
   );
 }
 

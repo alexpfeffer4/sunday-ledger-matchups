@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef, useState } from "react";
 import {
   deleteLeagueAction,
   removeLeagueMemberAction,
@@ -10,15 +10,16 @@ import {
 } from "@/app/leagues/actions";
 import { initialAppActionState } from "@/application/actions/action-state";
 import { ActionFeedback } from "@/components/forms/action-feedback";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
 
 type LeagueMember = {
   displayName: string;
   role: "MEMBER" | "COMMISSIONER";
   userId: string;
 };
-
-const secondaryButton =
-  "border-control hover:border-registry hover:text-registry min-h-10 rounded-lg border px-3 text-sm font-semibold disabled:opacity-50";
 
 export function LeagueSettings({
   archived,
@@ -55,7 +56,17 @@ export function LeagueSettings({
     transferLeagueCommissionerAction,
     initialAppActionState,
   );
+  const [removeTarget, setRemoveTarget] = useState<LeagueMember | null>(null);
+  const [transferTarget, setTransferTarget] = useState<LeagueMember | null>(
+    null,
+  );
+  const confirmationTriggerRef = useRef<HTMLElement | null>(null);
   const regularMembers = members.filter((member) => member.role === "MEMBER");
+  const activeRemoveTarget =
+    removeTarget &&
+    regularMembers.some((member) => member.userId === removeTarget.userId)
+      ? removeTarget
+      : null;
 
   return (
     <section className="mt-8" aria-labelledby="league-settings-title">
@@ -72,37 +83,40 @@ export function LeagueSettings({
           <p className="text-graphite mt-2 text-sm leading-6">
             Renaming the league does not change its permanent URL.
           </p>
-          <label
-            className="mt-4 block text-sm font-semibold"
-            htmlFor="commissioner-league-name"
-          >
-            Name
-          </label>
-          <input
-            className="border-control focus:border-registry mt-2 min-h-11 w-full rounded-lg border px-3 outline-none"
+          <Field
             defaultValue={leagueName}
+            label="Name"
             id="commissioner-league-name"
             maxLength={80}
             name="name"
             required
           />
-          <button
-            className={`${secondaryButton} mt-4 w-full`}
+          <Button
+            className="mt-4 w-full"
             disabled={renaming}
+            intent="secondary"
             type="submit"
           >
             {renaming ? "Saving…" : "Save name"}
-          </button>
+          </Button>
           <ActionFeedback state={renameState} />
         </form>
 
         <section className="border-boundary bg-surface rounded-xl border p-5">
           <h3 className="font-bold">League visibility</h3>
-          <p className="text-graphite mt-2 text-sm leading-6">
-            {archived
-              ? "Restore this league to everyone’s active league list."
-              : "Archive this league to move it out of everyone’s active league list without deleting its history."}
-          </p>
+          <Alert
+            className="mt-3"
+            title={
+              archived ? `${leagueName} is archived` : "Archive, don’t delete"
+            }
+            tone={archived ? "warning" : "info"}
+          >
+            <p>
+              {archived
+                ? "The league remains readable and its history is preserved. Restore it at any time to return it to every member’s active list. After restoring, you return to Your leagues."
+                : `Archiving ${leagueName} moves it out of every member’s active list. It stays readable, preserves its history, and can be restored at any time. After archiving, you return to Your leagues, where Restore remains available under Archived leagues.`}
+            </p>
+          </Alert>
           <form action={archiveAction} className="mt-4">
             <input name="leagueSlug" type="hidden" value={leagueSlug} />
             <input
@@ -110,9 +124,10 @@ export function LeagueSettings({
               type="hidden"
               value={archived ? "false" : "true"}
             />
-            <button
-              className={`${secondaryButton} w-full`}
+            <Button
+              className="w-full"
               disabled={archiving}
+              intent="secondary"
               type="submit"
             >
               {archiving
@@ -120,7 +135,7 @@ export function LeagueSettings({
                 : archived
                   ? "Restore league"
                   : "Archive league"}
-            </button>
+            </Button>
             <ActionFeedback state={archiveState} />
           </form>
         </section>
@@ -144,45 +159,31 @@ export function LeagueSettings({
                   </div>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     {lifecycle === "DRAFT" ? (
-                      <form action={removeAction}>
-                        <input
-                          name="leagueSlug"
-                          type="hidden"
-                          value={leagueSlug}
-                        />
-                        <input
-                          name="userId"
-                          type="hidden"
-                          value={member.userId}
-                        />
-                        <button
-                          className={secondaryButton}
-                          disabled={removing}
-                          type="submit"
-                        >
-                          Remove
-                        </button>
-                      </form>
-                    ) : null}
-                    <form action={transferAction}>
-                      <input
-                        name="leagueSlug"
-                        type="hidden"
-                        value={leagueSlug}
-                      />
-                      <input
-                        name="userId"
-                        type="hidden"
-                        value={member.userId}
-                      />
-                      <button
-                        className={secondaryButton}
-                        disabled={transferring}
-                        type="submit"
+                      <Button
+                        aria-label={`Remove ${member.displayName}`}
+                        disabled={removing}
+                        intent="secondary"
+                        onClick={(event) => {
+                          confirmationTriggerRef.current = event.currentTarget;
+                          setRemoveTarget(member);
+                        }}
+                        type="button"
                       >
-                        Make commissioner
-                      </button>
-                    </form>
+                        Remove
+                      </Button>
+                    ) : null}
+                    <Button
+                      aria-label={`Make ${member.displayName} commissioner`}
+                      disabled={transferring}
+                      intent="secondary"
+                      onClick={(event) => {
+                        confirmationTriggerRef.current = event.currentTarget;
+                        setTransferTarget(member);
+                      }}
+                      type="button"
+                    >
+                      Make commissioner
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -192,8 +193,12 @@ export function LeagueSettings({
               Invite another member before transferring ownership.
             </p>
           )}
-          <ActionFeedback state={removeState} />
-          <ActionFeedback state={transferState} />
+          {removeState.status === "success" ? (
+            <ActionFeedback state={removeState} />
+          ) : null}
+          {transferState.status === "success" ? (
+            <ActionFeedback state={transferState} />
+          ) : null}
         </section>
 
         <section className="border-negative/25 bg-negative/10 rounded-xl border p-5 xl:col-span-2">
@@ -202,29 +207,26 @@ export function LeagueSettings({
             <form action={deleteAction} className="mt-3 max-w-xl">
               <p className="text-graphite text-sm leading-6">
                 This permanently deletes the untouched one-member Draft league.
+                It cannot be undone. After deletion, you return to Your leagues.
                 Type <strong>{leagueName}</strong> to confirm.
               </p>
-              <label
-                className="mt-4 block text-sm font-semibold"
-                htmlFor="delete-league-confirmation"
-              >
-                League name
-              </label>
               <input name="leagueSlug" type="hidden" value={leagueSlug} />
-              <input
+              <Field
                 autoComplete="off"
-                className="border-negative/40 bg-surface focus:border-negative mt-2 min-h-11 w-full rounded-lg border px-3 outline-none"
                 id="delete-league-confirmation"
+                label="League name"
                 name="confirmationName"
                 required
+                tone="destructive"
               />
-              <button
-                className="bg-negative mt-4 min-h-11 w-full rounded-lg px-4 text-sm font-semibold text-white disabled:opacity-50"
+              <Button
+                className="mt-4 w-full"
                 disabled={deleting}
+                intent="destructive"
                 type="submit"
               >
                 {deleting ? "Deleting…" : "Delete league permanently"}
-              </button>
+              </Button>
               <ActionFeedback state={deleteState} />
             </form>
           ) : (
@@ -236,6 +238,81 @@ export function LeagueSettings({
           )}
         </section>
       </div>
+      <ConfirmDialog
+        action={removeAction}
+        confirmLabel={
+          activeRemoveTarget
+            ? `Remove ${activeRemoveTarget.displayName}`
+            : "Remove member"
+        }
+        consequence={
+          activeRemoveTarget
+            ? `${activeRemoveTarget.displayName} will immediately lose access to ${leagueName} and their Draft roster spot will be deleted.`
+            : "This member will lose league access and their Draft roster spot."
+        }
+        description="Check the named member and the exact impact before continuing."
+        destination={`You will stay on the Commissioner page. The removed member will lose access on their next request.`}
+        errorMessage={
+          removeState.status === "error" ? removeState.message : undefined
+        }
+        hiddenFields={{
+          leagueSlug,
+          userId: activeRemoveTarget?.userId ?? "",
+        }}
+        onClose={() => setRemoveTarget(null)}
+        open={activeRemoveTarget !== null}
+        pending={removing}
+        returnFocusRef={confirmationTriggerRef}
+        reversibility={`There is no undo button. Before roster lock, ${activeRemoveTarget?.displayName ?? "the member"} can return only with a valid invitation, which consumes an invite use and creates a new Draft entry.`}
+        target={
+          activeRemoveTarget
+            ? `${activeRemoveTarget.displayName} in ${leagueName}`
+            : leagueName
+        }
+        title={
+          activeRemoveTarget
+            ? `Remove ${activeRemoveTarget.displayName} from ${leagueName}?`
+            : "Remove member?"
+        }
+      />
+      <ConfirmDialog
+        action={transferAction}
+        confirmLabel={
+          transferTarget
+            ? `Make ${transferTarget.displayName} commissioner`
+            : "Transfer commissioner role"
+        }
+        consequence={
+          transferTarget
+            ? `${transferTarget.displayName} will gain commissioner controls. You will remain a member of ${leagueName}, but you will immediately lose commissioner controls.`
+            : "The selected member will gain commissioner controls and you will lose them."
+        }
+        description="Commissioner transfer changes who controls the league. Review the named member before continuing."
+        destination={`After the transfer, you will go to ${leagueName}’s matchup page as a regular member.`}
+        errorMessage={
+          transferState.status === "error" ? transferState.message : undefined
+        }
+        hiddenFields={{
+          leagueSlug,
+          userId: transferTarget?.userId ?? "",
+        }}
+        intent="primary"
+        onClose={() => setTransferTarget(null)}
+        open={transferTarget !== null}
+        pending={transferring}
+        returnFocusRef={confirmationTriggerRef}
+        reversibility={`Only ${transferTarget?.displayName ?? "the new commissioner"} can transfer the commissioner role back to you later.`}
+        target={
+          transferTarget
+            ? `${transferTarget.displayName} in ${leagueName}`
+            : leagueName
+        }
+        title={
+          transferTarget
+            ? `Make ${transferTarget.displayName} commissioner of ${leagueName}?`
+            : "Transfer commissioner role?"
+        }
+      />
     </section>
   );
 }
