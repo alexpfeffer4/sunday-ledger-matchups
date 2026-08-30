@@ -260,6 +260,10 @@ export type Database = {
         Args: { p_league_slug: string };
         Returns: Json;
       };
+      get_weekly_close_state: {
+        Args: { p_league_slug: string };
+        Returns: Json;
+      };
       get_simulation_season_archive: {
         Args: { p_league_slug: string };
         Returns: Json | null;

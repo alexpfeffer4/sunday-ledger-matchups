@@ -34,9 +34,11 @@ const sections: Array<{
 export function PairedMatchupView({
   matchup,
   refreshControl,
+  weeklyClose,
 }: {
   matchup: PairedMatchupDto;
   refreshControl: ReactNode;
+  weeklyClose?: ReactNode;
 }) {
   return (
     <PageFrame
@@ -52,6 +54,7 @@ export function PairedMatchupView({
             refreshControl={refreshControl}
           />
           <ScorePath matchup={matchup} />
+          {weeklyClose}
 
           <section
             aria-labelledby="position-ledger-heading"

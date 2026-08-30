@@ -1,0 +1,57 @@
+name: Phase 7 browser acceptance
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/phase7-browser-acceptance.yml"
+      - "playwright.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "src/application/queries/get-weekly-close-state.ts"
+      - "src/application/queries/weekly-close-dtos.ts"
+      - "src/components/history/**"
+      - "src/domain/history/**"
+      - "src/app/l/**/history/**"
+      - "src/app/l/**/matchup/**"
+      - "src/app/l/**/rivalry/**"
+      - "src/app/globals.css"
+      - "src/design/tokens.css"
+      - "tests/e2e/phase7-*.tsx"
+      - "tests/fixtures/phase7-season-memory.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase7-browser-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  phase7-browser:
+    name: Weekly close and memory accessibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Render Phase 7 browser fixtures
+        run: npx vitest run tests/e2e/phase7-markup.test.tsx
+
+      - name: Run Phase 7 browser acceptance
+        run: npx playwright test tests/e2e/phase7-weekly-close.spec.tsx --reporter=github
