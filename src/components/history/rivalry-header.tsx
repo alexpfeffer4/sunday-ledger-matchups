@@ -60,7 +60,7 @@ export function RivalryHeader({
       </dl>
 
       <section className="border-boundary bg-subtle mt-5 rounded-xl border p-5">
-        <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
+        <p className="text-graphite text-xs font-bold tracking-[0.08em] uppercase">
           Last meeting
         </p>
         {last ? (
@@ -72,7 +72,7 @@ export function RivalryHeader({
         ) : (
           <p className="text-graphite mt-2">No finalized meetings yet.</p>
         )}
-        <p className="text-muted mt-2 text-xs">
+        <p className="text-graphite mt-2 text-xs">
           {rivalry.placementMeetings} placement · {rivalry.exhibitionMeetings}{" "}
           exhibition. These remain visible below but do not enter competitive
           H2H.
