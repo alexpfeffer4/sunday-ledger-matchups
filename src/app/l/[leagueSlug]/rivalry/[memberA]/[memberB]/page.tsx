@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
+import { getWeeklyCloseState } from "@/application/queries/get-weekly-close-state";
+import { RivalryHeader } from "@/components/history/rivalry-header";
 import { Stage1DeferredView } from "@/components/stage1/live-views";
+import {
+  projectRivalry,
+  projectSeasonMemory,
+} from "@/domain/history/project-season-memory";
 
 export const metadata: Metadata = { title: "Rivalry record" };
 
@@ -14,9 +20,18 @@ export default async function RivalryPage({
     memberB: string;
   }>;
 }) {
-  const { leagueSlug } = await params;
-  const live = await getLiveStage1League(leagueSlug);
+  const { leagueSlug, memberA, memberB } = await params;
+  const [live, weeklyCloseState] = await Promise.all([
+    getLiveStage1League(leagueSlug),
+    getWeeklyCloseState(leagueSlug),
+  ]);
   if (!live) notFound();
+  if (weeklyCloseState) {
+    const memory = projectSeasonMemory(weeklyCloseState);
+    const rivalry = projectRivalry(memory, memberA, memberB);
+    if (!rivalry) notFound();
+    return <RivalryHeader leagueName={live.league.name} rivalry={rivalry} />;
+  }
   return (
     <Stage1DeferredView
       state={live}
