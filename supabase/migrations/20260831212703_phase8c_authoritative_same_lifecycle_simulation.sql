@@ -263,7 +263,12 @@ begin
   v_definition := replace(v_definition,
     'and odds_import.league_id = p_league_id;',
     E'and odds_import.league_id = p_league_id;\n\n  if v_import.source <> case v_season.mode when ''LIVE'' then ''THE_ODDS_API'' else ''SIMULATION_FIXTURE'' end then\n    raise exception using errcode = ''22023'', message = ''Provider source does not match the frozen season mode.'';\n  end if;');
-  execute v_definition;
+  begin
+    execute v_definition;
+  exception when others then
+    raise exception 'publish_live_week_slate rewrite failed: %', sqlerrm
+      using detail = v_definition;
+  end;
 
   v_definition := pg_get_functiondef('api.publish_next_live_week_slate(uuid,uuid,text[],text)'::regprocedure);
   if position('v_published_at timestamptz := clock_timestamp();' in v_definition) = 0
@@ -279,7 +284,12 @@ begin
   v_definition := replace(v_definition,
     'and odds_import.league_id = p_league_id;',
     E'and odds_import.league_id = p_league_id;\n\n  if v_import.source <> case v_season.mode when ''LIVE'' then ''THE_ODDS_API'' else ''SIMULATION_FIXTURE'' end then\n    raise exception using errcode = ''22023'', message = ''Provider source does not match the frozen season mode.'';\n  end if;');
-  execute v_definition;
+  begin
+    execute v_definition;
+  exception when others then
+    raise exception 'publish_next_live_week_slate rewrite failed: %', sqlerrm
+      using detail = v_definition;
+  end;
 
   v_definition := pg_get_functiondef('api.lock_live_roster_and_open_week(uuid,text)'::regprocedure);
   if position('v_season.mode <> ''LIVE''' in v_definition) = 0
@@ -294,7 +304,12 @@ begin
     'v_snapshot.mode <> v_season.mode');
   v_definition := replace(v_definition, 'forming Live season', 'forming authoritative season');
   v_definition := replace(v_definition, 'The Live ruleset', 'The authoritative ruleset');
-  execute v_definition;
+  begin
+    execute v_definition;
+  exception when others then
+    raise exception 'lock_live_roster_and_open_week rewrite failed: %', sqlerrm
+      using detail = v_definition;
+  end;
 
   v_definition := pg_get_functiondef('private.set_initial_live_quote_head()'::regprocedure);
   if position('season.mode = ''LIVE''' in v_definition) = 0 then
@@ -305,7 +320,12 @@ begin
     'season.mode = ''LIVE''',
     'season.mode in (''LIVE'', ''SIMULATION'')'
   );
-  execute v_definition;
+  begin
+    execute v_definition;
+  exception when others then
+    raise exception 'set_initial_live_quote_head rewrite failed: %', sqlerrm
+      using detail = v_definition;
+  end;
 
   v_definition := pg_get_functiondef('api.publish_playoff_qualification(uuid,text)'::regprocedure);
   if position('season.mode = ''LIVE''' in v_definition) = 0 then
@@ -314,7 +334,12 @@ begin
   v_definition := replace(v_definition,
     'season.mode = ''LIVE''',
     'season.mode in (''LIVE'', ''SIMULATION'')');
-  execute v_definition;
+  begin
+    execute v_definition;
+  exception when others then
+    raise exception 'publish_playoff_qualification rewrite failed: %', sqlerrm
+      using detail = v_definition;
+  end;
 
   v_definition := pg_get_functiondef('api.publish_postseason_week(uuid,uuid,text[],text)'::regprocedure);
   if position('v_published_at timestamptz := clock_timestamp();' in v_definition) = 0
@@ -333,7 +358,12 @@ begin
   v_definition := replace(v_definition,
     'where odds_import.id = p_import_id and odds_import.season_id = v_season.id and odds_import.league_id = p_league_id;',
     E'where odds_import.id = p_import_id and odds_import.season_id = v_season.id and odds_import.league_id = p_league_id;\n  if v_import.source <> case v_season.mode when ''LIVE'' then ''THE_ODDS_API'' else ''SIMULATION_FIXTURE'' end then\n    raise exception using errcode = ''22023'', message = ''Provider source does not match the frozen season mode.'';\n  end if;');
-  execute v_definition;
+  begin
+    execute v_definition;
+  exception when others then
+    raise exception 'publish_postseason_week rewrite failed: %', sqlerrm
+      using detail = v_definition;
+  end;
 
   v_definition := pg_get_functiondef('api.advance_stage1_clock(uuid,timestamp with time zone,text)'::regprocedure);
   if position('season.lifecycle = ''REGULAR''' in v_definition) = 0 then
@@ -342,7 +372,12 @@ begin
   v_definition := replace(v_definition,
     'season.lifecycle = ''REGULAR''',
     'season.lifecycle <> ''FINAL''');
-  execute v_definition;
+  begin
+    execute v_definition;
+  exception when others then
+    raise exception 'advance_stage1_clock rewrite failed: %', sqlerrm
+      using detail = v_definition;
+  end;
 end;
 $shared_authority$;
 
