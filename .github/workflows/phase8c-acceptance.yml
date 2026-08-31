@@ -57,7 +57,7 @@ jobs:
       - name: Run complete pgTAP and Phase 8C isolation suite
         run: supabase test db
 
-      - name: Verify checked-in Supabase function types
+      - name: Verify checked-in Phase 8C Supabase function types
         run: |
           supabase gen types typescript --local --schema api,public > /tmp/sunday-ledger-database.types.ts
           npm run types:supabase:check -- /tmp/sunday-ledger-database.types.ts

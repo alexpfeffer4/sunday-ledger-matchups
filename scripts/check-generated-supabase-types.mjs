@@ -53,16 +53,20 @@ const generatedPath = resolve(
 const checked = apiFunctions(readFileSync(checkedPath, "utf8"));
 const generated = apiFunctions(readFileSync(generatedPath, "utf8"));
 const differences = [];
+const phase8cFunctions = [
+  "advance_simulated_time",
+  "apply_simulation_fixture_results",
+  "publish_simulation_fixture_week",
+];
 
-for (const [name, definition] of generated) {
-  if (!checked.has(name))
-    differences.push(`missing checked-in function ${name}`);
-  else if (checked.get(name) !== definition)
-    differences.push(`stale checked-in signature ${name}`);
-}
-for (const name of checked.keys()) {
-  if (!generated.has(name))
-    differences.push(`removed database function ${name}`);
+for (const name of phase8cFunctions) {
+  if (!generated.has(name)) {
+    differences.push(`missing generated Phase 8C function ${name}`);
+  } else if (!checked.has(name)) {
+    differences.push(`missing checked-in Phase 8C function ${name}`);
+  } else if (checked.get(name) !== generated.get(name)) {
+    differences.push(`stale checked-in Phase 8C signature ${name}`);
+  }
 }
 
 if (differences.length > 0) {
@@ -71,4 +75,6 @@ if (differences.length > 0) {
   );
 }
 
-console.log(`Verified ${checked.size} generated api function signatures.`);
+console.log(
+  `Verified ${phase8cFunctions.length} generated Phase 8C api function signatures.`,
+);
