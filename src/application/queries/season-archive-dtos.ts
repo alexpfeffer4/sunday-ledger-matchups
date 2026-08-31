@@ -74,6 +74,7 @@ const archiveEnvelopeSchema = {
 export const simulationSeasonArchiveSchema = z.object({
   schemaVersion: z.literal(1),
   mode: z.enum(["LIVE", "SIMULATION"]),
+  illustrative: z.literal(true).optional(),
   seasonLabel: z.string(),
   nflYear: z.number().int(),
   generatedAt: z.string(),
@@ -165,7 +166,8 @@ const finalMatchupSchema = matchupSchema.extend({
 
 export const finalSeasonArchiveSchema = simulationSeasonArchiveSchema.extend({
   schemaVersion: z.literal(2),
-  mode: z.literal("LIVE"),
+  mode: z.enum(["LIVE", "SIMULATION"]),
+  illustrative: z.never().optional(),
   qualification: z.object({
     expectedQualifierCount: z.number().int().positive(),
     actualQualifierCount: z.number().int().positive(),

@@ -9,7 +9,7 @@ import {
   type Stage1StateDto,
 } from "@/application/queries/stage1-dtos";
 
-export const getLiveStage1League = cache(
+export const getAuthoritativeLeagueState = cache(
   async (leagueSlug: string): Promise<Stage1StateDto | null> => {
     if (!isSupabaseConfigured()) return null;
 
@@ -29,8 +29,7 @@ export const getLiveStage1League = cache(
     }
 
     const state = stage1StateSchema.parse(result.data);
-    if (state.league.mode !== "LIVE") return null;
-    if (!state.week) return state;
+    if (!state.week || state.league.mode === "SIMULATION") return state;
 
     const currentQuotes = await supabase
       .schema("api")
@@ -55,3 +54,6 @@ export const getLiveStage1League = cache(
     };
   },
 );
+
+/** @deprecated Use the mode-neutral authoritative query. */
+export const getLiveStage1League = getAuthoritativeLeagueState;

@@ -4,11 +4,7 @@ import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
-import {
-  stage1CorrectionResult,
-  stage1InitialResults,
-  stage1WeekOneFixture,
-} from "@/adapters/simulation/stage1-week-one";
+import { canonicalSimulationFixturePackId } from "@/adapters/simulation";
 import {
   fetchNflOdds,
   fetchNflScores,
@@ -18,7 +14,7 @@ import { OddsProviderPayloadError } from "@/adapters/providers/the-odds-api/norm
 import type { Json } from "@/adapters/supabase/database.types";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import type { AppActionState } from "@/application/actions/action-state";
-import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
+import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
 import { validateDraftCard } from "@/domain/cards/validate-card-draft";
 import { maximumStakeForOdds } from "@/domain/cards/validate-position";
 import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
@@ -416,7 +412,7 @@ export async function importLiveOddsAction(
   const context = parseContext(formData);
   if (!context.success) return mutationError("invalid context");
 
-  const state = await getLiveStage1League(context.data.leagueSlug);
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
     state.league.id !== context.data.leagueId ||
@@ -496,7 +492,7 @@ export async function publishLiveWeekSlateAction(
     return mutationError("Select between one and 32 imported events.");
   }
 
-  const state = await getLiveStage1League(context.data.leagueSlug);
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
     state.league.id !== context.data.leagueId ||
@@ -546,7 +542,7 @@ export async function publishNextLiveWeekSlateAction(
     return mutationError("Select between one and 32 imported events.");
   }
 
-  const state = await getLiveStage1League(context.data.leagueSlug);
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
     state.league.id !== context.data.leagueId ||
@@ -595,12 +591,11 @@ export async function publishLivePlayoffQualificationAction(
   const context = parseContext(formData);
   if (!context.success) return mutationError("invalid context");
 
-  const state = await getLiveStage1League(context.data.leagueSlug);
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
     state.league.id !== context.data.leagueId ||
     !state.commissioner.isCommissioner ||
-    state.league.mode !== "LIVE" ||
     !["REGULAR", "PLAYOFFS"].includes(state.league.lifecycle)
   ) {
     return mutationError(
@@ -653,12 +648,11 @@ export async function publishNextLivePostseasonWeekAction(
     return mutationError("Select between one and 32 imported events.");
   }
 
-  const state = await getLiveStage1League(context.data.leagueSlug);
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
     state.league.id !== context.data.leagueId ||
     !state.commissioner.isCommissioner ||
-    state.league.mode !== "LIVE" ||
     state.league.lifecycle !== "PLAYOFFS" ||
     !state.week ||
     state.week.nflWeek < 14 ||
@@ -709,12 +703,11 @@ export async function finalizeChampionBracketAction(
   const context = parseContext(formData);
   if (!context.success) return mutationError("invalid context");
 
-  const state = await getLiveStage1League(context.data.leagueSlug);
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
     state.league.id !== context.data.leagueId ||
     !state.commissioner.isCommissioner ||
-    state.league.mode !== "LIVE" ||
     state.league.lifecycle !== "PLAYOFFS" ||
     state.week?.nflWeek !== 17 ||
     state.week.state !== "FINAL"
@@ -754,7 +747,7 @@ export async function publishWeek18ExhibitionAction(
     return mutationError("Select between one and 32 imported events.");
   }
 
-  const state = await getLiveStage1League(context.data.leagueSlug);
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
     state.league.id !== context.data.leagueId ||
@@ -788,12 +781,11 @@ export async function publishLiveSeasonArchiveAction(
   const context = parseContext(formData);
   if (!context.success) return mutationError("invalid context");
 
-  const state = await getLiveStage1League(context.data.leagueSlug);
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
     state.league.id !== context.data.leagueId ||
     !state.commissioner.isCommissioner ||
-    state.league.mode !== "LIVE" ||
     state.league.lifecycle !== "WEEK_18_EXHIBITION" ||
     state.week?.state !== "FINAL" ||
     state.week.nflWeek !== 18
@@ -888,7 +880,7 @@ export async function refreshLiveWeekQuotesAction(
   const context = parseContext(formData);
   if (!context.success) return mutationError("invalid context");
 
-  const state = await getLiveStage1League(context.data.leagueSlug);
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
     state.league.id !== context.data.leagueId ||
@@ -948,17 +940,16 @@ export async function lockLiveRosterAndOpenWeekAction(
   const context = parseContext(formData);
   if (!context.success) return mutationError("invalid context");
 
-  const state = await getLiveStage1League(context.data.leagueSlug);
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
     state.league.id !== context.data.leagueId ||
     !state.commissioner.isCommissioner ||
-    state.league.mode !== "LIVE" ||
     state.league.lifecycle !== "DRAFT" ||
     state.week?.state !== "PLANNED" ||
     state.slate.length === 0
   ) {
-    return mutationError("A planned Live Week 1 slate is required.");
+    return mutationError("A planned authoritative Week 1 slate is required.");
   }
   if (
     state.league.memberCount < 4 ||
@@ -972,17 +963,19 @@ export async function lockLiveRosterAndOpenWeekAction(
   }
 
   try {
-    await refreshPublishedLiveQuoteHeads({
-      leagueId: context.data.leagueId,
-      eventIds: state.slate.map((event) => event.key),
-    });
+    if (state.league.mode === "LIVE") {
+      await refreshPublishedLiveQuoteHeads({
+        leagueId: context.data.leagueId,
+        eventIds: state.slate.map((event) => event.key),
+      });
+    }
 
     const supabase = await createSupabaseServerClient();
     const locked = await supabase
       .schema("api")
       .rpc("lock_live_roster_and_open_week", {
         p_league_id: context.data.leagueId,
-        p_idempotency_key: idempotencyKey("lock-live-roster"),
+        p_idempotency_key: idempotencyKey("lock-authoritative-roster"),
       });
     if (locked.error) return mutationError(locked.error.message);
 
@@ -1036,7 +1029,7 @@ export async function importLiveScoresAction(
   const context = parseContext(formData);
   if (!context.success) return mutationError("invalid context");
 
-  const state = await getLiveStage1League(context.data.leagueSlug);
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
     state.league.id !== context.data.leagueId ||
@@ -1128,7 +1121,7 @@ export async function correctLiveEventResultAction(
     };
   }
 
-  const state = await getLiveStage1League(context.data.leagueSlug);
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
     state.league.id !== context.data.leagueId ||
@@ -1200,26 +1193,6 @@ export async function voidLiveEventAfterPostponementAction(
   );
 }
 
-export async function initializeStage1WeekAction(
-  _state: AppActionState,
-  formData: FormData,
-): Promise<AppActionState> {
-  const context = parseContext(formData);
-  if (!context.success) return mutationError("invalid context");
-
-  const supabase = await createSupabaseServerClient();
-  const result = await supabase.schema("api").rpc("initialize_stage1_week", {
-    p_league_id: context.data.leagueId,
-    p_fixture: stage1WeekOneFixture as unknown as Json,
-    p_idempotency_key: idempotencyKey("initialize"),
-  });
-  if (result.error) return mutationError(result.error.message);
-  return finish(
-    context.data.leagueSlug,
-    "Week 1 is open with four matchups and a 1,000-credit card for every member.",
-  );
-}
-
 const cardDraftPositionSchema = z.object({
   marketSnapshotId: z.uuid(),
   payloadHash: z.string().regex(/^[0-9a-f]{64}$/),
@@ -1252,7 +1225,7 @@ export async function acceptStage1CardAction(
     };
   }
 
-  const state = await getLiveStage1League(context.data.leagueSlug);
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (!state?.week || !state.ownerCard || state.week.state !== "OPEN") {
     return mutationError("The Week 1 card is not open.");
   }
@@ -1352,7 +1325,7 @@ export async function advanceStage1ClockAction(
     return mutationError("invalid clock");
 
   const supabase = await createSupabaseServerClient();
-  const result = await supabase.schema("api").rpc("advance_stage1_clock", {
+  const result = await supabase.schema("api").rpc("advance_simulated_time", {
     p_league_id: context.data.leagueId,
     p_target: target.data,
     p_idempotency_key: idempotencyKey("clock"),
@@ -1360,7 +1333,86 @@ export async function advanceStage1ClockAction(
   if (result.error) return mutationError(result.error.message);
   return finish(
     context.data.leagueSlug,
-    "Practice clock advanced. No score was created.",
+    "Simulation clock advanced. No competitive fact was created.",
+  );
+}
+
+export async function publishSimulationFixtureWeekAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  const week = z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(18)
+    .safeParse(formData.get("week"));
+  if (!context.success || !week.success)
+    return mutationError("invalid fixture week");
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
+  if (
+    !state ||
+    state.league.id !== context.data.leagueId ||
+    !state.commissioner.isCommissioner ||
+    state.league.mode !== "SIMULATION"
+  ) {
+    return mutationError("A Simulation-league commissioner is required.");
+  }
+  const supabase = await createSupabaseServerClient();
+  const result = await supabase
+    .schema("api")
+    .rpc("publish_simulation_fixture_week", {
+      p_league_id: context.data.leagueId,
+      p_week: week.data,
+      p_pack_id: canonicalSimulationFixturePackId,
+      p_idempotency_key: idempotencyKey(`publish-simulation-week-${week.data}`),
+    });
+  if (result.error) return mutationError(result.error.message);
+  return finish(
+    context.data.leagueSlug,
+    `Approved Simulation fixture Week ${week.data} published through the shared slate authority.`,
+  );
+}
+
+export async function applySimulationFixtureResultsAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  const parsed = z
+    .object({
+      week: z.coerce.number().int().min(1).max(18),
+      step: z.enum(["LIVE", "FINAL", "CORRECTION"]),
+    })
+    .safeParse({ week: formData.get("week"), step: formData.get("step") });
+  if (!context.success || !parsed.success)
+    return mutationError("invalid fixture result step");
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
+  if (
+    !state ||
+    state.league.id !== context.data.leagueId ||
+    !state.commissioner.isCommissioner ||
+    state.league.mode !== "SIMULATION"
+  ) {
+    return mutationError("A Simulation-league commissioner is required.");
+  }
+  const supabase = await createSupabaseServerClient();
+  const result = await supabase
+    .schema("api")
+    .rpc("apply_simulation_fixture_results", {
+      p_league_id: context.data.leagueId,
+      p_week: parsed.data.week,
+      p_step: parsed.data.step,
+      p_pack_id: canonicalSimulationFixturePackId,
+      p_idempotency_key: idempotencyKey(
+        `simulation-week-${parsed.data.week}-${parsed.data.step.toLowerCase()}`,
+      ),
+    });
+  if (result.error) return mutationError(result.error.message);
+  return finish(
+    context.data.leagueSlug,
+    `${parsed.data.step} evidence for Simulation Week ${parsed.data.week} applied from the approved fixture pack.`,
   );
 }
 
@@ -1397,7 +1449,7 @@ export async function lockStage1WeekAction(
 ): Promise<AppActionState> {
   const context = parseContext(formData);
   if (!context.success) return mutationError("invalid context");
-  const state = await getLiveStage1League(context.data.leagueSlug);
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   const weekNumber = state?.week?.nflWeek ?? 1;
 
   const supabase = await createSupabaseServerClient();
@@ -1412,74 +1464,13 @@ export async function lockStage1WeekAction(
   );
 }
 
-export async function recordStage1ResultAction(
-  _state: AppActionState,
-  formData: FormData,
-): Promise<AppActionState> {
-  const context = parseContext(formData);
-  const parsed = z
-    .object({ eventId: z.uuid(), eventKey: z.string() })
-    .safeParse({
-      eventId: formData.get("eventId"),
-      eventKey: formData.get("eventKey"),
-    });
-  if (!context.success || !parsed.success)
-    return mutationError("invalid result");
-  const fixtureResult = stage1InitialResults.find(
-    (result) => result.eventKey === parsed.data.eventKey,
-  );
-  if (!fixtureResult) return mutationError("unknown fixture result");
-
-  const supabase = await createSupabaseServerClient();
-  const result = await supabase.schema("api").rpc("record_stage1_result", {
-    p_event_id: parsed.data.eventId,
-    p_status: fixtureResult.status,
-    p_away_score: fixtureResult.awayScore,
-    p_home_score: fixtureResult.homeScore,
-    p_reason: fixtureResult.reason,
-    p_source: "SIMULATION_FIXTURE",
-    p_idempotency_key: idempotencyKey(`result:${parsed.data.eventKey}`),
-  });
-  if (result.error) return mutationError(result.error.message);
-  return finish(
-    context.data.leagueSlug,
-    "Final score recorded. The affected matchup and standings were updated.",
-  );
-}
-
-export async function correctStage1ResultAction(
-  _state: AppActionState,
-  formData: FormData,
-): Promise<AppActionState> {
-  const context = parseContext(formData);
-  const eventId = z.uuid().safeParse(formData.get("eventId"));
-  if (!context.success || !eventId.success)
-    return mutationError("invalid correction");
-
-  const supabase = await createSupabaseServerClient();
-  const result = await supabase.schema("api").rpc("record_stage1_result", {
-    p_event_id: eventId.data,
-    p_status: stage1CorrectionResult.status,
-    p_away_score: stage1CorrectionResult.awayScore,
-    p_home_score: stage1CorrectionResult.homeScore,
-    p_reason: stage1CorrectionResult.reason,
-    p_source: "SIMULATION_FIXTURE",
-    p_idempotency_key: idempotencyKey("correction:buf-nyj"),
-  });
-  if (result.error) return mutationError(result.error.message);
-  return finish(
-    context.data.leagueSlug,
-    "Correction recorded. The affected picks, scores, and standings were updated.",
-  );
-}
-
 export async function finalizeStage1WeekAction(
   _state: AppActionState,
   formData: FormData,
 ): Promise<AppActionState> {
   const context = parseContext(formData);
   if (!context.success) return mutationError("invalid context");
-  const state = await getLiveStage1League(context.data.leagueSlug);
+  const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   const weekNumber = state?.week?.nflWeek ?? 1;
 
   const supabase = await createSupabaseServerClient();

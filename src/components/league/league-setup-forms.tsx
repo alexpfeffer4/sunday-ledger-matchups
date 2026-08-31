@@ -64,8 +64,8 @@ export function LeagueSetupForms() {
         >
           <h3 className="text-lg font-bold">Create a private league</h3>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Every new league uses the live NFL season. Its permanent URL is
-            generated automatically.
+            Choose an authoritative Live or Simulation season. The mode is
+            frozen when the league is created.
           </p>
           <label
             className="mt-5 block text-sm font-semibold"
@@ -82,6 +82,31 @@ export function LeagueSetupForms() {
             maxLength={80}
             placeholder="Sunday League"
           />
+          <fieldset className="mt-5">
+            <legend className="text-sm font-semibold">Season mode</legend>
+            <div className="mt-2 grid gap-3 sm:grid-cols-2">
+              <label className="border-control has-checked:border-registry has-checked:bg-subtle flex cursor-pointer gap-3 rounded-lg border p-4">
+                <input defaultChecked name="mode" type="radio" value="LIVE" />
+                <span>
+                  <span className="block font-semibold">Live</span>
+                  <span className="text-muted mt-1 block text-xs leading-5">
+                    Uses reviewed DraftKings-shaped provider observations and
+                    the real clock.
+                  </span>
+                </span>
+              </label>
+              <label className="border-control has-checked:border-registry has-checked:bg-subtle flex cursor-pointer gap-3 rounded-lg border p-4">
+                <input name="mode" type="radio" value="SIMULATION" />
+                <span>
+                  <span className="block font-semibold">Simulation</span>
+                  <span className="text-muted mt-1 block text-xs leading-5">
+                    Uses the approved deterministic fixture pack and a
+                    commissioner-controlled clock.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </fieldset>
           <button
             className="bg-registry hover:bg-registry-hover mt-5 min-h-11 w-full rounded-lg px-4 font-semibold text-white disabled:opacity-60"
             disabled={creating}

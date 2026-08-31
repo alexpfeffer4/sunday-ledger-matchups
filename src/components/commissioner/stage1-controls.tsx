@@ -2,19 +2,12 @@
 
 import { useActionState } from "react";
 import {
-  advanceStage1ClockAction,
-  correctStage1ResultAction,
   createLeagueInviteAction,
-  finalizeStage1WeekAction,
   importLiveOddsAction,
-  initializeStage1WeekAction,
   lockLiveRosterAndOpenWeekAction,
-  lockStage1WeekAction,
   publishLiveWeekSlateAction,
-  recordStage1ResultAction,
   refreshLiveWeekQuotesAction,
   revokeLeagueInviteAction,
-  setStage1EventLiveAction,
 } from "@/app/l/[leagueSlug]/actions";
 import { initialAppActionState } from "@/application/actions/action-state";
 import { isStandardLiveSlateEvent } from "@/application/providers/select-standard-live-slate";
@@ -25,6 +18,7 @@ import type { Week17CorrectionOperations } from "@/application/queries/get-week1
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import { LiveWeekCommissionerControls } from "@/components/commissioner/live-week-controls";
 import { InviteLinkFeedback } from "@/components/commissioner/invite-link-feedback";
+import { SimulationCommissionerControls } from "@/components/commissioner/simulation-controls";
 import { ActionFeedback } from "@/components/forms/action-feedback";
 
 export type Stage1CommissionerControlState = {
@@ -129,12 +123,12 @@ function commissionerNextStep({
 
   if (!state.week) {
     return {
-      detail: "Open an eight-member practice Week 1.",
-      prerequisites:
-        state.league.memberCount === 8
-          ? "Practice Week 1 is available"
-          : `${state.league.memberCount}/8 members`,
-      title: "Open Practice Week 1",
+      detail:
+        "Advance the Simulation clock to the reviewed quote time, then publish the approved deterministic Week 1 slate.",
+      prerequisites: rosterIsValid
+        ? "Authoritative Simulation Week 1 is available"
+        : `${state.league.memberCount} members · even 4–16 required`,
+      title: "Publish Simulation Week 1",
     };
   }
 
@@ -160,7 +154,7 @@ function commissionerNextStep({
       detail:
         state.league.mode === "LIVE"
           ? "Monitor card completion and quote health. Cards lock for everyone at the published deadline."
-          : "Members complete their cards before the shared deadline; then lock the week.",
+          : "Members complete their authoritative cards before the shared deadline; then lock the week.",
       prerequisites: `Week ${state.week.nflWeek} cards are open`,
       title: "Monitor cards until lock",
     };
@@ -220,10 +214,6 @@ export function Stage1CommissionerControls({
   );
   const [revokeInviteState, revokeInviteAction, revokingInvite] =
     useActionState(revokeLeagueInviteAction, initialAppActionState);
-  const [initializeState, initializeAction, initializing] = useActionState(
-    initializeStage1WeekAction,
-    initialAppActionState,
-  );
   const [importState, importAction, importing] = useActionState(
     importLiveOddsAction,
     initialAppActionState,
@@ -234,31 +224,6 @@ export function Stage1CommissionerControls({
     useActionState(refreshLiveWeekQuotesAction, initialAppActionState);
   const [liveRosterLockState, liveRosterLockAction, lockingLiveRoster] =
     useActionState(lockLiveRosterAndOpenWeekAction, initialAppActionState);
-  const [clockState, clockAction, advancing] = useActionState(
-    advanceStage1ClockAction,
-    initialAppActionState,
-  );
-  const [lockState, lockAction, locking] = useActionState(
-    lockStage1WeekAction,
-    initialAppActionState,
-  );
-  const [liveState, liveAction, markingLive] = useActionState(
-    setStage1EventLiveAction,
-    initialAppActionState,
-  );
-  const [resultState, resultAction, recording] = useActionState(
-    recordStage1ResultAction,
-    initialAppActionState,
-  );
-  const [correctionState, correctionAction, correcting] = useActionState(
-    correctStage1ResultAction,
-    initialAppActionState,
-  );
-  const [finalizeState, finalizeAction, finalizing] = useActionState(
-    finalizeStage1WeekAction,
-    initialAppActionState,
-  );
-  const correctionEvent = state.slate.find((event) => event.key === "buf-nyj");
   const nextStep = commissionerNextStep({
     hasLiveImport: latestLiveImport !== null,
     providerConfigured,
@@ -560,26 +525,7 @@ export function Stage1CommissionerControls({
           )}
         </section>
       ) : !state.week ? (
-        <section className="border-boundary bg-surface rounded-xl border p-5">
-          <h2 className="font-bold">Open a practice Week 1</h2>
-          <p className="text-graphite mt-2 text-sm leading-6">
-            This option requires exactly eight members. It creates four matchups
-            and gives every member 1,000 credits to build a card.
-          </p>
-          <form action={initializeAction} className="mt-4">
-            <ContextFields state={state} />
-            <button
-              className={buttonClass}
-              disabled={initializing || state.league.memberCount !== 8}
-              type="submit"
-            >
-              {initializing
-                ? "Publishing…"
-                : `Publish Week 1 · ${state.league.memberCount}/8 members`}
-            </button>
-          </form>
-          <ActionFeedback state={initializeState} />
-        </section>
+        <SimulationCommissionerControls state={state} />
       ) : state.league.mode === "LIVE" && state.week.state === "PLANNED" ? (
         <section className="border-registry bg-surface rounded-xl border p-5">
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
@@ -693,182 +639,7 @@ export function Stage1CommissionerControls({
           week17CorrectionOperations={week17CorrectionOperations}
         />
       ) : (
-        <>
-          <section className="border-boundary bg-surface rounded-xl border p-5">
-            <h2 className="font-bold">Practice clock and card lock</h2>
-            <p className="text-graphite mt-2 text-sm leading-6">
-              Moving the practice clock does not create a score. Picks still
-              close at the published deadline.
-            </p>
-            <form action={clockAction} className="mt-4">
-              <ContextFields state={state} />
-              <input
-                type="hidden"
-                name="target"
-                value={new Date(
-                  new Date(state.week.commonLockAt).getTime() + 60_000,
-                ).toISOString()}
-              />
-              <button
-                className={buttonClass}
-                disabled={advancing}
-                type="submit"
-              >
-                {advancing ? "Advancing…" : "Advance to card lock"}
-              </button>
-            </form>
-            <form action={lockAction} className="mt-3">
-              <ContextFields state={state} />
-              <button
-                className={buttonClass}
-                disabled={locking || state.week.state !== "OPEN"}
-                type="submit"
-              >
-                {locking ? "Locking…" : "Lock Week 1 cards"}
-              </button>
-            </form>
-            <ActionFeedback state={clockState} />
-            <ActionFeedback state={lockState} />
-          </section>
-
-          <section className="border-boundary bg-surface rounded-xl border p-5">
-            <h2 className="font-bold">Kickoff and results</h2>
-            <div className="divide-boundary mt-4 divide-y">
-              {state.slate.map((event) => (
-                <div className="py-4 first:pt-0 last:pb-0" key={event.id}>
-                  <p className="text-sm font-semibold">
-                    {event.awayTeam} at {event.homeTeam}
-                  </p>
-                  <p className="text-muted mt-1 text-xs">
-                    {event.state} · {event.key}
-                  </p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <form action={clockAction}>
-                      <ContextFields state={state} />
-                      <input
-                        type="hidden"
-                        name="target"
-                        value={new Date(
-                          new Date(event.scheduledStartAt).getTime() + 60_000,
-                        ).toISOString()}
-                      />
-                      <button
-                        className={buttonClass}
-                        disabled={advancing}
-                        type="submit"
-                      >
-                        Advance past kickoff
-                      </button>
-                    </form>
-                    <form action={liveAction}>
-                      <ContextFields state={state} />
-                      <input type="hidden" name="eventId" value={event.id} />
-                      <input
-                        type="hidden"
-                        name="actualStartedAt"
-                        value={event.scheduledStartAt}
-                      />
-                      <button
-                        className={buttonClass}
-                        disabled={
-                          markingLive ||
-                          event.state !== "SCHEDULED" ||
-                          event.key === "pit-cin"
-                        }
-                        type="submit"
-                      >
-                        Confirm actual kickoff
-                      </button>
-                    </form>
-                    <form action={resultAction} className="sm:col-span-2">
-                      <ContextFields state={state} />
-                      <input type="hidden" name="eventId" value={event.id} />
-                      <input type="hidden" name="eventKey" value={event.key} />
-                      <button
-                        className={buttonClass}
-                        disabled={
-                          recording ||
-                          state.week?.state === "OPEN" ||
-                          (event.key === "pit-cin"
-                            ? event.state !== "SCHEDULED"
-                            : event.state !== "LIVE")
-                        }
-                        type="submit"
-                      >
-                        Record final result
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <ActionFeedback state={liveState} />
-            <ActionFeedback state={resultState} />
-          </section>
-
-          <section className="border-copper bg-surface rounded-xl border p-5">
-            <h2 className="font-bold">Correct a result</h2>
-            <p className="text-graphite mt-2 text-sm leading-6">
-              Update the Buffalo–New York result. The correction and its effect
-              on scores and standings will remain visible.
-            </p>
-            <form action={correctionAction} className="mt-4">
-              <ContextFields state={state} />
-              <input
-                type="hidden"
-                name="eventId"
-                value={correctionEvent?.id ?? ""}
-              />
-              <button
-                className={buttonClass}
-                disabled={
-                  correcting ||
-                  !correctionEvent ||
-                  !["FINAL", "CORRECTED"].includes(correctionEvent.state)
-                }
-                type="submit"
-              >
-                {correcting ? "Applying…" : "Apply correction"}
-              </button>
-            </form>
-            <ActionFeedback state={correctionState} />
-          </section>
-
-          <section className="border-boundary bg-surface rounded-xl border p-5">
-            <h2 className="font-bold">Finalize after 24 hours</h2>
-            {state.week.correctionWindowClosesAt ? (
-              <form action={clockAction} className="mt-4">
-                <ContextFields state={state} />
-                <input
-                  type="hidden"
-                  name="target"
-                  value={new Date(
-                    new Date(state.week.correctionWindowClosesAt).getTime() +
-                      60_000,
-                  ).toISOString()}
-                />
-                <button
-                  className={buttonClass}
-                  disabled={advancing}
-                  type="submit"
-                >
-                  Advance past correction window
-                </button>
-              </form>
-            ) : null}
-            <form action={finalizeAction} className="mt-3">
-              <ContextFields state={state} />
-              <button
-                className={buttonClass}
-                disabled={finalizing || state.week.state !== "PROVISIONAL"}
-                type="submit"
-              >
-                {finalizing ? "Finalizing…" : "Finalize Week 1"}
-              </button>
-            </form>
-            <ActionFeedback state={finalizeState} />
-          </section>
-        </>
+        <SimulationCommissionerControls state={state} />
       )}
     </div>
   );

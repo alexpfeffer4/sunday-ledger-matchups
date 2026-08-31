@@ -29,7 +29,7 @@ describe("league lifecycle experience", () => {
     );
   });
 
-  it("keeps league creation Live-only and generates the URL", () => {
+  it("freezes an explicit Live or Simulation choice at creation", () => {
     render(<LeagueSetupForms />);
 
     expect(screen.queryByLabelText("League type")).not.toBeInTheDocument();
@@ -39,8 +39,9 @@ describe("league lifecycle experience", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create league" }));
 
     expect(screen.getByLabelText("League name")).toBeVisible();
-    expect(screen.getByText(/live NFL season/i)).toBeVisible();
-    expect(screen.getByText(/URL is generated automatically/i)).toBeVisible();
+    expect(screen.getByRole("radio", { name: /Live/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /Simulation/ })).toBeVisible();
+    expect(screen.getByText(/mode is frozen/i)).toBeVisible();
     expect(screen.queryByText("Practice season")).not.toBeInTheDocument();
   });
 

@@ -2,14 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { exampleSeasonSlug } from "@/adapters/example/example-season";
 
 const queryMocks = vi.hoisted(() => ({
-  getLiveStage1League: vi.fn(),
+  getAuthoritativeLeagueState: vi.fn(),
   getSeasonRuleset: vi.fn(),
   getSeasonArchive: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/application/queries/get-live-stage1-league", () => ({
-  getLiveStage1League: queryMocks.getLiveStage1League,
+  getAuthoritativeLeagueState: queryMocks.getAuthoritativeLeagueState,
 }));
 vi.mock("@/application/queries/get-season-ruleset", () => ({
   getSeasonRuleset: queryMocks.getSeasonRuleset,
@@ -33,20 +33,20 @@ describe("Rules and Standings query boundary", () => {
 
     expect(context.isExample).toBe(true);
     expect(context.archive).toBe(archive);
-    expect(queryMocks.getLiveStage1League).not.toHaveBeenCalled();
+    expect(queryMocks.getAuthoritativeLeagueState).not.toHaveBeenCalled();
     expect(queryMocks.getSeasonRuleset).not.toHaveBeenCalled();
     expect(queryMocks.getSeasonArchive).toHaveBeenCalledOnce();
   });
 
   it("loads all persisted sources for a member league", async () => {
-    queryMocks.getLiveStage1League.mockResolvedValueOnce(null);
+    queryMocks.getAuthoritativeLeagueState.mockResolvedValueOnce(null);
     queryMocks.getSeasonArchive.mockResolvedValueOnce(null);
     queryMocks.getSeasonRuleset.mockResolvedValueOnce(null);
 
     const context = await getRulesAndStandingsContext("member-league");
 
     expect(context.isExample).toBe(false);
-    expect(queryMocks.getLiveStage1League).toHaveBeenCalledWith(
+    expect(queryMocks.getAuthoritativeLeagueState).toHaveBeenCalledWith(
       "member-league",
     );
     expect(queryMocks.getSeasonArchive).toHaveBeenCalledWith("member-league");

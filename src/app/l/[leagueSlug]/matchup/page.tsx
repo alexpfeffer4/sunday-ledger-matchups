@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
+import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
 import { getLiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import { projectPairedMatchup } from "@/application/queries/project-paired-matchup";
 import { getSeasonArchive } from "@/application/queries/get-season-archive";
@@ -21,7 +21,7 @@ export default async function MatchupPage({
 }) {
   const { leagueSlug } = await params;
   const [live, archive, operations, weeklyCloseState] = await Promise.all([
-    getLiveStage1League(leagueSlug),
+    getAuthoritativeLeagueState(leagueSlug),
     getSeasonArchive(leagueSlug),
     getLiveWeekOperations(leagueSlug),
     getWeeklyCloseState(leagueSlug),

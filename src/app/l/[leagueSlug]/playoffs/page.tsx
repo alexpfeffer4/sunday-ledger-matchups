@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getLivePlayoffState } from "@/application/queries/get-live-playoff-state";
-import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
+import { getAuthoritativePlayoffState } from "@/application/queries/get-live-playoff-state";
+import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
 import { getSeasonArchive } from "@/application/queries/get-season-archive";
 import { LivePlayoffView } from "@/components/playoffs/live-playoff-view";
 import { SeasonArchivePlayoffs } from "@/components/season/archive-views";
@@ -16,8 +16,8 @@ export default async function PlayoffsPage({
 }) {
   const { leagueSlug } = await params;
   const [live, livePlayoffs, archive] = await Promise.all([
-    getLiveStage1League(leagueSlug),
-    getLivePlayoffState(leagueSlug),
+    getAuthoritativeLeagueState(leagueSlug),
+    getAuthoritativePlayoffState(leagueSlug),
     getSeasonArchive(leagueSlug),
   ]);
   if (archive) return <SeasonArchivePlayoffs archive={archive} />;
