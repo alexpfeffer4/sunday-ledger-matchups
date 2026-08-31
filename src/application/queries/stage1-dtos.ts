@@ -57,6 +57,8 @@ export const stage1StateSchema = z.object({
       "ROSTER_LOCKED",
       "REGULAR",
       "PLAYOFFS",
+      "CHAMPION_FINAL",
+      "WEEK_18_EXHIBITION",
       "FINAL",
     ]),
     memberCount: z.number().int().nonnegative(),

@@ -21,6 +21,7 @@ import { isStandardLiveSlateEvent } from "@/application/providers/select-standar
 import type { LeagueInviteSummary } from "@/application/queries/league-invite-dtos";
 import type { LiveOddsImportReview } from "@/application/queries/get-live-odds-import";
 import type { LiveWeekOperations } from "@/application/queries/get-live-week-operations";
+import type { Week17CorrectionOperations } from "@/application/queries/get-week17-correction-operations";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import { LiveWeekCommissionerControls } from "@/components/commissioner/live-week-controls";
 import { InviteLinkFeedback } from "@/components/commissioner/invite-link-feedback";
@@ -204,12 +205,14 @@ export function Stage1CommissionerControls({
   liveWeekOperations,
   providerConfigured,
   state,
+  week17CorrectionOperations = null,
 }: {
   invites: LeagueInviteSummary[];
   latestLiveImport: LiveOddsImportReview | null;
   liveWeekOperations: LiveWeekOperations | null;
   providerConfigured: boolean;
   state: Stage1CommissionerControlState;
+  week17CorrectionOperations?: Week17CorrectionOperations | null;
 }) {
   const [inviteState, inviteAction, inviting] = useActionState(
     createLeagueInviteAction,
@@ -687,6 +690,7 @@ export function Stage1CommissionerControls({
           liveWeekOperations={liveWeekOperations}
           providerConfigured={providerConfigured}
           state={state}
+          week17CorrectionOperations={week17CorrectionOperations}
         />
       ) : (
         <>

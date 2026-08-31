@@ -58,12 +58,27 @@ published event set is intentionally immutable.
 3. Operate Weeks 15–17 with the same import, publish, lock, results, correction,
    and finalize sequence.
 4. Confirm Week 16 reseeding in a top-six league before publishing its slate.
-5. After Week 17 is FINAL, publish the terminal season archive.
-6. Verify the champion, runner-up, third-place result, frozen standings, bracket,
-   accepted receipts, corrections, and archive hash from a member view.
+5. After Week 17 is FINAL and its correction window closes, finalize the
+   champion and bracket. This makes the champion visible but does not create the
+   complete archive.
+6. Import and select the Week 18 provider slate, then publish the derived
+   adjacent final-placement exhibitions. Placement and pairings are never
+   commissioner inputs.
+7. Operate Week 18 through the same card, lock, receipt, result, correction, and
+   finalization controls as every other week.
+8. Publish the complete archive only after Week 18 is FINAL, then verify Weeks
+   1–18, qualification evidence, postseason roles, champion lineage, accepted
+   receipts, corrections, and the archive hash from a member view.
 
 Week 18 is exhibition/history only and cannot change the champion, regular
 season record, or playoff seed.
+
+Before the first successful Week 18 card seal, the console identifies the
+pairing as replaceable. A documented authorized Week 17 correction may append a
+replacement round only while Week 18 is planned or open and has no receipt,
+score, or result. After the first seal, lock, score, or result, the pairing is
+frozen. A later correction still appends champion and archive truth while
+retaining the prior Week 18 pairings and results.
 
 ## Acceptance evidence for every operation
 

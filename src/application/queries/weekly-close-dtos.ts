@@ -54,6 +54,8 @@ export const weeklyCloseStateSchema = z.object({
       "ROSTER_LOCKED",
       "REGULAR",
       "PLAYOFFS",
+      "CHAMPION_FINAL",
+      "WEEK_18_EXHIBITION",
       "FINAL",
     ]),
   }),

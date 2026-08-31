@@ -24,6 +24,8 @@ type LeagueSummary = {
 
 function leagueStatus(league: LeagueSummary): string {
   if (league.lifecycle === "FINAL") return "Season final";
+  if (league.lifecycle === "CHAMPION_FINAL") return "Champion final";
+  if (league.lifecycle === "WEEK_18_EXHIBITION") return "Week 18 exhibition";
   if (league.lifecycle === "DRAFT") return "Setting up";
   if (league.current_week) return `Week ${league.current_week}`;
   return league.lifecycle === "PLAYOFFS" ? "Playoffs" : "Season active";

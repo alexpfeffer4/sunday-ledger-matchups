@@ -452,7 +452,7 @@ export function createInitialBracket(params: {
   });
 }
 
-/** Existing Phase 4 fixture support; Week 18 is outside the Phase 8A authority. */
+/** Compatibility adapter retained for the existing non-authoritative fixture. */
 export function createWeek18Exhibitions(
   entryIdsByFinalPlacement: readonly string[],
 ) {

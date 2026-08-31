@@ -702,7 +702,7 @@ export async function publishNextLivePostseasonWeekAction(
   };
 }
 
-export async function publishLiveSeasonArchiveAction(
+export async function finalizeChampionBracketAction(
   _state: AppActionState,
   formData: FormData,
 ): Promise<AppActionState> {
@@ -716,21 +716,98 @@ export async function publishLiveSeasonArchiveAction(
     !state.commissioner.isCommissioner ||
     state.league.mode !== "LIVE" ||
     state.league.lifecycle !== "PLAYOFFS" ||
-    state.week?.state !== "FINAL" ||
-    state.week.nflWeek !== 17
+    state.week?.nflWeek !== 17 ||
+    state.week.state !== "FINAL"
   ) {
     return mutationError(
-      "Week 17 must be final before the season archive can publish.",
+      "Week 17 and its correction window must be final before confirming the champion.",
     );
   }
 
   const supabase = await createSupabaseServerClient();
-  const result = await supabase
-    .schema("api")
-    .rpc("publish_live_season_archive", {
-      p_league_id: context.data.leagueId,
-      p_idempotency_key: idempotencyKey("publish-live-season-archive"),
+  const result = await supabase.schema("api").rpc("finalize_champion_bracket", {
+    p_league_id: context.data.leagueId,
+    p_idempotency_key: idempotencyKey("finalize-champion-bracket"),
+  });
+  if (result.error) return mutationError(result.error.message);
+  return finish(
+    context.data.leagueSlug,
+    "The champion and final bracket are confirmed. The complete archive remains open until Week 18 ends.",
+  );
+}
+
+export async function publishWeek18ExhibitionAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  const selection = z
+    .object({
+      importId: z.uuid(),
+      externalEventIds: z.array(z.string().min(1).max(160)).min(1).max(32),
+    })
+    .safeParse({
+      importId: formData.get("importId"),
+      externalEventIds: formData.getAll("externalEventId"),
     });
+  if (!context.success || !selection.success) {
+    return mutationError("Select between one and 32 imported events.");
+  }
+
+  const state = await getLiveStage1League(context.data.leagueSlug);
+  if (
+    !state ||
+    state.league.id !== context.data.leagueId ||
+    !state.commissioner.isCommissioner ||
+    state.league.mode !== "LIVE" ||
+    state.league.lifecycle !== "CHAMPION_FINAL" ||
+    state.week?.nflWeek !== 17 ||
+    state.week.state !== "FINAL"
+  ) {
+    return mutationError("Confirm the champion before publishing Week 18.");
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const result = await supabase.schema("api").rpc("publish_week18_exhibition", {
+    p_league_id: context.data.leagueId,
+    p_import_id: selection.data.importId,
+    p_external_event_ids: selection.data.externalEventIds,
+    p_idempotency_key: idempotencyKey("publish-week18-exhibition"),
+  });
+  if (result.error) return mutationError(result.error.message);
+  return finish(
+    context.data.leagueSlug,
+    "Week 18 exhibitions are open. Every member has one adjacent final-placement matchup and a normal card.",
+  );
+}
+
+export async function publishLiveSeasonArchiveAction(
+  _state: AppActionState,
+  formData: FormData,
+): Promise<AppActionState> {
+  const context = parseContext(formData);
+  if (!context.success) return mutationError("invalid context");
+
+  const state = await getLiveStage1League(context.data.leagueSlug);
+  if (
+    !state ||
+    state.league.id !== context.data.leagueId ||
+    !state.commissioner.isCommissioner ||
+    state.league.mode !== "LIVE" ||
+    state.league.lifecycle !== "WEEK_18_EXHIBITION" ||
+    state.week?.state !== "FINAL" ||
+    state.week.nflWeek !== 18
+  ) {
+    return mutationError(
+      "Week 18 must be final before the complete season archive can publish.",
+    );
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const result = await supabase.schema("api").rpc("finalize_season_archive", {
+    p_league_id: context.data.leagueId,
+    p_idempotency_key: idempotencyKey("publish-live-season-archive"),
+  });
   if (result.error) return mutationError(result.error.message);
 
   for (const path of [
@@ -748,7 +825,7 @@ export async function publishLiveSeasonArchiveAction(
   return {
     status: "success",
     message:
-      "The season is closed. The champion and complete season history are now final.",
+      "The complete season archive is final through Week 18. The champion and every prior version remain auditable.",
     href: `/l/${context.data.leagueSlug}/matchup`,
     hrefLabel: "Open the completed season",
   };
@@ -1051,19 +1128,41 @@ export async function correctLiveEventResultAction(
     };
   }
 
+  const state = await getLiveStage1League(context.data.leagueSlug);
+  if (
+    !state ||
+    state.league.id !== context.data.leagueId ||
+    !state.commissioner.isCommissioner
+  ) {
+    return mutationError("A Live-league commissioner is required.");
+  }
+  const lateWeek17 = ["CHAMPION_FINAL", "WEEK_18_EXHIBITION", "FINAL"].includes(
+    state.league.lifecycle,
+  );
   const supabase = await createSupabaseServerClient();
-  const result = await supabase.schema("api").rpc("correct_live_event_result", {
-    p_event_id: correction.data.eventId,
-    p_status: "FINAL",
-    p_away_score: correction.data.awayScore,
-    p_home_score: correction.data.homeScore,
-    p_reason: correction.data.reason,
-    p_idempotency_key: idempotencyKey("correct-live-result"),
-  });
+  const result = await supabase
+    .schema("api")
+    .rpc(
+      lateWeek17
+        ? "correct_finalized_week17_result"
+        : "correct_live_event_result",
+      {
+        p_event_id: correction.data.eventId,
+        p_status: "FINAL",
+        p_away_score: correction.data.awayScore,
+        p_home_score: correction.data.homeScore,
+        p_reason: correction.data.reason,
+        p_idempotency_key: idempotencyKey(
+          lateWeek17 ? "correct-final-week17-result" : "correct-live-result",
+        ),
+      },
+    );
   if (result.error) return mutationError(result.error.message);
   return finish(
     context.data.leagueSlug,
-    "The correction was recorded, and the affected scores and standings were updated.",
+    lateWeek17
+      ? "The documented Week 17 correction and affected champion history were appended. Protected Week 18 facts were preserved."
+      : "The correction was recorded, and the affected scores and standings were updated.",
   );
 }
 
