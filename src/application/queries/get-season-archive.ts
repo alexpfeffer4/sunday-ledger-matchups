@@ -36,6 +36,9 @@ export const getSeasonArchive = cache(
     if (result.data === null) return null;
 
     const archive = seasonArchiveSchema.parse(result.data);
-    return archive.mode === "LIVE" ? archive : null;
+    if (archive.schemaVersion === 1 && archive.mode === "SIMULATION") {
+      return null;
+    }
+    return archive;
   },
 );

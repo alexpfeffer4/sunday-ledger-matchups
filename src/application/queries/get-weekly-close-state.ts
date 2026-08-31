@@ -36,7 +36,6 @@ export const getWeeklyCloseState = cache(
       throw new Error("The active-season ledger could not be loaded.");
     }
 
-    const state = weeklyCloseStateSchema.parse(result.data);
-    return state.league.mode === "LIVE" ? state : null;
+    return weeklyCloseStateSchema.parse(result.data);
   },
 );

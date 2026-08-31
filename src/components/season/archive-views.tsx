@@ -42,7 +42,8 @@ export function SeasonArchiveHome({
   archive: SeasonArchiveDto;
   leagueSlug: string;
 }) {
-  const isExample = archive.mode === "SIMULATION";
+  const isExample = archive.illustrative === true;
+  const modeLabel = archive.mode === "SIMULATION" ? "Simulation" : "Live";
   const champion = memberName(archive, archive.playoffs.championEntryId);
   const runnerUp = memberName(archive, archive.playoffs.runnerUpEntryId);
   const third = archive.playoffs.thirdPlaceEntryId
@@ -57,7 +58,7 @@ export function SeasonArchiveHome({
       eyebrow={
         isExample
           ? "Example Season · read-only illustration"
-          : `${archive.nflYear} season · official archive`
+          : `${modeLabel} · ${archive.nflYear} season · official archive`
       }
       title={
         isExample
@@ -71,7 +72,7 @@ export function SeasonArchiveHome({
       }
       aside={
         <StatusBadge tone={isExample ? "pending" : "positive"}>
-          {isExample ? "Example Season" : "Season final"}
+          {isExample ? "Example Season" : `${modeLabel} · Season final`}
         </StatusBadge>
       }
     >
@@ -190,13 +191,14 @@ export function SeasonArchiveSchedule({
 }: {
   archive: SeasonArchiveDto;
 }) {
-  const isExample = archive.mode === "SIMULATION";
+  const isExample = archive.illustrative === true;
+  const modeLabel = archive.mode === "SIMULATION" ? "Simulation" : "Live";
   return (
     <PageFrame
       eyebrow={
         isExample
           ? "Example Season · read-only schedule"
-          : "Published at roster lock · final"
+          : `${modeLabel} · Published at roster lock · final`
       }
       title={`${archive.nflYear} regular-season schedule`}
       description={
@@ -206,7 +208,7 @@ export function SeasonArchiveSchedule({
       }
       aside={
         <StatusBadge tone={isExample ? "pending" : "positive"}>
-          {isExample ? "Example Season" : "14 weeks final"}
+          {isExample ? "Example Season" : `${modeLabel} · 14 weeks final`}
         </StatusBadge>
       }
     >
@@ -459,7 +461,8 @@ export function SeasonArchivePlayoffs({
 }: {
   archive: SeasonArchiveDto;
 }) {
-  const isExample = archive.mode === "SIMULATION";
+  const isExample = archive.illustrative === true;
+  const modeLabel = archive.mode === "SIMULATION" ? "Simulation" : "Live";
   const champion = memberName(archive, archive.playoffs.championEntryId);
   const finalArchive = archive.schemaVersion === 2 ? archive : null;
   return (
@@ -467,7 +470,7 @@ export function SeasonArchivePlayoffs({
       eyebrow={
         isExample
           ? "Example Season · illustrative playoffs"
-          : `${archive.nflYear} playoffs · official`
+          : `${modeLabel} · ${archive.nflYear} playoffs · official`
       }
       title={`${champion} completed ${isExample ? "this example bracket" : "the bracket"}`}
       description={
@@ -477,7 +480,7 @@ export function SeasonArchivePlayoffs({
       }
       aside={
         <StatusBadge tone={isExample ? "pending" : "positive"}>
-          {isExample ? "Example Season" : "Bracket final"}
+          {isExample ? "Example Season" : `${modeLabel} · Bracket final`}
         </StatusBadge>
       }
     >
@@ -618,7 +621,8 @@ export function SeasonArchiveHistory({
 }: {
   archive: SeasonArchiveDto;
 }) {
-  const isExample = archive.mode === "SIMULATION";
+  const isExample = archive.illustrative === true;
+  const modeLabel = archive.mode === "SIMULATION" ? "Simulation" : "Live";
   const games = [
     ...archive.regularSeason.weeks.flatMap((week) => week.matchups),
     ...archive.playoffs.games,
@@ -633,7 +637,9 @@ export function SeasonArchiveHistory({
   return (
     <PageFrame
       eyebrow={
-        isExample ? "Example Season · read-only history" : "Season history"
+        isExample
+          ? "Example Season · read-only history"
+          : `${modeLabel} · Season history`
       }
       title={`${viewer}’s ${archive.nflYear} matchup history`}
       description={
@@ -643,7 +649,7 @@ export function SeasonArchiveHistory({
       }
       aside={
         <StatusBadge tone={isExample ? "pending" : "positive"}>
-          {isExample ? "Example Season" : "Archive complete"}
+          {isExample ? "Example Season" : `${modeLabel} · Archive complete`}
         </StatusBadge>
       }
     >

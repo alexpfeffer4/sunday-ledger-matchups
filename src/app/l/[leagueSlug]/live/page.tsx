@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
+import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
 import { getLiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import { projectPairedMatchup } from "@/application/queries/project-paired-matchup";
 import { MatchupStateRefresh } from "@/components/matchup/matchup-state-refresh";
@@ -16,7 +16,7 @@ export default async function LivePage({
 }) {
   const { leagueSlug } = await params;
   const [live, operations] = await Promise.all([
-    getLiveStage1League(leagueSlug),
+    getAuthoritativeLeagueState(leagueSlug),
     getLiveWeekOperations(leagueSlug),
   ]);
   if (live) {

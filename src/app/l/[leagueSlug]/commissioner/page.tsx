@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { isOddsProviderConfigured } from "@/adapters/providers/the-odds-api/client";
 import { getLeagueInvites } from "@/application/queries/get-league-invites";
 import { getLiveOddsImport } from "@/application/queries/get-live-odds-import";
-import { getLiveStage1League } from "@/application/queries/get-live-stage1-league";
+import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
 import { getLiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import { getWeek17CorrectionOperations } from "@/application/queries/get-week17-correction-operations";
 import { getMyLeagueSummary } from "@/application/queries/get-my-league-summary";
@@ -28,7 +28,7 @@ export default async function CommissionerPage({
     week17CorrectionOperations,
   ] = await Promise.all([
     getSeasonArchive(leagueSlug),
-    getLiveStage1League(leagueSlug),
+    getAuthoritativeLeagueState(leagueSlug),
     getLiveOddsImport(leagueSlug),
     getLiveWeekOperations(leagueSlug),
     getLeagueInvites(leagueSlug),

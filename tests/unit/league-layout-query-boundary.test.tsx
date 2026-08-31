@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { exampleSeasonSlug } from "@/adapters/example/example-season";
 
 const queryMocks = vi.hoisted(() => ({
-  getLiveStage1League: vi.fn(),
+  getAuthoritativeLeagueState: vi.fn(),
   getSeasonArchive: vi.fn(),
 }));
 
@@ -17,7 +17,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 vi.mock("@/application/queries/get-live-stage1-league", () => ({
-  getLiveStage1League: queryMocks.getLiveStage1League,
+  getAuthoritativeLeagueState: queryMocks.getAuthoritativeLeagueState,
 }));
 vi.mock("@/application/queries/get-season-archive", () => ({
   getSeasonArchive: queryMocks.getSeasonArchive,
@@ -60,13 +60,13 @@ describe("league layout query boundary", () => {
     render(layout);
 
     expect(screen.getByText("Example Season")).toBeVisible();
-    expect(queryMocks.getLiveStage1League).not.toHaveBeenCalled();
+    expect(queryMocks.getAuthoritativeLeagueState).not.toHaveBeenCalled();
     expect(queryMocks.getSeasonArchive).toHaveBeenCalledOnce();
     expect(queryMocks.getSeasonArchive).toHaveBeenCalledWith(exampleSeasonSlug);
   });
 
   it("retains persisted lookups for a member league", async () => {
-    queryMocks.getLiveStage1League.mockResolvedValueOnce({
+    queryMocks.getAuthoritativeLeagueState.mockResolvedValueOnce({
       league: {
         name: "Member League",
         nflYear: 2026,
@@ -88,7 +88,7 @@ describe("league layout query boundary", () => {
     render(layout);
 
     expect(screen.getByText("Member League")).toBeVisible();
-    expect(queryMocks.getLiveStage1League).toHaveBeenCalledWith(
+    expect(queryMocks.getAuthoritativeLeagueState).toHaveBeenCalledWith(
       "member-league",
     );
     expect(queryMocks.getSeasonArchive).toHaveBeenCalledWith("member-league");

@@ -10,6 +10,7 @@ import { createLeagueSlug } from "@/domain/leagues/league-slug";
 
 const createLeagueSchema = z.object({
   name: z.string().trim().min(1).max(80),
+  mode: z.enum(["LIVE", "SIMULATION"]),
 });
 
 const joinLeagueSchema = z.object({
@@ -86,6 +87,7 @@ export async function createLeagueAction(
 ): Promise<AppActionState> {
   const parsed = createLeagueSchema.safeParse({
     name: formData.get("name"),
+    mode: formData.get("mode"),
   });
   if (!parsed.success) {
     return {
@@ -103,7 +105,7 @@ export async function createLeagueAction(
     const result = await supabase.schema("api").rpc("create_league", {
       p_name: parsed.data.name,
       p_slug: slug,
-      p_mode: "LIVE",
+      p_mode: parsed.data.mode,
       p_nfl_year: 2026,
     });
     if (result.error || !result.data[0]) {
@@ -116,8 +118,7 @@ export async function createLeagueAction(
     revalidatePath("/leagues");
     return {
       status: "success",
-      message:
-        "League created. Invite members, then prepare Week 1 from the Commissioner page.",
+      message: `${parsed.data.mode === "LIVE" ? "Live" : "Simulation"} league created. Invite members, then prepare Week 1 from the Commissioner page.`,
       href: `/l/${result.data[0].league_slug}/commissioner`,
       hrefLabel: "Open commissioner setup",
     };

@@ -48,11 +48,9 @@ function LeagueList({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-lg font-bold">{league.name}</h3>
-              {league.mode === "SIMULATION" ? (
-                <span className="border-control text-muted rounded-full border px-2 py-0.5 text-[11px] font-semibold">
-                  Practice
-                </span>
-              ) : null}
+              <span className="border-control text-muted rounded-full border px-2 py-0.5 text-[11px] font-semibold">
+                {league.mode === "SIMULATION" ? "Simulation" : "Live"}
+              </span>
               {archived ? (
                 <StatusBadge tone="void">Archived</StatusBadge>
               ) : null}
@@ -123,9 +121,8 @@ export default async function LeaguesPage() {
       ];
     },
   );
-  const liveLeagues = leagues.filter((league) => league.mode === "LIVE");
-  const activeLeagues = liveLeagues.filter((league) => !league.archived_at);
-  const archivedLeagues = liveLeagues.filter((league) => league.archived_at);
+  const activeLeagues = leagues.filter((league) => !league.archived_at);
+  const archivedLeagues = leagues.filter((league) => league.archived_at);
 
   return (
     <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">

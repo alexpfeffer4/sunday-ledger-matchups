@@ -271,6 +271,14 @@ export type Database = {
         };
         Returns: Json;
       };
+      advance_simulated_time: {
+        Args: {
+          p_idempotency_key: string;
+          p_league_id: string;
+          p_target: string;
+        };
+        Returns: Json;
+      };
       finalize_stage1_week: {
         Args: { p_idempotency_key: string; p_league_id: string };
         Returns: Json;
@@ -324,6 +332,25 @@ export type Database = {
           p_archive_json: Json;
           p_idempotency_key: string;
           p_league_id: string;
+        };
+        Returns: Json;
+      };
+      publish_simulation_fixture_week: {
+        Args: {
+          p_idempotency_key: string;
+          p_league_id: string;
+          p_pack_id: string;
+          p_week: number;
+        };
+        Returns: Json;
+      };
+      apply_simulation_fixture_results: {
+        Args: {
+          p_idempotency_key: string;
+          p_league_id: string;
+          p_pack_id: string;
+          p_step: string;
+          p_week: number;
         };
         Returns: Json;
       };

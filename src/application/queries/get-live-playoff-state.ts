@@ -8,7 +8,7 @@ import {
   type LivePlayoffState,
 } from "@/application/queries/live-playoff-dtos";
 
-export const getLivePlayoffState = cache(
+export const getAuthoritativePlayoffState = cache(
   async (leagueSlug: string): Promise<LivePlayoffState | null> => {
     if (!isSupabaseConfigured()) return null;
 
@@ -34,3 +34,6 @@ export const getLivePlayoffState = cache(
     return livePlayoffStateSchema.parse(result.data);
   },
 );
+
+/** @deprecated Use the mode-neutral authoritative query. */
+export const getLivePlayoffState = getAuthoritativePlayoffState;

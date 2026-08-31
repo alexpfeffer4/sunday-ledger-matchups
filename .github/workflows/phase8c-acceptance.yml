@@ -1,0 +1,96 @@
+name: Phase 8C authoritative Simulation acceptance
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/phase8c-acceptance.yml"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/check-generated-supabase-types.mjs"
+      - "src/**"
+      - "supabase/migrations/**"
+      - "supabase/tests/**"
+      - "tests/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase8c-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-and-database:
+    name: Clean quality, migration, pgTAP, and type gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Clean install
+        run: npm ci
+
+      - name: Formatting, lint, strict types, unit/property tests, and build
+        run: npm run verify
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3
+        with:
+          version: 2.116.0
+
+      - name: Initialize disposable local configuration
+        run: supabase init
+
+      - name: Apply every migration from a clean database
+        run: supabase db start
+
+      - name: Run complete pgTAP and Phase 8C isolation suite
+        run: supabase test db
+
+      - name: Verify checked-in Supabase function types
+        run: |
+          supabase gen types typescript --local --schema api,public > /tmp/sunday-ledger-database.types.ts
+          npm run types:supabase:check -- /tmp/sunday-ledger-database.types.ts
+
+      - name: Stop disposable local database
+        if: always()
+        run: supabase stop --no-backup
+
+  browser:
+    name: Shared participant UI on Chromium and WebKit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Clean install
+        run: npm ci
+
+      - name: Render deterministic shared-UI fixtures
+        run: npx vitest run tests/e2e/phase8c-markup.test.tsx
+
+      - name: Install bounded browser set
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Chromium desktop and 390px acceptance
+        run: npx playwright test tests/e2e/phase8c-simulation.spec.ts --project=desktop --reporter=github
+
+      - name: WebKit desktop and 390px acceptance
+        run: npx playwright test tests/e2e/phase8c-simulation.spec.ts --project=webkit --reporter=github

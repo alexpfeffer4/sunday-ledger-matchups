@@ -12,6 +12,7 @@
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "next typegen && tsc --noEmit",
+    "types:supabase:check": "node scripts/check-generated-supabase-types.mjs",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "test": "vitest run",
