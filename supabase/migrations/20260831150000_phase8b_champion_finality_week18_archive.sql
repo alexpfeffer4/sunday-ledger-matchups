@@ -124,7 +124,10 @@ alter table private.season_archive_versions
   add constraint season_archive_versions_schema_supported
     check (archive_schema_version in (1, 2)),
   add constraint season_archive_versions_schema_matches_document
-    check ((archive_json ->> 'schemaVersion')::integer = archive_schema_version),
+    check (
+      archive_json ? 'schemaVersion'
+      and archive_json ->> 'schemaVersion' = archive_schema_version::text
+    ),
   add constraint season_archive_versions_version_parent_check check (
     (version = 1 and supersedes_id is null)
     or (version > 1 and supersedes_id is not null)
@@ -809,7 +812,7 @@ begin
   v_definition := replace(v_definition, v_old, v_new);
 
   v_old := 'elsif v_latest_week.nfl_week between 15 and 17 then';
-  v_new := 'elsif v_latest_week.nfl_week between 15 and 18 then';
+  v_new := E'elsif v_latest_week.nfl_week between 15 and 18 then\n    if v_latest_week.nfl_week = 18 then\n      raise exception using errcode = ''55000'', message = ''Week 18 may be replaced only by an authorized Week 17 correction.'';\n    end if;';
   if strpos(v_definition, v_old) = 0 then
     raise exception 'publish_postseason_week week selector changed; migration refused';
   end if;
@@ -1162,6 +1165,24 @@ $$;
 revoke execute on function private.rebuild_week18_round_after_correction(uuid, uuid, uuid)
 from public, anon, authenticated;
 
+-- SchemaVersion 2 archives retain the explicit role of every postseason
+-- matchup. Stored schemaVersion 1 documents are not rewritten.
+do $migration$
+declare
+  v_definition text;
+  v_old constant text := E'''scope'', v_matchup.scope,\n    ''label'', v_label,';
+  v_new constant text := E'''scope'', v_matchup.scope,\n    ''postseasonRole'', v_matchup.postseason_role,\n    ''label'', v_label,';
+begin
+  select pg_get_functiondef(
+    'private.live_archive_matchup(uuid,uuid)'::regprocedure
+  ) into strict v_definition;
+  if strpos(v_definition, v_old) = 0 then
+    raise exception 'live_archive_matchup role projection changed; migration refused';
+  end if;
+  execute replace(v_definition, v_old, v_new);
+end;
+$migration$;
+
 create or replace function private.build_season_archive_v2(
   p_season_id uuid,
   p_terminal_bracket_publication_id uuid,
@@ -1463,6 +1484,21 @@ begin
 
   if v_week18.state <> 'FINAL' then
     raise exception using errcode = '55000', message = 'Week 18 must be final before the complete archive can publish.';
+  end if;
+  if (select count(*) from private.weekly_cards as card
+      where card.week_id = v_week18.id) <> v_bracket.roster_size
+    or (select count(*) from private.matchups as matchup
+        where matchup.playoff_round_publication_id = v_round.id)
+      <> v_bracket.roster_size / 2
+    or (select count(distinct participant.entry_id)
+        from private.matchups as matchup
+        cross join lateral (values
+          (matchup.side_a_entry_id),
+          (matchup.side_b_entry_id)
+        ) as participant(entry_id)
+        where matchup.playoff_round_publication_id = v_round.id)
+      <> v_bracket.roster_size then
+    raise exception using errcode = '55000', message = 'Week 18 must contain exactly one card and matchup appearance per member.';
   end if;
   if exists (
     select 1 from private.weekly_cards as card

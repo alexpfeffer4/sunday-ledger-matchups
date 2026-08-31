@@ -1136,9 +1136,17 @@ export async function correctLiveEventResultAction(
   ) {
     return mutationError("A Live-league commissioner is required.");
   }
-  const lateWeek17 = ["CHAMPION_FINAL", "WEEK_18_EXHIBITION", "FINAL"].includes(
-    state.league.lifecycle,
-  );
+  const lateWeek17 = formData.get("correctionScope") === "FINALIZED_WEEK17";
+  if (
+    lateWeek17 &&
+    !["CHAMPION_FINAL", "WEEK_18_EXHIBITION", "FINAL"].includes(
+      state.league.lifecycle,
+    )
+  ) {
+    return mutationError(
+      "Late Week 17 corrections require confirmed champion history.",
+    );
+  }
   const supabase = await createSupabaseServerClient();
   const result = await supabase
     .schema("api")

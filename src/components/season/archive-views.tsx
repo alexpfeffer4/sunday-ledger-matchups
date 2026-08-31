@@ -663,6 +663,12 @@ export function SeasonArchiveHistory({
             const decision = viewerIsA
               ? game.sideADecision
               : game.sideBDecision;
+            const viewerCard = game.cards.find(
+              (card) => card.entryId === archive.viewerEntryId,
+            );
+            const exhibitionMiss =
+              game.scope === "EXHIBITION" &&
+              viewerCard?.compliance === "INCOMPLETE";
             return (
               <article
                 className="grid gap-3 p-4 sm:grid-cols-[120px_1fr_auto] sm:items-center sm:p-5"
@@ -679,18 +685,28 @@ export function SeasonArchiveHistory({
                   <p className="text-muted mt-1 text-xs">{game.label}</p>
                 </div>
                 <p className="font-mono text-sm font-semibold">
-                  <span
-                    className={
-                      decision === "WIN"
-                        ? "text-positive"
-                        : decision === "LOSS"
-                          ? "text-negative"
-                          : "text-pending"
-                    }
-                  >
-                    {decision === "WIN" ? "W" : decision === "LOSS" ? "L" : "T"}
-                  </span>{" "}
-                  {score(viewerScore)}–{score(opponentScore)}
+                  {exhibitionMiss ? (
+                    <span className="text-pending">Exhibition miss · 0</span>
+                  ) : (
+                    <>
+                      <span
+                        className={
+                          decision === "WIN"
+                            ? "text-positive"
+                            : decision === "LOSS"
+                              ? "text-negative"
+                              : "text-pending"
+                        }
+                      >
+                        {decision === "WIN"
+                          ? "W"
+                          : decision === "LOSS"
+                            ? "L"
+                            : "T"}
+                      </span>{" "}
+                      {score(viewerScore)}–{score(opponentScore)}
+                    </>
+                  )}
                 </p>
               </article>
             );

@@ -21,10 +21,18 @@ const cardSchema = z.object({
   receipts: z.array(receiptSchema),
 });
 
+const postseasonRoleSchema = z.enum([
+  "CHAMPIONSHIP",
+  "THIRD_PLACE",
+  "PLACEMENT",
+  "EXHIBITION",
+]);
+
 const matchupSchema = z.object({
   id: z.string(),
   week: z.number().int().min(1).max(18),
   scope: z.enum(["REGULAR", "PLAYOFF", "PLACEMENT", "EXHIBITION"]),
+  postseasonRole: postseasonRoleSchema.nullable().optional(),
   label: z.string(),
   sideAEntryId: z.string(),
   sideBEntryId: z.string(),
@@ -151,6 +159,10 @@ const championLineageSchema = z.object({
   finalizedAt: z.string(),
 });
 
+const finalMatchupSchema = matchupSchema.extend({
+  postseasonRole: postseasonRoleSchema.nullable(),
+});
+
 export const finalSeasonArchiveSchema = simulationSeasonArchiveSchema.extend({
   schemaVersion: z.literal(2),
   mode: z.literal("LIVE"),
@@ -174,11 +186,22 @@ export const finalSeasonArchiveSchema = simulationSeasonArchiveSchema.extend({
       }),
     ),
   }),
+  regularSeason: simulationSeasonArchiveSchema.shape.regularSeason.extend({
+    weeks: z.array(
+      z.object({
+        week: z.number().int().min(1).max(14),
+        matchups: z.array(finalMatchupSchema),
+        standings: z.array(standingSchema),
+      }),
+    ),
+  }),
   playoffs: simulationSeasonArchiveSchema.shape.playoffs.extend({
+    games: z.array(finalMatchupSchema),
     thirdPlaceEntryIds: z.array(z.string()).min(1).max(2),
     finalPlacement: z.array(finalPlacementSchema),
     championLineage: z.array(championLineageSchema).min(1),
   }),
+  week18: z.array(finalMatchupSchema),
   corrections: z.array(
     z.object({
       id: z.string(),

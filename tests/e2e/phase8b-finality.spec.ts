@@ -91,3 +91,21 @@ test("Week 18 and correction states retain their required meaning", async ({
   ).toBeVisible();
   await expect(page.getByText("Exhibition miss · 0")).toBeVisible();
 });
+
+test("the final archive remains usable at 200% text zoom", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate((markup) => {
+    document.body.innerHTML = markup;
+    document.documentElement.style.fontSize = "200%";
+  }, fixture.finalArchive);
+  await page.setViewportSize({ width: 320, height: 900 });
+
+  await expect(
+    page.getByText(/complete Weeks 1–18 archive are final/i),
+  ).toBeVisible();
+  const dimensions = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
+  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
+});

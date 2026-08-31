@@ -40,10 +40,19 @@ describe("Phase 8B migration contract", () => {
     expect(migration).toContain(
       "add column version integer not null default 1",
     );
+    expect(migration).toContain("archive_json ? 'schemaVersion'");
     expect(migration).not.toMatch(
       /(?:update|delete from) private\.season_archive_versions/i,
     );
     expect(migration).toContain("'schemaVersion', 2");
+  });
+
+  it("requires a complete one-card and one-matchup-per-member Week 18", () => {
+    expect(migration).toContain(
+      "Week 18 must contain exactly one card and matchup appearance per member.",
+    );
+    expect(migration).toContain("<> v_bracket.roster_size / 2");
+    expect(migration).toContain("count(distinct participant.entry_id)");
   });
 
   it("extends the existing round authority to Week 18 and derives pairings", () => {
@@ -69,6 +78,9 @@ describe("Phase 8B migration contract", () => {
     );
     expect(migration).toContain(
       "private.rebuild_week18_round_after_correction",
+    );
+    expect(migration).toContain(
+      "Week 18 may be replaced only by an authorized Week 17 correction.",
     );
     expect(migration).not.toMatch(
       /update private\.(?:matchups|playoff_round_publications|matchup_result_versions|position_receipts)/i,
@@ -121,6 +133,9 @@ describe("Phase 8B migration contract", () => {
     }
     expect(migration).toContain("championLineage");
     expect(migration).toContain("qualification");
+    expect(migration).toContain(
+      "''postseasonRole'', v_matchup.postseason_role",
+    );
     expect(migration).toContain("positionReceiptCount");
   });
 });

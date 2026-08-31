@@ -110,6 +110,11 @@ function LateWeek17CorrectionControls({
             >
               <ContextFields state={state} />
               <input type="hidden" name="eventId" value={event.id} />
+              <input
+                name="correctionScope"
+                type="hidden"
+                value="FINALIZED_WEEK17"
+              />
               <label className="text-xs font-semibold">
                 {event.awayTeam}
                 <input
