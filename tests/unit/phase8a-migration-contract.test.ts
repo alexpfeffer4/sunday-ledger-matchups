@@ -4,7 +4,13 @@ import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
   resolve(
-    "supabase/migrations/20260830171706_phase8a_sparse_qualification_every_member_postseason.sql",
+    "supabase/migrations/20260831040524_phase8a_sparse_qualification_every_member_postseason.sql",
+  ),
+  "utf8",
+);
+const indexHardeningMigration = readFileSync(
+  resolve(
+    "supabase/migrations/20260831125141_phase8a_playoff_fk_index_hardening.sql",
   ),
   "utf8",
 );
@@ -51,5 +57,15 @@ describe("Phase 8A migration contract", () => {
     );
     expect(migration).toContain("postseason_role = 'CHAMPIONSHIP'");
     expect(migration).toContain("EXHIBITION_MISS");
+  });
+
+  it("keeps the Week 14 standings foreign key covered after versioning", () => {
+    expect(indexHardeningMigration).toContain(
+      "create index playoff_publications_week14_standings_snapshot_id_idx",
+    );
+    expect(indexHardeningMigration).toContain(
+      "on private.playoff_publications (week14_standings_snapshot_id)",
+    );
+    expect(indexHardeningMigration).not.toMatch(/update|delete|insert/i);
   });
 });
