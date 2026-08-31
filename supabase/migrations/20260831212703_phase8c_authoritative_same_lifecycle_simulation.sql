@@ -264,7 +264,7 @@ begin
     'and odds_import.league_id = p_league_id;',
     E'and odds_import.league_id = p_league_id;\n\n  if v_import.source <> case v_season.mode when ''LIVE'' then ''THE_ODDS_API'' else ''SIMULATION_FIXTURE'' end then\n    raise exception using errcode = ''22023'', message = ''Provider source does not match the frozen season mode.'';\n  end if;');
   begin
-    execute v_definition;
+    execute v_definition || ';';
   exception when others then
     raise exception 'publish_live_week_slate rewrite failed: %', sqlerrm
       using detail = v_definition;
@@ -285,7 +285,7 @@ begin
     'and odds_import.league_id = p_league_id;',
     E'and odds_import.league_id = p_league_id;\n\n  if v_import.source <> case v_season.mode when ''LIVE'' then ''THE_ODDS_API'' else ''SIMULATION_FIXTURE'' end then\n    raise exception using errcode = ''22023'', message = ''Provider source does not match the frozen season mode.'';\n  end if;');
   begin
-    execute v_definition;
+    execute v_definition || ';';
   exception when others then
     raise exception 'publish_next_live_week_slate rewrite failed: %', sqlerrm
       using detail = v_definition;
@@ -305,7 +305,7 @@ begin
   v_definition := replace(v_definition, 'forming Live season', 'forming authoritative season');
   v_definition := replace(v_definition, 'The Live ruleset', 'The authoritative ruleset');
   begin
-    execute v_definition;
+    execute v_definition || ';';
   exception when others then
     raise exception 'lock_live_roster_and_open_week rewrite failed: %', sqlerrm
       using detail = v_definition;
@@ -321,7 +321,7 @@ begin
     'season.mode in (''LIVE'', ''SIMULATION'')'
   );
   begin
-    execute v_definition;
+    execute v_definition || ';';
   exception when others then
     raise exception 'set_initial_live_quote_head rewrite failed: %', sqlerrm
       using detail = v_definition;
@@ -335,7 +335,7 @@ begin
     'season.mode = ''LIVE''',
     'season.mode in (''LIVE'', ''SIMULATION'')');
   begin
-    execute v_definition;
+    execute v_definition || ';';
   exception when others then
     raise exception 'publish_playoff_qualification rewrite failed: %', sqlerrm
       using detail = v_definition;
@@ -359,7 +359,7 @@ begin
     'where odds_import.id = p_import_id and odds_import.season_id = v_season.id and odds_import.league_id = p_league_id;',
     E'where odds_import.id = p_import_id and odds_import.season_id = v_season.id and odds_import.league_id = p_league_id;\n  if v_import.source <> case v_season.mode when ''LIVE'' then ''THE_ODDS_API'' else ''SIMULATION_FIXTURE'' end then\n    raise exception using errcode = ''22023'', message = ''Provider source does not match the frozen season mode.'';\n  end if;');
   begin
-    execute v_definition;
+    execute v_definition || ';';
   exception when others then
     raise exception 'publish_postseason_week rewrite failed: %', sqlerrm
       using detail = v_definition;
@@ -373,7 +373,7 @@ begin
     'season.lifecycle = ''REGULAR''',
     'season.lifecycle <> ''FINAL''');
   begin
-    execute v_definition;
+    execute v_definition || ';';
   exception when others then
     raise exception 'advance_stage1_clock rewrite failed: %', sqlerrm
       using detail = v_definition;
@@ -403,7 +403,7 @@ begin
     v_definition := replace(v_definition,
       'season.mode = ''LIVE''',
       'season.mode in (''LIVE'', ''SIMULATION'')');
-    execute v_definition;
+    execute v_definition || ';';
   end loop;
 
   v_definition := pg_get_functiondef(
@@ -423,14 +423,14 @@ begin
     'if v_week.nfl_week <> 17',
     E'if v_season.mode = ''SIMULATION'' and not exists (\n    select 1\n    from private.simulation_fixture_manifests as manifest\n    cross join lateral jsonb_array_elements(manifest.manifest_json -> ''weeks'') as fixture_week(value)\n    cross join lateral jsonb_array_elements(fixture_week.value -> ''events'') as fixture_event(value)\n    cross join lateral jsonb_array_elements(fixture_event.value -> ''resultVersions'') as fixture_result(value)\n    where manifest.pack_id = ''sunday-ledger-authoritative-2026-v1''\n      and (fixture_week.value ->> ''week'')::integer = 17\n      and fixture_event.value ->> ''externalEventId'' = v_event.fixture_event_key\n      and (fixture_result.value ->> ''version'')::integer = 3\n      and upper(fixture_result.value ->> ''status'') = upper(p_status)\n      and nullif(fixture_result.value ->> ''awayScore'', '''')::integer is not distinct from p_away_score\n      and nullif(fixture_result.value ->> ''homeScore'', '''')::integer is not distinct from p_home_score\n      and fixture_result.value ->> ''reason'' = btrim(p_reason)\n      and (fixture_result.value ->> ''availableAt'')::timestamptz <= private.stage1_season_time(v_season.id)\n  ) then\n    raise exception using errcode = ''22023'', message = ''Simulation corrections must match the reviewed fixture manifest.'';\n  end if;\n\n  if v_week.nfl_week <> 17'
   );
-  execute v_definition;
+  execute v_definition || ';';
 
   v_definition := pg_get_functiondef('private.build_season_archive_v2(uuid,uuid,uuid,integer,uuid,uuid,timestamp with time zone)'::regprocedure);
   if position('''mode'', ''LIVE''' in v_definition) = 0 then
     raise exception 'Unexpected build_season_archive_v2 definition';
   end if;
   v_definition := replace(v_definition, '''mode'', ''LIVE''', '''mode'', v_season.mode');
-  execute v_definition;
+  execute v_definition || ';';
 
   v_definition := pg_get_functiondef('private.append_phase8b_archive(uuid,uuid,uuid)'::regprocedure);
   if position('season.mode = ''LIVE''' in v_definition) = 0
@@ -446,7 +446,7 @@ begin
   v_definition := replace(v_definition,
     'perform private.assert_phase8_terminal_lineage(v_season.id);',
     E'v_published_at := private.stage1_season_time(v_season.id);\n  perform private.assert_phase8_terminal_lineage(v_season.id);');
-  execute v_definition;
+  execute v_definition || ';';
 end;
 $mode_neutral_phase8$;
 
@@ -771,7 +771,7 @@ begin
     raise exception using errcode = '22023', message = 'Simulation results must match the reviewed fixture manifest.';
   end if;$guard$;
   v_definition := replace(v_definition, v_anchor, v_guard);
-  execute v_definition;
+  execute v_definition || ';';
 end;
 $harden_simulation_result$;
 
