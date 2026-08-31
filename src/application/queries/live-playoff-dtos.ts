@@ -74,13 +74,14 @@ const publishedRoundSchema = z.object({
   id: z.uuid(),
   version: z.number().int().positive(),
   supersedesId: z.uuid().nullable(),
-  week: z.union([z.literal(15), z.literal(16), z.literal(17)]),
+  week: z.union([z.literal(15), z.literal(16), z.literal(17), z.literal(18)]),
   scope: z.enum(["PLAYOFF", "EXHIBITION"]),
   state: z.enum(["PLANNED", "OPEN", "LOCKED", "PROVISIONAL", "FINAL"]),
   commonLockAt: z.string(),
   publishedAt: z.string(),
   inputHash: z.string().length(64),
   sourceResultVersionIds: z.array(z.uuid()),
+  pairingReplaceable: z.boolean().nullable().optional(),
   matchups: z.array(
     z.object({
       id: z.uuid(),
@@ -116,7 +117,12 @@ export const livePlayoffStateSchema = z.object({
     name: z.string(),
     slug: z.string(),
     nflYear: z.number().int(),
-    lifecycle: z.enum(["PLAYOFFS", "FINAL"]),
+    lifecycle: z.enum([
+      "PLAYOFFS",
+      "CHAMPION_FINAL",
+      "WEEK_18_EXHIBITION",
+      "FINAL",
+    ]),
   }),
   publication: z.object({
     id: z.uuid(),
@@ -125,6 +131,7 @@ export const livePlayoffStateSchema = z.object({
     publishedAt: z.string(),
     inputHash: z.string().length(64),
     sourceResultVersionIds: z.array(z.uuid()),
+    stage: z.enum(["QUALIFICATION", "CHAMPION_FINAL"]).default("QUALIFICATION"),
     rosterSize: z.number().int().positive(),
     expectedQualifierCount: z.union([z.literal(4), z.literal(6)]),
     actualQualifierCount: z.number().int().nonnegative(),
@@ -140,8 +147,51 @@ export const livePlayoffStateSchema = z.object({
       priorVersionCount: z.number().int().nonnegative(),
       sourceResultVersionIds: z.array(z.uuid()),
     }),
+    championFinality: z
+      .object({
+        championEntryId: z.uuid(),
+        runnerUpEntryId: z.uuid(),
+        thirdPlaceEntryIds: z.array(z.uuid()).min(1).max(2),
+        thirdPlaceTied: z.boolean(),
+        finalPlacement: z.array(
+          z.object({
+            entryId: z.uuid(),
+            placement: z.number().int().positive(),
+            role: z.enum([
+              "CHAMPION",
+              "RUNNER_UP",
+              "THIRD_PLACE",
+              "FOURTH_PLACE",
+              "EARLIER_ROUND",
+              "NON_QUALIFIER",
+            ]),
+            tied: z.boolean(),
+          }),
+        ),
+        terminalResultVersionIds: z.array(z.uuid()).min(1),
+        finalizedAt: z.string(),
+      })
+      .nullable()
+      .default(null),
+    championLineage: z
+      .array(
+        z.object({
+          id: z.uuid(),
+          version: z.number().int().positive(),
+          supersedesId: z.uuid().nullable(),
+          championEntryId: z.uuid(),
+          runnerUpEntryId: z.uuid(),
+          thirdPlaceEntryIds: z.array(z.uuid()).min(1).max(2),
+          thirdPlaceTied: z.boolean(),
+          correctionId: z.uuid().nullable(),
+          finalizedAt: z.string(),
+          effective: z.boolean(),
+        }),
+      )
+      .default([]),
   }),
   rounds: z.array(publishedRoundSchema),
+  archiveComplete: z.boolean().default(false),
   viewer: z.object({ userId: z.uuid(), isCommissioner: z.boolean() }),
 });
 

@@ -50,7 +50,7 @@ export default async function LeagueLayout({
       <LeagueShell
         leagueSlug={leagueSlug}
         leagueName={live?.league.name ?? "League archive"}
-        week={17}
+        week={18}
         nflYear={archive.nflYear}
         mode={archive.mode}
         memberName={viewer?.displayName ?? "Member"}
@@ -77,8 +77,10 @@ export default async function LeagueLayout({
         cardStatusLabel={
           live.ownerCard
             ? `${live.ownerCard.allocatedCredits} / 1,000 used`
-            : live.league.lifecycle === "PLAYOFFS"
-              ? "No card this round"
+            : ["PLAYOFFS", "CHAMPION_FINAL"].includes(live.league.lifecycle)
+              ? live.league.lifecycle === "CHAMPION_FINAL"
+                ? "Champion final · Week 18 next"
+                : "No card this round"
               : "Card opens at roster lock"
         }
         isCommissioner={live.league.role === "COMMISSIONER"}

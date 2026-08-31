@@ -5,8 +5,8 @@ select no_plan();
 
 select has_table(
   'private',
-  'live_season_archives',
-  'final Live season archives are stored outside the Data API schema'
+  'season_archive_versions',
+  'versioned season archives are stored outside the Data API schema'
 );
 select has_function(
   'api',
@@ -22,8 +22,8 @@ select has_function(
 );
 select policies_are(
   'private',
-  'live_season_archives',
-  array['live_season_archives_select_member'],
+  'season_archive_versions',
+  array['season_archive_versions_select_member'],
   'the archive has only the league-member read policy'
 );
 select function_privs_are(
@@ -250,14 +250,14 @@ where week.nfl_week between 15 and 17;
 insert into private.matchups (
   week_id, season_id, league_id, schedule_publication_id,
   playoff_round_publication_id, side_a_entry_id, side_b_entry_id,
-  scope, display_order
+  scope, postseason_role, display_order
 )
 select
   week.week_id,
   'c3500000-0000-4000-8000-000000000001',
   'c2000000-0000-4000-8000-000000000001',
   'c7000000-0000-4000-8000-000000000001', null,
-  side_a.entry_id, side_b.entry_id, 'REGULAR', game
+  side_a.entry_id, side_b.entry_id, 'REGULAR', null, game
 from archive_weeks as week
 cross join generate_series(1, 2) as game
 join archive_members as side_a on side_a.seed = game * 2 - 1
@@ -267,7 +267,7 @@ where week.nfl_week <= 14;
 insert into private.matchups (
   week_id, season_id, league_id, schedule_publication_id,
   playoff_round_publication_id, side_a_entry_id, side_b_entry_id,
-  scope, display_order
+  scope, postseason_role, display_order
 )
 select
   week.week_id,
@@ -279,6 +279,11 @@ select
     when week.nfl_week = 15 then 'EXHIBITION'
     when week.nfl_week = 17 and game = 2 then 'PLACEMENT'
     else 'PLAYOFF'
+  end,
+  case
+    when week.nfl_week = 15 then 'EXHIBITION'
+    when week.nfl_week = 17 and game = 2 then 'THIRD_PLACE'
+    else 'CHAMPIONSHIP'
   end,
   game
 from archive_weeks as week
@@ -329,10 +334,39 @@ insert into private.matchup_result_versions (
 )
 select
   matchup.id, matchup.week_id, matchup.league_id,
-  side_a_score.id, side_b_score.id, 'LOSS', 'LOSS', 0, 0,
+  side_a_score.id, side_b_score.id,
+  case
+    when week.nfl_week = 17 and matchup.postseason_role = 'CHAMPIONSHIP'
+      then 'WIN'
+    when week.nfl_week = 17 and matchup.postseason_role = 'THIRD_PLACE'
+      then 'TIE'
+    else 'LOSS'
+  end,
+  case
+    when week.nfl_week = 17 and matchup.postseason_role = 'CHAMPIONSHIP'
+      then 'LOSS'
+    when week.nfl_week = 17 and matchup.postseason_role = 'THIRD_PLACE'
+      then 'TIE'
+    else 'LOSS'
+  end,
+  case
+    when week.nfl_week = 17 and matchup.postseason_role = 'CHAMPIONSHIP'
+      then 100000
+    when week.nfl_week = 17 and matchup.postseason_role = 'THIRD_PLACE'
+      then 80000
+    else 0
+  end,
+  case
+    when week.nfl_week = 17 and matchup.postseason_role = 'CHAMPIONSHIP'
+      then 90000
+    when week.nfl_week = 17 and matchup.postseason_role = 'THIRD_PLACE'
+      then 80000
+    else 0
+  end,
   encode(extensions.digest(matchup.id::text || ':archive-result', 'sha256'), 'hex'),
   'FINAL'
 from private.matchups as matchup
+join private.season_weeks as week on week.id = matchup.week_id
 join private.weekly_cards as side_a_card
   on side_a_card.week_id = matchup.week_id
  and side_a_card.entry_id = matchup.side_a_entry_id
@@ -365,74 +399,225 @@ select set_config(
   '{"sub":"c1000000-0000-4000-8000-000000000001","role":"authenticated"}',
   true
 );
-select lives_ok(
+select throws_ok(
   $$select api.publish_live_season_archive(
     'c2000000-0000-4000-8000-000000000001',
     'publish-final-live-archive'
   )$$,
-  'the commissioner publishes the derived final archive'
+  '55000',
+  'Week 18 must be final before the complete archive can publish.',
+  'the commissioner cannot publish a complete archive from Week 17'
 );
 select is(
   (select lifecycle from private.seasons
    where id = 'c3500000-0000-4000-8000-000000000001'),
-  'FINAL',
-  'archive publication closes the Live season'
+  'PLAYOFFS',
+  'a refused Week 17 archive leaves lifecycle unchanged'
 );
 select is(
-  (select champion_entry_id::text from private.live_season_archives
+  (select count(*)::integer from private.season_archive_versions
    where season_id = 'c3500000-0000-4000-8000-000000000001'),
-  'c4000000-0000-4000-8000-000000000001',
-  'the championship derives the higher qualification seed after dual incompletion'
+  0,
+  'no complete archive exists during the Week 17 playoff state'
 );
-select ok(
-  (select third_place_tied and third_place_entry_id is null
-   from private.live_season_archives
-   where season_id = 'c3500000-0000-4000-8000-000000000001'),
-  'the placement tie is preserved without inventing a third-place winner'
+
+select is(
+  api.finalize_champion_bracket(
+    'c2000000-0000-4000-8000-000000000001',
+    'finalize-champion-bracket'
+  ) ->> 'lifecycle',
+  'CHAMPION_FINAL',
+  'the commissioner finalizes the champion after the Week 17 correction window'
 );
 select is(
-  (select jsonb_array_length(archive_json #> '{regularSeason,weeks}')
-   from private.live_season_archives
-   where season_id = 'c3500000-0000-4000-8000-000000000001'),
-  14,
-  'the archive contains all fourteen regular-season weeks'
+  api.finalize_champion_bracket(
+    'c2000000-0000-4000-8000-000000000001',
+    'finalize-champion-bracket'
+  ) ->> 'publicationId',
+  (
+    select publication.id::text
+    from private.playoff_publications as publication
+    where publication.season_id = 'c3500000-0000-4000-8000-000000000001'
+      and publication.publication_stage = 'CHAMPION_FINAL'
+  ),
+  'champion finalization replays idempotently after its lifecycle transition'
 );
 select is(
-  (select jsonb_array_length(archive_json #> '{playoffs,games}')
-   from private.live_season_archives
-   where season_id = 'c3500000-0000-4000-8000-000000000001'),
-  6,
-  'the archive contains all six published postseason matchups'
+  (select lifecycle from private.seasons
+   where id = 'c3500000-0000-4000-8000-000000000001'),
+  'CHAMPION_FINAL',
+  'champion finality is a stored state distinct from final archive publication'
 );
 select is(
   (
-    api.publish_live_season_archive(
-      'c2000000-0000-4000-8000-000000000001',
-      'publish-final-live-archive'
-    ) ->> 'archiveId'
+    select champion_entry_id::text
+    from private.playoff_publications as publication
+    where publication.season_id = 'c3500000-0000-4000-8000-000000000001'
+      and publication.publication_stage = 'CHAMPION_FINAL'
   ),
-  (select id::text from private.live_season_archives
+  'c4000000-0000-4000-8000-000000000001',
+  'the champion is derived from the terminal Week 17 championship result'
+);
+select is(
+  (
+    select third_place_tied
+    from private.playoff_publications as publication
+    where publication.season_id = 'c3500000-0000-4000-8000-000000000001'
+      and publication.publication_stage = 'CHAMPION_FINAL'
+  ),
+  true,
+  'a compliant third-place tie remains explicitly tied'
+);
+select is(
+  (select count(*)::integer from private.season_archive_versions
    where season_id = 'c3500000-0000-4000-8000-000000000001'),
-  'the final archive command replays idempotently'
+  0,
+  'the complete archive remains absent during champion finality'
+);
+select is(
+  (
+    select jsonb_array_length(
+      private.build_phase8b_postseason_round(publication.id, 18) -> 'games'
+    )
+    from private.playoff_publications as publication
+    where publication.season_id = 'c3500000-0000-4000-8000-000000000001'
+      and publication.publication_stage = 'CHAMPION_FINAL'
+  ),
+  2,
+  'the stored four-member placement derives two Week 18 exhibitions'
+);
+select is(
+  (
+    select private.build_phase8b_postseason_round(publication.id, 18)
+      #>> '{games,0,sideA,entryId}'
+    from private.playoff_publications as publication
+    where publication.season_id = 'c3500000-0000-4000-8000-000000000001'
+      and publication.publication_stage = 'CHAMPION_FINAL'
+  ),
+  'c4000000-0000-4000-8000-000000000001',
+  'Week 18 adjacent pairing begins with the champion'
+);
+select is(
+  (
+    select private.build_phase8b_postseason_round(publication.id, 18)
+      #>> '{games,0,sideB,entryId}'
+    from private.playoff_publications as publication
+    where publication.season_id = 'c3500000-0000-4000-8000-000000000001'
+      and publication.publication_stage = 'CHAMPION_FINAL'
+  ),
+  'c4000000-0000-4000-8000-000000000002',
+  'Week 18 pairs the runner-up adjacent to the champion'
+);
+select throws_ok(
+  $$select api.publish_live_season_archive(
+    'c2000000-0000-4000-8000-000000000001',
+    'champion-final-cannot-publish-archive'
+  )$$,
+  '55000',
+  'Week 18 must be final before the complete archive can publish.',
+  'champion finality still cannot publish a complete archive'
 );
 
+insert into private.season_archive_versions (
+  id, season_id, league_id, ruleset_snapshot_id, schedule_publication_id,
+  terminal_bracket_publication_id, championship_result_version_id,
+  third_place_result_version_id, champion_entry_id, runner_up_entry_id,
+  third_place_entry_id, third_place_tied, archive_hash, archive_json,
+  published_by, archive_schema_version, version
+)
+select
+  'cf000000-0000-4000-8000-000000000001',
+  'c3500000-0000-4000-8000-000000000001',
+  'c2000000-0000-4000-8000-000000000001',
+  'c3000000-0000-4000-8000-000000000001',
+  'c7000000-0000-4000-8000-000000000001',
+  'c8000000-0000-4000-8000-000000000001',
+  championship.id, third_place.id,
+  'c4000000-0000-4000-8000-000000000001',
+  'c4000000-0000-4000-8000-000000000002',
+  null, true, repeat('f', 64), '{"schemaVersion":1}'::jsonb,
+  'c1000000-0000-4000-8000-000000000001', 1, 1
+from private.matchup_result_versions as championship
+join private.matchups as championship_matchup
+  on championship_matchup.id = championship.matchup_id
+ and championship_matchup.scope = 'PLAYOFF'
+join private.matchup_result_versions as third_place on true
+join private.matchups as third_place_matchup
+  on third_place_matchup.id = third_place.matchup_id
+ and third_place_matchup.scope = 'PLACEMENT'
+where championship.week_id = 'c5000000-0000-4000-8000-000000000017'
+  and third_place.week_id = 'c5000000-0000-4000-8000-000000000017'
+limit 1;
+
+insert into auth.users (id, email) values (
+  'c1000000-0000-4000-8000-000000000099',
+  'archive-nonmember@example.test'
+);
+
+set local role authenticated;
 select set_config(
   'request.jwt.claims',
   '{"sub":"c1000000-0000-4000-8000-000000000004","role":"authenticated"}',
   true
 );
 select is(
-  api.get_season_archive('stage3-live-archive-test') ->> 'viewerEntryId',
-  'c4000000-0000-4000-8000-000000000004',
-  'the member archive read model scopes personal history to the viewer'
+  (select count(*)::integer from private.season_archive_versions
+   where season_id = 'c3500000-0000-4000-8000-000000000001'),
+  1,
+  'an exact league member can read the legacy archive root'
 );
 select throws_ok(
-  $$update private.live_season_archives
+  $$insert into private.season_archive_versions (
+      id, season_id, league_id, ruleset_snapshot_id,
+      schedule_publication_id, terminal_bracket_publication_id,
+      championship_result_version_id, third_place_result_version_id,
+      champion_entry_id, runner_up_entry_id, third_place_entry_id,
+      third_place_tied, archive_hash, archive_json, published_by,
+      archive_schema_version, version
+    ) select
+      gen_random_uuid(), season_id, league_id, ruleset_snapshot_id,
+      schedule_publication_id, terminal_bracket_publication_id,
+      championship_result_version_id, third_place_result_version_id,
+      champion_entry_id, runner_up_entry_id, third_place_entry_id,
+      third_place_tied, repeat('e', 64), archive_json, published_by,
+      archive_schema_version, version + 1
+    from private.season_archive_versions
+    where season_id = 'c3500000-0000-4000-8000-000000000001'$$,
+  '42501',
+  null,
+  'a league member cannot insert an archive version directly'
+);
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"c1000000-0000-4000-8000-000000000099","role":"authenticated"}',
+  true
+);
+select is(
+  (select count(*)::integer from private.season_archive_versions),
+  0,
+  'an authenticated nonmember cannot read another league archive'
+);
+
+reset role;
+set local role anon;
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+select throws_ok(
+  $$select * from private.season_archive_versions$$,
+  '42501',
+  null,
+  'anonymous callers cannot read the archive relation'
+);
+
+reset role;
+
+select throws_ok(
+  $$update private.season_archive_versions
     set archive_json = archive_json || '{"tampered":true}'::jsonb
     where season_id = 'c3500000-0000-4000-8000-000000000001'$$,
   '55000',
-  'live_season_archives is append-only.',
-  'the final archive rejects mutation'
+  'season_archive_versions is append-only.',
+  'a legacy archive root rejects mutation'
 );
 
 select * from finish();

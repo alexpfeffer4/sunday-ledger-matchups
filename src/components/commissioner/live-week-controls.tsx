@@ -4,13 +4,16 @@ import Link from "next/link";
 import { useActionState } from "react";
 import {
   correctLiveEventResultAction,
+  finalizeChampionBracketAction,
   finalizeStage1WeekAction,
   importLiveOddsAction,
   importLiveScoresAction,
   lockStage1WeekAction,
   publishLivePlayoffQualificationAction,
+  publishLiveSeasonArchiveAction,
   publishNextLivePostseasonWeekAction,
   publishNextLiveWeekSlateAction,
+  publishWeek18ExhibitionAction,
   refreshLiveWeekQuotesAction,
   voidLiveEventAfterPostponementAction,
 } from "@/app/l/[leagueSlug]/actions";
@@ -18,6 +21,7 @@ import { initialAppActionState } from "@/application/actions/action-state";
 import { isStandardLiveSlateEvent } from "@/application/providers/select-standard-live-slate";
 import type { LiveOddsImportReview } from "@/application/queries/get-live-odds-import";
 import type { LiveWeekOperations } from "@/application/queries/get-live-week-operations";
+import type { Week17CorrectionOperations } from "@/application/queries/get-week17-correction-operations";
 import type { Stage1CommissionerControlState } from "@/components/commissioner/stage1-controls";
 import { ActionFeedback } from "@/components/forms/action-feedback";
 import { AuditDetails } from "@/components/ui/audit-details";
@@ -54,16 +58,134 @@ function scoreLine(event: LiveWeekOperations["events"][number]): string {
   );
 }
 
+function LateWeek17CorrectionControls({
+  correcting,
+  correctionAction,
+  operations,
+  state,
+}: {
+  correcting: boolean;
+  correctionAction: (payload: FormData) => void;
+  operations: Week17CorrectionOperations;
+  state: Stage1CommissionerControlState;
+}) {
+  return (
+    <section className="border-boundary bg-surface rounded-xl border p-5">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+        <div>
+          <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+            Authorized Week 17 correction
+          </p>
+          <h2 className="mt-2 font-bold">Append objective result evidence</h2>
+        </div>
+        <span
+          className={`rounded-full border px-3 py-1 text-xs font-bold ${
+            operations.pairingReplaceable
+              ? "border-pending/30 bg-pending/10 text-pending"
+              : "border-positive/30 bg-positive/10 text-positive"
+          }`}
+        >
+          {operations.pairingPublished
+            ? operations.pairingReplaceable
+              ? "Week 18 pairing replaceable"
+              : "Week 18 pairing frozen"
+            : "Week 18 not published"}
+        </span>
+      </div>
+      <p className="text-graphite mt-3 text-sm leading-6">
+        A documented official-score correction appends every affected result,
+        champion, bracket, and final-archive version. It never reopens receipts
+        or edits a prior Week 18 pairing or result.
+      </p>
+      <div className="divide-boundary mt-4 divide-y border-t">
+        {operations.events.map((event) => (
+          <details className="py-4" key={event.id}>
+            <summary className="text-action min-h-11 cursor-pointer content-center text-sm font-semibold">
+              {event.awayTeam} {event.result.awayScore ?? "—"} ·{" "}
+              {event.homeTeam} {event.result.homeScore ?? "—"}
+            </summary>
+            <form
+              action={correctionAction}
+              className="mt-3 grid gap-3 sm:grid-cols-2"
+            >
+              <ContextFields state={state} />
+              <input type="hidden" name="eventId" value={event.id} />
+              <input
+                name="correctionScope"
+                type="hidden"
+                value="FINALIZED_WEEK17"
+              />
+              <label className="text-xs font-semibold">
+                {event.awayTeam}
+                <input
+                  className="border-control bg-surface mt-1 min-h-11 w-full rounded-lg border px-3 text-base"
+                  defaultValue={event.result.awayScore ?? ""}
+                  inputMode="numeric"
+                  max="999"
+                  min="0"
+                  name="awayScore"
+                  required
+                  type="number"
+                />
+              </label>
+              <label className="text-xs font-semibold">
+                {event.homeTeam}
+                <input
+                  className="border-control bg-surface mt-1 min-h-11 w-full rounded-lg border px-3 text-base"
+                  defaultValue={event.result.homeScore ?? ""}
+                  inputMode="numeric"
+                  max="999"
+                  min="0"
+                  name="homeScore"
+                  required
+                  type="number"
+                />
+              </label>
+              <label className="text-xs font-semibold sm:col-span-2">
+                Visible objective reason
+                <textarea
+                  className="border-control bg-surface mt-1 min-h-24 w-full rounded-lg border p-3 text-sm"
+                  maxLength={500}
+                  minLength={10}
+                  name="reason"
+                  placeholder="Identify the official scoring correction and source."
+                  required
+                />
+              </label>
+              <button
+                className={buttonClass + " sm:col-span-2"}
+                disabled={correcting}
+                type="submit"
+              >
+                {correcting
+                  ? "Appending correction…"
+                  : "Append documented correction"}
+              </button>
+            </form>
+            <p className="text-muted mt-3 text-xs">
+              Result version {event.result.version} · {event.correctionCount}{" "}
+              prior correction
+              {event.correctionCount === 1 ? "" : "s"}
+            </p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function LiveWeekCommissionerControls({
   latestLiveImport,
   liveWeekOperations,
   providerConfigured,
   state,
+  week17CorrectionOperations,
 }: {
   latestLiveImport: LiveOddsImportReview | null;
   liveWeekOperations: LiveWeekOperations | null;
   providerConfigured: boolean;
   state: Stage1CommissionerControlState;
+  week17CorrectionOperations: Week17CorrectionOperations | null;
 }) {
   const [quoteState, quoteAction, refreshingQuotes] = useActionState(
     refreshLiveWeekQuotesAction,
@@ -105,6 +227,18 @@ export function LiveWeekCommissionerControls({
     publishingPlayoffQualification,
   ] = useActionState(
     publishLivePlayoffQualificationAction,
+    initialAppActionState,
+  );
+  const [championState, championAction, finalizingChampion] = useActionState(
+    finalizeChampionBracketAction,
+    initialAppActionState,
+  );
+  const [week18State, week18Action, publishingWeek18] = useActionState(
+    publishWeek18ExhibitionAction,
+    initialAppActionState,
+  );
+  const [archiveState, archiveAction, finalizingArchive] = useActionState(
+    publishLiveSeasonArchiveAction,
     initialAppActionState,
   );
 
@@ -646,24 +780,143 @@ export function LiveWeekCommissionerControls({
       weekNumber === 17 ? (
         <section className="border-copper bg-surface rounded-xl border p-5">
           <p className="text-copper text-xs font-bold tracking-[0.08em] uppercase">
-            Postseason complete
+            Champion review
           </p>
           <h2 className="mt-2 font-bold">Week 17 results are final</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            The championship and third-place games are final for Phase 8A. The
-            effective bracket version and all Week 15–17 assignments remain
-            available under Playoffs and Audit details.
+            Confirm the champion and final bracket from the stored Week 17
+            results. Placement and the champion cannot be selected manually.
           </p>
-          <p className="text-muted mt-3 text-sm leading-6">
-            Week 18 and archive finality are intentionally outside this phase.
-          </p>
-          <Link
-            className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
-            href={`/l/${state.league.slug}/playoffs`}
-          >
-            Review the completed bracket
-          </Link>
+          <form action={championAction} className="mt-4">
+            <ContextFields state={state} />
+            <button
+              className={buttonClass}
+              disabled={finalizingChampion}
+              type="submit"
+            >
+              {finalizingChampion
+                ? "Confirming champion…"
+                : "Finalize champion & bracket"}
+            </button>
+          </form>
+          <ActionFeedback state={championState} />
         </section>
+      ) : null}
+
+      {state.week.state === "FINAL" &&
+      state.league.lifecycle === "CHAMPION_FINAL" &&
+      weekNumber === 17 ? (
+        <section className="border-registry bg-surface rounded-xl border p-5">
+          <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+            Week 18 exhibition setup
+          </p>
+          <h2 className="mt-2 font-bold">
+            Champion fixed · archive still open
+          </h2>
+          <p className="text-graphite mt-2 text-sm leading-6">
+            Import the Week 18 provider slate. Final placement and adjacent
+            pairings are derived automatically, and every member receives one
+            normal card and one exhibition matchup.
+          </p>
+          <form action={oddsImportAction} className="mt-4">
+            <ContextFields state={state} />
+            <button
+              className={buttonClass}
+              disabled={!providerConfigured || importingOdds}
+              type="submit"
+            >
+              {importingOdds
+                ? "Importing current markets…"
+                : "Import Week 18 NFL markets for review"}
+            </button>
+          </form>
+          <ActionFeedback state={oddsImportState} />
+          {nextWeekImport ? (
+            <form action={week18Action} className="mt-5 border-t pt-5">
+              <ContextFields state={state} />
+              <input
+                name="importId"
+                type="hidden"
+                value={nextWeekImport.importId}
+              />
+              <fieldset>
+                <legend className="text-sm font-bold">
+                  Select the eligible Week 18 games
+                </legend>
+                <p className="text-muted mt-1 text-xs leading-5">
+                  This selects only the provider slate. Final placement,
+                  pairings, and participants cannot be edited.
+                </p>
+                <div className="divide-boundary mt-3 divide-y">
+                  {nextWeekImport.events.map((event) => (
+                    <label
+                      className="flex min-h-14 cursor-pointer items-start gap-3 py-3 first:pt-0 last:pb-0"
+                      key={event.externalEventId}
+                    >
+                      <input
+                        className="border-control text-registry mt-1 size-4 rounded"
+                        defaultChecked={isStandardLiveSlateEvent(event)}
+                        name="externalEventId"
+                        type="checkbox"
+                        value={event.externalEventId}
+                      />
+                      <span className="text-sm font-semibold">
+                        {event.awayTeam} at {event.homeTeam}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <button
+                className={`${buttonClass} mt-4`}
+                disabled={publishingWeek18}
+                type="submit"
+              >
+                {publishingWeek18
+                  ? "Publishing exhibitions…"
+                  : "Publish Week 18 exhibitions"}
+              </button>
+            </form>
+          ) : null}
+          <ActionFeedback state={week18State} />
+        </section>
+      ) : null}
+
+      {state.week.state === "FINAL" &&
+      state.league.lifecycle === "WEEK_18_EXHIBITION" &&
+      weekNumber === 18 ? (
+        <section className="border-copper bg-surface rounded-xl border p-5">
+          <p className="text-copper text-xs font-bold tracking-[0.08em] uppercase">
+            Complete archive
+          </p>
+          <h2 className="mt-2 font-bold">Week 18 exhibitions are final</h2>
+          <p className="text-graphite mt-2 text-sm leading-6">
+            Publish the complete Weeks 1–18 archive from stored cards, receipts,
+            results, qualification evidence, and champion history.
+          </p>
+          <form action={archiveAction} className="mt-4">
+            <ContextFields state={state} />
+            <button
+              className={buttonClass}
+              disabled={finalizingArchive}
+              type="submit"
+            >
+              {finalizingArchive
+                ? "Publishing final archive…"
+                : "Publish complete season archive"}
+            </button>
+          </form>
+          <ActionFeedback state={archiveState} />
+        </section>
+      ) : null}
+
+      {week17CorrectionOperations ? (
+        <LateWeek17CorrectionControls
+          correcting={correcting}
+          correctionAction={correctionAction}
+          operations={week17CorrectionOperations}
+          state={state}
+        />
       ) : null}
 
       {state.week.state === "FINAL" && weekNumber === 14 ? (

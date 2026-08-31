@@ -8,12 +8,13 @@ import {
 import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import {
+  seasonArchiveSchema,
   simulationSeasonArchiveSchema,
-  type SimulationSeasonArchiveDto,
+  type SeasonArchiveDto,
 } from "@/application/queries/season-archive-dtos";
 
 export const getSeasonArchive = cache(
-  async (leagueSlug: string): Promise<SimulationSeasonArchiveDto | null> => {
+  async (leagueSlug: string): Promise<SeasonArchiveDto | null> => {
     if (leagueSlug === exampleSeasonSlug) {
       return simulationSeasonArchiveSchema.parse(exampleSeasonArchive);
     }
@@ -34,7 +35,7 @@ export const getSeasonArchive = cache(
     }
     if (result.data === null) return null;
 
-    const archive = simulationSeasonArchiveSchema.parse(result.data);
+    const archive = seasonArchiveSchema.parse(result.data);
     return archive.mode === "LIVE" ? archive : null;
   },
 );

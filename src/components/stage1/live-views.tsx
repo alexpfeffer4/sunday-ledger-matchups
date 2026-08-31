@@ -5,6 +5,7 @@ import type { LiveOddsImportReview } from "@/application/queries/get-live-odds-i
 import type { LeagueInviteSummary } from "@/application/queries/league-invite-dtos";
 import type { LiveRegularSeasonSchedule } from "@/application/queries/get-live-regular-season-schedule";
 import type { LiveWeekOperations } from "@/application/queries/get-live-week-operations";
+import type { Week17CorrectionOperations } from "@/application/queries/get-week17-correction-operations";
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
 import { Stage1CommissionerControls } from "@/components/commissioner/stage1-controls";
 import { LeagueSettings } from "@/components/commissioner/league-settings";
@@ -850,6 +851,7 @@ export function Stage1CommissionerView({
   liveWeekOperations,
   providerConfigured,
   state,
+  week17CorrectionOperations,
 }: {
   invites: LeagueInviteSummary[];
   leagueManagement: MyLeagueSummary | null;
@@ -857,6 +859,7 @@ export function Stage1CommissionerView({
   liveWeekOperations: LiveWeekOperations | null;
   providerConfigured: boolean;
   state: Stage1StateDto;
+  week17CorrectionOperations: Week17CorrectionOperations | null;
 }) {
   if (!state.commissioner.isCommissioner) {
     return (
@@ -922,6 +925,7 @@ export function Stage1CommissionerView({
                 userId: member.userId,
               })),
             }}
+            week17CorrectionOperations={week17CorrectionOperations}
           />
           <aside className="space-y-5">
             <section className="border-boundary bg-surface rounded-xl border p-5">

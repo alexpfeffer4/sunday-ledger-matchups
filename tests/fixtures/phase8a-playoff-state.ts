@@ -79,6 +79,7 @@ export const phase8aPlayoffState: LivePlayoffState = {
     publishedAt: "2026-12-29T16:00:00.000Z",
     inputHash: "a".repeat(64),
     sourceResultVersionIds: ["86000000-0000-4000-8000-000000000014"],
+    stage: "QUALIFICATION",
     rosterSize: 10,
     expectedQualifierCount: 6,
     actualQualifierCount: 4,
@@ -115,6 +116,8 @@ export const phase8aPlayoffState: LivePlayoffState = {
       priorVersionCount: 1,
       sourceResultVersionIds: ["86000000-0000-4000-8000-000000000014"],
     },
+    championFinality: null,
+    championLineage: [],
   },
   rounds: [
     {
@@ -131,6 +134,7 @@ export const phase8aPlayoffState: LivePlayoffState = {
       matchups: paired,
     },
   ],
+  archiveComplete: false,
   viewer: {
     userId: "87000000-0000-4000-8000-000000000001",
     isCommissioner: true,

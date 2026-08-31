@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { SimulationSeasonArchiveDto } from "@/application/queries/season-archive-dtos";
+import type { SeasonArchiveDto } from "@/application/queries/season-archive-dtos";
 import { PageFrame } from "@/components/league/page-frame";
 import {
   StandingsRulesetSummary,
@@ -15,10 +15,7 @@ function score(centicredits: number): string {
   });
 }
 
-function memberName(
-  archive: SimulationSeasonArchiveDto,
-  entryId: string,
-): string {
+function memberName(archive: SeasonArchiveDto, entryId: string): string {
   return (
     archive.members.find((member) => member.entryId === entryId)?.displayName ??
     "Unknown member"
@@ -26,8 +23,8 @@ function memberName(
 }
 
 function matchupLine(
-  archive: SimulationSeasonArchiveDto,
-  matchup: SimulationSeasonArchiveDto["week18"][number],
+  archive: SeasonArchiveDto,
+  matchup: SeasonArchiveDto["week18"][number],
 ) {
   return {
     sideA: memberName(archive, matchup.sideAEntryId),
@@ -42,7 +39,7 @@ export function SeasonArchiveHome({
   archive,
   leagueSlug,
 }: {
-  archive: SimulationSeasonArchiveDto;
+  archive: SeasonArchiveDto;
   leagueSlug: string;
 }) {
   const isExample = archive.mode === "SIMULATION";
@@ -191,7 +188,7 @@ export function SeasonArchiveHome({
 export function SeasonArchiveSchedule({
   archive,
 }: {
-  archive: SimulationSeasonArchiveDto;
+  archive: SeasonArchiveDto;
 }) {
   const isExample = archive.mode === "SIMULATION";
   return (
@@ -296,7 +293,7 @@ export function SeasonArchiveStandings({
   archive,
   ruleset,
 }: {
-  archive: SimulationSeasonArchiveDto;
+  archive: SeasonArchiveDto;
   ruleset: RulesetPresentation;
 }) {
   const qualifierIds = new Set(
@@ -460,10 +457,11 @@ export function SeasonArchiveStandings({
 export function SeasonArchivePlayoffs({
   archive,
 }: {
-  archive: SimulationSeasonArchiveDto;
+  archive: SeasonArchiveDto;
 }) {
   const isExample = archive.mode === "SIMULATION";
   const champion = memberName(archive, archive.playoffs.championEntryId);
+  const finalArchive = archive.schemaVersion === 2 ? archive : null;
   return (
     <PageFrame
       eyebrow={
@@ -583,6 +581,24 @@ export function SeasonArchivePlayoffs({
                 .join(" · ")}
             </dd>
           </div>
+          {finalArchive ? (
+            <div className="sm:col-span-2">
+              <dt className="text-muted">Champion lineage</dt>
+              <dd className="mt-2 space-y-2">
+                {finalArchive.playoffs.championLineage.map((version) => (
+                  <span className="block text-xs" key={version.id}>
+                    Version {version.version} ·{" "}
+                    {memberName(archive, version.championEntryId)}
+                    {version.id ===
+                    finalArchive.integrity.terminalBracketPublicationId
+                      ? " · effective"
+                      : " · superseded and retained"}
+                    {version.correctionId ? " · documented correction" : ""}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          ) : null}
         </dl>
       </AuditDetails>
       <section className="border-boundary bg-archive mt-6 rounded-xl border p-5">
@@ -600,7 +616,7 @@ export function SeasonArchivePlayoffs({
 export function SeasonArchiveHistory({
   archive,
 }: {
-  archive: SimulationSeasonArchiveDto;
+  archive: SeasonArchiveDto;
 }) {
   const isExample = archive.mode === "SIMULATION";
   const games = [
@@ -647,6 +663,12 @@ export function SeasonArchiveHistory({
             const decision = viewerIsA
               ? game.sideADecision
               : game.sideBDecision;
+            const viewerCard = game.cards.find(
+              (card) => card.entryId === archive.viewerEntryId,
+            );
+            const exhibitionMiss =
+              game.scope === "EXHIBITION" &&
+              viewerCard?.compliance === "INCOMPLETE";
             return (
               <article
                 className="grid gap-3 p-4 sm:grid-cols-[120px_1fr_auto] sm:items-center sm:p-5"
@@ -663,18 +685,28 @@ export function SeasonArchiveHistory({
                   <p className="text-muted mt-1 text-xs">{game.label}</p>
                 </div>
                 <p className="font-mono text-sm font-semibold">
-                  <span
-                    className={
-                      decision === "WIN"
-                        ? "text-positive"
-                        : decision === "LOSS"
-                          ? "text-negative"
-                          : "text-pending"
-                    }
-                  >
-                    {decision === "WIN" ? "W" : decision === "LOSS" ? "L" : "T"}
-                  </span>{" "}
-                  {score(viewerScore)}–{score(opponentScore)}
+                  {exhibitionMiss ? (
+                    <span className="text-pending">Exhibition miss · 0</span>
+                  ) : (
+                    <>
+                      <span
+                        className={
+                          decision === "WIN"
+                            ? "text-positive"
+                            : decision === "LOSS"
+                              ? "text-negative"
+                              : "text-pending"
+                        }
+                      >
+                        {decision === "WIN"
+                          ? "W"
+                          : decision === "LOSS"
+                            ? "L"
+                            : "T"}
+                      </span>{" "}
+                      {score(viewerScore)}–{score(opponentScore)}
+                    </>
+                  )}
                 </p>
               </article>
             );

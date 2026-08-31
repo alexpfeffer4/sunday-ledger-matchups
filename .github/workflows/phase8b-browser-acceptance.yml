@@ -1,0 +1,59 @@
+name: Phase 8B browser acceptance
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/phase8b-browser-acceptance.yml"
+      - "playwright.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "src/application/queries/live-playoff-dtos.ts"
+      - "src/components/playoffs/**"
+      - "src/components/season/**"
+      - "src/components/commissioner/**"
+      - "src/app/l/**"
+      - "src/app/globals.css"
+      - "src/design/tokens.css"
+      - "tests/e2e/phase8b-*.tsx"
+      - "tests/e2e/phase8b-*.ts"
+      - "tests/fixtures/phase8b-finality.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase8b-browser-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  phase8b-browser:
+    name: Champion, exhibition, correction, and archive states
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run quality, unit, property, and build gates
+        run: npm run verify
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Render Phase 8B browser fixtures
+        run: npx vitest run tests/e2e/phase8b-markup.test.tsx
+
+      - name: Run Phase 8B browser acceptance
+        run: npx playwright test tests/e2e/phase8b-finality.spec.ts --project=desktop --reporter=github

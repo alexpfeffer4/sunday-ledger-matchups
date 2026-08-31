@@ -22,6 +22,12 @@ const roundTimeFormatter = new Intl.DateTimeFormat("en-US", {
 
 export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
   const { publication } = state;
+  const champion = publication.championFinality
+    ? publication.standings.find(
+        (standing) =>
+          standing.entryId === publication.championFinality?.championEntryId,
+      )
+    : null;
   const qualifierIds = new Set(
     publication.qualifiers.map((qualifier) => qualifier.entryId),
   );
@@ -30,18 +36,55 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
     publication.bracket.format === "SIX_SLOT"
       ? publication.bracket
       : null;
+  const hasSupersededChampion = publication.championLineage.some(
+    (version) => !version.effective,
+  );
 
   return (
     <PageFrame
-      eyebrow={`${state.league.nflYear} playoffs · official through Week 14`}
-      title="The playoff field is set"
-      description="Eligibility is applied first. When fewer than four members are eligible, the highest remaining Week 14 finishers are reinstated only until the championship field reaches four."
+      eyebrow={
+        publication.championFinality
+          ? `${state.league.nflYear} champion · official after Week 17`
+          : `${state.league.nflYear} playoffs · official through Week 14`
+      }
+      title={
+        publication.championFinality
+          ? `${champion?.displayName ?? "Champion"} is champion`
+          : "The playoff field is set"
+      }
+      description={
+        state.league.lifecycle === "CHAMPION_FINAL"
+          ? "The champion and final bracket are fixed. The complete season archive remains open until every Week 18 exhibition is final."
+          : state.league.lifecycle === "WEEK_18_EXHIBITION"
+            ? "The champion remains fixed while every member plays one final-placement exhibition with the normal card, receipt, reveal, and settlement experience."
+            : publication.championFinality
+              ? "The champion, final bracket, and complete Weeks 1–18 archive are final."
+              : "Eligibility is applied first. When fewer than four members are eligible, the highest remaining Week 14 finishers are reinstated only until the championship field reaches four."
+      }
       aside={
         <StatusBadge tone="positive">
-          {publication.actualQualifierCount} selected
+          {publication.championFinality
+            ? state.league.lifecycle === "CHAMPION_FINAL"
+              ? "Champion final · Week 18 next"
+              : "Champion final"
+            : `${publication.actualQualifierCount} selected`}
         </StatusBadge>
       }
     >
+      {hasSupersededChampion ? (
+        <section
+          aria-label="Champion correction"
+          className="border-corrected/25 bg-corrected/10 mt-7 rounded-xl border p-4"
+        >
+          <p className="text-corrected text-sm font-bold">
+            Champion correction recorded
+          </p>
+          <p className="text-graphite mt-1 text-sm leading-6">
+            The prior champion was superseded and retained under Audit details.
+          </p>
+        </section>
+      ) : null}
+
       <section aria-labelledby="published-rounds-title" className="mt-7">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
@@ -59,9 +102,9 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
           </StatusBadge>
         </div>
         <p className="text-graphite mt-2 max-w-3xl text-sm leading-6">
-          Weeks 15–17 include every member exactly once. Championship games are
-          assigned first; remaining members are paired from the frozen Week 14
-          order.
+          Weeks 15–17 include every member exactly once. Week 18 pairs every
+          member adjacently from final postseason placement and remains an
+          exhibition with no effect on champion, standings, or eligibility.
         </p>
         {state.rounds.length ? (
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
@@ -206,7 +249,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
             <div className="mt-4 space-y-3">
               {publication.standings.map((standing) => (
                 <div
-                  className="grid grid-cols-[28px_1fr_auto] items-center gap-2 text-sm"
+                  className="grid grid-cols-[28px_minmax(0,1fr)] items-center gap-x-2 gap-y-1 text-sm min-[360px]:grid-cols-[28px_minmax(0,1fr)_auto]"
                   key={standing.entryId}
                 >
                   <span className="font-mono">{standing.seed}</span>
@@ -214,11 +257,11 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
                     {standing.displayName}
                   </span>
                   <span
-                    className={
+                    className={`col-start-2 min-w-0 break-words min-[360px]:col-start-3 ${
                       qualifierIds.has(standing.entryId)
                         ? "text-positive font-semibold"
                         : "text-muted"
-                    }
+                    }`}
                   >
                     {qualifierIds.has(standing.entryId)
                       ? "Selected"
@@ -257,6 +300,28 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
                   {publication.inputHash}
                 </dd>
               </div>
+              {publication.championLineage.length ? (
+                <div>
+                  <dt className="text-muted">Champion history</dt>
+                  <dd className="mt-2 space-y-2">
+                    {publication.championLineage.map((version) => {
+                      const versionChampion = publication.standings.find(
+                        (standing) =>
+                          standing.entryId === version.championEntryId,
+                      );
+                      return (
+                        <span className="block text-xs" key={version.id}>
+                          Version {version.version} ·{" "}
+                          {versionChampion?.displayName ?? "Recorded champion"}
+                          {version.effective
+                            ? " · effective"
+                            : " · superseded and retained"}
+                        </span>
+                      );
+                    })}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
           </AuditDetails>
         </aside>
@@ -267,8 +332,8 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
 
 function PublishedRoundCard({ round }: { round: PublishedRound }) {
   return (
-    <article className="border-registry bg-surface rounded-xl border p-5 shadow-[var(--shadow-card)]">
-      <div className="flex items-start justify-between gap-3">
+    <article className="border-registry bg-surface rounded-xl border p-5 break-words shadow-[var(--shadow-card)]">
+      <div className="flex flex-col items-start gap-3 min-[360px]:flex-row min-[360px]:justify-between">
         <div>
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
             Week {round.week}
@@ -293,6 +358,15 @@ function PublishedRoundCard({ round }: { round: PublishedRound }) {
       <p className="text-positive mt-1 text-xs font-semibold">
         {round.matchups.length} matchups · every member received one card
       </p>
+      {round.week === 18 ? (
+        <p
+          className={`mt-2 text-xs font-semibold ${round.pairingReplaceable ? "text-pending" : "text-positive"}`}
+        >
+          {round.pairingReplaceable
+            ? "Pairing remains replaceable until the first card seals"
+            : "Pairing frozen · protected from later corrections"}
+        </p>
+      ) : null}
       <div className="mt-4 space-y-3">
         {round.matchups.map((matchup) => {
           const role =

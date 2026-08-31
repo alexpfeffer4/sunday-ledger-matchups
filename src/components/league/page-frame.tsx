@@ -23,7 +23,7 @@ export function PageFrame({
           : "pb-24 lg:pb-12"
       }
     >
-      <div className="mx-auto max-w-[1480px] px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
+      <div className="mx-auto max-w-[1480px] min-w-0 px-4 py-7 [overflow-wrap:anywhere] sm:px-6 sm:py-9 lg:px-8">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
             <p className="text-muted text-sm font-semibold">{eyebrow}</p>
