@@ -24,9 +24,21 @@ describe("full-season simulation", () => {
       expect(archive.schedule.matchups).toHaveLength((rosterSize / 2) * 14);
       expect(archive.regularSeason.finalStandings).toHaveLength(rosterSize);
       expect(archive.playoffs.qualifiers).toHaveLength(rosterSize <= 8 ? 4 : 6);
-      expect(archive.playoffs.games).toHaveLength(
-        rosterSize <= 8 ? rosterSize / 2 + 4 : 6,
-      );
+      expect(archive.playoffs.games).toHaveLength((rosterSize / 2) * 3);
+      for (const week of [15, 16, 17]) {
+        const postseasonWeek = archive.playoffs.games.filter(
+          (matchup) => matchup.week === week,
+        );
+        expect(postseasonWeek).toHaveLength(rosterSize / 2);
+        expect(
+          new Set(
+            postseasonWeek.flatMap((matchup) => [
+              matchup.sideAEntryId,
+              matchup.sideBEntryId,
+            ]),
+          ).size,
+        ).toBe(rosterSize);
+      }
       expect(archive.week18).toHaveLength(rosterSize / 2);
       expect(
         archive.members.some(

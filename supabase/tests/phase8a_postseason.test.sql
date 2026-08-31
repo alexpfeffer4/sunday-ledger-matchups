@@ -16,6 +16,10 @@ select function_privs_are('api', 'publish_playoff_qualification', array['uuid', 
 select function_privs_are('api', 'publish_postseason_week', array['uuid', 'uuid', 'text[]', 'text'], 'anon', array[]::text[], 'anonymous round publication is denied');
 select function_privs_are('private', 'build_phase8_playoff_publication', array['jsonb', 'integer', 'integer'], 'authenticated', array[]::text[], 'participants cannot call the qualification kernel');
 select function_privs_are('private', 'build_phase8_postseason_round', array['uuid', 'integer'], 'authenticated', array[]::text[], 'participants cannot call the pairing kernel');
+select has_function('private', 'is_effective_slate_item', array['uuid'], 'effective postseason slate selection is canonical');
+select has_function('private', 'is_week_card_sealed', array['uuid'], 'postseason corrections share one card-seal guard');
+select function_privs_are('private', 'is_effective_slate_item', array['uuid'], 'authenticated', array[]::text[], 'participants cannot call the slate-lineage helper');
+select function_privs_are('private', 'is_week_card_sealed', array['uuid'], 'authenticated', array[]::text[], 'participants cannot call the card-seal helper');
 
 with ordered as (
   select jsonb_agg(jsonb_build_object(

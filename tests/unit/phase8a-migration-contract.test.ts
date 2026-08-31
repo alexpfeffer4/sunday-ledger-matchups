@@ -8,9 +8,9 @@ const migration = readFileSync(
   ),
   "utf8",
 );
-const indexHardeningMigration = readFileSync(
+const hardeningMigration = readFileSync(
   resolve(
-    "supabase/migrations/20260831125141_phase8a_playoff_fk_index_hardening.sql",
+    "supabase/migrations/20260831125141_phase8a_postseason_slate_and_fk_hardening.sql",
   ),
   "utf8",
 );
@@ -60,12 +60,32 @@ describe("Phase 8A migration contract", () => {
   });
 
   it("keeps the Week 14 standings foreign key covered after versioning", () => {
-    expect(indexHardeningMigration).toContain(
+    expect(hardeningMigration).toContain(
       "create index playoff_publications_week14_standings_snapshot_id_idx",
     );
-    expect(indexHardeningMigration).toContain(
+    expect(hardeningMigration).toContain(
       "on private.playoff_publications (week14_standings_snapshot_id)",
     );
-    expect(indexHardeningMigration).not.toMatch(/update|delete|insert/i);
+  });
+
+  it("retires superseded slate items and closes the post-seal correction gate", () => {
+    expect(hardeningMigration).toContain(
+      "create or replace function private.is_effective_slate_item",
+    );
+    expect(hardeningMigration).toContain(
+      "private.is_effective_slate_item(slate_item.id)",
+    );
+    expect(hardeningMigration).toContain(
+      "private.is_effective_slate_item(item.id)",
+    );
+    expect(hardeningMigration).toContain(
+      "create or replace function private.is_week_card_sealed",
+    );
+    expect(hardeningMigration).toContain(
+      "if private.is_week_card_sealed(v_latest_week.id) then",
+    );
+    expect(hardeningMigration).not.toMatch(
+      /update private\.|delete from private\./i,
+    );
   });
 });
