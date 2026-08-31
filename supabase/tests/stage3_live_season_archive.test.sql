@@ -267,7 +267,7 @@ where week.nfl_week <= 14;
 insert into private.matchups (
   week_id, season_id, league_id, schedule_publication_id,
   playoff_round_publication_id, side_a_entry_id, side_b_entry_id,
-  scope, display_order
+  scope, postseason_role, display_order
 )
 select
   week.week_id,

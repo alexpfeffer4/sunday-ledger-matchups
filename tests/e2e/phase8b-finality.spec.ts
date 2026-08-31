@@ -81,7 +81,11 @@ test("Week 18 and correction states retain their required meaning", async ({
     document.body.innerHTML = markup;
   }, fixture.correctedChampion);
   await expect(page.getByText(/Ledger Member 2 is champion/i)).toBeVisible();
-  await expect(page.getByText(/superseded and retained/i)).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "Champion correction" })
+      .getByText(/superseded and retained/i),
+  ).toBeVisible();
   await expect(
     page.getByText("Pairing frozen · protected from later corrections"),
   ).toBeVisible();
@@ -109,9 +113,40 @@ test("the final archive remains usable at 200% text zoom", async ({ page }) => {
   await expect(
     page.getByText(/complete Weeks 1–18 archive are final/i),
   ).toBeVisible();
-  const dimensions = await page.evaluate(() => ({
-    clientWidth: document.documentElement.clientWidth,
-    scrollWidth: document.documentElement.scrollWidth,
-  }));
-  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
+  const dimensions = await page.evaluate(() => {
+    const clientWidth = document.documentElement.clientWidth;
+    const offenders = Array.from(
+      document.body.querySelectorAll<HTMLElement>("*"),
+    )
+      .map((element) => {
+        const bounds = element.getBoundingClientRect();
+        return {
+          bounds: {
+            left: Math.round(bounds.left),
+            right: Math.round(bounds.right),
+            width: Math.round(bounds.width),
+          },
+          className: element.className,
+          tag: element.tagName.toLowerCase(),
+          text: element.textContent?.trim().slice(0, 80),
+        };
+      })
+      .filter(
+        (element) =>
+          element.bounds.left < -0.5 ||
+          element.bounds.right > clientWidth + 0.5,
+      )
+      .sort((left, right) => right.bounds.right - left.bounds.right)
+      .slice(0, 8);
+
+    return {
+      clientWidth,
+      offenders,
+      scrollWidth: document.documentElement.scrollWidth,
+    };
+  });
+  expect(
+    dimensions.scrollWidth,
+    JSON.stringify(dimensions.offenders, null, 2),
+  ).toBeLessThanOrEqual(dimensions.clientWidth);
 });
