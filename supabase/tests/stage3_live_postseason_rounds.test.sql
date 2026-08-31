@@ -471,8 +471,8 @@ select is(
     join private.season_weeks as week on week.id = card.week_id
     where week.nfl_week = 15 and card.compliance = 'INCOMPLETE'
   ),
-  2,
-  'the unsealed 4-vs-5 cards become incomplete at common lock'
+  8,
+  'all unsealed every-member cards become incomplete at common lock'
 );
 
 select lives_ok(
@@ -511,8 +511,8 @@ select is(
     join private.season_weeks as week on week.id = result.week_id
     where week.nfl_week = 15 and result.status = 'PROVISIONAL'
   ),
-  2,
-  'both opening-round matchup results are provisionally materialized'
+  5,
+  'all five every-member matchup results are provisionally materialized'
 );
 
 update private.season_weeks

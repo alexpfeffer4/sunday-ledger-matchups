@@ -632,7 +632,7 @@ select throws_ok(
     'early-live-week-finalization'
   )$$,
   '55000',
-  'Week 1 cannot finalize before its correction window closes.',
+  'The current week cannot finalize before its correction window closes.',
   'the week cannot finalize during its 24-hour correction window'
 );
 
