@@ -14,22 +14,67 @@ select hasnt_table(
   'the legacy archive name is retired after the in-place rename'
 );
 
-select has_column('private', 'playoff_publications', 'publication_stage');
-select has_column('private', 'playoff_publications', 'champion_entry_id');
-select has_column('private', 'playoff_publications', 'runner_up_entry_id');
-select has_column('private', 'playoff_publications', 'third_place_entry_ids');
-select has_column('private', 'playoff_publications', 'final_placement_json');
-select has_column('private', 'playoff_publications', 'terminal_result_version_ids');
-select has_column('private', 'playoff_publications', 'correction_id');
+select has_column(
+  'private', 'playoff_publications', 'publication_stage',
+  'playoff_publications.publication_stage is stored explicitly'
+);
+select has_column(
+  'private', 'playoff_publications', 'champion_entry_id',
+  'playoff_publications.champion_entry_id is stored explicitly'
+);
+select has_column(
+  'private', 'playoff_publications', 'runner_up_entry_id',
+  'playoff_publications.runner_up_entry_id is stored explicitly'
+);
+select has_column(
+  'private', 'playoff_publications', 'third_place_entry_ids',
+  'playoff_publications.third_place_entry_ids is stored explicitly'
+);
+select has_column(
+  'private', 'playoff_publications', 'final_placement_json',
+  'playoff_publications.final_placement_json is stored explicitly'
+);
+select has_column(
+  'private', 'playoff_publications', 'terminal_result_version_ids',
+  'playoff_publications.terminal_result_version_ids is stored explicitly'
+);
+select has_column(
+  'private', 'playoff_publications', 'correction_id',
+  'playoff_publications.correction_id is stored explicitly'
+);
 
-select has_column('private', 'season_archive_versions', 'archive_schema_version');
-select has_column('private', 'season_archive_versions', 'version');
-select has_column('private', 'season_archive_versions', 'supersedes_id');
-select has_column('private', 'season_archive_versions', 'terminal_bracket_publication_id');
-select has_column('private', 'season_archive_versions', 'terminal_w17_result_version_ids');
-select has_column('private', 'season_archive_versions', 'effective_w18_round_publication_id');
-select has_column('private', 'season_archive_versions', 'terminal_w18_result_version_ids');
-select has_column('private', 'season_archive_versions', 'correction_id');
+select has_column(
+  'private', 'season_archive_versions', 'archive_schema_version',
+  'season_archive_versions.archive_schema_version is stored explicitly'
+);
+select has_column(
+  'private', 'season_archive_versions', 'version',
+  'season_archive_versions.version is stored explicitly'
+);
+select has_column(
+  'private', 'season_archive_versions', 'supersedes_id',
+  'season_archive_versions.supersedes_id is stored explicitly'
+);
+select has_column(
+  'private', 'season_archive_versions', 'terminal_bracket_publication_id',
+  'season_archive_versions.terminal_bracket_publication_id is stored explicitly'
+);
+select has_column(
+  'private', 'season_archive_versions', 'terminal_w17_result_version_ids',
+  'season_archive_versions.terminal_w17_result_version_ids is stored explicitly'
+);
+select has_column(
+  'private', 'season_archive_versions', 'effective_w18_round_publication_id',
+  'season_archive_versions.effective_w18_round_publication_id is stored explicitly'
+);
+select has_column(
+  'private', 'season_archive_versions', 'terminal_w18_result_version_ids',
+  'season_archive_versions.terminal_w18_result_version_ids is stored explicitly'
+);
+select has_column(
+  'private', 'season_archive_versions', 'correction_id',
+  'season_archive_versions.correction_id is stored explicitly'
+);
 
 select has_index(
   'private',

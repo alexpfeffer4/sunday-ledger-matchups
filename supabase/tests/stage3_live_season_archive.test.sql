@@ -257,7 +257,7 @@ select
   'c3500000-0000-4000-8000-000000000001',
   'c2000000-0000-4000-8000-000000000001',
   'c7000000-0000-4000-8000-000000000001', null,
-  side_a.entry_id, side_b.entry_id, 'REGULAR', game
+  side_a.entry_id, side_b.entry_id, 'REGULAR', null, game
 from archive_weeks as week
 cross join generate_series(1, 2) as game
 join archive_members as side_a on side_a.seed = game * 2 - 1

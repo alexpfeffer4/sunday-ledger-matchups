@@ -249,7 +249,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
             <div className="mt-4 space-y-3">
               {publication.standings.map((standing) => (
                 <div
-                  className="grid grid-cols-[28px_1fr_auto] items-center gap-2 text-sm"
+                  className="grid grid-cols-[28px_minmax(0,1fr)] items-center gap-x-2 gap-y-1 text-sm min-[360px]:grid-cols-[28px_minmax(0,1fr)_auto]"
                   key={standing.entryId}
                 >
                   <span className="font-mono">{standing.seed}</span>
@@ -257,11 +257,11 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
                     {standing.displayName}
                   </span>
                   <span
-                    className={
+                    className={`col-start-2 min-w-0 break-words min-[360px]:col-start-3 ${
                       qualifierIds.has(standing.entryId)
                         ? "text-positive font-semibold"
                         : "text-muted"
-                    }
+                    }`}
                   >
                     {qualifierIds.has(standing.entryId)
                       ? "Selected"
@@ -332,7 +332,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
 
 function PublishedRoundCard({ round }: { round: PublishedRound }) {
   return (
-    <article className="border-registry bg-surface rounded-xl border p-5 shadow-[var(--shadow-card)]">
+    <article className="border-registry bg-surface rounded-xl border p-5 break-words shadow-[var(--shadow-card)]">
       <div className="flex flex-col items-start gap-3 min-[360px]:flex-row min-[360px]:justify-between">
         <div>
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">

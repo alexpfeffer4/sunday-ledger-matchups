@@ -63,6 +63,9 @@ for (const state of states) {
 test("Week 18 and correction states retain their required meaning", async ({
   page,
 }) => {
+  await page.route(/\/_next\/static\/chunks\/.*\.js(?:\?.*)?$/, (route) =>
+    route.abort(),
+  );
   await page.goto("/");
   await page.evaluate((markup) => {
     document.body.innerHTML = markup;
@@ -93,6 +96,9 @@ test("Week 18 and correction states retain their required meaning", async ({
 });
 
 test("the final archive remains usable at 200% text zoom", async ({ page }) => {
+  await page.route(/\/_next\/static\/chunks\/.*\.js(?:\?.*)?$/, (route) =>
+    route.abort(),
+  );
   await page.goto("/");
   await page.evaluate((markup) => {
     document.body.innerHTML = markup;
