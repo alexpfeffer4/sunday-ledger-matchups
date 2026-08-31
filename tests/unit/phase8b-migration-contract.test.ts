@@ -97,7 +97,9 @@ describe("Phase 8B migration contract", () => {
     expect(migration).toContain(
       "v_week.nfl_week <> 18 and v_matchup_count > 0",
     );
-    expect(migration).toContain("from regexp_matches(v_definition, v_pattern, 'gi')");
+    expect(migration).toContain(
+      "from regexp_matches(v_definition, v_pattern, 'gi')",
+    );
     expect(migration).toContain("'stageScope', 'EXHIBITION'");
     expect(migration).toContain("'role', 'EXHIBITION'");
     expect(migration).toContain("'advancingEntryId', case");
