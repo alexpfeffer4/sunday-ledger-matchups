@@ -262,7 +262,7 @@ begin
     E'v_published_at := private.stage1_season_time(v_season.id);\n  if v_season.mode not in (''LIVE'', ''SIMULATION'') or v_season.lifecycle <> ''DRAFT'' then');
   v_definition := replace(v_definition,
     'and odds_import.league_id = p_league_id;',
-    E'and odds_import.league_id = p_league_id;\n\n  if v_import.source <> case v_season.mode when ''LIVE'' then ''THE_ODDS_API'' else ''SIMULATION_FIXTURE'' end then\n    raise exception using errcode = ''22023'', message = ''Provider source does not match the frozen season mode.'';\n  end if;');
+    E'and odds_import.league_id = p_league_id;\n\n  if (v_season.mode = ''LIVE'' and v_import.source <> ''THE_ODDS_API'')\n    or (v_season.mode = ''SIMULATION'' and v_import.source <> ''SIMULATION_FIXTURE'') then\n    raise exception using errcode = ''22023'', message = ''Provider source does not match the frozen season mode.'';\n  end if;');
   begin
     execute v_definition || ';';
   exception when others then
@@ -283,7 +283,7 @@ begin
     E'v_published_at := private.stage1_season_time(v_season.id);\n  if v_season.mode not in (''LIVE'', ''SIMULATION'')');
   v_definition := replace(v_definition,
     'and odds_import.league_id = p_league_id;',
-    E'and odds_import.league_id = p_league_id;\n\n  if v_import.source <> case v_season.mode when ''LIVE'' then ''THE_ODDS_API'' else ''SIMULATION_FIXTURE'' end then\n    raise exception using errcode = ''22023'', message = ''Provider source does not match the frozen season mode.'';\n  end if;');
+    E'and odds_import.league_id = p_league_id;\n\n  if (v_season.mode = ''LIVE'' and v_import.source <> ''THE_ODDS_API'')\n    or (v_season.mode = ''SIMULATION'' and v_import.source <> ''SIMULATION_FIXTURE'') then\n    raise exception using errcode = ''22023'', message = ''Provider source does not match the frozen season mode.'';\n  end if;');
   begin
     execute v_definition || ';';
   exception when others then
@@ -357,7 +357,7 @@ begin
     E'v_published_at := private.stage1_season_time(v_season.id);\n  perform private.assert_phase8_terminal_lineage(v_season.id);');
   v_definition := replace(v_definition,
     'where odds_import.id = p_import_id and odds_import.season_id = v_season.id and odds_import.league_id = p_league_id;',
-    E'where odds_import.id = p_import_id and odds_import.season_id = v_season.id and odds_import.league_id = p_league_id;\n  if v_import.source <> case v_season.mode when ''LIVE'' then ''THE_ODDS_API'' else ''SIMULATION_FIXTURE'' end then\n    raise exception using errcode = ''22023'', message = ''Provider source does not match the frozen season mode.'';\n  end if;');
+    E'where odds_import.id = p_import_id and odds_import.season_id = v_season.id and odds_import.league_id = p_league_id;\n  if (v_season.mode = ''LIVE'' and v_import.source <> ''THE_ODDS_API'')\n    or (v_season.mode = ''SIMULATION'' and v_import.source <> ''SIMULATION_FIXTURE'') then\n    raise exception using errcode = ''22023'', message = ''Provider source does not match the frozen season mode.'';\n  end if;');
   begin
     execute v_definition || ';';
   exception when others then
