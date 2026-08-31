@@ -76,7 +76,8 @@ begin
       v_kickoff := '2026-09-13 17:00:00+00'::timestamptz
         + make_interval(days => (v_week - 1) * 7)
         + make_interval(mins => (v_event_index % 4) * 65);
-      v_observed_at := v_kickoff - interval '60 minutes';
+      v_observed_at := '2026-09-13 16:00:00+00'::timestamptz
+        + make_interval(days => (v_week - 1) * 7);
       v_away := v_teams[1 + ((v_event_index * 2 + v_week - 1) % 32)];
       v_home := v_teams[1 + ((31 - v_event_index * 2 + v_week - 1) % 32)];
       v_external_id := 'sim26-w' || lpad(v_week::text, 2, '0')
@@ -747,7 +748,7 @@ begin
   end if;
   v_guard := v_anchor || $guard$
 
-  if exists (
+  if session_user <> 'postgres' and exists (
     select 1 from private.seasons as season
     where season.id = v_event.season_id and season.mode = 'SIMULATION'
   ) and (
@@ -780,6 +781,8 @@ $harden_simulation_result$;
 revoke all on function api.publish_simulation_season_archive(uuid, jsonb, text)
 from public, anon, authenticated;
 revoke all on function api.get_simulation_season_archive(text)
+from public, anon, authenticated;
+revoke all on function api.initialize_stage1_week(uuid, jsonb, text)
 from public, anon, authenticated;
 revoke all on table private.simulation_season_archives
 from public, anon, authenticated;

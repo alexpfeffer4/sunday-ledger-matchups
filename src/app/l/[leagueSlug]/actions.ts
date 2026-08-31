@@ -4,11 +4,6 @@ import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
-import {
-  stage1CorrectionResult,
-  stage1InitialResults,
-  stage1WeekOneFixture,
-} from "@/adapters/simulation/stage1-week-one";
 import { canonicalSimulationFixturePackId } from "@/adapters/simulation";
 import {
   fetchNflOdds,
@@ -1198,26 +1193,6 @@ export async function voidLiveEventAfterPostponementAction(
   );
 }
 
-export async function initializeStage1WeekAction(
-  _state: AppActionState,
-  formData: FormData,
-): Promise<AppActionState> {
-  const context = parseContext(formData);
-  if (!context.success) return mutationError("invalid context");
-
-  const supabase = await createSupabaseServerClient();
-  const result = await supabase.schema("api").rpc("initialize_stage1_week", {
-    p_league_id: context.data.leagueId,
-    p_fixture: stage1WeekOneFixture as unknown as Json,
-    p_idempotency_key: idempotencyKey("initialize"),
-  });
-  if (result.error) return mutationError(result.error.message);
-  return finish(
-    context.data.leagueSlug,
-    "Week 1 is open with four matchups and a 1,000-credit card for every member.",
-  );
-}
-
 const cardDraftPositionSchema = z.object({
   marketSnapshotId: z.uuid(),
   payloadHash: z.string().regex(/^[0-9a-f]{64}$/),
@@ -1486,67 +1461,6 @@ export async function lockStage1WeekAction(
   return finish(
     context.data.leagueSlug,
     `Week ${weekNumber} locked. Only readiness—not sealed terms—is now visible.`,
-  );
-}
-
-export async function recordStage1ResultAction(
-  _state: AppActionState,
-  formData: FormData,
-): Promise<AppActionState> {
-  const context = parseContext(formData);
-  const parsed = z
-    .object({ eventId: z.uuid(), eventKey: z.string() })
-    .safeParse({
-      eventId: formData.get("eventId"),
-      eventKey: formData.get("eventKey"),
-    });
-  if (!context.success || !parsed.success)
-    return mutationError("invalid result");
-  const fixtureResult = stage1InitialResults.find(
-    (result) => result.eventKey === parsed.data.eventKey,
-  );
-  if (!fixtureResult) return mutationError("unknown fixture result");
-
-  const supabase = await createSupabaseServerClient();
-  const result = await supabase.schema("api").rpc("record_stage1_result", {
-    p_event_id: parsed.data.eventId,
-    p_status: fixtureResult.status,
-    p_away_score: fixtureResult.awayScore,
-    p_home_score: fixtureResult.homeScore,
-    p_reason: fixtureResult.reason,
-    p_source: "SIMULATION_FIXTURE",
-    p_idempotency_key: idempotencyKey(`result:${parsed.data.eventKey}`),
-  });
-  if (result.error) return mutationError(result.error.message);
-  return finish(
-    context.data.leagueSlug,
-    "Final score recorded. The affected matchup and standings were updated.",
-  );
-}
-
-export async function correctStage1ResultAction(
-  _state: AppActionState,
-  formData: FormData,
-): Promise<AppActionState> {
-  const context = parseContext(formData);
-  const eventId = z.uuid().safeParse(formData.get("eventId"));
-  if (!context.success || !eventId.success)
-    return mutationError("invalid correction");
-
-  const supabase = await createSupabaseServerClient();
-  const result = await supabase.schema("api").rpc("record_stage1_result", {
-    p_event_id: eventId.data,
-    p_status: stage1CorrectionResult.status,
-    p_away_score: stage1CorrectionResult.awayScore,
-    p_home_score: stage1CorrectionResult.homeScore,
-    p_reason: stage1CorrectionResult.reason,
-    p_source: "SIMULATION_FIXTURE",
-    p_idempotency_key: idempotencyKey("correction:buf-nyj"),
-  });
-  if (result.error) return mutationError(result.error.message);
-  return finish(
-    context.data.leagueSlug,
-    "Correction recorded. The affected picks, scores, and standings were updated.",
   );
 }
 

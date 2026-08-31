@@ -62,8 +62,8 @@ select function_privs_are(
   'initialize_stage1_week',
   array['uuid', 'jsonb', 'text'],
   'authenticated',
-  array['EXECUTE'],
-  'authenticated callers can invoke the guarded command'
+  array[]::text[],
+  'the retired arbitrary fixture initializer is no longer participant-callable'
 );
 select function_privs_are(
   'api',
