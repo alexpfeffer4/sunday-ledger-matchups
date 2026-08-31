@@ -36,6 +36,9 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
     publication.bracket.format === "SIX_SLOT"
       ? publication.bracket
       : null;
+  const hasSupersededChampion = publication.championLineage.some(
+    (version) => !version.effective,
+  );
 
   return (
     <PageFrame
@@ -68,6 +71,20 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
         </StatusBadge>
       }
     >
+      {hasSupersededChampion ? (
+        <section
+          aria-label="Champion correction"
+          className="border-corrected/25 bg-corrected/10 mt-7 rounded-xl border p-4"
+        >
+          <p className="text-corrected text-sm font-bold">
+            Champion correction recorded
+          </p>
+          <p className="text-graphite mt-1 text-sm leading-6">
+            The prior champion was superseded and retained under Audit details.
+          </p>
+        </section>
+      ) : null}
+
       <section aria-labelledby="published-rounds-title" className="mt-7">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
@@ -316,7 +333,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
 function PublishedRoundCard({ round }: { round: PublishedRound }) {
   return (
     <article className="border-registry bg-surface rounded-xl border p-5 shadow-[var(--shadow-card)]">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col items-start gap-3 min-[360px]:flex-row min-[360px]:justify-between">
         <div>
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
             Week {round.week}

@@ -1738,25 +1738,38 @@ to authenticated;
 do $migration$
 declare
   v_definition text;
-  v_old text;
+  v_pattern text;
   v_new text;
+  v_occurrences integer;
 begin
   select pg_get_functiondef(
     'private.recompute_stage1_week(uuid,uuid)'::regprocedure
   ) into strict v_definition;
-  v_old := 'if v_matchup_count > 0 and v_completed_matchup_count = v_matchup_count then';
-  v_new := 'if v_week.nfl_week <> 18 and v_matchup_count > 0 and v_completed_matchup_count = v_matchup_count then';
-  if strpos(v_definition, v_old) = 0 then
-    raise exception 'recompute_stage1_week standings guard changed; migration refused';
-  end if;
-  v_definition := replace(v_definition, v_old, v_new);
 
-  v_old := 'if v_all_events_complete and v_matchup_count = v_completed_matchup_count then';
-  v_new := 'if v_week.state <> ''FINAL'' and v_all_events_complete and v_matchup_count = v_completed_matchup_count then';
-  if strpos(v_definition, v_old) = 0 then
-    raise exception 'recompute_stage1_week terminal guard changed; migration refused';
+  -- Match the semantic guard rather than pg_get_functiondef's formatting.
+  -- Earlier migrations legitimately re-render this function while extending
+  -- its selectors, so keyword case and whitespace are not stable metadata.
+  v_pattern := 'v_matchup_count[[:space:]]*>[[:space:]]*0[[:space:]]+and[[:space:]]+v_completed_matchup_count[[:space:]]*=[[:space:]]*v_matchup_count';
+  select count(*)::integer into v_occurrences
+  from regexp_matches(v_definition, v_pattern, 'gi');
+  if v_occurrences <> 1 then
+    raise exception
+      'recompute_stage1_week expected one standings guard, found %; migration refused',
+      v_occurrences;
   end if;
-  execute replace(v_definition, v_old, v_new);
+  v_new := 'v_week.nfl_week <> 18 and v_matchup_count > 0 and v_completed_matchup_count = v_matchup_count';
+  v_definition := regexp_replace(v_definition, v_pattern, v_new, 'i');
+
+  v_pattern := 'v_all_events_complete[[:space:]]+and[[:space:]]+v_matchup_count[[:space:]]*=[[:space:]]*v_completed_matchup_count';
+  select count(*)::integer into v_occurrences
+  from regexp_matches(v_definition, v_pattern, 'gi');
+  if v_occurrences <> 1 then
+    raise exception
+      'recompute_stage1_week expected one terminal guard, found %; migration refused',
+      v_occurrences;
+  end if;
+  v_new := 'v_week.state <> ''FINAL'' and v_all_events_complete and v_matchup_count = v_completed_matchup_count';
+  execute regexp_replace(v_definition, v_pattern, v_new, 'i');
 end;
 $migration$;
 
