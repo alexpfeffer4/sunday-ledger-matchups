@@ -82,6 +82,9 @@ describe("Phase 8B migration contract", () => {
     expect(migration).toContain(
       "Week 18 may be replaced only by an authorized Week 17 correction.",
     );
+    expect(migration).toMatch(
+      /where week\.id = v_current\.week_id\s+for update;[\s\S]*where card\.week_id = v_week18\.id[\s\S]*for update;[\s\S]*is_week18_pairing_replaceable\(v_current\.id\)/,
+    );
     expect(migration).not.toMatch(
       /update private\.(?:matchups|playoff_round_publications|matchup_result_versions|position_receipts)/i,
     );

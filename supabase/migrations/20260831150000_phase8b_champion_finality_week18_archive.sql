@@ -1042,6 +1042,7 @@ as $$
 declare
   v_current private.playoff_round_publications%rowtype;
   v_created private.playoff_round_publications%rowtype;
+  v_week18 private.season_weeks%rowtype;
   v_current_slate private.slates%rowtype;
   v_new_slate_id uuid := gen_random_uuid();
   v_round jsonb;
@@ -1058,8 +1059,21 @@ begin
     and not exists (
       select 1 from private.playoff_round_publications as successor
       where successor.supersedes_id = round.id
-    )
+  )
   for share;
+
+  -- Card acceptance, week locking, score import, and result production all
+  -- take the Week 18 row lock. Lock the cards in deterministic order as well,
+  -- so the first successful seal and this freeze decision serialize.
+  select week.* into strict v_week18
+  from private.season_weeks as week
+  where week.id = v_current.week_id
+  for update;
+  perform card.id
+  from private.weekly_cards as card
+  where card.week_id = v_week18.id
+  order by card.id
+  for update;
 
   v_round := private.build_phase8b_postseason_round(
     p_playoff_publication_id,
