@@ -18,7 +18,7 @@ export const getLivePlayoffState = cache(
 
     const result = await supabase
       .schema("api")
-      .rpc("get_live_playoff_state", { p_league_slug: leagueSlug });
+      .rpc("get_playoff_state", { p_league_slug: leagueSlug });
 
     if (result.error) {
       if (

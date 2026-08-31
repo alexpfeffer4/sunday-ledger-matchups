@@ -1,5 +1,6 @@
 import type {
   MatchupScope,
+  PostseasonRole,
   WeeklyCloseStandingsRow,
   WeeklyCloseStateDto,
 } from "@/application/queries/weekly-close-dtos";
@@ -43,6 +44,7 @@ export type FinalizedMatchupFact = {
   weekId: string;
   nflWeek: number;
   scope: MatchupScope;
+  postseasonRole: PostseasonRole | null;
   displayOrder: number;
   versionId: string;
   supersedesVersionId: string | null;
@@ -54,6 +56,7 @@ export type FinalizedMatchupFact = {
     name: string;
     decision: Decision;
     scoreCenticredits: number;
+    participation: "COMPLETED" | "EXHIBITION_MISS";
   };
   sideB: {
     entryId: string;
@@ -61,6 +64,7 @@ export type FinalizedMatchupFact = {
     name: string;
     decision: Decision;
     scoreCenticredits: number;
+    participation: "COMPLETED" | "EXHIBITION_MISS";
   };
   marginCenticredits: number;
   corrected: boolean;
@@ -117,6 +121,7 @@ export type RivalryProjection = {
   averageMarginCenticredits: number | null;
   lastMeeting: FinalizedMatchupFact | null;
   playoffMeetings: number;
+  thirdPlaceMeetings: number;
   placementMeetings: number;
   exhibitionMeetings: number;
 };
@@ -127,6 +132,16 @@ export const scopeLabels: Record<MatchupScope, string> = {
   PLACEMENT: "Placement",
   EXHIBITION: "Exhibition",
 };
+
+export function matchupScopeLabel(
+  matchup: Pick<FinalizedMatchupFact, "scope" | "postseasonRole">,
+): string {
+  if (matchup.postseasonRole === "CHAMPIONSHIP") return "Championship";
+  if (matchup.postseasonRole === "THIRD_PLACE") return "Third place";
+  if (matchup.postseasonRole === "PLACEMENT") return "Placement";
+  if (matchup.postseasonRole === "EXHIBITION") return "Exhibition";
+  return scopeLabels[matchup.scope];
+}
 
 function memberName(
   membersByUser: Map<string, MemberFact>,
@@ -204,6 +219,7 @@ function matchupFact(
     weekId: matchup.weekId,
     nflWeek: matchup.nflWeek,
     scope: matchup.scope,
+    postseasonRole: matchup.postseasonRole ?? null,
     displayOrder: matchup.displayOrder,
     versionId: result.versionId,
     supersedesVersionId: result.supersedesVersionId,
@@ -215,6 +231,7 @@ function matchupFact(
       name: memberName(membersByUser, matchup.sideAUserId),
       decision: result.sideADecision,
       scoreCenticredits: result.sideAPointsForCenticredits,
+      participation: result.sideAParticipation ?? "COMPLETED",
     },
     sideB: {
       entryId: matchup.sideBEntryId,
@@ -222,6 +239,7 @@ function matchupFact(
       name: memberName(membersByUser, matchup.sideBUserId),
       decision: result.sideBDecision,
       scoreCenticredits: result.sideBPointsForCenticredits,
+      participation: result.sideBParticipation ?? "COMPLETED",
     },
     marginCenticredits: Math.abs(
       result.sideAPointsForCenticredits - result.sideBPointsForCenticredits,
@@ -445,7 +463,10 @@ export function projectRivalry(
     )
     .toSorted(matchupOrder);
   const competitiveMeetings = meetings.filter(
-    (matchup) => matchup.scope === "REGULAR" || matchup.scope === "PLAYOFF",
+    (matchup) =>
+      matchup.scope === "REGULAR" ||
+      matchup.postseasonRole === "CHAMPIONSHIP" ||
+      (matchup.scope === "PLAYOFF" && matchup.postseasonRole === null),
   );
   const decisionForA = (matchup: FinalizedMatchupFact) =>
     matchup.sideA.userId === memberA.userId
@@ -495,10 +516,18 @@ export function projectRivalry(
             ) / competitiveMeetings.length,
           ),
     lastMeeting: meetings.at(-1) ?? null,
-    playoffMeetings: meetings.filter((matchup) => matchup.scope === "PLAYOFF")
-      .length,
+    playoffMeetings: meetings.filter(
+      (matchup) =>
+        matchup.postseasonRole === "CHAMPIONSHIP" ||
+        (matchup.scope === "PLAYOFF" && matchup.postseasonRole === null),
+    ).length,
+    thirdPlaceMeetings: meetings.filter(
+      (matchup) => matchup.postseasonRole === "THIRD_PLACE",
+    ).length,
     placementMeetings: meetings.filter(
-      (matchup) => matchup.scope === "PLACEMENT",
+      (matchup) =>
+        matchup.postseasonRole === "PLACEMENT" ||
+        (matchup.scope === "PLACEMENT" && matchup.postseasonRole === null),
     ).length,
     exhibitionMeetings: meetings.filter(
       (matchup) => matchup.scope === "EXHIBITION",

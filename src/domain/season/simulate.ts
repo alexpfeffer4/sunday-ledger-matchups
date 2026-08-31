@@ -5,10 +5,11 @@ import {
   type CardScore,
 } from "@/domain/matchups/decide";
 import {
-  createInitialBracket,
+  constructEffectivePostseasonMatchups,
   createWeek18Exhibitions,
-  qualifyPlayoffs,
-  reseedLargeLeagueSemifinals,
+  selectChampionshipField,
+  type ChampionshipOutcome,
+  type PostseasonRole,
   type QualifiedEntry,
 } from "@/domain/playoffs/bracket";
 import {
@@ -56,6 +57,7 @@ export type ArchivedMatchup = {
   id: string;
   week: number;
   scope: "REGULAR" | "PLAYOFF" | "PLACEMENT" | "EXHIBITION";
+  postseasonRole?: PostseasonRole;
   label: string;
   sideAEntryId: string;
   sideBEntryId: string;
@@ -343,6 +345,7 @@ function regularMatchup(params: {
 function playoffMatchup(params: {
   week: 15 | 16 | 17 | 18;
   scope: "PLAYOFF" | "PLACEMENT" | "EXHIBITION";
+  postseasonRole?: PostseasonRole;
   label: string;
   sideA: QualifiedEntry;
   sideB: QualifiedEntry;
@@ -376,6 +379,7 @@ function playoffMatchup(params: {
     id: `${params.scope.toLowerCase()}:${params.week}:${sideA.entryId}:${sideB.entryId}`,
     week: params.week,
     scope: params.scope,
+    postseasonRole: params.postseasonRole,
     label: params.label,
     sideAEntryId: sideA.entryId,
     sideBEntryId: sideB.entryId,
@@ -396,17 +400,6 @@ function loserOf(game: ArchivedMatchup): string {
     : game.sideAEntryId;
 }
 
-function requireQualifier(
-  qualifiers: readonly QualifiedEntry[],
-  seed: number,
-): QualifiedEntry {
-  const qualifier = qualifiers.find(
-    (candidate) => candidate.qualificationSeed === seed,
-  );
-  if (!qualifier) throw new Error(`Playoff seed ${seed} is unavailable.`);
-  return qualifier;
-}
-
 function qualifiedEntry(
   entryId: string,
   seedsByEntryId: ReadonlyMap<string, number>,
@@ -415,7 +408,14 @@ function qualifiedEntry(
   if (!qualificationSeed) {
     throw new Error(`No qualification seed exists for ${entryId}.`);
   }
-  return { entryId, qualificationSeed };
+  return {
+    entryId,
+    regularSeasonSeed: qualificationSeed,
+    qualificationSeed,
+    eligibilityStatus: "ELIGIBLE",
+    selectionReason: "ELIGIBLE_STANDINGS",
+    attendanceMissesUsedByQualification: 0,
+  };
 }
 
 export function simulateSeason(params: {
@@ -512,11 +512,12 @@ export function simulateSeason(params: {
     deterministicTiebreaks,
   });
   const finalStandings = standingArchive(finalStandingRows, membersById);
-  const qualifiers = qualifyPlayoffs({
+  const championshipField = selectChampionshipField({
     orderedStandings: finalStandingRows,
     playoffIneligibilityAtMisses:
       simulationSeason1Ruleset.attendance.playoffIneligibilityAtMisses,
   });
+  const qualifiers = championshipField.qualifiers;
   const qualifierCount = members.length <= 8 ? 4 : 6;
   if (qualifiers.length !== qualifierCount) {
     throw new Error(
@@ -532,135 +533,75 @@ export function simulateSeason(params: {
       qualifier.qualificationSeed,
     ]),
   );
-  const initialBracket = createInitialBracket({
-    rosterSize: members.length,
-    qualifiers,
-    allEntriesByFinalStanding: finalStandings.map(
-      (standing) => standing.entryId,
-    ),
-  });
-  const games: ArchivedMatchup[] = [];
-  let championship: ArchivedMatchup;
-  let thirdPlace: ArchivedMatchup;
+  const qualifierByEntryId = new Map(
+    qualifiers.map((qualifier) => [qualifier.entryId, qualifier]),
+  );
+  const frozenWeek14Order = finalStandings.map((standing) => standing.entryId);
+  const simulatePostseasonWeek = (
+    week: 15 | 16 | 17,
+    priorChampionshipOutcomes: readonly ChampionshipOutcome[] = [],
+  ) =>
+    constructEffectivePostseasonMatchups({
+      week,
+      field: championshipField,
+      frozenWeek14Order,
+      priorChampionshipOutcomes,
+    }).map((game) => {
+      const competitive =
+        game.role === "CHAMPIONSHIP" || game.role === "THIRD_PLACE";
+      return playoffMatchup({
+        week,
+        scope:
+          game.role === "CHAMPIONSHIP"
+            ? "PLAYOFF"
+            : game.role === "EXHIBITION"
+              ? "EXHIBITION"
+              : "PLACEMENT",
+        postseasonRole: game.role,
+        label: game.label,
+        sideA: qualifiedEntry(
+          game.sideA.entryId,
+          competitive ? playoffSeedsByEntryId : seedsByEntryId,
+        ),
+        sideB: qualifiedEntry(
+          game.sideB.entryId,
+          competitive ? playoffSeedsByEntryId : seedsByEntryId,
+        ),
+      });
+    });
+  const championshipOutcomes = (
+    weekGames: readonly ArchivedMatchup[],
+  ): ChampionshipOutcome[] =>
+    weekGames
+      .filter((game) => game.postseasonRole === "CHAMPIONSHIP")
+      .map((game) => {
+        const winner = qualifierByEntryId.get(game.winnerEntryId ?? "");
+        const loser = qualifierByEntryId.get(loserOf(game));
+        if (!winner || !loser) {
+          throw new Error("A championship outcome requires two qualifiers.");
+        }
+        return { winner, loser };
+      });
 
-  if (members.length <= 8) {
-    for (const game of initialBracket.filter(
-      (candidate) => candidate.week === 15 && candidate.scope === "EXHIBITION",
-    )) {
-      if (!game.sideA || !game.sideB) continue;
-      games.push(
-        playoffMatchup({
-          week: 15,
-          scope: "EXHIBITION",
-          label: game.label,
-          sideA: qualifiedEntry(game.sideA.entryId, seedsByEntryId),
-          sideB: qualifiedEntry(game.sideB.entryId, seedsByEntryId),
-        }),
-      );
-    }
-    const semifinalOne = playoffMatchup({
-      week: 16,
-      scope: "PLAYOFF",
-      label: "Semifinal · 1 vs 4",
-      sideA: requireQualifier(qualifiers, 1),
-      sideB: requireQualifier(qualifiers, 4),
-    });
-    const semifinalTwo = playoffMatchup({
-      week: 16,
-      scope: "PLAYOFF",
-      label: "Semifinal · 2 vs 3",
-      sideA: requireQualifier(qualifiers, 2),
-      sideB: requireQualifier(qualifiers, 3),
-    });
-    games.push(semifinalOne, semifinalTwo);
-    championship = playoffMatchup({
-      week: 17,
-      scope: "PLAYOFF",
-      label: "Championship",
-      sideA: qualifiedEntry(
-        semifinalOne.winnerEntryId as string,
-        playoffSeedsByEntryId,
-      ),
-      sideB: qualifiedEntry(
-        semifinalTwo.winnerEntryId as string,
-        playoffSeedsByEntryId,
-      ),
-    });
-    thirdPlace = playoffMatchup({
-      week: 17,
-      scope: "PLACEMENT",
-      label: "Third place",
-      sideA: qualifiedEntry(loserOf(semifinalOne), playoffSeedsByEntryId),
-      sideB: qualifiedEntry(loserOf(semifinalTwo), playoffSeedsByEntryId),
-    });
-  } else {
-    const openingOne = playoffMatchup({
-      week: 15,
-      scope: "PLAYOFF",
-      label: "Opening round · 3 vs 6",
-      sideA: requireQualifier(qualifiers, 3),
-      sideB: requireQualifier(qualifiers, 6),
-    });
-    const openingTwo = playoffMatchup({
-      week: 15,
-      scope: "PLAYOFF",
-      label: "Opening round · 4 vs 5",
-      sideA: requireQualifier(qualifiers, 4),
-      sideB: requireQualifier(qualifiers, 5),
-    });
-    games.push(openingOne, openingTwo);
-    const semifinalPlan = reseedLargeLeagueSemifinals({
-      seedOne: requireQualifier(qualifiers, 1),
-      seedTwo: requireQualifier(qualifiers, 2),
-      openingRoundWinners: [
-        qualifiedEntry(
-          openingOne.winnerEntryId as string,
-          playoffSeedsByEntryId,
-        ),
-        qualifiedEntry(
-          openingTwo.winnerEntryId as string,
-          playoffSeedsByEntryId,
-        ),
-      ],
-    });
-    const semifinalOne = playoffMatchup({
-      week: 16,
-      scope: "PLAYOFF",
-      label: semifinalPlan[0].label,
-      sideA: semifinalPlan[0].sideA as QualifiedEntry,
-      sideB: semifinalPlan[0].sideB as QualifiedEntry,
-    });
-    const semifinalTwo = playoffMatchup({
-      week: 16,
-      scope: "PLAYOFF",
-      label: semifinalPlan[1].label,
-      sideA: semifinalPlan[1].sideA as QualifiedEntry,
-      sideB: semifinalPlan[1].sideB as QualifiedEntry,
-    });
-    games.push(semifinalOne, semifinalTwo);
-    championship = playoffMatchup({
-      week: 17,
-      scope: "PLAYOFF",
-      label: "Championship",
-      sideA: qualifiedEntry(
-        semifinalOne.winnerEntryId as string,
-        playoffSeedsByEntryId,
-      ),
-      sideB: qualifiedEntry(
-        semifinalTwo.winnerEntryId as string,
-        playoffSeedsByEntryId,
-      ),
-    });
-    thirdPlace = playoffMatchup({
-      week: 17,
-      scope: "PLACEMENT",
-      label: "Third place",
-      sideA: qualifiedEntry(loserOf(semifinalOne), playoffSeedsByEntryId),
-      sideB: qualifiedEntry(loserOf(semifinalTwo), playoffSeedsByEntryId),
-    });
+  const week15Games = simulatePostseasonWeek(15);
+  const week16Games = simulatePostseasonWeek(
+    16,
+    championshipOutcomes(week15Games),
+  );
+  const week17Games = simulatePostseasonWeek(
+    17,
+    championshipOutcomes(week16Games),
+  );
+  const games = [...week15Games, ...week16Games, ...week17Games];
+  const championship = week17Games.find(
+    (game) => game.postseasonRole === "CHAMPIONSHIP",
+  );
+  const thirdPlace = week17Games.find(
+    (game) => game.postseasonRole === "THIRD_PLACE",
+  );
+  if (!championship || !thirdPlace) {
+    throw new Error("The postseason fixture requires final placement games.");
   }
-
-  games.push(championship, thirdPlace);
   const championEntryId = championship.winnerEntryId as string;
   const runnerUpEntryId = loserOf(championship);
   const thirdPlaceEntryId = thirdPlace.winnerEntryId as string;

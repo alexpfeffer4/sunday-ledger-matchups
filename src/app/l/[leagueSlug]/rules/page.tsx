@@ -46,6 +46,10 @@ export default async function LeagueRulesPage({
   }
   const ruleset = presentation.canonicalJson;
   const isV11 = ruleset.version === "1.1";
+  const phase8APlayoffRules =
+    isV11 && "minimumChampionshipField" in ruleset.playoffs
+      ? ruleset.playoffs
+      : null;
   const rosterSize = archive?.members.length ?? live?.members.length ?? 10;
   const qualifierCount =
     rosterSize <= ruleset.playoffs.smallLeagueMaximumSize
@@ -90,7 +94,9 @@ export default async function LeagueRulesPage({
       title: "Standings and playoffs",
       body:
         tiebreakers.length > 0
-          ? `${tiebreakers.join(", ")}. The mini-table applies only when every tied pair has the same positive meeting count. After Week ${ruleset.schedule.regularSeasonWeeks}, the top ${qualifierCount} eligible members qualify; Week ${ruleset.schedule.championshipWeek} decides the champion and Week ${ruleset.schedule.exhibitionWeek} is exhibition only.`
+          ? phase8APlayoffRules
+            ? `${tiebreakers.join(", ")}. The mini-table applies only when every tied pair has the same positive meeting count. After Week ${ruleset.schedule.regularSeasonWeeks}, eligible members are selected first in frozen standings order. If fewer than ${phase8APlayoffRules.minimumChampionshipField} are eligible, the next members are reinstated only until the championship field reaches ${phase8APlayoffRules.minimumChampionshipField}. Every member receives one matchup and one card in Weeks 15–17; only championship games advance the bracket. Third-place, placement, and exhibition games stay separately labeled, and an incomplete exhibition records an Exhibition miss with zero exhibition score but no regular-season or official competitive effect.`
+            : `${tiebreakers.join(", ")}. The mini-table applies only when every tied pair has the same positive meeting count. After Week ${ruleset.schedule.regularSeasonWeeks}, the top ${qualifierCount} eligible members qualify; Week ${ruleset.schedule.championshipWeek} decides the champion and Week ${ruleset.schedule.exhibitionWeek} is exhibition only.`
           : `This historical V1.0 snapshot did not persist tiebreak metadata. Its identity remains preserved below. The regular season ends after Week ${ruleset.schedule.regularSeasonWeeks}.`,
     },
     {

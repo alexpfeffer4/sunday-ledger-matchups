@@ -7,6 +7,13 @@ export const matchupScopeSchema = z.enum([
   "EXHIBITION",
 ]);
 
+export const postseasonRoleSchema = z.enum([
+  "CHAMPIONSHIP",
+  "THIRD_PLACE",
+  "PLACEMENT",
+  "EXHIBITION",
+]);
+
 const decisionSchema = z.enum(["WIN", "LOSS", "TIE"]);
 
 const standingsRowSchema = z.object({
@@ -84,6 +91,7 @@ export const weeklyCloseStateSchema = z.object({
       weekId: z.uuid(),
       nflWeek: z.number().int().min(1).max(18),
       scope: matchupScopeSchema,
+      postseasonRole: postseasonRoleSchema.nullable().optional(),
       displayOrder: z.number().int().positive(),
       sideAEntryId: z.uuid(),
       sideAUserId: z.uuid(),
@@ -95,6 +103,12 @@ export const weeklyCloseStateSchema = z.object({
           supersedesVersionId: z.uuid().nullable(),
           sideADecision: decisionSchema,
           sideBDecision: decisionSchema,
+          sideAParticipation: z
+            .enum(["COMPLETED", "EXHIBITION_MISS"])
+            .optional(),
+          sideBParticipation: z
+            .enum(["COMPLETED", "EXHIBITION_MISS"])
+            .optional(),
           sideAPointsForCenticredits: z.number().int().nonnegative(),
           sideBPointsForCenticredits: z.number().int().nonnegative(),
           status: z.enum(["PROVISIONAL", "FINAL"]),
@@ -164,5 +178,6 @@ export const weeklyCloseStateSchema = z.object({
 });
 
 export type MatchupScope = z.infer<typeof matchupScopeSchema>;
+export type PostseasonRole = z.infer<typeof postseasonRoleSchema>;
 export type WeeklyCloseStateDto = z.infer<typeof weeklyCloseStateSchema>;
 export type WeeklyCloseStandingsRow = z.infer<typeof standingsRowSchema>;

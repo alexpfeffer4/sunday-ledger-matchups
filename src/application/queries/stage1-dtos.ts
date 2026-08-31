@@ -100,6 +100,10 @@ export const stage1StateSchema = z.object({
       id: z.uuid(),
       displayOrder: z.number().int(),
       scope: z.enum(["REGULAR", "PLAYOFF", "PLACEMENT", "EXHIBITION"]),
+      postseasonRole: z
+        .enum(["CHAMPIONSHIP", "THIRD_PLACE", "PLACEMENT", "EXHIBITION"])
+        .nullable()
+        .optional(),
       sideAEntryId: z.uuid(),
       sideAName: z.string(),
       sideBEntryId: z.uuid(),
@@ -154,6 +158,10 @@ export const stage1StateSchema = z.object({
   matchup: z
     .object({
       id: z.uuid(),
+      postseasonRole: z
+        .enum(["CHAMPIONSHIP", "THIRD_PLACE", "PLACEMENT", "EXHIBITION"])
+        .nullable()
+        .optional(),
       selfEntryId: z.uuid(),
       opponentEntryId: z.uuid(),
       opponentName: z.string(),

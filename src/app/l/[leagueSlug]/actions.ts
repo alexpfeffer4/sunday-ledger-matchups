@@ -601,9 +601,7 @@ export async function publishLivePlayoffQualificationAction(
     state.league.id !== context.data.leagueId ||
     !state.commissioner.isCommissioner ||
     state.league.mode !== "LIVE" ||
-    state.league.lifecycle !== "REGULAR" ||
-    state.week?.state !== "FINAL" ||
-    state.week.nflWeek !== 14
+    !["REGULAR", "PLAYOFFS"].includes(state.league.lifecycle)
   ) {
     return mutationError(
       "Week 14 must be final before playoff qualification can publish.",
@@ -613,7 +611,7 @@ export async function publishLivePlayoffQualificationAction(
   const supabase = await createSupabaseServerClient();
   const result = await supabase
     .schema("api")
-    .rpc("publish_live_playoff_qualification", {
+    .rpc("publish_playoff_qualification", {
       p_league_id: context.data.leagueId,
       p_idempotency_key: idempotencyKey("publish-live-playoff-qualification"),
     });
@@ -662,7 +660,7 @@ export async function publishNextLivePostseasonWeekAction(
     !state.commissioner.isCommissioner ||
     state.league.mode !== "LIVE" ||
     state.league.lifecycle !== "PLAYOFFS" ||
-    state.week?.state !== "FINAL" ||
+    !state.week ||
     state.week.nflWeek < 14 ||
     state.week.nflWeek >= 17
   ) {
@@ -671,18 +669,17 @@ export async function publishNextLivePostseasonWeekAction(
     );
   }
 
-  const nextWeek = state.week.nflWeek + 1;
+  const nextWeek =
+    state.week.state === "FINAL" ? state.week.nflWeek + 1 : state.week.nflWeek;
   const supabase = await createSupabaseServerClient();
-  const result = await supabase
-    .schema("api")
-    .rpc("publish_next_live_postseason_week", {
-      p_league_id: context.data.leagueId,
-      p_import_id: selection.data.importId,
-      p_external_event_ids: selection.data.externalEventIds,
-      p_idempotency_key: idempotencyKey(
-        `publish-live-postseason-week-${nextWeek}`,
-      ),
-    });
+  const result = await supabase.schema("api").rpc("publish_postseason_week", {
+    p_league_id: context.data.leagueId,
+    p_import_id: selection.data.importId,
+    p_external_event_ids: selection.data.externalEventIds,
+    p_idempotency_key: idempotencyKey(
+      `publish-live-postseason-week-${nextWeek}`,
+    ),
+  });
   if (result.error) return mutationError(result.error.message);
 
   for (const path of [
@@ -699,7 +696,7 @@ export async function publishNextLivePostseasonWeekAction(
   }
   return {
     status: "success",
-    message: `Playoff Week ${nextWeek} is open. Only members playing this round received fresh 1,000-credit cards.`,
+    message: `Postseason Week ${nextWeek} is open with one matchup and one 1,000-credit card for every member.`,
     href: `/l/${context.data.leagueSlug}/playoffs`,
     hrefLabel: `Review the Week ${nextWeek} bracket`,
   };

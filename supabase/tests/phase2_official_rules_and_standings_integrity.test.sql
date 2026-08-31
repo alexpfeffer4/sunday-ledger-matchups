@@ -112,7 +112,7 @@ select is(
     from private.authoritative_season_rulesets
     where mode = 'LIVE'
   ),
-  '4bba08222402fbe24f706cbb5c6bd7b9aa7c50da5bc8c039f7929aaf4cfcb629',
+  '047550e7661915d3ba4d8e4046f85ab9474eac7b857fbba398cb4d9b91a5766c',
   'the Live allowlist digest matches the compiled V1.1 Ruleset'
 );
 select is(
@@ -121,7 +121,7 @@ select is(
     from private.authoritative_season_rulesets
     where mode = 'SIMULATION'
   ),
-  'dc9a63b54eba31536518b319e5d88889dae0ac9d71e3f37630fa6e1a786e36ff',
+  '64772aad744ed8d5ec12b9e43e1303a610fc92051c250204bffb20c00f5e7a7d',
   'the Simulation allowlist digest matches the compiled V1.1 Ruleset'
 );
 
@@ -203,7 +203,7 @@ select is(
       on snapshot.id = season.ruleset_snapshot_id
     where league.slug = 'phase-2-trusted-league'
   ),
-  '4bba08222402fbe24f706cbb5c6bd7b9aa7c50da5bc8c039f7929aaf4cfcb629',
+  '047550e7661915d3ba4d8e4046f85ab9474eac7b857fbba398cb4d9b91a5766c',
   'trusted Live creation stores the allowlisted canonical digest'
 );
 select is(
@@ -227,7 +227,7 @@ select is(
       on snapshot.id = season.ruleset_snapshot_id
     where league.slug = 'phase-2-legacy-compatibility'
   ),
-  '4bba08222402fbe24f706cbb5c6bd7b9aa7c50da5bc8c039f7929aaf4cfcb629',
+  '047550e7661915d3ba4d8e4046f85ab9474eac7b857fbba398cb4d9b91a5766c',
   'legacy compatibility stores the authoritative Live digest'
 );
 

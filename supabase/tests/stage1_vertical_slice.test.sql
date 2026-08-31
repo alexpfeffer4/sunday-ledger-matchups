@@ -229,16 +229,17 @@ insert into private.season_ruleset_snapshots (
   canonical_json,
   sha256_hash
 )
-values (
+select
   '20000000-0000-4000-8000-000000000001',
-  'simulation-season-1',
-  '1.0.0',
-  'sunday-ledger-product-bible',
-  '3.0.0',
-  'SIMULATION',
-  '{"mode":"SIMULATION"}',
-  repeat('a', 64)
-);
+  authoritative.ruleset_id,
+  authoritative.ruleset_version,
+  authoritative.product_bible_id,
+  authoritative.product_bible_version,
+  authoritative.mode,
+  authoritative.canonical_json,
+  authoritative.sha256_hash
+from private.authoritative_season_rulesets as authoritative
+where authoritative.mode = 'SIMULATION';
 
 insert into private.seasons (
   id,

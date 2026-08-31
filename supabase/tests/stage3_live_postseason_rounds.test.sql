@@ -86,8 +86,39 @@ insert into private.season_ruleset_snapshots (
   mode, canonical_json, sha256_hash, frozen_at
 ) values (
   'b3000000-0000-4000-8000-000000000001',
-  'live-season-1', '1.0', 'sunday-ledger-product-bible', '3.0',
-  'LIVE', '{"mode":"LIVE"}', repeat('a', 64), now() - interval '16 weeks'
+  'live-season-1', '1.1', 'sunday-ledger-product-bible', '3.0',
+  'LIVE', jsonb_build_object(
+    'version', '1.1',
+    'mode', 'LIVE',
+    'attendance', jsonb_build_object('playoffIneligibilityAtMisses', 3),
+    'playoffs', jsonb_build_object(
+      'minimumChampionshipField', 4,
+      'selectionOrder', 'ELIGIBLE_BEFORE_REINSTATED',
+      'reinstatementReason', 'MINIMUM_FOUR_CHAMPIONSHIP_FIELD',
+      'noReinstatementAtOrAboveEligibleCount', 4,
+      'sixSlotVacancyBehavior', jsonb_build_object(
+        'vacantSlotsRemainVacant', true,
+        'fourParticipantsVacantSeeds', jsonb_build_array(5, 6),
+        'fourParticipantsAutomaticAdvances', jsonb_build_array(3, 4),
+        'fiveParticipantsVacantSeeds', jsonb_build_array(6),
+        'fiveParticipantsAutomaticAdvances', jsonb_build_array(3)
+      ),
+      'everyMemberPostseasonParticipation', jsonb_build_object(
+        'weeks', jsonb_build_array(15, 16, 17), 'cardsPerMemberPerWeek', 1,
+        'matchupsPerMemberPerWeek', 1, 'remainingPairingOrder', 'ADJACENT_FROZEN_WEEK_14_ORDER',
+        'byeExhibitions', true,
+        'rematchesAllowed', true
+      ),
+      'regularSeasonAttendanceFrozenAfterWeek', 14,
+      'exhibitionMiss', jsonb_build_object('marker', 'EXHIBITION_MISS', 'scoreCenticredits', 0, 'affectsOfficialCompetition', false),
+      'postseasonRoles', jsonb_build_array('CHAMPIONSHIP', 'THIRD_PLACE', 'PLACEMENT', 'EXHIBITION'),
+      'championshipAdvancement', jsonb_build_object(
+        'advancingRole', 'CHAMPIONSHIP', 'higherSeedAdvancesExactTie', true,
+        'singleIncompleteEliminated', true, 'dualIncompleteAdvancesHigherSeed', true,
+        'reseedSemifinals', 'SEED_1_VS_LOWEST_REMAINING'
+      )
+    )
+  ), repeat('a', 64), now() - interval '16 weeks'
 );
 
 insert into private.seasons (
@@ -228,11 +259,11 @@ select lives_ok(
 );
 select is(
   (
-    select bracket_json ->> 'format'
+    select bracket_state ->> 'format'
     from private.playoff_publications
     where season_id = 'b3500000-0000-4000-8000-000000000001'
   ),
-  'LARGE_SIX',
+  'SIX_SLOT',
   'a ten-entry league uses the reseeded six-entry bracket'
 );
 
@@ -298,8 +329,8 @@ select is(
     where week.season_id = 'b3500000-0000-4000-8000-000000000001'
       and week.nfl_week = 15
   ),
-  4,
-  'only the four opening-round participants receive Week 15 cards'
+  10,
+  'every member receives one Week 15 card'
 );
 select is(
   (
@@ -313,8 +344,8 @@ select is(
         'b4000000-0000-4000-8000-000000000002'
       )
   ),
-  0,
-  'the top two seeds have byes and receive no Week 15 card'
+  2,
+  'the top two seeds receive bye exhibition cards'
 );
 select is(
   (
@@ -326,8 +357,8 @@ select is(
       and matchup.schedule_publication_id is null
       and matchup.playoff_round_publication_id is not null
   ),
-  2,
-  'postseason matchups cite the round publication and not the regular schedule'
+  5,
+  'every postseason matchup cites the round publication and not the regular schedule'
 );
 
 -- This suite runs in one transaction, while publication intentionally records
@@ -440,8 +471,8 @@ select is(
     join private.season_weeks as week on week.id = card.week_id
     where week.nfl_week = 15 and card.compliance = 'INCOMPLETE'
   ),
-  2,
-  'the unsealed 4-vs-5 cards become incomplete at common lock'
+  8,
+  'all unsealed every-member cards become incomplete at common lock'
 );
 
 select lives_ok(
@@ -480,8 +511,8 @@ select is(
     join private.season_weeks as week on week.id = result.week_id
     where week.nfl_week = 15 and result.status = 'PROVISIONAL'
   ),
-  2,
-  'both opening-round matchup results are provisionally materialized'
+  5,
+  'all five every-member matchup results are provisionally materialized'
 );
 
 update private.season_weeks

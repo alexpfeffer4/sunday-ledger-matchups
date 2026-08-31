@@ -4,7 +4,7 @@ import type {
   PlayoffCutlineFact,
   RecordBridgeFact,
 } from "@/domain/history/project-season-memory";
-import { scopeLabels } from "@/domain/history/project-season-memory";
+import { matchupScopeLabel } from "@/domain/history/project-season-memory";
 import { formatCenticredits } from "@/domain/odds/american";
 import { RecordBridge } from "@/components/history/record-bridge";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -83,11 +83,13 @@ export function WeeklyCloseModule({
       ? "positive"
       : "pending";
   const stateSentence =
-    matchup.self.decision === "TIE"
-      ? `${matchup.self.name} and ${matchup.opponent.name} finished tied.`
-      : matchup.self.decision === "WIN"
-        ? `${matchup.self.name} won by ${score(matchup.marginCenticredits)} credits.`
-        : `${matchup.opponent.name} won by ${score(matchup.marginCenticredits)} credits.`;
+    matchup.self.participation === "EXHIBITION_MISS"
+      ? `${matchup.self.name} recorded an Exhibition miss and zero for this exhibition only.`
+      : matchup.self.decision === "TIE"
+        ? `${matchup.self.name} and ${matchup.opponent.name} finished tied.`
+        : matchup.self.decision === "WIN"
+          ? `${matchup.self.name} won by ${score(matchup.marginCenticredits)} credits.`
+          : `${matchup.opponent.name} won by ${score(matchup.marginCenticredits)} credits.`;
 
   return (
     <section
@@ -98,7 +100,7 @@ export function WeeklyCloseModule({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-            Weekly close · {scopeLabels[matchup.scope]}
+            Weekly close · {matchupScopeLabel(matchup)}
           </p>
           <h2 className="mt-1 text-xl font-bold" id="weekly-close-heading">
             Week {matchup.nflWeek} result

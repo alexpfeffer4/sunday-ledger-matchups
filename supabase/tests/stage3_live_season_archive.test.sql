@@ -166,7 +166,8 @@ where week.nfl_week <= 14;
 insert into private.playoff_publications (
   id, season_id, league_id, week14_standings_snapshot_id,
   ruleset_snapshot_id, roster_size, expected_qualifier_count,
-  standings_json, qualifiers, bracket_json, input_hash, created_by
+  standings_json, qualifiers, bracket_json, input_hash, created_by,
+  version, source_result_version_ids
 )
 select
   'c8000000-0000-4000-8000-000000000001',
@@ -196,7 +197,9 @@ select
   ),
   '{"format":"SMALL_FOUR","tieRule":"HIGHER_QUALIFICATION_SEED_ADVANCES","stages":[]}',
   repeat('5', 64),
-  'c1000000-0000-4000-8000-000000000001'
+  'c1000000-0000-4000-8000-000000000001',
+  1,
+  '{}'::uuid[]
 from private.standings_snapshots as standing
 where standing.id = 'c6000000-0000-4000-8000-000000000014';
 
@@ -218,7 +221,7 @@ insert into private.playoff_round_publications (
   id, playoff_publication_id, season_id, league_id, week_id,
   live_odds_import_id, nfl_week, stage_scope,
   selected_external_event_ids, participant_entry_ids, matchups_json,
-  source_result_version_ids, input_hash, created_by
+  source_result_version_ids, input_hash, created_by, version
 )
 select
   ('ca000000-0000-4000-8000-' || lpad(week.nfl_week::text, 12, '0'))::uuid,
@@ -239,7 +242,8 @@ select
   end,
   '{}'::uuid[],
   encode(extensions.digest('archive-round:' || week.nfl_week::text, 'sha256'), 'hex'),
-  'c1000000-0000-4000-8000-000000000001'
+  'c1000000-0000-4000-8000-000000000001',
+  1
 from archive_weeks as week
 where week.nfl_week between 15 and 17;
 

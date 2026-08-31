@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  matchupScopeLabel,
   projectRivalry,
   projectSeasonMemory,
 } from "@/domain/history/project-season-memory";
@@ -87,6 +88,44 @@ describe("Phase 7 deterministic season memory", () => {
 
     expect(finalized?.supersedesVersionId).toBe(phase7Ids.previousResult1);
     expect(finalized?.corrected).toBe(false);
+  });
+
+  it("keeps explicit postseason roles and exhibition misses outside competitive H2H", () => {
+    const state = makePhase7State();
+    const championship = state.matchups.find(
+      (matchup) => matchup.id === phase7Ids.oldPlayoff,
+    )!;
+    const thirdPlace = state.matchups.find(
+      (matchup) => matchup.id === phase7Ids.oldPlacement,
+    )!;
+    const exhibition = state.matchups.find(
+      (matchup) => matchup.id === phase7Ids.oldExhibition,
+    )!;
+    championship.postseasonRole = "CHAMPIONSHIP";
+    thirdPlace.postseasonRole = "THIRD_PLACE";
+    exhibition.postseasonRole = "EXHIBITION";
+    exhibition.result!.sideAParticipation = "EXHIBITION_MISS";
+    exhibition.result!.sideAPointsForCenticredits = 0;
+
+    const memory = projectSeasonMemory(state);
+    const rivalry = projectRivalry(memory, phase7Ids.entryA, phase7Ids.entryB);
+    const projectedExhibition = rivalry?.meetings.find(
+      (meeting) => meeting.id === phase7Ids.oldExhibition,
+    );
+    const projectedThirdPlace = rivalry?.meetings.find(
+      (meeting) => meeting.id === phase7Ids.oldPlacement,
+    );
+
+    expect(rivalry?.competitiveMeetings).toHaveLength(2);
+    expect(rivalry).toMatchObject({
+      playoffMeetings: 1,
+      thirdPlaceMeetings: 1,
+      placementMeetings: 0,
+      exhibitionMeetings: 1,
+    });
+    expect(projectedExhibition?.sideA.participation).toBe("EXHIBITION_MISS");
+    expect(matchupScopeLabel(projectedThirdPlace!)).toBe("Third place");
+    expect(matchupScopeLabel(projectedExhibition!)).toBe("Exhibition");
   });
 
   it("rejects rivalry parameters that are not two current authorized members", () => {
