@@ -15,7 +15,7 @@ describe("authoritative Ruleset migration constants", () => {
     );
     const phase8Migration = readFileSync(
       new URL(
-        "../../supabase/migrations/20260830171706_phase8a_sparse_qualification_every_member_postseason.sql",
+        "../../supabase/migrations/20260831040524_phase8a_sparse_qualification_every_member_postseason.sql",
         import.meta.url,
       ),
       "utf8",
