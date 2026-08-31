@@ -259,11 +259,12 @@ select is(
   'one immutable normal schedule publication is stored'
 );
 select is(
-  (select count(*) from private.matchups as matchup
-   join private.leagues as league on league.id = matchup.league_id
-   where league.slug = 'phase-8c-simulation' and matchup.scope = 'REGULAR'),
-  28::bigint,
-  'the four-member target has one matchup per member for all 14 regular weeks'
+  (select jsonb_array_length(publication.schedule_json -> 'matchups')
+   from private.schedule_publications as publication
+   join private.leagues as league on league.id = publication.league_id
+   where league.slug = 'phase-8c-simulation'),
+  28,
+  'the frozen four-member schedule has one matchup per member for all 14 regular weeks'
 );
 select is(
   (select count(*) from private.weekly_cards as card
