@@ -96,7 +96,10 @@ test("Week 18 and correction states retain their required meaning", async ({
   await expect(
     page.getByText(/complete Weeks 1–18 archive are final/i),
   ).toBeVisible();
-  await expect(page.getByText("Exhibition miss · 0")).toBeVisible();
+  const finalWeek18 = page
+    .locator("article")
+    .filter({ has: page.getByText("Week 18", { exact: true }) });
+  await expect(finalWeek18.getByText("Exhibition miss · 0")).toBeVisible();
 });
 
 test("the final archive remains usable at 200% text zoom", async ({ page }) => {
