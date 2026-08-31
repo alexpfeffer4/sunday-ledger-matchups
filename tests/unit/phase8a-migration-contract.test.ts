@@ -10,7 +10,7 @@ const migration = readFileSync(
 );
 const hardeningMigration = readFileSync(
   resolve(
-    "supabase/migrations/20260831125141_phase8a_postseason_slate_and_fk_hardening.sql",
+    "supabase/migrations/20260831131451_phase8a_postseason_slate_and_fk_hardening.sql",
   ),
   "utf8",
 );
