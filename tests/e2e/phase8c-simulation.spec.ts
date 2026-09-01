@@ -13,14 +13,19 @@ const fixture = JSON.parse(
 for (const viewport of [
   { name: "desktop", width: 1280, height: 900 },
   { name: "390px", width: 390, height: 844 },
+  { name: "320px", width: 320, height: 844 },
 ]) {
   test(`authoritative Simulation reuses the participant matchup at ${viewport.name}`, async ({
+    browserName,
     page,
   }) => {
     await page.route(/\/_next\/static\/chunks\/.*\.js(?:\?.*)?$/, (route) =>
       route.abort(),
     );
-    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.emulateMedia({
+      forcedColors: browserName === "chromium" ? "active" : undefined,
+      reducedMotion: "reduce",
+    });
     await page.goto("/");
     await page.evaluate((markup) => {
       document.body.innerHTML = markup;
@@ -31,6 +36,9 @@ for (const viewport of [
     await expect(page.getByText("Final").first()).toBeVisible();
     await expect(page.getByText(/Practice|Example Season/)).toHaveCount(0);
     await expect(page.getByText(/SECRET FUTURE OPPONENT PICK/)).toHaveCount(0);
+    await expect(
+      page.getByText(/sealed count|stake|proposition|returned|geometry/i),
+    ).toHaveCount(0);
 
     const focusTarget = page.locator("a, button, summary").first();
     await focusTarget.focus();

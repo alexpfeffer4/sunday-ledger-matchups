@@ -90,7 +90,7 @@ export const canonicalScenarioOverrides: readonly SimulationScenarioOverride[] =
     {
       id: "PUSH",
       week: 2,
-      eventIndex: 1,
+      eventIndex: 3,
       note: "Spread and total push evidence.",
     },
     {
@@ -202,17 +202,6 @@ function digest(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function seededInteger(key: string, minimum: number, span: number): number {
-  return (
-    minimum +
-    (Number.parseInt(
-      digest(`${canonicalSimulationSeed}:${key}`).slice(0, 8),
-      16,
-    ) %
-      span)
-  );
-}
-
 function isoAt(base: Date, milliseconds: number): string {
   return new Date(base.getTime() + milliseconds).toISOString();
 }
@@ -224,33 +213,16 @@ function buildMarkets(input: {
   week: number;
   eventIndex: number;
 }) {
-  const favoriteAway =
-    seededInteger(`favorite:${input.week}:${input.eventIndex}`, 0, 2) === 0;
-  const favoritePrice = -seededInteger(
-    `favorite-price:${input.week}:${input.eventIndex}`,
-    125,
-    176,
-  );
-  const dogPrice = seededInteger(
-    `dog-price:${input.week}:${input.eventIndex}`,
-    105,
-    176,
-  );
-  const halfPoint = seededInteger(
-    `half:${input.week}:${input.eventIndex}`,
-    0,
-    2,
-  )
-    ? 500
-    : 0;
+  const favoriteAway = (input.week + input.eventIndex) % 2 === 0;
+  const favoritePrice = -150 - input.week - input.eventIndex;
+  const dogPrice = 125 + input.week + input.eventIndex;
   const awaySpread =
     (favoriteAway ? -1 : 1) *
-    (seededInteger(`spread:${input.week}:${input.eventIndex}`, 1, 8) * 1_000 +
-      halfPoint);
+    (1_000 +
+      ((input.week * 3 + input.eventIndex) % 8) * 1_000 +
+      (favoriteAway ? 500 : 0));
   const total =
-    seededInteger(`total:${input.week}:${input.eventIndex}`, 37, 17) * 1_000 +
-    500;
-  const signed = (line: number) => `${line > 0 ? "+" : ""}${line / 1_000}`;
+    37_000 + ((input.week * 5 + input.eventIndex * 3) % 17) * 1_000 + 500;
 
   return [
     {
@@ -275,7 +247,7 @@ function buildMarkets(input: {
       sourceBook: "draftkings",
       marketType: "SPREAD",
       outcomeKey: "AWAY",
-      proposition: `${input.awayTeam} ${signed(awaySpread)}`,
+      proposition: `${input.awayTeam} spread`,
       lineMilli: awaySpread,
       americanOdds: -110,
       observedAt: input.observedAt,
@@ -284,7 +256,7 @@ function buildMarkets(input: {
       sourceBook: "draftkings",
       marketType: "SPREAD",
       outcomeKey: "HOME",
-      proposition: `${input.homeTeam} ${signed(-awaySpread)}`,
+      proposition: `${input.homeTeam} spread`,
       lineMilli: -awaySpread,
       americanOdds: -110,
       observedAt: input.observedAt,
@@ -359,8 +331,8 @@ function resultVersions(
     kickoff,
     week === 7 && eventIndex === 3 ? 48 * 60 * 60_000 : 3.5 * 60 * 60_000,
   );
-  const awayScore = seededInteger(`away-score:${week}:${eventIndex}`, 10, 28);
-  const homeScore = seededInteger(`home-score:${week}:${eventIndex}`, 10, 28);
+  const awayScore = 10 + ((week * 7 + eventIndex * 5) % 28);
+  const homeScore = 10 + ((week * 11 + eventIndex * 3) % 28);
   const base = {
     source: "SIMULATION_FIXTURE" as const,
     externalEventId: event.externalEventId,

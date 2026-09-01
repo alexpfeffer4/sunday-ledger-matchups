@@ -276,6 +276,89 @@ select is(
 
 select set_config(
   'request.jwt.claims',
+  (
+    select jsonb_build_object(
+      'sub', opponent_entry.user_id,
+      'role', 'authenticated'
+    )::text
+    from private.matchups as matchup
+    join private.season_weeks as week on week.id = matchup.week_id
+    join private.season_entries as commissioner_entry
+      on commissioner_entry.season_id = matchup.season_id
+     and commissioner_entry.user_id = '8c000000-0000-4000-8000-000000000001'
+    join private.season_entries as opponent_entry
+      on opponent_entry.id = case
+        when matchup.side_a_entry_id = commissioner_entry.id
+          then matchup.side_b_entry_id
+        else matchup.side_a_entry_id
+      end
+    where week.nfl_week = 1
+      and matchup.season_id = (
+        select season.id
+        from private.seasons as season
+        join private.leagues as league on league.id = season.league_id
+        where league.slug = 'phase-8c-simulation'
+      )
+      and commissioner_entry.id in (
+        matchup.side_a_entry_id,
+        matchup.side_b_entry_id
+      )
+    limit 1
+  ),
+  true
+);
+select lives_ok(
+  $$select api.accept_stage1_card(
+    'phase-8c-simulation',
+    jsonb_build_array(jsonb_build_object(
+      'marketSnapshotId', (
+        select snapshot.id
+        from private.market_snapshots as snapshot
+        join private.season_weeks as week on week.id = snapshot.week_id
+        where week.nfl_week = 1
+          and snapshot.market_type = 'MONEYLINE'
+          and snapshot.american_odds > 0
+        order by snapshot.created_at desc, snapshot.id desc
+        limit 1
+      ),
+      'stakeCredits', 1000,
+      'payloadHash', (
+        select snapshot.payload_hash
+        from private.market_snapshots as snapshot
+        join private.season_weeks as week on week.id = snapshot.week_id
+        where week.nfl_week = 1
+          and snapshot.market_type = 'MONEYLINE'
+          and snapshot.american_odds > 0
+        order by snapshot.created_at desc, snapshot.id desc
+        limit 1
+      )
+    )),
+    'phase8c-opponent-sealed-card'
+  )$$,
+  'the commissioner opponent seals through the same atomic card command'
+);
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"8c000000-0000-4000-8000-000000000001","role":"authenticated"}',
+  true
+);
+select is(
+  api.get_stage1_state('phase-8c-simulation')
+    #> '{matchup,opponentRevealedPositions}',
+  '[]'::jsonb,
+  'the commissioner cannot inspect an opponent sealed position before reveal'
+);
+set local role authenticated;
+select is(
+  (select count(*)::integer from private.position_receipts),
+  0,
+  'receipt RLS exposes no opponent receipt to the commissioner participant'
+);
+reset role;
+
+select set_config(
+  'request.jwt.claims',
   '{"sub":"8c000000-0000-4000-8000-000000000002","role":"authenticated"}',
   true
 );
