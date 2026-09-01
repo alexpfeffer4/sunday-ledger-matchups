@@ -313,7 +313,7 @@ select ok(
      and week.nfl_week = expected.nfl_week
     left join lateral (
       select
-        count(*)::integer as matchup_count,
+        count(distinct matchup.id)::integer as matchup_count,
         count(distinct participant.entry_id)::integer as participant_count,
         bool_or(matchup.side_a_entry_id = matchup.side_b_entry_id) as has_self_pair
       from private.matchups as matchup
