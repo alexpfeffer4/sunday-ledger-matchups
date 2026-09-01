@@ -300,11 +300,14 @@ export function SeasonArchiveMyCard({
     );
   }
 
-  const corrected =
-    archive.schemaVersion === 2 &&
-    archive.corrections.some(
-      (correction) => correction.week === latest.game.week,
-    );
+  const correctionEventIds = new Set(
+    archive.schemaVersion === 2
+      ? archive.corrections.map((correction) => correction.eventId)
+      : [],
+  );
+  const corrected = latest.card.receipts.some((receipt) =>
+    correctionEventIds.has(receipt.eventId),
+  );
   return (
     <PageFrame
       eyebrow={`${archive.nflYear} · Archive final`}
@@ -396,6 +399,11 @@ export function SeasonArchiveSchedule({
       ? archive.corrections.map((correction) => correction.week)
       : [],
   );
+  const correctionEventIds = new Set(
+    archive.schemaVersion === 2
+      ? archive.corrections.map((correction) => correction.eventId)
+      : [],
+  );
   const archivedMatchup = (
     matchup: SeasonArchiveDto["week18"][number],
   ): ScheduleMatchupRecord => {
@@ -403,6 +411,9 @@ export function SeasonArchiveSchedule({
     const exhibitionMiss =
       matchup.scope === "EXHIBITION" &&
       matchup.cards.some((card) => card.compliance === "INCOMPLETE");
+    const corrected = matchup.cards.some((card) =>
+      card.receipts.some((receipt) => correctionEventIds.has(receipt.eventId)),
+    );
     const competition =
       matchup.scope === "EXHIBITION"
         ? "Week 18 exhibition"
@@ -418,7 +429,7 @@ export function SeasonArchiveSchedule({
                 : "Regular season";
     const resultLabel = exhibitionMiss
       ? "Exhibition miss"
-      : correctionWeeks.has(matchup.week)
+      : corrected
         ? "Corrected"
         : matchup.postseasonRole === "CHAMPIONSHIP" && matchup.week === 17
           ? "Champion final"

@@ -8,9 +8,15 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { exampleSeasonArchive } from "@/adapters/example/example-season";
+import type { SeasonArchiveDto } from "@/application/queries/season-archive-dtos";
 import { ScheduleNavigator } from "@/components/league/schedule-navigator";
 import { StandingsTable } from "@/components/league/standings-table";
 import { LeagueScoreboard } from "@/components/matchup/league-scoreboard";
+import {
+  SeasonArchiveMyCard,
+  SeasonArchiveSchedule,
+} from "@/components/season/archive-views";
 import {
   Stage1ReceiptView,
   Stage1ScheduleView,
@@ -32,6 +38,25 @@ vi.mock("next/link", () => ({
 }));
 
 afterEach(cleanup);
+
+function archiveWithCorrection(eventId: string): SeasonArchiveDto {
+  return {
+    ...structuredClone(exampleSeasonArchive),
+    schemaVersion: 2,
+    illustrative: undefined,
+    corrections: [
+      {
+        id: "phase-10-correction",
+        week: 18,
+        eventId,
+        originalResultVersionId: "original-result",
+        correctedResultVersionId: "corrected-result",
+        reason: "Official scoring correction",
+        recordedAt: "2027-01-12T18:00:00.000Z",
+      },
+    ],
+  } as unknown as SeasonArchiveDto;
+}
 
 describe("Phase 10 dense league records", () => {
   it("keeps rank, You, record, Points For, cutline, and playoff state decisive", () => {
@@ -248,5 +273,52 @@ describe("Phase 10 dense league records", () => {
     expect(container.textContent).toContain(
       "immutable receipt remain unchanged",
     );
+  });
+
+  it("scopes an archived card correction to a receipt for the corrected event", () => {
+    const viewerGame = exampleSeasonArchive.week18.find((game) =>
+      game.cards.some(
+        (card) => card.entryId === exampleSeasonArchive.viewerEntryId,
+      ),
+    )!;
+    const viewerCard = viewerGame.cards.find(
+      (card) => card.entryId === exampleSeasonArchive.viewerEntryId,
+    )!;
+    const unrelatedEvent = exampleSeasonArchive.week18.find(
+      (game) => game.id !== viewerGame.id,
+    )!.cards[0].receipts[0]!.eventId;
+    const { rerender } = render(
+      <SeasonArchiveMyCard archive={archiveWithCorrection(unrelatedEvent)} />,
+    );
+
+    expect(screen.queryByText("Corrected · Archived")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/A documented correction changed the official result/),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <SeasonArchiveMyCard
+        archive={archiveWithCorrection(viewerCard.receipts[0]!.eventId)}
+      />,
+    );
+    expect(screen.getByText("Corrected · Archived")).toBeVisible();
+    expect(
+      screen.getByText(/A documented correction changed the official result/),
+    ).toBeVisible();
+  });
+
+  it("labels only the archived matchup whose receipts use a corrected event", () => {
+    const correctedEvent =
+      exampleSeasonArchive.week18[0]!.cards[0].receipts[0]!.eventId;
+    render(
+      <SeasonArchiveSchedule archive={archiveWithCorrection(correctedEvent)} />,
+    );
+
+    expect(
+      screen.getAllByText("Corrected · Archive final · Archived"),
+    ).toHaveLength(1);
+    expect(
+      screen.getAllByText("Final · Archive final · Archived"),
+    ).toHaveLength(exampleSeasonArchive.week18.length - 1);
   });
 });
