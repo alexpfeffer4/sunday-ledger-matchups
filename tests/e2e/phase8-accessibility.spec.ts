@@ -20,7 +20,7 @@ const phase8c = JSON.parse(
     resolve("tests/e2e/generated/phase8c-simulation-markup.json"),
     "utf8",
   ),
-) as { matchup: string };
+) as { matchup: string; sealedMatchup: string };
 
 const surfaces = [
   ["qualification", phase8a.PLAYOFFS],
@@ -77,12 +77,23 @@ for (const [name, markup] of surfaces) {
     });
 
     await expectNoHorizontalOverflow(page);
-    await expect(
-      page.getByText(/sealed count|stake|proposition|returned|geometry/i),
-    ).toHaveCount(0);
     const accessibility = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
       .analyze();
     expect(accessibility.violations).toEqual([]);
   });
 }
+
+test("sealed Simulation opponent content exposes no hidden fields", async ({
+  page,
+}) => {
+  await loadMarkup(page, phase8c.sealedMatchup);
+  await page.setViewportSize({ width: 320, height: 900 });
+
+  const sealed = page.getByTestId("future-sealed-placeholder");
+  await expect(sealed).toBeVisible();
+  await expect(sealed).not.toContainText(
+    /sealed count|stake|proposition|returned|geometry/i,
+  );
+  await expect(page.getByText(/SECRET FUTURE OPPONENT PICK/)).toHaveCount(0);
+});

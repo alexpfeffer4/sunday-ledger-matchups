@@ -8,7 +8,7 @@ const fixture = JSON.parse(
     resolve("tests/e2e/generated/phase8c-simulation-markup.json"),
     "utf8",
   ),
-) as { matchup: string };
+) as { matchup: string; sealedMatchup: string };
 
 for (const viewport of [
   { name: "desktop", width: 1280, height: 900 },
@@ -36,10 +36,6 @@ for (const viewport of [
     await expect(page.getByText("Final").first()).toBeVisible();
     await expect(page.getByText(/Practice|Example Season/)).toHaveCount(0);
     await expect(page.getByText(/SECRET FUTURE OPPONENT PICK/)).toHaveCount(0);
-    await expect(
-      page.getByText(/sealed count|stake|proposition|returned|geometry/i),
-    ).toHaveCount(0);
-
     const focusTarget = page.locator("a, button, summary").first();
     await focusTarget.focus();
     await expect(focusTarget).toBeFocused();
@@ -54,5 +50,15 @@ for (const viewport of [
       scrollWidth: document.documentElement.scrollWidth,
     }));
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
+
+    await page.evaluate((markup) => {
+      document.body.innerHTML = markup;
+    }, fixture.sealedMatchup);
+    const sealed = page.getByTestId("future-sealed-placeholder");
+    await expect(sealed).toBeVisible();
+    await expect(sealed).not.toContainText(
+      /sealed count|stake|proposition|returned|geometry/i,
+    );
+    await expect(page.getByText(/SECRET FUTURE OPPONENT PICK/)).toHaveCount(0);
   });
 }

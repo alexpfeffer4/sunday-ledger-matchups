@@ -249,7 +249,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
             <div className="mt-4 space-y-3">
               {publication.standings.map((standing) => (
                 <div
-                  className="grid grid-cols-[28px_minmax(0,1fr)] items-center gap-x-2 gap-y-1 text-sm min-[360px]:grid-cols-[28px_minmax(0,1fr)_auto]"
+                  className="grid grid-cols-[28px_minmax(0,1fr)] items-center gap-x-2 gap-y-1 text-sm sm:grid-cols-[28px_minmax(0,1fr)_auto]"
                   key={standing.entryId}
                 >
                   <span className="font-mono">{standing.seed}</span>
@@ -257,7 +257,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
                     {standing.displayName}
                   </span>
                   <span
-                    className={`col-start-2 min-w-0 break-words min-[360px]:col-start-3 ${
+                    className={`col-start-2 min-w-0 break-words sm:col-start-3 ${
                       qualifierIds.has(standing.entryId)
                         ? "text-positive font-semibold"
                         : "text-muted"
@@ -333,7 +333,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
 function PublishedRoundCard({ round }: { round: PublishedRound }) {
   return (
     <article className="border-registry bg-surface rounded-xl border p-5 break-words shadow-[var(--shadow-card)]">
-      <div className="flex flex-col items-start gap-3 min-[360px]:flex-row min-[360px]:justify-between">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
         <div>
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
             Week {round.week}
@@ -446,7 +446,7 @@ function RoundEntryLine({
   const exhibitionMiss = participation === "EXHIBITION_MISS";
   return (
     <div
-      className={`flex flex-col justify-between gap-1 rounded-md px-2 py-1.5 min-[360px]:flex-row min-[360px]:items-center ${advances ? "bg-positive/10 text-positive" : ""}`}
+      className={`flex flex-col justify-between gap-1 rounded-md px-2 py-1.5 sm:flex-row sm:items-center ${advances ? "bg-positive/10 text-positive" : ""}`}
     >
       <span className="min-w-0 text-sm font-semibold break-words">
         {entry.qualificationSeed ? `No. ${entry.qualificationSeed} · ` : ""}
