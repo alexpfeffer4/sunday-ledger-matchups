@@ -55,10 +55,13 @@ for (const width of [320, 390, 768, 1024, 1440]) {
         "League",
         "More",
       ]);
-      for (const destination of await mobile.locator("a, button").all()) {
-        expect(
-          (await destination.boundingBox())?.height,
-        ).toBeGreaterThanOrEqual(48);
+      const destinations = mobile.locator(
+        ":scope > ul > li > a, :scope > ul > li > div > button",
+      );
+      for (const destination of await destinations.all()) {
+        const box = await destination.boundingBox();
+        expect(box).not.toBeNull();
+        expect(box!.height).toBeGreaterThanOrEqual(48);
       }
       const tray = page.getByRole("region", { name: "Working card" });
       const trayBox = await tray.boundingBox();
@@ -128,7 +131,12 @@ test("selected-week schedule reflows at the 320px equivalent of 400% zoom", asyn
   await page.emulateMedia({ reducedMotion: "reduce" });
 
   await expect(page.getByLabel("Selected week")).toBeVisible();
-  await expect(page.getByText("Week 18 exhibition").first()).toBeVisible();
+  const selectedSchedule = page.getByRole("region", {
+    name: "Week 18 · Exhibition",
+  });
+  await expect(
+    selectedSchedule.getByText("Week 18 exhibition", { exact: true }).first(),
+  ).toBeVisible();
   await expect(
     page.getByText("Exhibition miss · Archive final · Archived"),
   ).toBeVisible();
