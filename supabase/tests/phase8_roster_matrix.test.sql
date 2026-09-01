@@ -130,7 +130,9 @@ begin
   select
     matchup.id, matchup.week_id, matchup.league_id,
     side_a_score.id, side_b_score.id,
-    'LOSS', 'LOSS', 0, 0,
+    case when matchup.postseason_role = 'THIRD_PLACE' then 'TIE' else 'LOSS' end,
+    case when matchup.postseason_role = 'THIRD_PLACE' then 'TIE' else 'LOSS' end,
+    0, 0,
     encode(extensions.digest(matchup.id::text || ':matrix-final', 'sha256'), 'hex'),
     'FINAL'
   from private.matchups as matchup

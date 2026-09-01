@@ -723,10 +723,8 @@ select is(
    join private.leagues as league on league.id = publication.league_id
    where league.slug = 'phase8-canonical-10'
      and publication.publication_stage = 'QUALIFICATION'
-     and not exists (
-       select 1 from private.playoff_publications as successor
-       where successor.supersedes_id = publication.id
-     )),
+   order by publication.version
+   limit 1),
   6,
   'the canonical ten-member Simulation freezes a six-slot qualification field'
 );
