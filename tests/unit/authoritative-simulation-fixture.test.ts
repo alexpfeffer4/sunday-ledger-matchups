@@ -106,6 +106,37 @@ describe("authoritative Simulation fixture adapter", () => {
     ).toEqual([4, 6, 8, 10, 12, 14, 16]);
   });
 
+  it("binds the PUSH scenario to a market that actually settles as a push", async () => {
+    const adapter = new SimulationFixtureAdapter();
+    const scenario = canonicalScenarioOverrides.find(
+      (candidate) => candidate.id === "PUSH",
+    );
+    expect(scenario).toMatchObject({ week: 2, eventIndex: 3 });
+
+    const [event] = (await adapter.listMainMarkets(scenario!.week)).slice(
+      scenario!.eventIndex,
+      scenario!.eventIndex! + 1,
+    );
+    const results = await adapter.getEventResults(
+      scenario!.week,
+      new Date(
+        new Date(event!.scheduledStartAt).getTime() + 49 * 60 * 60_000,
+      ).toISOString(),
+    );
+    const result = results.find(
+      (candidate) => candidate.externalEventId === event!.externalEventId,
+    );
+    const awaySpread = event!.markets.find(
+      (market) =>
+        market.marketType === "SPREAD" && market.outcomeKey === "AWAY",
+    );
+
+    expect(result).toMatchObject({ status: "FINAL", completed: true });
+    expect(result!.awayScore! * 1_000 + awaySpread!.lineMilli!).toBe(
+      result!.homeScore! * 1_000,
+    );
+  });
+
   it("rejects caller-selected packs and seeds", () => {
     expect(
       () => new SimulationFixtureAdapter("caller-pack", "caller-seed"),

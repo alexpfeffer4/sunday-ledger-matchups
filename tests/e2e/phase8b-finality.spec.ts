@@ -21,12 +21,17 @@ const states = [
 for (const state of states) {
   for (const width of [390, 320]) {
     test(`${state} is accessible and reflows at ${width}px`, async ({
+      browserName,
       page,
     }) => {
       await page.route(/\/_next\/static\/chunks\/.*\.js(?:\?.*)?$/, (route) =>
         route.abort(),
       );
       await page.goto("/");
+      await page.emulateMedia({
+        forcedColors: browserName === "chromium" ? "active" : undefined,
+        reducedMotion: "reduce",
+      });
       await page.evaluate((markup) => {
         document.body.innerHTML = markup;
       }, fixture[state]);

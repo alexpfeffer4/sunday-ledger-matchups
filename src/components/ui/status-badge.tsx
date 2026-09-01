@@ -40,7 +40,7 @@ export function StatusBadge({
 }) {
   return (
     <span
-      className={`status-badge inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${tones[tone]}`}
+      className={`status-badge inline-flex min-h-7 max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border px-2.5 py-1 text-center text-xs font-semibold [overflow-wrap:anywhere] ${tones[tone]}`}
     >
       {icon ?? <span aria-hidden="true">{cues[tone]}</span>}
       {children}
