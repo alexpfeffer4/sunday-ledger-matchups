@@ -11,11 +11,17 @@ import { Stage1CommissionerControls } from "@/components/commissioner/stage1-con
 import { LeagueSettings } from "@/components/commissioner/league-settings";
 import type { MyLeagueSummary } from "@/application/queries/get-my-league-summary";
 import { PageFrame } from "@/components/league/page-frame";
+import { StandingsTable } from "@/components/league/standings-table";
+import {
+  ScheduleNavigator,
+  type ScheduleWeekRecord,
+} from "@/components/league/schedule-navigator";
 import {
   StandingsRulesetSummary,
   type RulesetPresentation,
 } from "@/components/rules/ruleset-presentation";
 import { AllocationMeter } from "@/components/matchup/allocation-meter";
+import { LeagueScoreboard } from "@/components/matchup/league-scoreboard";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AuditDetails } from "@/components/ui/audit-details";
 import { ReceiptPanel } from "@/components/ui/receipt-panel";
@@ -37,8 +43,63 @@ function formatOdds(odds: number): string {
   return odds > 0 ? `+${odds}` : `−${Math.abs(odds)}`;
 }
 
+function formatLine(
+  lineMilli: number | null,
+  marketType: "MONEYLINE" | "SPREAD" | "TOTAL",
+): string {
+  if (lineMilli === null) return marketType === "MONEYLINE" ? "Moneyline" : "—";
+  const line = lineMilli / 1000;
+  return marketType === "SPREAD" && line > 0 ? `+${line}` : `${line}`;
+}
+
 function formatScore(value: number): string {
   return formatCenticredits(BigInt(value), true);
+}
+
+function competitionLabel({
+  lifecycle,
+  postseasonRole,
+  scope,
+  week,
+}: {
+  lifecycle: Stage1StateDto["league"]["lifecycle"];
+  postseasonRole?:
+    "CHAMPIONSHIP" | "THIRD_PLACE" | "PLACEMENT" | "EXHIBITION" | null;
+  scope: "REGULAR" | "PLAYOFF" | "PLACEMENT" | "EXHIBITION";
+  week: number;
+}): string {
+  if (week === 18 || scope === "EXHIBITION") return "Week 18 exhibition";
+  if (postseasonRole === "CHAMPIONSHIP") {
+    return lifecycle === "CHAMPION_FINAL"
+      ? "Championship · champion final"
+      : "Championship";
+  }
+  if (postseasonRole === "THIRD_PLACE") return "Third place";
+  if (postseasonRole === "PLACEMENT" || scope === "PLACEMENT") {
+    return "Placement";
+  }
+  return scope === "PLAYOFF" ? "Playoff" : "Regular season";
+}
+
+function weekStatus(state: Stage1StateDto): string {
+  if (!state.week) return "Formation";
+  if (state.slate.some((event) => event.state === "CORRECTED")) {
+    return "Corrected";
+  }
+  if (state.league.lifecycle === "CHAMPION_FINAL") return "Champion final";
+  if (state.league.lifecycle === "WEEK_18_EXHIBITION") {
+    return "Week 18 exhibition";
+  }
+  const labels: Record<NonNullable<Stage1StateDto["week"]>["state"], string> = {
+    PLANNED: "Published",
+    OPEN: "Cards open",
+    LOCKED: state.slate.some((event) => event.state === "LIVE")
+      ? "Live"
+      : "Cards locked",
+    PROVISIONAL: "Provisional",
+    FINAL: "Final",
+  };
+  return labels[state.week.state];
 }
 
 function memberInitials(displayName: string): string {
@@ -170,8 +231,8 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
             label: "View final league scoreboard",
           }
         : {
-            href: `/l/${state.league.slug}/live`,
-            label: "Open live matchup",
+            href: `/l/${state.league.slug}/league`,
+            label: "View league scoreboard",
           };
   const matchupState = result
     ? result.status === "FINAL"
@@ -350,7 +411,7 @@ export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
     return (
       <PageFrame
         eyebrow={`${state.league.name} · Live Week 1`}
-        title="Published NFL slate"
+        title="Make picks"
         description={`Week 1 games are selected. Cards lock ${formatDate(state.week.commonLockAt)} and open after the roster is set.`}
         aside={liveStatus(state)}
       >
@@ -399,7 +460,7 @@ export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
     return (
       <PageFrame
         eyebrow={`${state.league.name} · Week ${state.week.nflWeek} ${state.week.scope.toLowerCase()}`}
-        title="Published NFL slate"
+        title="Make picks"
         description={`You do not have a card this round, but you can still view the selected games and card-lock time.`}
         aside={liveStatus(state)}
       >
@@ -428,7 +489,7 @@ export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
     return (
       <PageFrame
         eyebrow={`${state.league.name} · Formation`}
-        title="Week 1 slate"
+        title="Make picks"
         description="The Week 1 slate appears after the commissioner completes league setup."
       >
         <FormationPanel state={state} />
@@ -438,7 +499,7 @@ export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
   return (
     <PageFrame
       eyebrow="Current published odds"
-      title={`Week ${state.week.nflWeek} slate`}
+      title="Make picks"
       description={`Cards lock ${formatDate(state.week.commonLockAt)}. Build a private draft, review the current terms, then confirm all 1,000 credits at once.`}
       aside={liveStatus(state)}
     >
@@ -498,64 +559,71 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
       }
     >
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-4">
+        <div>
           {state.ownerCard.positions.length === 0 ? (
             <p className="border-boundary bg-surface rounded-xl border p-6">
               No sealed picks yet.
             </p>
           ) : (
-            state.ownerCard.positions.map((position) => (
-              <article
-                className="border-boundary bg-surface rounded-xl border p-5"
-                key={position.id}
-              >
-                <div className="flex justify-between gap-4">
-                  <div>
-                    <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
-                      {position.marketType} · {position.eventLabel}
+            <ol className="border-boundary bg-surface divide-boundary divide-y overflow-hidden rounded-lg border">
+              {state.ownerCard.positions.map((position) => (
+                <li className="p-4 sm:p-5" key={position.id}>
+                  <div className="flex justify-between gap-4">
+                    <div>
+                      <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
+                        {position.marketType} · {position.eventLabel}
+                      </p>
+                      <h2 className="mt-2 font-bold">{position.proposition}</h2>
+                    </div>
+                    <p className="font-mono font-semibold">
+                      {formatOdds(position.americanOdds)}
                     </p>
-                    <h2 className="mt-2 font-bold">{position.proposition}</h2>
                   </div>
-                  <p className="font-mono font-semibold">
-                    {formatOdds(position.americanOdds)}
-                  </p>
-                </div>
-                <dl className="border-boundary mt-4 grid grid-cols-2 gap-4 border-t pt-4 text-sm sm:grid-cols-4">
-                  <div>
-                    <dt className="text-muted">Stake</dt>
-                    <dd className="mt-1 font-mono font-semibold">
-                      {position.stakeCredits}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted">Accepted</dt>
-                    <dd className="mt-1 font-semibold">
-                      {formatDate(position.acceptedAt)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted">Result</dt>
-                    <dd className="mt-1 font-semibold">
-                      {position.settlement?.outcome ?? "Pending"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted">Returned</dt>
-                    <dd className="mt-1 font-mono font-semibold">
-                      {position.settlement
-                        ? formatScore(position.settlement.returnedCenticredits)
-                        : "—"}
-                    </dd>
-                  </div>
-                </dl>
-                <Link
-                  className="text-action mt-4 inline-flex text-sm font-semibold hover:underline"
-                  href={`/l/${state.league.slug}/receipt/${position.id}`}
-                >
-                  View receipt
-                </Link>
-              </article>
-            ))
+                  <dl className="border-boundary mt-4 grid grid-cols-2 gap-4 border-t pt-4 text-sm sm:grid-cols-4">
+                    <div>
+                      <dt className="text-muted">Line</dt>
+                      <dd className="mt-1 font-mono font-semibold">
+                        {formatLine(position.lineMilli, position.marketType)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted">Stake</dt>
+                      <dd className="mt-1 font-mono font-semibold">
+                        {position.stakeCredits}
+                      </dd>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <dt className="text-muted">Accepted</dt>
+                      <dd className="mt-1 font-semibold">
+                        {formatDate(position.acceptedAt)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted">Result</dt>
+                      <dd className="mt-1 font-semibold">
+                        {position.settlement?.outcome ?? "Pending"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted">Returned</dt>
+                      <dd className="mt-1 font-mono font-semibold">
+                        {position.settlement
+                          ? formatScore(
+                              position.settlement.returnedCenticredits,
+                            )
+                          : "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                  <Link
+                    className="text-action mt-4 inline-flex text-sm font-semibold hover:underline"
+                    href={`/l/${state.league.slug}/receipt/${position.id}`}
+                  >
+                    View receipt
+                  </Link>
+                </li>
+              ))}
+            </ol>
           )}
         </div>
         <aside className="border-boundary bg-surface h-fit rounded-xl border p-5">
@@ -569,6 +637,24 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
             {state.ownerCard.remainingCredits} left · sealed picks cannot be
             changed.
           </p>
+          <dl className="border-boundary mt-4 space-y-3 border-t pt-4 text-sm">
+            <div className="flex justify-between gap-3">
+              <dt>Allocation</dt>
+              <dd className="font-semibold">
+                {state.ownerCard.remainingCredits === 0
+                  ? "Reconciled"
+                  : "Incomplete"}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>Acceptance</dt>
+              <dd className="font-semibold">Whole card</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>Receipt state</dt>
+              <dd className="font-semibold">Immutable</dd>
+            </div>
+          </dl>
         </aside>
       </div>
     </PageFrame>
@@ -641,10 +727,30 @@ export function Stage1LiveView({ state }: { state: Stage1StateDto }) {
 }
 
 export function Stage1LeagueView({ state }: { state: Stage1StateDto }) {
+  const week = state.week?.nflWeek ?? 1;
+  const currentState = weekStatus(state);
+  const games = state.schedule.map((matchup) => ({
+    id: matchup.id,
+    sideAName: matchup.sideAName,
+    sideBName: matchup.sideBName,
+    sideAScoreCenticredits: matchup.result?.sideAPointsForCenticredits ?? null,
+    sideBScoreCenticredits: matchup.result?.sideBPointsForCenticredits ?? null,
+    state: matchup.result?.status === "FINAL" ? "Final" : currentState,
+    competition: competitionLabel({
+      lifecycle: state.league.lifecycle,
+      postseasonRole: matchup.postseasonRole,
+      scope: matchup.scope,
+      week,
+    }),
+    selected: [matchup.sideAEntryId, matchup.sideBEntryId].includes(
+      state.viewer.entryId,
+    ),
+  }));
+
   return (
     <PageFrame
       eyebrow={`${state.league.name} · Week ${state.week?.nflWeek ?? 1}${state.week ? ` ${state.week.scope.toLowerCase()}` : ""}`}
-      title="Around the league"
+      title="League Overview"
       description={
         state.league.lifecycle === "PLAYOFFS"
           ? "Current playoff matchups and final scores."
@@ -655,33 +761,41 @@ export function Stage1LeagueView({ state }: { state: Stage1StateDto }) {
       {!state.week ? (
         <FormationPanel state={state} />
       ) : (
-        <div className="mt-7 grid gap-4 sm:grid-cols-2">
-          {state.schedule.map((matchup) => (
-            <article
-              className={`bg-surface rounded-xl border p-5 ${[matchup.sideAEntryId, matchup.sideBEntryId].includes(state.viewer.entryId) ? "border-registry" : "border-boundary"}`}
-              key={matchup.id}
-            >
-              <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
-                {matchup.scope.toLowerCase()} · Matchup {matchup.displayOrder}
-              </p>
-              <div className="mt-4 flex justify-between gap-4">
-                <p className="font-bold">{matchup.sideAName}</p>
-                <p className="font-mono">
-                  {matchup.result
-                    ? formatScore(matchup.result.sideAPointsForCenticredits)
-                    : "—"}
-                </p>
-              </div>
-              <div className="border-boundary mt-4 flex justify-between gap-4 border-t pt-4">
-                <p className="font-bold">{matchup.sideBName}</p>
-                <p className="font-mono">
-                  {matchup.result
-                    ? formatScore(matchup.result.sideBPointsForCenticredits)
-                    : "—"}
-                </p>
-              </div>
-            </article>
-          ))}
+        <div className="mt-6 grid gap-7 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <LeagueScoreboard
+            games={games}
+            leagueSlug={state.league.slug}
+            showOverviewLink={false}
+            week={week}
+          />
+          <section aria-labelledby="league-members-heading" className="h-fit">
+            <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
+              Member identity
+            </p>
+            <h2 className="mt-1 text-lg font-bold" id="league-members-heading">
+              League members
+            </h2>
+            <ul className="border-boundary bg-surface mt-3 divide-y overflow-hidden rounded-lg border">
+              {state.members.map((member) => (
+                <li
+                  className="flex min-h-12 items-center justify-between gap-3 px-4 py-2 text-sm"
+                  key={member.userId}
+                >
+                  <span className="min-w-0 font-semibold break-words">
+                    {member.displayName}
+                    {member.entryId === state.viewer.entryId ? (
+                      <span className="text-registry ml-2 text-xs font-bold">
+                        You
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="text-muted shrink-0 text-xs">
+                    {member.role === "COMMISSIONER" ? "Commissioner" : "Member"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
         </div>
       )}
     </PageFrame>
@@ -695,6 +809,34 @@ export function Stage1StandingsView({
   ruleset: RulesetPresentation;
   state: Stage1StateDto;
 }) {
+  const playoffRules = ruleset.canonicalJson.playoffs;
+  const qualifierCount =
+    state.league.memberCount <= playoffRules.smallLeagueMaximumSize
+      ? playoffRules.smallLeagueQualifiers
+      : playoffRules.largeLeagueQualifiers;
+  const rows = state.standings.map((row) => ({
+    entryId: row.entryId,
+    rank: row.seed,
+    memberName: row.displayName,
+    wins: row.wins,
+    losses: row.losses,
+    ties: row.ties,
+    pointsForCenticredits: row.pointsForCenticredits,
+    allPlayHalfWinUnits: row.allPlayHalfWinUnits,
+    allPlayComparisonCount: row.allPlayComparisonCount,
+    attendanceMisses: row.attendanceMisses,
+    playoffState:
+      row.seed <= qualifierCount
+        ? state.league.lifecycle === "PLAYOFFS"
+          ? "Qualified"
+          : "Playoff seed"
+        : state.league.lifecycle === "PLAYOFFS"
+          ? "Outside field"
+          : "Outside cutline",
+    inPlayoffField: row.seed <= qualifierCount,
+    current: row.entryId === state.viewer.entryId,
+  }));
+
   return (
     <PageFrame
       eyebrow={
@@ -718,126 +860,10 @@ export function Stage1StandingsView({
           </p>
         </div>
       ) : (
-        <>
-          <div className="mt-7 space-y-3 sm:hidden">
-            {state.standings.map((row) => {
-              const playoffCutline = state.league.memberCount <= 8 ? 4 : 6;
-              return (
-                <details
-                  className={`border-boundary bg-surface rounded-xl border ${
-                    row.entryId === state.viewer.entryId
-                      ? "border-l-registry border-l-4"
-                      : ""
-                  }`}
-                  key={row.entryId}
-                >
-                  <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 px-4 [&::-webkit-details-marker]:hidden">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="text-registry w-7 shrink-0 font-mono font-bold">
-                        {row.seed}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="font-bold break-words">
-                          {row.displayName}
-                        </p>
-                        <p className="text-muted mt-1 text-xs">
-                          {row.wins}–{row.losses}
-                          {row.ties ? `–${row.ties}` : ""} ·{" "}
-                          {formatScore(row.pointsForCenticredits)} PF
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-muted shrink-0 text-xs font-semibold">
-                      {row.seed <= playoffCutline
-                        ? "Playoff seed"
-                        : "Outside cutline"}
-                    </span>
-                  </summary>
-                  <dl className="border-boundary grid grid-cols-2 gap-4 border-t px-4 py-4 text-sm">
-                    <div>
-                      <dt className="text-muted text-xs">All-play</dt>
-                      <dd className="mt-1 font-semibold">
-                        {row.allPlayHalfWinUnits / 2}–
-                        {row.allPlayComparisonCount -
-                          row.allPlayHalfWinUnits / 2}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted text-xs">Attendance misses</dt>
-                      <dd className="mt-1 font-semibold">
-                        {row.attendanceMisses} of 3
-                      </dd>
-                    </div>
-                  </dl>
-                </details>
-              );
-            })}
-          </div>
-          <div
-            aria-label="Scrollable official standings table"
-            className="border-boundary bg-surface mt-7 hidden overflow-x-auto rounded-xl border sm:block"
-            role="region"
-            tabIndex={0}
-          >
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <caption className="sr-only">
-                Official league standings through the latest final matchup
-              </caption>
-              <thead className="bg-subtle text-muted text-xs uppercase">
-                <tr>
-                  <th className="px-4 py-3" scope="col">
-                    Seed
-                  </th>
-                  <th className="px-4 py-3" scope="col">
-                    Member
-                  </th>
-                  <th className="px-4 py-3" scope="col">
-                    Record
-                  </th>
-                  <th className="px-4 py-3" scope="col">
-                    Points For
-                  </th>
-                  <th className="px-4 py-3" scope="col">
-                    All-play
-                  </th>
-                  <th className="px-4 py-3" scope="col">
-                    Misses
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-boundary divide-y">
-                {state.standings.map((row) => (
-                  <tr
-                    className={
-                      row.entryId === state.viewer.entryId
-                        ? "bg-registry/5"
-                        : ""
-                    }
-                    key={row.entryId}
-                  >
-                    <td className="px-4 py-4 font-mono font-semibold">
-                      {row.seed}
-                    </td>
-                    <th className="px-4 py-4" scope="row">
-                      {row.displayName}
-                    </th>
-                    <td className="px-4 py-4">
-                      {row.wins}-{row.losses}-{row.ties}
-                    </td>
-                    <td className="px-4 py-4 font-mono">
-                      {formatScore(row.pointsForCenticredits)}
-                    </td>
-                    <td className="px-4 py-4">
-                      {row.allPlayHalfWinUnits / 2}-
-                      {row.allPlayComparisonCount - row.allPlayHalfWinUnits / 2}
-                    </td>
-                    <td className="px-4 py-4">{row.attendanceMisses}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+        <StandingsTable
+          caption="Official league standings through the latest final matchup"
+          rows={rows}
+        />
       )}
       <StandingsRulesetSummary presentation={ruleset} />
     </PageFrame>
@@ -882,7 +908,48 @@ export function Stage1CommissionerView({
       aside={liveStatus(state)}
     >
       <>
-        <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <section
+          aria-labelledby="commissioner-current-state"
+          className="border-boundary bg-surface mt-6 rounded-lg border p-4"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-bold" id="commissioner-current-state">
+              Current league and season state
+            </h2>
+            {liveStatus(state)}
+          </div>
+          <dl className="mt-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
+            <div className="flex justify-between gap-3 sm:block">
+              <dt className="text-muted">Lifecycle</dt>
+              <dd className="font-semibold sm:mt-1">
+                {state.league.lifecycle.replaceAll("_", " ")}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3 sm:block">
+              <dt className="text-muted">Members</dt>
+              <dd className="font-semibold sm:mt-1">
+                {state.league.memberCount}/16
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3 sm:block">
+              <dt className="text-muted">Week</dt>
+              <dd className="font-semibold sm:mt-1">
+                {state.week
+                  ? `${state.week.nflWeek} · ${state.week.state}`
+                  : "Formation"}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3 sm:block">
+              <dt className="text-muted">Ready cards · Corrections</dt>
+              <dd className="font-semibold sm:mt-1">
+                {state.commissioner.readyCount ?? "Sealed"} ·{" "}
+                {state.commissioner.correctionCount}
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
           <Stage1CommissionerControls
             invites={invites}
             latestLiveImport={latestLiveImport}
@@ -927,50 +994,41 @@ export function Stage1CommissionerView({
             }}
             week17CorrectionOperations={week17CorrectionOperations}
           />
-          <aside className="space-y-5">
-            <section className="border-boundary bg-surface rounded-xl border p-5">
-              <h2 className="font-bold">Current state</h2>
-              <dl className="mt-4 space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <dt>Members</dt>
-                  <dd>{state.league.memberCount}/16 maximum</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt>Week</dt>
-                  <dd>{state.week?.state ?? "FORMING"}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt>Ready cards</dt>
-                  <dd>{state.commissioner.readyCount ?? "Sealed"}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt>Corrections</dt>
-                  <dd>{state.commissioner.correctionCount}</dd>
-                </div>
-              </dl>
-            </section>
-            <section className="border-negative/25 bg-negative/10 rounded-xl border p-5">
-              <h2 className="text-negative font-bold">Member privacy</h2>
-              <p className="text-graphite mt-2 text-sm leading-6">
+          <aside>
+            <details className="border-negative/25 bg-negative/10 overflow-hidden rounded-lg border">
+              <summary className="text-negative flex min-h-12 cursor-pointer list-none items-center px-5 py-3 font-bold [&::-webkit-details-marker]:hidden">
+                Member privacy boundary
+              </summary>
+              <p className="text-graphite px-5 pb-5 text-sm leading-6">
                 You can see how many cards are ready, but never a member’s picks
                 before they are revealed by the game schedule.
               </p>
-            </section>
+            </details>
           </aside>
         </div>
         {leagueManagement ? (
-          <LeagueSettings
-            archived={leagueManagement.archivedAt !== null}
-            canDelete={leagueManagement.canDelete}
-            leagueName={leagueManagement.name}
-            leagueSlug={leagueManagement.slug}
-            lifecycle={leagueManagement.lifecycle}
-            members={state.members.map((member) => ({
-              displayName: member.displayName,
-              role: member.role,
-              userId: member.userId,
-            }))}
-          />
+          <details className="border-boundary bg-surface mt-6 overflow-hidden rounded-lg border">
+            <summary className="hover:bg-subtle flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 font-bold [&::-webkit-details-marker]:hidden">
+              <span>Lifecycle and league settings</span>
+              <span className="text-muted text-xs font-semibold">
+                Reversible and destructive actions separated
+              </span>
+            </summary>
+            <div className="border-boundary border-t px-5 pb-5">
+              <LeagueSettings
+                archived={leagueManagement.archivedAt !== null}
+                canDelete={leagueManagement.canDelete}
+                leagueName={leagueManagement.name}
+                leagueSlug={leagueManagement.slug}
+                lifecycle={leagueManagement.lifecycle}
+                members={state.members.map((member) => ({
+                  displayName: member.displayName,
+                  role: member.role,
+                  userId: member.userId,
+                }))}
+              />
+            </div>
+          </details>
         ) : null}
       </>
     </PageFrame>
@@ -984,161 +1042,137 @@ export function Stage1ScheduleView({
   liveSchedule?: LiveRegularSeasonSchedule | null;
   state: Stage1StateDto;
 }) {
-  if (state.league.mode === "LIVE") {
-    return (
-      <PageFrame
-        eyebrow="Published at roster lock"
-        title="2026 regular-season schedule"
-        description="One matchup per member per week. Once the roster locks, all 14 weeks are published and future NFL slates do not change these opponents."
-        aside={liveStatus(state)}
-      >
-        {!liveSchedule ? (
-          <FormationPanel state={state} />
-        ) : (
-          <>
-            <section className="border-boundary bg-surface mt-7 rounded-xl border p-5">
-              <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-                <div>
-                  <p className="font-semibold">14-week schedule locked</p>
-                  <p className="text-muted mt-1 text-xs">
-                    Published {formatDate(liveSchedule.publishedAt)}
-                  </p>
-                </div>
-                <StatusBadge tone="positive">Verified</StatusBadge>
-              </div>
-              <AuditDetails
-                className="mt-4 border-b-0 pb-0"
-                context="This evidence verifies the same 14-week schedule shown below and the method used to publish it at roster lock."
-              >
-                <dl className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <dt className="text-muted">Method</dt>
-                    <dd className="mt-1 font-semibold">
-                      {liveSchedule.algorithmVersion}
-                    </dd>
-                  </div>
-                  <div className="min-w-0">
-                    <dt className="text-muted">Verification code</dt>
-                    <dd className="mt-1 font-mono text-xs break-all">
-                      {liveSchedule.outputHash}
-                    </dd>
-                  </div>
-                </dl>
-              </AuditDetails>
-            </section>
-            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {Array.from({ length: 14 }, (_, index) => index + 1).map(
-                (week) => {
-                  const matchups = liveSchedule.matchups.filter(
-                    (matchup) => matchup.week === week,
-                  );
-                  return (
-                    <section
-                      aria-labelledby={`live-schedule-week-${week}`}
-                      className={`rounded-xl border p-5 ${
-                        week === state.week?.nflWeek
-                          ? "border-registry bg-registry/5"
-                          : "border-boundary bg-surface"
-                      }`}
-                      key={week}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <h2
-                          className="font-bold"
-                          id={`live-schedule-week-${week}`}
-                        >
-                          Week {week}
-                        </h2>
-                        <span className="text-muted text-xs font-semibold">
-                          {week === state.week?.nflWeek
-                            ? state.week.state
-                            : week < (state.week?.nflWeek ?? 1)
-                              ? "Final"
-                              : "Scheduled"}
-                        </span>
-                      </div>
-                      <div className="divide-boundary mt-3 divide-y">
-                        {matchups.map((matchup) => {
-                          const isViewerMatchup = [
-                            matchup.sideAEntryId,
-                            matchup.sideBEntryId,
-                          ].includes(state.viewer.entryId);
-                          return (
-                            <p
-                              className={`py-2.5 text-sm ${
-                                isViewerMatchup
-                                  ? "text-registry font-bold"
-                                  : "text-graphite"
-                              }`}
-                              key={`${matchup.sideAEntryId}-${matchup.sideBEntryId}`}
-                            >
-                              {matchup.sideAName}{" "}
-                              <span className="text-muted">vs</span>{" "}
-                              {matchup.sideBName}
-                            </p>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  );
-                },
-              )}
-            </div>
-          </>
-        )}
-      </PageFrame>
-    );
+  const currentWeek = state.week?.nflWeek ?? 1;
+  const currentPair = new Map(
+    state.schedule.map((matchup) => [
+      [matchup.sideAEntryId, matchup.sideBEntryId].sort().join(":"),
+      matchup,
+    ]),
+  );
+  const weeks: ScheduleWeekRecord[] = liveSchedule
+    ? Array.from({ length: 14 }, (_, index) => index + 1).map((week) => ({
+        week,
+        label: `Week ${week}`,
+        status:
+          week === currentWeek
+            ? weekStatus(state)
+            : week < currentWeek
+              ? "Final"
+              : "Scheduled",
+        matchups: liveSchedule.matchups
+          .filter((matchup) => matchup.week === week)
+          .map((matchup) => {
+            const current = currentPair.get(
+              [matchup.sideAEntryId, matchup.sideBEntryId].sort().join(":"),
+            );
+            const sameOrder = current?.sideAEntryId === matchup.sideAEntryId;
+            return {
+              id: `${week}-${matchup.sideAEntryId}-${matchup.sideBEntryId}`,
+              sideAName: matchup.sideAName,
+              sideBName: matchup.sideBName,
+              sideAScoreCenticredits:
+                week === currentWeek
+                  ? sameOrder
+                    ? (current?.result?.sideAPointsForCenticredits ?? null)
+                    : (current?.result?.sideBPointsForCenticredits ?? null)
+                  : null,
+              sideBScoreCenticredits:
+                week === currentWeek
+                  ? sameOrder
+                    ? (current?.result?.sideBPointsForCenticredits ?? null)
+                    : (current?.result?.sideAPointsForCenticredits ?? null)
+                  : null,
+              status:
+                week === currentWeek
+                  ? (current?.result?.status ?? weekStatus(state))
+                  : week < currentWeek
+                    ? "Final"
+                    : "Scheduled",
+              competition: "Regular season",
+              currentMember: [
+                matchup.sideAEntryId,
+                matchup.sideBEntryId,
+              ].includes(state.viewer.entryId),
+              sideAWinner: sameOrder
+                ? current?.result?.sideADecision === "WIN"
+                : current?.result?.sideBDecision === "WIN",
+              sideBWinner: sameOrder
+                ? current?.result?.sideBDecision === "WIN"
+                : current?.result?.sideADecision === "WIN",
+            };
+          }),
+      }))
+    : [];
+
+  if (state.week && !weeks.some((week) => week.week === currentWeek)) {
+    weeks.push({
+      week: currentWeek,
+      label:
+        currentWeek === 18 ? "Week 18 · Exhibition" : `Week ${currentWeek}`,
+      status: weekStatus(state),
+      matchups: state.schedule.map((matchup) => ({
+        id: matchup.id,
+        sideAName: matchup.sideAName,
+        sideBName: matchup.sideBName,
+        sideAScoreCenticredits:
+          matchup.result?.sideAPointsForCenticredits ?? null,
+        sideBScoreCenticredits:
+          matchup.result?.sideBPointsForCenticredits ?? null,
+        status: matchup.result?.status ?? weekStatus(state),
+        competition: competitionLabel({
+          lifecycle: state.league.lifecycle,
+          postseasonRole: matchup.postseasonRole,
+          scope: matchup.scope,
+          week: currentWeek,
+        }),
+        currentMember: [matchup.sideAEntryId, matchup.sideBEntryId].includes(
+          state.viewer.entryId,
+        ),
+        sideAWinner: matchup.result?.sideADecision === "WIN",
+        sideBWinner: matchup.result?.sideBDecision === "WIN",
+      })),
+    });
   }
 
   return (
     <PageFrame
       eyebrow="Published at roster lock"
-      title="2026 Week 1 schedule"
-      description="The four Week 1 pairings are published for the league. Private card terms are never included in the schedule."
+      title="Schedule"
+      description="Choose one week to review its authoritative matchups. Private card terms are never included."
       aside={liveStatus(state)}
     >
-      {!state.week ? (
+      {!state.week && !liveSchedule ? (
         <FormationPanel state={state} />
       ) : (
         <>
+          <ScheduleNavigator initialWeek={currentWeek} weeks={weeks} />
           <AuditDetails
-            className="bg-surface mt-7 rounded-xl border px-5"
-            context="This evidence verifies the Week 1 pairings shown below. It does not reveal private card terms."
+            className="mt-5"
+            context="This evidence verifies the fixed schedule shown above. It never contains private card terms."
           >
-            <dl className="grid gap-4 sm:grid-cols-2">
+            <dl className="grid gap-3 sm:grid-cols-2">
               <div>
                 <dt className="text-muted">Method</dt>
-                <dd className="mt-1 font-semibold">Circle schedule</dd>
-              </div>
-              <div>
-                <dt className="text-muted">Verification code</dt>
-                <dd className="mt-1 font-mono text-xs break-all">
-                  {state.season.scheduleSeed}
+                <dd className="mt-1 font-semibold">
+                  {liveSchedule?.algorithmVersion ?? "Circle schedule"}
                 </dd>
               </div>
+              <div className="min-w-0">
+                <dt className="text-muted">Verification code</dt>
+                <dd className="mt-1 font-mono text-xs break-all">
+                  {liveSchedule?.outputHash ?? state.season.scheduleSeed}
+                </dd>
+              </div>
+              {liveSchedule ? (
+                <div>
+                  <dt className="text-muted">Published</dt>
+                  <dd className="mt-1 font-semibold">
+                    {formatDate(liveSchedule.publishedAt)}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
           </AuditDetails>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {state.schedule.map((matchup) => (
-              <article
-                className={`bg-surface rounded-xl border p-5 ${
-                  [matchup.sideAEntryId, matchup.sideBEntryId].includes(
-                    state.viewer.entryId,
-                  )
-                    ? "border-registry"
-                    : "border-boundary"
-                }`}
-                key={matchup.id}
-              >
-                <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
-                  Week 1 · Matchup {matchup.displayOrder}
-                </p>
-                <p className="mt-4 font-bold">{matchup.sideAName}</p>
-                <p className="text-muted my-2 text-xs">vs</p>
-                <p className="font-bold">{matchup.sideBName}</p>
-              </article>
-            ))}
-          </div>
         </>
       )}
     </PageFrame>
@@ -1248,14 +1282,36 @@ export function Stage1ReceiptView({
     (position) => position.id === receiptId,
   );
   if (!receipt) return null;
+  const event = state.slate.find(
+    (candidate) => candidate.id === receipt.eventId,
+  );
+  const corrected = event?.state === "CORRECTED";
+  const result = receipt.settlement?.outcome ?? "Pending";
   return (
     <PageFrame
       eyebrow="Sealed pick"
-      title={receipt.proposition}
-      description="The accepted line, odds, stake, and time for this pick."
-      aside={<StatusBadge tone="sealed">Sealed</StatusBadge>}
+      title="Pick receipt"
+      description="Human-readable proof of the accepted terms and official result."
     >
       <ReceiptPanel
+        status={
+          <StatusBadge
+            tone={
+              corrected
+                ? "corrected"
+                : receipt.settlement
+                  ? "positive"
+                  : "sealed"
+            }
+          >
+            {corrected
+              ? "Corrected"
+              : receipt.settlement
+                ? "Settled"
+                : "Sealed"}
+          </StatusBadge>
+        }
+        summary={`${receipt.proposition} at ${formatOdds(receipt.americanOdds)} for ${receipt.stakeCredits} credits. ${result === "Pending" ? "The official result is pending." : `Official result: ${result}.`}`}
         audit={
           <AuditDetails
             className="border-b-0 pb-0"
@@ -1273,6 +1329,10 @@ export function Stage1ReceiptView({
         }
       >
         <dl className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="sm:col-span-2">
+            <dt className="text-muted text-xs uppercase">Accepted pick</dt>
+            <dd className="mt-1 font-semibold">{receipt.proposition}</dd>
+          </div>
           <div>
             <dt className="text-muted text-xs uppercase">Event</dt>
             <dd className="mt-1 font-semibold">{receipt.eventLabel}</dd>
@@ -1280,6 +1340,12 @@ export function Stage1ReceiptView({
           <div>
             <dt className="text-muted text-xs uppercase">Market</dt>
             <dd className="mt-1 font-semibold">{receipt.marketType}</dd>
+          </div>
+          <div>
+            <dt className="text-muted text-xs uppercase">Line</dt>
+            <dd className="mt-1 font-mono font-semibold">
+              {formatLine(receipt.lineMilli, receipt.marketType)}
+            </dd>
           </div>
           <div>
             <dt className="text-muted text-xs uppercase">Odds</dt>
@@ -1301,11 +1367,28 @@ export function Stage1ReceiptView({
           </div>
           <div>
             <dt className="text-muted text-xs uppercase">Result</dt>
-            <dd className="mt-1 font-semibold">
-              {receipt.settlement?.outcome ?? "Pending"}
+            <dd className="mt-1 font-semibold">{result}</dd>
+          </div>
+          <div>
+            <dt className="text-muted text-xs uppercase">Returned credits</dt>
+            <dd className="mt-1 font-mono font-semibold">
+              {receipt.settlement
+                ? formatScore(receipt.settlement.returnedCenticredits)
+                : "Pending"}
             </dd>
           </div>
         </dl>
+        {corrected ? (
+          <div className="border-corrected/30 bg-corrected/10 mt-5 rounded-lg border px-4 py-3 text-sm">
+            <p className="text-corrected font-bold">
+              Official correction applied
+            </p>
+            <p className="text-graphite mt-1 leading-6">
+              The official event result was corrected. The accepted pick, line,
+              odds, stake, and immutable receipt remain unchanged.
+            </p>
+          </div>
+        ) : null}
       </ReceiptPanel>
     </PageFrame>
   );

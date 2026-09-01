@@ -1,34 +1,19 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
-import { getLiveWeekOperations } from "@/application/queries/get-live-week-operations";
-import { projectPairedMatchup } from "@/application/queries/project-paired-matchup";
-import { MatchupStateRefresh } from "@/components/matchup/matchup-state-refresh";
-import { PairedMatchupView } from "@/components/matchup/paired-matchup-view";
-import { Stage1LiveView } from "@/components/stage1/live-views";
+import { redirect } from "next/navigation";
+import {
+  liveCompatibilityHref,
+  type LiveCompatibilitySearch,
+} from "@/application/navigation/live-compatibility";
 
-export const metadata: Metadata = { title: "Live matchup" };
+export const metadata: Metadata = { title: "Matchup" };
 
-export default async function LivePage({
+export default async function LiveCompatibilityPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ leagueSlug: string }>;
+  searchParams: Promise<LiveCompatibilitySearch>;
 }) {
-  const { leagueSlug } = await params;
-  const [live, operations] = await Promise.all([
-    getAuthoritativeLeagueState(leagueSlug),
-    getLiveWeekOperations(leagueSlug),
-  ]);
-  if (live) {
-    const matchup = projectPairedMatchup(live, operations);
-    return matchup ? (
-      <PairedMatchupView
-        matchup={matchup}
-        refreshControl={<MatchupStateRefresh />}
-      />
-    ) : (
-      <Stage1LiveView state={live} />
-    );
-  }
-  notFound();
+  const [{ leagueSlug }, query] = await Promise.all([params, searchParams]);
+  redirect(liveCompatibilityHref(leagueSlug, query));
 }

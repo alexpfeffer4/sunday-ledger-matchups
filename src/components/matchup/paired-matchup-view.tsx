@@ -122,7 +122,11 @@ export function PairedMatchupView({
           </section>
         </div>
 
-        <LeagueScoreboard matchup={matchup} />
+        <LeagueScoreboard
+          games={matchup.scoreboard}
+          leagueSlug={matchup.league.slug}
+          week={matchup.week.nflWeek}
+        />
       </div>
     </PageFrame>
   );

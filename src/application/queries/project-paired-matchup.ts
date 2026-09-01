@@ -56,6 +56,7 @@ export type LeagueScoreboardItem = {
     | "Provisional"
     | "Final"
     | "Corrected";
+  competition: string;
   selected: boolean;
 };
 
@@ -473,6 +474,23 @@ export function projectPairedMatchup(
     return "Locked";
   };
 
+  const competitionLabel = (
+    matchup: Stage1StateDto["schedule"][number],
+  ): string => {
+    if (state.week!.nflWeek === 18 || matchup.scope === "EXHIBITION") {
+      return "Week 18 exhibition";
+    }
+    if (matchup.postseasonRole === "CHAMPIONSHIP") {
+      return state.league.lifecycle === "CHAMPION_FINAL"
+        ? "Championship · champion final"
+        : "Championship";
+    }
+    if (matchup.postseasonRole === "THIRD_PLACE") return "Third place";
+    if (matchup.postseasonRole === "PLACEMENT") return "Placement";
+    if (matchup.scope === "PLAYOFF") return "Playoff";
+    return "Regular season";
+  };
+
   return {
     league: {
       name: state.league.name,
@@ -531,6 +549,7 @@ export function projectPairedMatchup(
             : opponentScore
           : (matchup.result?.sideBPointsForCenticredits ?? null),
       state: scoreboardState(matchup.id === state.matchup!.id, matchup.result),
+      competition: competitionLabel(matchup),
       selected: matchup.id === state.matchup!.id,
     })),
   };
