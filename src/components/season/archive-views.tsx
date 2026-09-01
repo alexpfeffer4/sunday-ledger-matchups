@@ -1,18 +1,36 @@
 import Link from "next/link";
 import type { SeasonArchiveDto } from "@/application/queries/season-archive-dtos";
 import { PageFrame } from "@/components/league/page-frame";
+import { StandingsTable } from "@/components/league/standings-table";
+import {
+  ScheduleNavigator,
+  type ScheduleMatchupRecord,
+  type ScheduleWeekRecord,
+} from "@/components/league/schedule-navigator";
 import {
   StandingsRulesetSummary,
   type RulesetPresentation,
 } from "@/components/rules/ruleset-presentation";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AuditDetails } from "@/components/ui/audit-details";
+import { LeagueScoreboard } from "@/components/matchup/league-scoreboard";
+import { ReceiptPanel } from "@/components/ui/receipt-panel";
 
 function score(centicredits: number): string {
   return (centicredits / 100).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function archiveOdds(odds: number): string {
+  return odds > 0 ? `+${odds}` : `−${Math.abs(odds)}`;
+}
+
+function archiveLine(lineMilli: number | null, marketType: string): string {
+  if (lineMilli === null) return marketType === "MONEYLINE" ? "Moneyline" : "—";
+  const line = lineMilli / 1000;
+  return marketType === "SPREAD" && line > 0 ? `+${line}` : `${line}`;
 }
 
 function memberName(archive: SeasonArchiveDto, entryId: string): string {
@@ -120,6 +138,30 @@ export function SeasonArchiveHome({
         ))}
       </div>
 
+      <div className="mt-6 max-w-3xl">
+        <LeagueScoreboard
+          games={archive.week18.map((matchup) => ({
+            id: matchup.id,
+            sideAName: memberName(archive, matchup.sideAEntryId),
+            sideBName: memberName(archive, matchup.sideBEntryId),
+            sideAScoreCenticredits: matchup.sideAScoreCenticredits,
+            sideBScoreCenticredits: matchup.sideBScoreCenticredits,
+            state: matchup.cards.some(
+              (card) => card.compliance === "INCOMPLETE",
+            )
+              ? "Exhibition miss · Archive final · Archived"
+              : "Final · Archive final · Archived",
+            competition: "Week 18 exhibition",
+            selected: [matchup.sideAEntryId, matchup.sideBEntryId].includes(
+              archive.viewerEntryId,
+            ),
+          }))}
+          leagueSlug={leagueSlug}
+          showOverviewLink={false}
+          week={18}
+        />
+      </div>
+
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section className="border-boundary bg-surface rounded-xl border p-6">
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
@@ -186,6 +228,162 @@ export function SeasonArchiveHome({
   );
 }
 
+export function SeasonArchiveMakePicks({
+  archive,
+  leagueSlug,
+}: {
+  archive: SeasonArchiveDto;
+  leagueSlug: string;
+}) {
+  return (
+    <PageFrame
+      eyebrow={`${archive.nflYear} · Archive final`}
+      title="Make picks"
+      description="This season is final, so its frozen cards and accepted terms are read-only."
+      aside={<StatusBadge tone="positive">Archive final</StatusBadge>}
+    >
+      <section className="border-boundary bg-surface mt-6 max-w-3xl rounded-lg border p-5">
+        <h2 className="font-bold">Picking is closed for this season</h2>
+        <p className="text-graphite mt-2 text-sm leading-6">
+          Make picks remains the weekly drafting destination. Archived seasons
+          preserve that position without reopening events, stakes, or frozen
+          competitive records.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+          <Link
+            className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
+            href={`/l/${leagueSlug}/card`}
+          >
+            Review My Card
+          </Link>
+          <Link
+            className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
+            href={`/l/${leagueSlug}/history`}
+          >
+            Open season history
+          </Link>
+        </div>
+      </section>
+    </PageFrame>
+  );
+}
+
+export function SeasonArchiveMyCard({
+  archive,
+}: {
+  archive: SeasonArchiveDto;
+}) {
+  const games = [
+    ...archive.regularSeason.weeks.flatMap((week) => week.matchups),
+    ...archive.playoffs.games,
+    ...archive.week18,
+  ].toSorted((left, right) => right.week - left.week);
+  const latest = games
+    .map((game) => ({
+      game,
+      card: game.cards.find((card) => card.entryId === archive.viewerEntryId),
+    }))
+    .find((item) => item.card);
+
+  if (!latest?.card) {
+    return (
+      <PageFrame
+        eyebrow={`${archive.nflYear} · Archive final`}
+        title="My Card"
+        description="No archived owner card is available for this participant."
+        aside={<StatusBadge tone="positive">Archived</StatusBadge>}
+      >
+        <p className="border-boundary bg-surface mt-6 rounded-lg border p-5">
+          The season record remains final and unchanged.
+        </p>
+      </PageFrame>
+    );
+  }
+
+  const corrected =
+    archive.schemaVersion === 2 &&
+    archive.corrections.some(
+      (correction) => correction.week === latest.game.week,
+    );
+  return (
+    <PageFrame
+      eyebrow={`${archive.nflYear} · Archive final`}
+      title="My Card"
+      description="Your latest frozen card, accepted terms, results, and immutable receipt proofs."
+    >
+      <ReceiptPanel
+        audit={
+          <AuditDetails context="These identifiers verify the owner-only accepted receipts summarized above. They do not expose another member’s card or alter frozen history.">
+            <ol className="space-y-3">
+              {latest.card.receipts.map((receipt) => (
+                <li className="text-xs" key={receipt.id}>
+                  <span className="font-semibold">Receipt {receipt.id}</span>
+                  <span className="mt-1 block font-mono break-all">
+                    {receipt.receiptHash}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </AuditDetails>
+        }
+        status={
+          <StatusBadge tone={corrected ? "corrected" : "positive"}>
+            {corrected ? "Corrected · Archived" : "Archive final"}
+          </StatusBadge>
+        }
+        summary={`Week ${latest.game.week} allocated ${latest.card.allocatedCredits} credits and returned ${score(latest.card.scoreCenticredits)}. The whole card remains immutable.`}
+        title={`Week ${latest.game.week} archived card`}
+      >
+        <dl className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <dt className="text-muted text-xs uppercase">Allocation</dt>
+            <dd className="mt-1 font-mono font-semibold">
+              {latest.card.allocatedCredits} / 1,000
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted text-xs uppercase">Card readiness</dt>
+            <dd className="mt-1 font-semibold">{latest.card.compliance}</dd>
+          </div>
+          <div>
+            <dt className="text-muted text-xs uppercase">Acceptance</dt>
+            <dd className="mt-1 font-semibold">Whole card · immutable</dd>
+          </div>
+        </dl>
+        <ol className="border-boundary mt-5 divide-y border-y">
+          {latest.card.receipts.map((receipt) => (
+            <li
+              className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto]"
+              key={receipt.id}
+            >
+              <div>
+                <p className="font-semibold">
+                  {receipt.selection} · {receipt.marketType}
+                </p>
+                <p className="text-muted mt-1 text-xs break-words">
+                  Line {archiveLine(receipt.lineMilli, receipt.marketType)} ·
+                  Odds {archiveOdds(receipt.americanOdds)} · Stake{" "}
+                  {receipt.stakeCredits}
+                </p>
+              </div>
+              <p className="text-sm font-semibold sm:text-right">
+                {receipt.outcome} · {score(receipt.returnedCenticredits)}{" "}
+                returned
+              </p>
+            </li>
+          ))}
+        </ol>
+        {corrected ? (
+          <p className="border-corrected/30 bg-corrected/10 text-graphite mt-4 rounded-lg border px-4 py-3 text-sm leading-6">
+            A documented correction changed the official result. Accepted
+            selections, lines, odds, stakes, and receipt hashes remain frozen.
+          </p>
+        ) : null}
+      </ReceiptPanel>
+    </PageFrame>
+  );
+}
+
 export function SeasonArchiveSchedule({
   archive,
 }: {
@@ -193,6 +391,101 @@ export function SeasonArchiveSchedule({
 }) {
   const isExample = archive.illustrative === true;
   const modeLabel = archive.mode === "SIMULATION" ? "Simulation" : "Live";
+  const correctionWeeks = new Set(
+    archive.schemaVersion === 2
+      ? archive.corrections.map((correction) => correction.week)
+      : [],
+  );
+  const archivedMatchup = (
+    matchup: SeasonArchiveDto["week18"][number],
+  ): ScheduleMatchupRecord => {
+    const line = matchupLine(archive, matchup);
+    const exhibitionMiss =
+      matchup.scope === "EXHIBITION" &&
+      matchup.cards.some((card) => card.compliance === "INCOMPLETE");
+    const competition =
+      matchup.scope === "EXHIBITION"
+        ? "Week 18 exhibition"
+        : matchup.postseasonRole === "CHAMPIONSHIP"
+          ? "Championship · champion final"
+          : matchup.postseasonRole === "THIRD_PLACE"
+            ? "Third place"
+            : matchup.postseasonRole === "PLACEMENT" ||
+                matchup.scope === "PLACEMENT"
+              ? "Placement"
+              : matchup.scope === "PLAYOFF"
+                ? "Playoff"
+                : "Regular season";
+    const resultLabel = exhibitionMiss
+      ? "Exhibition miss"
+      : correctionWeeks.has(matchup.week)
+        ? "Corrected"
+        : matchup.postseasonRole === "CHAMPIONSHIP" && matchup.week === 17
+          ? "Champion final"
+          : "Final";
+    return {
+      id: matchup.id,
+      sideAName: line.sideA,
+      sideBName: line.sideB,
+      sideAScoreCenticredits: matchup.sideAScoreCenticredits,
+      sideBScoreCenticredits: matchup.sideBScoreCenticredits,
+      status: `${resultLabel} · ${isExample ? "Example archived" : "Archive final · Archived"}`,
+      competition,
+      currentMember: [matchup.sideAEntryId, matchup.sideBEntryId].includes(
+        archive.viewerEntryId,
+      ),
+      sideAWinner: matchup.winnerEntryId === matchup.sideAEntryId,
+      sideBWinner: matchup.winnerEntryId === matchup.sideBEntryId,
+    };
+  };
+  const weeks: ScheduleWeekRecord[] = archive.regularSeason.weeks.map(
+    (week) => ({
+      week: week.week,
+      label: `Week ${week.week}`,
+      status: correctionWeeks.has(week.week)
+        ? "Corrected · Archive final"
+        : "Archive final",
+      matchups: week.matchups.map(archivedMatchup),
+    }),
+  );
+  for (const week of [15, 16, 17]) {
+    const matchups = archive.playoffs.games
+      .filter((matchup) => matchup.week === week)
+      .map(archivedMatchup);
+    if (week === 15 && archive.playoffs.qualifierCount === 6) {
+      for (const qualifier of archive.playoffs.qualifiers.filter(
+        (candidate) => candidate.qualificationSeed <= 2,
+      )) {
+        const name = memberName(archive, qualifier.entryId);
+        matchups.unshift({
+          id: `week-15-bye-${qualifier.entryId}`,
+          sideAName: name,
+          sideBName: "First-round bye",
+          sideAScoreCenticredits: null,
+          sideBScoreCenticredits: null,
+          status: "Bye · Archive final · Archived",
+          competition: "Playoff bye",
+          currentMember: qualifier.entryId === archive.viewerEntryId,
+          sideAWinner: true,
+        });
+      }
+    }
+    weeks.push({
+      week,
+      label: `Week ${week} · Playoffs`,
+      status:
+        week === 17
+          ? "Champion final · Archive final"
+          : "Playoff final · Archived",
+      matchups,
+    });
+  }
+  weeks.push({
+    week: 18,
+    label: "Week 18 · Exhibition",
+    status: "Exhibition final · Archived",
+    matchups: archive.week18.map(archivedMatchup),
+  });
   return (
     <PageFrame
       eyebrow={
@@ -200,7 +493,7 @@ export function SeasonArchiveSchedule({
           ? "Example Season · read-only schedule"
           : `${modeLabel} · Published at roster lock · final`
       }
-      title={`${archive.nflYear} regular-season schedule`}
+      title={`${archive.nflYear} season schedule`}
       description={
         isExample
           ? "Illustrative neutral pairings for all 14 regular-season weeks. This static schedule is not Live or authoritative Simulation competition."
@@ -212,8 +505,9 @@ export function SeasonArchiveSchedule({
         </StatusBadge>
       }
     >
+      <ScheduleNavigator initialWeek={18} weeks={weeks} />
       <AuditDetails
-        className="mt-7"
+        className="mt-5"
         context="This evidence verifies the final schedule shown below and the publication that remained fixed throughout the season."
       >
         <dl className="grid gap-4 text-sm sm:grid-cols-3">
@@ -237,56 +531,6 @@ export function SeasonArchiveSchedule({
           </div>
         </dl>
       </AuditDetails>
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {archive.regularSeason.weeks.map((week) => (
-          <section
-            className="border-boundary bg-surface rounded-xl border p-5"
-            key={week.week}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-bold">Week {week.week}</h2>
-              <span className="text-positive text-xs font-semibold">Final</span>
-            </div>
-            <div className="divide-boundary mt-3 divide-y">
-              {week.matchups.map((matchup) => {
-                const line = matchupLine(archive, matchup);
-                return (
-                  <div className="py-3 text-sm" key={matchup.id}>
-                    <div className="flex justify-between gap-3">
-                      <span
-                        className={
-                          matchup.winnerEntryId === matchup.sideAEntryId
-                            ? "font-bold"
-                            : ""
-                        }
-                      >
-                        {line.sideA}
-                      </span>
-                      <span className="font-mono">
-                        {score(matchup.sideAScoreCenticredits)}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex justify-between gap-3">
-                      <span
-                        className={
-                          matchup.winnerEntryId === matchup.sideBEntryId
-                            ? "font-bold"
-                            : ""
-                        }
-                      >
-                        {line.sideB}
-                      </span>
-                      <span className="font-mono">
-                        {score(matchup.sideBScoreCenticredits)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-      </div>
     </PageFrame>
   );
 }
@@ -301,6 +545,25 @@ export function SeasonArchiveStandings({
   const qualifierIds = new Set(
     archive.playoffs.qualifiers.map((qualifier) => qualifier.entryId),
   );
+  const rows = archive.regularSeason.finalStandings.map((standing) => ({
+    entryId: standing.entryId,
+    rank: standing.seed,
+    memberName: standing.displayName,
+    wins: standing.wins,
+    losses: standing.losses,
+    ties: standing.ties,
+    pointsForCenticredits: standing.pointsForCenticredits,
+    allPlayHalfWinUnits: standing.allPlayHalfWinUnits,
+    allPlayComparisonCount: standing.allPlayComparisonCount,
+    attendanceMisses: standing.attendanceMisses,
+    playoffState: !standing.playoffEligible
+      ? "Ineligible"
+      : qualifierIds.has(standing.entryId)
+        ? "Qualified"
+        : "Outside field",
+    inPlayoffField: qualifierIds.has(standing.entryId),
+    current: standing.entryId === archive.viewerEntryId,
+  }));
   return (
     <PageFrame
       eyebrow={
@@ -328,129 +591,10 @@ export function SeasonArchiveStandings({
         </StatusBadge>
       }
     >
-      <div className="mt-7 space-y-3 sm:hidden">
-        {archive.regularSeason.finalStandings.map((standing) => (
-          <details
-            className={`border-boundary bg-surface rounded-xl border ${
-              standing.entryId === archive.viewerEntryId
-                ? "border-l-registry border-l-4"
-                : ""
-            }`}
-            key={standing.entryId}
-          >
-            <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 px-4 [&::-webkit-details-marker]:hidden">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="text-registry w-7 shrink-0 font-mono font-bold">
-                  {standing.seed}
-                </span>
-                <div className="min-w-0">
-                  <p className="font-bold break-words">
-                    {standing.displayName}
-                  </p>
-                  <p className="text-muted mt-1 text-xs">
-                    {standing.wins}–{standing.losses}
-                    {standing.ties > 0 ? `–${standing.ties}` : ""} ·{" "}
-                    {score(standing.pointsForCenticredits)} PF
-                  </p>
-                </div>
-              </div>
-              <span className="text-muted shrink-0 text-xs font-semibold">
-                {!standing.playoffEligible
-                  ? "Ineligible"
-                  : qualifierIds.has(standing.entryId)
-                    ? "Qualified"
-                    : "Outside field"}
-              </span>
-            </summary>
-            <dl className="border-boundary grid grid-cols-2 gap-4 border-t px-4 py-4 text-sm">
-              <div>
-                <dt className="text-muted text-xs">All-play</dt>
-                <dd className="mt-1 font-semibold">
-                  {standing.allPlayHalfWinUnits / 2}–
-                  {standing.allPlayComparisonCount -
-                    standing.allPlayHalfWinUnits / 2}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted text-xs">Attendance misses</dt>
-                <dd className="mt-1 font-semibold">
-                  {standing.attendanceMisses}
-                </dd>
-              </div>
-            </dl>
-          </details>
-        ))}
-      </div>
-      <div className="border-boundary bg-surface mt-7 hidden overflow-hidden rounded-xl border sm:block">
-        <div
-          aria-label="Scrollable final standings table"
-          className="overflow-x-auto"
-          role="region"
-          tabIndex={0}
-        >
-          <table className="w-full min-w-[860px] border-collapse text-left text-sm">
-            <caption className="sr-only">
-              Final {archive.nflYear} season standings
-            </caption>
-            <thead className="bg-subtle text-muted text-xs tracking-[0.08em] uppercase">
-              <tr>
-                {[
-                  "Seed",
-                  "Member",
-                  "Record",
-                  "Points For",
-                  "All-play",
-                  "Misses",
-                  "Playoffs",
-                ].map((heading) => (
-                  <th className="px-4 py-3 font-bold" key={heading} scope="col">
-                    {heading}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-boundary divide-y">
-              {archive.regularSeason.finalStandings.map((standing) => (
-                <tr
-                  className={
-                    standing.entryId === archive.viewerEntryId
-                      ? "bg-registry/5"
-                      : ""
-                  }
-                  key={standing.entryId}
-                >
-                  <td className="px-4 py-4 font-mono font-semibold">
-                    {standing.seed}
-                  </td>
-                  <th className="px-4 py-4" scope="row">
-                    {standing.displayName}
-                  </th>
-                  <td className="px-4 py-4">
-                    {standing.wins}–{standing.losses}
-                    {standing.ties > 0 ? `–${standing.ties}` : ""}
-                  </td>
-                  <td className="px-4 py-4 font-mono">
-                    {score(standing.pointsForCenticredits)}
-                  </td>
-                  <td className="px-4 py-4">
-                    {standing.allPlayHalfWinUnits / 2}–
-                    {standing.allPlayComparisonCount -
-                      standing.allPlayHalfWinUnits / 2}
-                  </td>
-                  <td className="px-4 py-4">{standing.attendanceMisses}</td>
-                  <td className="px-4 py-4 font-semibold">
-                    {!standing.playoffEligible
-                      ? "Ineligible"
-                      : qualifierIds.has(standing.entryId)
-                        ? "Qualified"
-                        : "Outside field"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <StandingsTable
+        caption={`Final ${archive.nflYear} season standings`}
+        rows={rows}
+      />
       <StandingsRulesetSummary presentation={ruleset} />
     </PageFrame>
   );

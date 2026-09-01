@@ -8,6 +8,7 @@ export type LeagueNavIconName =
   | "league"
   | "live"
   | "matchup"
+  | "more"
   | "playoffs"
   | "rules"
   | "schedule"
@@ -58,6 +59,13 @@ const iconPaths: Record<LeagueNavIconName, ReactNode> = {
       <circle cx="7" cy="12" r="3" />
       <circle cx="17" cy="12" r="3" />
       <path d="M10 12h4" />
+    </>
+  ),
+  more: (
+    <>
+      <circle cx="5" cy="12" r="1.25" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.25" fill="currentColor" stroke="none" />
     </>
   ),
   playoffs: (

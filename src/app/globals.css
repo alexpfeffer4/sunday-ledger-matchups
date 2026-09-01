@@ -61,6 +61,14 @@ a {
   touch-action: manipulation;
 }
 
+.league-secondary-scroll {
+  scrollbar-width: none;
+}
+
+.league-secondary-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 .outcome-selector-group {
   container-type: inline-size;
 }

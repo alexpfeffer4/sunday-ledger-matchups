@@ -4,10 +4,7 @@ import {
   LeagueDesktopNav,
   LeagueMobileNav,
 } from "@/components/league/league-nav";
-import {
-  LeagueDesktopProfileMenu,
-  LeagueMobileMore,
-} from "@/components/league/league-mobile-more";
+import { LeagueDesktopProfileMenu } from "@/components/league/league-mobile-more";
 import { initials } from "@/components/league/initials";
 import { LeagueMobileSecondaryNav } from "@/components/league/league-secondary-nav";
 import { InterfaceIcon } from "@/components/ui/interface-icon";
@@ -27,6 +24,7 @@ export function LeagueShell({
   memberName,
   memberRole,
   cardStatusLabel,
+  phaseLabel,
   archiveMode = false,
   exampleMode = false,
   isCommissioner = false,
@@ -40,6 +38,7 @@ export function LeagueShell({
   memberName: string;
   memberRole: string;
   cardStatusLabel: string;
+  phaseLabel: string;
   archiveMode?: boolean;
   exampleMode?: boolean;
   isCommissioner?: boolean;
@@ -63,7 +62,7 @@ export function LeagueShell({
         </Link>
 
         <Link
-          aria-label={`Switch leagues. Current league: ${leagueName}`}
+          aria-label={`Switch leagues. Current league: ${leagueName}. ${nflYear}, Week ${week}, ${phaseLabel}, ${exampleMode ? "Example Season read-only" : mode === "LIVE" ? "Live" : "Simulation"}`}
           className="bg-subtle hover:bg-boundary/60 mt-7 flex min-h-12 shrink-0 items-center justify-center rounded-lg p-2 transition-colors xl:justify-start xl:gap-3 xl:p-3"
           href="/leagues"
           title="Switch leagues"
@@ -78,6 +77,14 @@ export function LeagueShell({
             <span className="text-muted mt-0.5 block text-xs">
               {nflYear} · Week {week}
             </span>
+            <span className="text-muted mt-0.5 block text-xs leading-4">
+              {phaseLabel} ·{" "}
+              {exampleMode
+                ? "Example read-only"
+                : mode === "LIVE"
+                  ? "Live"
+                  : "Simulation"}
+            </span>
           </span>
           <span aria-hidden="true" className="text-muted hidden xl:block">
             <InterfaceIcon name="switch" />
@@ -88,7 +95,6 @@ export function LeagueShell({
           <Suspense fallback={<NavigationFallback />}>
             <LeagueDesktopNav
               leagueSlug={leagueSlug}
-              archiveMode={archiveMode}
               isCommissioner={isCommissioner}
             />
           </Suspense>
@@ -105,37 +111,40 @@ export function LeagueShell({
       <div className="min-w-0">
         <header className="border-boundary bg-canvas/95 sticky top-0 z-30 border-b backdrop-blur-sm">
           <div className="mx-auto flex min-h-16 max-w-[1480px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-            <div className="flex min-w-0 items-center gap-3 lg:hidden">
-              <Link
-                aria-label="Sunday Ledger home"
-                href="/"
-                className="text-registry"
-              >
+            <Link
+              aria-label={`Switch leagues. Current league: ${leagueName}. ${nflYear}, Week ${week}, ${phaseLabel}, ${exampleMode ? "Example Season read-only" : mode === "LIVE" ? "Live" : "Simulation"}`}
+              className="flex min-w-0 items-center gap-3 lg:hidden"
+              href="/leagues"
+            >
+              <span className="text-registry">
                 <RegisterMark className="h-7 w-7" />
-              </Link>
+              </span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold">{leagueName}</p>
-                <p className="text-muted max-w-[13rem] truncate text-xs">
-                  Week {week} · {archiveMode ? "Season final" : cardStatusLabel}
+                <p className="text-muted text-xs leading-4">
+                  Week {week} · {phaseLabel} ·{" "}
+                  {exampleMode
+                    ? "Example Season · Read-only"
+                    : mode === "LIVE"
+                      ? "Live"
+                      : "Simulation"}
                 </p>
               </div>
-            </div>
+            </Link>
             <div className="hidden lg:block">
               <p className="text-sm font-semibold">
                 {leagueName} / {nflYear}
               </p>
-              <p className="text-muted text-xs">NFL · Week {week}</p>
+              <p className="text-muted text-xs">
+                NFL · Week {week} · {phaseLabel} ·{" "}
+                {exampleMode
+                  ? "Example Season · Read-only"
+                  : mode === "LIVE"
+                    ? "Live"
+                    : "Simulation"}
+              </p>
             </div>
             <div className="flex items-center gap-2">
-              {exampleMode ? (
-                <span className="border-pending/30 bg-pending/10 text-pending rounded border px-2 py-1 text-[11px] font-bold tracking-[0.04em] uppercase">
-                  Example Season · Read-only
-                </span>
-              ) : mode === "SIMULATION" ? (
-                <span className="border-pending/30 bg-pending/10 text-pending rounded border px-2 py-1 text-[11px] font-bold tracking-[0.04em] uppercase">
-                  Simulation
-                </span>
-              ) : null}
               {archiveMode ? (
                 <span className="text-positive hidden min-h-11 items-center px-3 text-sm font-semibold lg:inline-flex">
                   Season final
@@ -148,12 +157,6 @@ export function LeagueShell({
                   {cardStatusLabel}
                 </Link>
               )}
-              <LeagueMobileMore
-                leagueSlug={leagueSlug}
-                isCommissioner={isCommissioner}
-                memberName={memberName}
-                memberRole={memberRole}
-              />
             </div>
           </div>
         </header>
@@ -164,7 +167,12 @@ export function LeagueShell({
       </div>
 
       <Suspense fallback={null}>
-        <LeagueMobileNav leagueSlug={leagueSlug} archiveMode={archiveMode} />
+        <LeagueMobileNav
+          isCommissioner={isCommissioner}
+          leagueSlug={leagueSlug}
+          memberName={memberName}
+          memberRole={memberRole}
+        />
       </Suspense>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { SignOutForm } from "@/components/auth/sign-out-form";
 import { initials } from "@/components/league/initials";
@@ -77,80 +78,98 @@ function ProfileHeader({
 }
 
 export function LeagueMobileMore({
+  active,
   leagueSlug,
   isCommissioner,
   memberName,
   memberRole,
 }: {
+  active: boolean;
   leagueSlug: string;
   isCommissioner: boolean;
   memberName: string;
   memberRole: string;
 }) {
   const { containerRef, open, setOpen, triggerRef } = useProfileMenu();
+  const pathname = usePathname();
+  const base = `/l/${leagueSlug}`;
 
   return (
-    <div className="relative lg:hidden" ref={containerRef}>
-      <button
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        aria-label="Open profile menu"
-        className="border-control bg-surface text-registry hover:bg-subtle flex size-11 items-center justify-center rounded-full border text-xs font-bold"
-        onClick={() => setOpen((current) => !current)}
-        ref={triggerRef}
-        type="button"
-      >
-        {initials(memberName)}
-      </button>
-      <Dialog
-        description={memberRole}
-        onClose={() => setOpen(false)}
-        open={open}
-        returnFocusRef={triggerRef}
-        title={memberName}
-        variant="sheet"
-      >
-        <nav aria-label="League and account">
-          <Link
-            className={itemClass}
-            href="/leagues"
-            onClick={() => setOpen(false)}
+    <li className="relative lg:hidden">
+      <div ref={containerRef}>
+        <button
+          aria-current={active ? "page" : undefined}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          aria-label="More"
+          className={`relative flex min-h-16 w-full flex-col items-center justify-center gap-1 text-[11px] transition-colors after:absolute after:inset-x-4 after:top-0 after:h-0.5 after:rounded-full ${
+            active || open
+              ? "text-registry after:bg-registry font-bold"
+              : "text-muted font-semibold after:bg-transparent"
+          }`}
+          onClick={() => setOpen((current) => !current)}
+          ref={triggerRef}
+          type="button"
+        >
+          <span
+            className={
+              active || open
+                ? "bg-registry/10 flex rounded-md p-1"
+                : "flex rounded-md p-1"
+            }
           >
-            <LeagueNavIcon name="league" />
-            Your leagues
-          </Link>
-          <Link
-            className={itemClass}
-            href="/account"
-            onClick={() => setOpen(false)}
-          >
-            <LeagueNavIcon name="account" />
-            Account
-          </Link>
-          <Link
-            className={itemClass}
-            href={`/l/${leagueSlug}/rules`}
-            onClick={() => setOpen(false)}
-          >
-            <LeagueNavIcon name="rules" />
-            Rules &amp; trust
-          </Link>
-          {isCommissioner ? (
+            <LeagueNavIcon className="size-5" name="more" />
+          </span>
+          <span>More</span>
+        </button>
+        <Dialog
+          description={memberRole}
+          onClose={() => setOpen(false)}
+          open={open}
+          returnFocusRef={triggerRef}
+          title="More"
+          variant="sheet"
+        >
+          <ProfileHeader memberName={memberName} memberRole={memberRole} />
+          <nav aria-label="League and account">
             <Link
+              aria-current={pathname === `${base}/rules` ? "page" : undefined}
               className={itemClass}
-              href={`/l/${leagueSlug}/commissioner`}
+              href={`${base}/rules`}
               onClick={() => setOpen(false)}
             >
-              <LeagueNavIcon name="commissioner" />
-              Commissioner
+              <LeagueNavIcon name="rules" />
+              Rules &amp; trust
             </Link>
-          ) : null}
-        </nav>
-        <div className="border-boundary mt-2 border-t pt-2">
-          <SignOutForm className={`${itemClass} w-full`} />
-        </div>
-      </Dialog>
-    </div>
+            <Link
+              aria-current={pathname === "/account" ? "page" : undefined}
+              className={itemClass}
+              href="/account"
+              onClick={() => setOpen(false)}
+            >
+              <LeagueNavIcon name="account" />
+              Account
+            </Link>
+            {isCommissioner ? (
+              <Link
+                aria-current={
+                  pathname === `${base}/commissioner` ? "page" : undefined
+                }
+                className={itemClass}
+                href={`${base}/commissioner`}
+                onClick={() => setOpen(false)}
+              >
+                <LeagueNavIcon name="commissioner" />
+                Commissioner
+              </Link>
+            ) : null}
+          </nav>
+          <div className="border-boundary mt-2 border-t pt-2">
+            <SignOutForm className={`${itemClass} w-full`} />
+          </div>
+        </Dialog>
+      </div>
+    </li>
   );
 }
 
