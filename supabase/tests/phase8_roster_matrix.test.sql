@@ -34,7 +34,10 @@ as $$
 declare
   v_external_id text := p_slug || '-week-' || p_week::text;
   v_import_id uuid;
-  v_observed_at timestamptz := clock_timestamp();
+  -- Live publication uses the transaction-stable season clock. Keep the
+  -- provider observation on that same trusted clock even though this matrix
+  -- exercises many leagues inside one pgTAP transaction.
+  v_observed_at timestamptz := now();
 begin
   select (api.store_live_odds_import(
     p_league_id,

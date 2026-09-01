@@ -605,10 +605,11 @@ select is(
 );
 select ok(
   (select count(*) > 0
-   from private.event_result_versions as result
-   join private.sports_events as event on event.id = result.event_id
-   join private.leagues as league on league.id = event.league_id
-   where league.slug = 'phase8-canonical-10' and result.status = 'LIVE'),
+   from private.command_receipts as command
+   join private.leagues as league on league.id = command.league_id
+   where league.slug = 'phase8-canonical-10'
+     and command.command_name = 'SET_STAGE1_EVENT_LIVE'
+     and command.response_json ->> 'state' = 'LIVE'),
   'scripted live transitions are stored before terminal results'
 );
 select results_eq(
@@ -701,8 +702,8 @@ select ok(
     join private.leagues as league on league.id = result.league_id
     where league.slug = 'phase8-canonical-10'
       and week.nfl_week = 8
-      and result.version = 3
       and result.supersedes_id is not null
+      and result.reason = 'Scripted objective correction superseded the first final.'
   ) and exists (
     select 1
     from private.settlement_versions as settlement

@@ -15,6 +15,12 @@ These already-merged files are immutable. Acceptance hardening must move
 forward through tests or a new migration; it must never combine, rename,
 delete, or edit an applied migration.
 
+The first acceptance repair is
+`20260901003000_phase8_acceptance_week18_pairing_repair.sql`. It replaces only
+`private.rebuild_week18_round_after_correction` to parenthesize JSON pairing
+values before concatenation. It performs no table update, delete, or historical
+backfill.
+
 The Phase 8A version-root backfill changes only newly introduced lineage
 metadata on legacy playoff publication rows. It does not rewrite standings,
 qualifiers, bracket JSON, matchup JSON, result facts, receipts, or archives.

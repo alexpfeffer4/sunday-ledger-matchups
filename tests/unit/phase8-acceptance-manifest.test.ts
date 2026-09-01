@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const migrationsDirectory = resolve("supabase/migrations");
+const acceptanceRepair =
+  "20260901003000_phase8_acceptance_week18_pairing_repair.sql";
 
 const phase8Migrations = [
   {
@@ -72,6 +74,7 @@ describe("Phase 8 acceptance migration manifest", () => {
   it("never rewrites frozen rulesets or deletes protected competitive facts", () => {
     const combined = phase8Migrations
       .map(({ file }) => migration(file))
+      .concat(migration(acceptanceRepair))
       .join("\n");
 
     expect(combined).toContain("where snapshot.frozen_at is null");
@@ -81,5 +84,13 @@ describe("Phase 8 acceptance migration manifest", () => {
     expect(combined).not.toMatch(
       /update\s+private\.(?:position_receipts|event_result_versions|matchup_result_versions|season_archive_versions)\s+set/i,
     );
+  });
+
+  it("repairs Week 18 pairing comparison without rewriting stored facts", () => {
+    const repair = migration(acceptanceRepair);
+
+    expect(repair).toContain("(game.value #>> '{sideA,entryId}') || ':'");
+    expect(repair).toContain("|| (game.value #>> '{sideB,entryId}')");
+    expect(repair).not.toMatch(/\b(?:update|delete)\s+private\./i);
   });
 });
