@@ -33,7 +33,7 @@ const inviteSettingsSchema = z.object({
 
 const inviteReceiptSchema = z.object({
   token: z.string().min(16).max(120),
-  expiresAt: z.iso.datetime(),
+  expiresAt: z.iso.datetime({ offset: true }),
   maxUses: z.number().int().min(1).max(15),
   replayed: z.boolean(),
 });
@@ -1433,12 +1433,14 @@ export async function correctLiveEventResultAction(
       eventId: z.uuid(),
       awayScore: objectiveScoreSchema,
       homeScore: objectiveScoreSchema,
+      operationId: z.uuid(),
       reason: z.string().trim().min(10).max(500),
     })
     .safeParse({
       eventId: formData.get("eventId"),
       awayScore: formData.get("awayScore"),
       homeScore: formData.get("homeScore"),
+      operationId: formData.get("operationId"),
       reason: formData.get("reason"),
     });
   if (!context.success || !correction.success) {
@@ -1454,24 +1456,26 @@ export async function correctLiveEventResultAction(
     ? "CORRECT_FINALIZED_WEEK17_RESULT"
     : "RECORD_STAGE1_RESULT";
   const operationKey = stableOperationKey({
-    awayScore: correction.data.awayScore,
     command: commandName,
     eventId: correction.data.eventId,
-    homeScore: correction.data.homeScore,
-    reason: correction.data.reason,
+    intentId: correction.data.operationId,
+    leagueId: context.data.leagueId,
   });
   const supabase = await createSupabaseServerClient();
   if (await operationAlreadyCompleted(supabase, commandName, operationKey)) {
-    return completed(
-      context.data.leagueSlug,
-      lateWeek17
-        ? "That Week 17 correction and its affected champion history are already recorded."
-        : "That corrected result and its affected scores are already recorded.",
-      {
-        href: `/l/${context.data.leagueSlug}/matchup`,
-        label: "Review the current result",
-      },
-    );
+    return {
+      ...(await completed(
+        context.data.leagueSlug,
+        lateWeek17
+          ? "That Week 17 correction and its affected champion history are already recorded."
+          : "That corrected result and its affected scores are already recorded.",
+        {
+          href: `/l/${context.data.leagueSlug}/matchup`,
+          label: "Review the current result",
+        },
+      )),
+      value: correction.data.operationId,
+    };
   }
 
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
@@ -1508,7 +1512,7 @@ export async function correctLiveEventResultAction(
       },
     );
   if (result.error) {
-    return reconcileCommandError({
+    const reconciled = await reconcileCommandError({
       commandName,
       completedMessage: lateWeek17
         ? "That Week 17 correction and its affected champion history are already recorded."
@@ -1522,13 +1526,19 @@ export async function correctLiveEventResultAction(
       slug: context.data.leagueSlug,
       supabase,
     });
+    return reconciled.status === "success"
+      ? { ...reconciled, value: correction.data.operationId }
+      : reconciled;
   }
-  return finish(
-    context.data.leagueSlug,
-    lateWeek17
-      ? "The documented Week 17 correction and affected champion history were appended. Protected Week 18 facts were preserved."
-      : "The correction was recorded, and the affected scores and standings were updated.",
-  );
+  return {
+    ...(await finish(
+      context.data.leagueSlug,
+      lateWeek17
+        ? "The documented Week 17 correction and affected champion history were appended. Protected Week 18 facts were preserved."
+        : "The correction was recorded, and the affected scores and standings were updated.",
+    )),
+    value: correction.data.operationId,
+  };
 }
 
 export async function voidLiveEventAfterPostponementAction(

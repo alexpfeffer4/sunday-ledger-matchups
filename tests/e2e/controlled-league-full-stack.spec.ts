@@ -459,10 +459,39 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     "get_live_week_operations",
     { p_league_slug: slug },
   );
-  expect(
-    corrected.events.find((event) => event.id === correctedEvent!.id)
-      ?.correctionCount,
-  ).toBe(1);
+  const firstCorrection = corrected.events.find(
+    (event) => event.id === correctedEvent!.id,
+  );
+  expect(firstCorrection?.correctionCount).toBe(1);
+
+  await expectRpc(commissionerClient, "correct_live_event_result", {
+    p_away_score: correctedEvent!.result!.awayScore + 2,
+    p_event_id: correctedEvent!.id,
+    p_home_score: correctedEvent!.result!.homeScore,
+    p_idempotency_key: `op:${"4".repeat(64)}`,
+    p_reason: "Controlled acceptance official-score correction.",
+    p_status: "FINAL",
+  });
+  await expectRpc(commissionerClient, "correct_live_event_result", {
+    p_away_score: correctedEvent!.result!.awayScore + 1,
+    p_event_id: correctedEvent!.id,
+    p_home_score: correctedEvent!.result!.homeScore,
+    p_idempotency_key: `op:${"5".repeat(64)}`,
+    p_reason: "Controlled acceptance official-score correction.",
+    p_status: "FINAL",
+  });
+  const returnedCorrection = await expectRpc<typeof operations>(
+    commissionerClient,
+    "get_live_week_operations",
+    { p_league_slug: slug },
+  );
+  const returnedEvent = returnedCorrection.events.find(
+    (event) => event.id === correctedEvent!.id,
+  );
+  expect(returnedEvent?.correctionCount).toBe(3);
+  expect(returnedEvent?.result?.awayScore).toBe(
+    correctedEvent!.result!.awayScore + 1,
+  );
 
   await commissionerBrowser.page.reload();
   await commissionerBrowser.page

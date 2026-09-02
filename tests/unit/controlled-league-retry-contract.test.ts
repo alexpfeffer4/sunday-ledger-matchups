@@ -12,6 +12,14 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const liveControls = readFileSync(
+  resolve("src/components/commissioner/live-week-controls.tsx"),
+  "utf8",
+);
+const stage1Controls = readFileSync(
+  resolve("src/components/commissioner/stage1-controls.tsx"),
+  "utf8",
+);
 
 describe("controlled-league retry contract", () => {
   it("uses durable logical intent rather than invocation randomness", () => {
@@ -49,6 +57,8 @@ describe("controlled-league retry contract", () => {
 
   it("keeps invitation recovery atomic and caller-scoped", () => {
     expect(actions).toContain("create_league_invite_retry_safe");
+    expect(actions).toContain("z.iso.datetime({ offset: true })");
+    expect(stage1Controls).toContain("inviteState.value");
     expect(migration).toContain("command.actor_user_id = v_user_id");
     expect(migration).toContain("'CREATE_LEAGUE_INVITE'");
     expect(migration).toContain(
@@ -57,5 +67,12 @@ describe("controlled-league retry contract", () => {
     expect(migration).toMatch(
       /revoke all on function private\.recompute_stage1_week\(uuid, uuid\)[\s\S]*from public, anon, authenticated/,
     );
+  });
+
+  it("rotates correction intent only after a successful authoritative result", () => {
+    expect(actions).toContain("intentId: correction.data.operationId");
+    expect(liveControls).toContain("correction-operation:v1");
+    expect(liveControls).toContain("correctionState.value");
+    expect(liveControls).toContain('name="operationId"');
   });
 });

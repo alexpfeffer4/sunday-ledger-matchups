@@ -57,4 +57,18 @@ describe("stable operation keys", () => {
       stableOperationKey({ ...settings, intentId: "intent-2" }),
     );
   });
+
+  it("distinguishes later corrections that intentionally restore prior scores", () => {
+    const correction = {
+      command: "RECORD_STAGE1_RESULT",
+      eventId: "event-1",
+      leagueId: "league-1",
+    } as const;
+
+    expect(
+      stableOperationKey({ ...correction, intentId: "correction-first" }),
+    ).not.toBe(
+      stableOperationKey({ ...correction, intentId: "correction-later" }),
+    );
+  });
 });

@@ -260,7 +260,7 @@ export function Stage1CommissionerControls({
     } catch {
       // A fresh operation still works when browser storage is unavailable.
     }
-  }, [inviteState.status, state.league.id]);
+  }, [inviteState.status, inviteState.value, state.league.id]);
 
   return (
     <div className="space-y-5">
