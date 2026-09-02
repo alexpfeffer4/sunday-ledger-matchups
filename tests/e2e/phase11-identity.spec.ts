@@ -90,6 +90,9 @@ test("client-side route changes move focus to the new page heading", async ({
   page,
 }) => {
   await page.goto("/");
+  await page.waitForFunction(
+    () => document.documentElement.dataset.routeFocusReady === "true",
+  );
   await page.getByRole("link", { name: "Rules", exact: true }).last().click();
 
   const heading = page.getByRole("heading", { name: "Season 1 rules" });
