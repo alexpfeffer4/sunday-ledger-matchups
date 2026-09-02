@@ -129,7 +129,7 @@ export default async function LeaguesPage() {
       <div className="mx-auto max-w-5xl">
         <div className="flex items-center justify-between gap-4">
           <Link href="/" aria-label="Sunday Ledger home">
-            <BrandLockup />
+            <BrandLockup variant="horizontal" />
           </Link>
           <div className="flex items-center gap-1">
             <Link

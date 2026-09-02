@@ -9,7 +9,7 @@ export default function TrustPage() {
     <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">
       <div className="mx-auto max-w-3xl">
         <Link href="/" aria-label="Sunday Ledger home">
-          <BrandLockup />
+          <BrandLockup variant="horizontal" />
         </Link>
         <p className="text-registry mt-16 text-xs font-bold tracking-[0.1em] uppercase">
           Rules &amp; trust

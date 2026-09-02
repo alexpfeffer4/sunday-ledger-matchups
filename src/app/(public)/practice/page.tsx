@@ -25,7 +25,7 @@ export default function PracticePage() {
       <header className="border-boundary bg-surface/95 sticky top-0 z-40 border-b backdrop-blur">
         <div className="mx-auto flex min-h-16 max-w-[1480px] items-center justify-between gap-4 px-5 sm:px-8">
           <Link aria-label="Sunday Ledger home" href="/">
-            <BrandLockup />
+            <BrandLockup variant="horizontal" />
           </Link>
           <div className="flex items-center gap-3">
             <StatusBadge tone="pending">Practice · Unsaved</StatusBadge>

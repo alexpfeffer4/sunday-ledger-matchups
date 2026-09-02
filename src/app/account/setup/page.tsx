@@ -39,7 +39,7 @@ export default async function AccountSetupPage({
     <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">
       <div className="mx-auto max-w-xl">
         <Link href="/" aria-label="Sunday Ledger home">
-          <BrandLockup />
+          <BrandLockup variant="horizontal" />
         </Link>
         <section className="border-boundary bg-surface mt-12 rounded-xl border p-6 shadow-[var(--shadow-card)] sm:p-8">
           <p className="text-positive text-xs font-bold tracking-[0.1em] uppercase">

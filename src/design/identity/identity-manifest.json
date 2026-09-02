@@ -1,0 +1,243 @@
+{
+  "schemaVersion": 1,
+  "sourcePackage": {
+    "name": "phase-11-hybrid-ba-review.zip",
+    "sha256": "6d04141da539c034bfd229cbafc22b6a8b2420fe4dcc4a1cad971a4a5b358208",
+    "inspectedMainCommit": "15f37a503a83f053ec1afbc78e161d2e6138a884",
+    "ownerApproval": "B+A hybrid approved for Phase 11 implementation",
+    "legalReview": "deferred; no legal clearance claimed"
+  },
+  "opticalMasters": {
+    "micro": {
+      "path": "src/design/identity/masters/register-micro.svg",
+      "minPx": 16,
+      "maxPx": 20
+    },
+    "compact": {
+      "path": "src/design/identity/masters/register-compact.svg",
+      "minPx": 24,
+      "maxPx": 32
+    },
+    "standard": {
+      "path": "src/design/identity/masters/register-standard.svg",
+      "minPx": 48,
+      "maxPx": null
+    }
+  },
+  "lockupMinimums": { "horizontalWidthPx": 132, "compactWidthPx": 96 },
+  "clearSpace": {
+    "xStemUnits": 10.5,
+    "markAndCompactX": 1,
+    "horizontalX": 1.25
+  },
+  "socialPreviewPrivacy": {
+    "approvedArtifact": "neutral synthetic Side A versus Side B head-to-head",
+    "matchupArtifactFirst": true,
+    "brandAttributionSecond": true,
+    "realOrPrivateData": false,
+    "officialTeamMarks": false,
+    "playerLikenesses": false,
+    "photography": false,
+    "scoresOrResults": false,
+    "picksOddsOrPrices": false,
+    "ageOrEligibilityClaim": false,
+    "openDecisionLanguage": false
+  },
+  "canonicalSources": [
+    [
+      "src/design/identity/masters/register-micro.svg",
+      "hybrid-ba/masters/register-micro.svg",
+      "54055e50b14a3783116196d3382e7575bc3e2a8c2d803225bf896704722edc5d"
+    ],
+    [
+      "src/design/identity/masters/register-compact.svg",
+      "hybrid-ba/masters/register-compact.svg",
+      "d476aae32d74b5b002af217ccf7c0b5ef9b11b170f230fa06c53a21a985efbbe"
+    ],
+    [
+      "src/design/identity/masters/register-standard.svg",
+      "hybrid-ba/masters/register-standard.svg",
+      "b35c5d0dcaff7a82f2987f21b01059fd981e75ba8f4606e664ea643db1b513c0"
+    ],
+    [
+      "src/design/identity/masters/sunday-ledger-wordmark.svg",
+      "hybrid-ba/masters/sunday-ledger-wordmark.svg",
+      "e502412af8c2691dcc93b45226432504c8225ececac7b33023c1928680b418be"
+    ],
+    [
+      "src/design/identity/lockups/horizontal.svg",
+      "hybrid-ba/lockups/horizontal.svg",
+      "0462baaae2c9c24a6488e1fe43b767b08994fcf3d27378a104e05c3a56f857f7"
+    ],
+    [
+      "src/design/identity/lockups/compact.svg",
+      "hybrid-ba/lockups/compact.svg",
+      "9091079912650846126a56dd107e61c54501cc919f2b255a726365818cb420b0"
+    ],
+    [
+      "src/design/identity/lockups/mark-only.svg",
+      "hybrid-ba/lockups/mark-only.svg",
+      "b35c5d0dcaff7a82f2987f21b01059fd981e75ba8f4606e664ea643db1b513c0"
+    ],
+    [
+      "src/design/identity/lockups/reversed.svg",
+      "hybrid-ba/lockups/reversed.svg",
+      "4e81e56f75313cb7392d679f7823f25e8ab2ecfa3f0bf3ca4c48eb72f156e172"
+    ],
+    [
+      "src/design/identity/lockups/monochrome.svg",
+      "hybrid-ba/lockups/monochrome.svg",
+      "b2e9c5c437155bd25b6d307285bbd6a145c72cf17aebeca95c96ca0418d90f4b"
+    ],
+    [
+      "src/design/identity/lockups/one-color.svg",
+      "hybrid-ba/lockups/one-color.svg",
+      "bd65b48a7daa546bcff8ada3c0bb77243bc844aa20257e053ee3438e9784da7d"
+    ],
+    [
+      "src/design/identity/platform/apple-touch-icon-180.svg",
+      "hybrid-ba/platform/apple-touch-icon-180.svg",
+      "cc678715ec0c9b5aa21c454a5d218ee6ac6ad04ac1b85a717db18d48f5e63cc4"
+    ],
+    [
+      "src/design/identity/platform/favicon-16.svg",
+      "hybrid-ba/platform/favicon-16.svg",
+      "633a719035a8b46325a652f13eea7f0daf2b3cbaf01d2aed99d86c610a8ac10b"
+    ],
+    [
+      "src/design/identity/platform/favicon-20.svg",
+      "hybrid-ba/platform/favicon-20.svg",
+      "0096824efaf62ae73c8e430edc1fce45c438b2c04b6defcddcd467582adc2db3"
+    ],
+    [
+      "src/design/identity/platform/favicon-24.svg",
+      "hybrid-ba/platform/favicon-24.svg",
+      "60ec0b0c934daca2d14a0e11ac02e8e765dd473f6937ba6c758f433ebfdc43d2"
+    ],
+    [
+      "src/design/identity/platform/favicon-32.svg",
+      "hybrid-ba/platform/favicon-32.svg",
+      "5c460e1b135422c8c1230f44e5966e7958404ddd1c509d3bf059d3c4b67df53b"
+    ],
+    [
+      "src/design/identity/platform/favicon-48.svg",
+      "hybrid-ba/platform/favicon-48.svg",
+      "8b808db1d46758cadf54204226af0cf6ffc778347609212bd560a081cd0abb0d"
+    ],
+    [
+      "src/design/identity/platform/favicon-64.svg",
+      "hybrid-ba/platform/favicon-64.svg",
+      "618e9967a3a6ab97e82375602ac2919756cd09a3c6d35b87e1236f998be126cf"
+    ],
+    [
+      "src/design/identity/platform/launcher-192.svg",
+      "hybrid-ba/platform/launcher-192.svg",
+      "733f0849297c2e0c6cf37fabad006e58061494c473e5b4675364cd906e0e476f"
+    ],
+    [
+      "src/design/identity/platform/launcher-512.svg",
+      "hybrid-ba/platform/launcher-512.svg",
+      "13aa61c8953c72bb58a987cb064de4b0283dccacc2714c21eb90ac7debe8be54"
+    ],
+    [
+      "src/design/identity/platform/maskable-192.svg",
+      "hybrid-ba/platform/maskable-192.svg",
+      "d4b1c8fd518af08f84be1107fce16e561316f24cc9688e3c8fb2bbc788458f5c"
+    ],
+    [
+      "src/design/identity/platform/maskable-512.svg",
+      "hybrid-ba/platform/maskable-512.svg",
+      "3673ea862e65bd14c77ef5988d46bc943736c794b3a43837a2a6892dd2a8d522"
+    ],
+    [
+      "src/design/identity/platform/monochrome-platform.svg",
+      "hybrid-ba/platform/monochrome-platform.svg",
+      "1b29e1304eaadff603fe6b4a01d23c69df3f59f281b9af6cd8cc961d4e64511c"
+    ],
+    [
+      "src/design/identity/root-social-preview.svg",
+      "social-preview/root-social-preview-hybrid-ba.svg",
+      "05069c0ddf07f980a35f8641dbb2369b11d218a09bbbc2be87e3b35ad7d4b7e6"
+    ]
+  ],
+  "exports": [
+    {
+      "path": "src/app/favicon.ico",
+      "packagePath": "hybrid-ba/platform/favicon.ico",
+      "sha256": "81bd0166009400f36ae5077d565775f67ebf94859ceea4bafb0c1a15aa7de479",
+      "mimeType": "image/x-icon",
+      "sizes": [16, 20, 24, 32, 48, 64]
+    },
+    {
+      "path": "src/app/icon.svg",
+      "packagePath": "hybrid-ba/platform/favicon-64.svg",
+      "sha256": "618e9967a3a6ab97e82375602ac2919756cd09a3c6d35b87e1236f998be126cf",
+      "mimeType": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "path": "src/app/apple-icon.png",
+      "packagePath": "hybrid-ba/platform/apple-touch-icon-180.png",
+      "sha256": "3d6328d6ff5ef458d99253d3b56d6d724010136dedd39cc91d1f37553c6e02de",
+      "mimeType": "image/png",
+      "width": 180,
+      "height": 180
+    },
+    {
+      "path": "public/identity/launcher-192.png",
+      "packagePath": "hybrid-ba/platform/launcher-192.png",
+      "sha256": "d9faa4a44a7929169600dc7908a851af6adb7fe9fa783dd41617a047fe70b1c1",
+      "mimeType": "image/png",
+      "width": 192,
+      "height": 192,
+      "purpose": "any"
+    },
+    {
+      "path": "public/identity/launcher-512.png",
+      "packagePath": "hybrid-ba/platform/launcher-512.png",
+      "sha256": "697552abad1e3c95b34e2ff8b80e59a5db806f92253149a502453514ca79d79f",
+      "mimeType": "image/png",
+      "width": 512,
+      "height": 512,
+      "purpose": "any"
+    },
+    {
+      "path": "public/identity/maskable-192.png",
+      "packagePath": "hybrid-ba/platform/maskable-192.png",
+      "sha256": "c7b9348239819d2530278e1493a753bfa666a1d1011ea309b1788c55ab4fe12d",
+      "mimeType": "image/png",
+      "width": 192,
+      "height": 192,
+      "purpose": "maskable",
+      "maxRadiusRatio": 0.2658
+    },
+    {
+      "path": "public/identity/maskable-512.png",
+      "packagePath": "hybrid-ba/platform/maskable-512.png",
+      "sha256": "e50e060951afa23e579cd9bf281926d319693cbb470457c9744e58dd16815177",
+      "mimeType": "image/png",
+      "width": 512,
+      "height": 512,
+      "purpose": "maskable",
+      "maxRadiusRatio": 0.2592
+    },
+    {
+      "path": "public/identity/monochrome-512.png",
+      "packagePath": "hybrid-ba/platform/monochrome-platform-512.png",
+      "sha256": "dfe0321eae8bee5e6185bc7807c4e5922739d44558e51303aab7f97569cf17a2",
+      "mimeType": "image/png",
+      "width": 512,
+      "height": 512,
+      "purpose": "monochrome"
+    },
+    {
+      "path": "src/app/opengraph-image.png",
+      "packagePath": "social-preview/root-social-preview-hybrid-ba-1200x630.png",
+      "sha256": "1f0b388cad8821e9d5276e782bf1c55ffe1e787df077d158db7def1895221435",
+      "mimeType": "image/png",
+      "width": 1200,
+      "height": 630
+    }
+  ]
+}

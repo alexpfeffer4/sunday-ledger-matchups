@@ -4,3 +4,6 @@ node_modules
 playwright-report
 test-results
 package-lock.json
+src/app/icon.svg
+src/design/identity/generated-vectors.ts
+src/design/identity/**/*.svg

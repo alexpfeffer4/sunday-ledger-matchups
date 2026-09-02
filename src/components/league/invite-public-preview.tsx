@@ -40,7 +40,7 @@ export function InvitePreviewCard({
       <div className="bg-registry px-6 py-7 text-white sm:px-8">
         <div className="flex items-center gap-4">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/30 bg-white/10">
-            <RegisterMark className="h-7 w-7" />
+            <RegisterMark master="compact" />
           </span>
           <div className="min-w-0">
             <p className="text-xs font-bold tracking-[0.1em] text-white/75 uppercase">

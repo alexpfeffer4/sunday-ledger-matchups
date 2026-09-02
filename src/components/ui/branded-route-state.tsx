@@ -25,7 +25,7 @@ export function BrandedRouteState({
     <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">
       <div className="mx-auto max-w-md">
         <Link href="/" aria-label="Sunday Ledger home">
-          <BrandLockup />
+          <BrandLockup variant="horizontal" />
         </Link>
         <section
           aria-busy={eyebrow === "Loading"}
