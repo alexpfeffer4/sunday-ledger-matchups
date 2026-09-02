@@ -44,7 +44,7 @@ export function PairedMatchupView({
     <PageFrame
       dark={matchup.broadcast}
       description="Official stored returns, event-timed reveal, and one privacy-safe view of what remains."
-      eyebrow={`${matchup.league.name} · ${matchup.league.mode === "LIVE" ? "Live league" : "Simulation"}`}
+      eyebrow={`${matchup.league.name} · ${matchup.league.mode === "LIVE" ? "Live season" : "Practice/test · Simulation"}`}
       title={`Week ${matchup.week.nflWeek} matchup`}
     >
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">

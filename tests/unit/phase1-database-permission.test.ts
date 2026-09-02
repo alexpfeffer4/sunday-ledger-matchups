@@ -5,7 +5,7 @@ describe("Phase 1 anonymous invitation permission", () => {
   it("grants anon only schema usage needed by the invitation preview RPC", async () => {
     const migration = await readFile(
       new URL(
-        "../../supabase/migrations/20260828210751_phase1_anon_invite_preview_schema_usage.sql",
+        "../../supabase/migrations/20260828210832_phase1_anon_invite_preview_schema_usage.sql",
         import.meta.url,
       ),
       "utf8",

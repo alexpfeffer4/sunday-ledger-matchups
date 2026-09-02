@@ -5,9 +5,10 @@ Phase 11 B+A identity rollout. The SVGs are byte-for-byte copies of the verified
 `phase-11-hybrid-ba-review.zip` package whose SHA-256 is
 `6d04141da539c034bfd229cbafc22b6a8b2420fe4dcc4a1cad971a4a5b358208`.
 
-The package was prepared before owner approval, so its immutable SVG metadata
-retains the historical proposal notice. The owner explicitly approved this B+A
-family for this implementation. Qualified trademark/legal review remains
+The package was prepared before owner approval, so canonical design-source SVGs
+retain the historical proposal notice. The owner explicitly approved this B+A
+family for this implementation. Production-served assets are metadata-clean and
+contain no draft-status language. Qualified trademark/legal review remains
 deferred, and this record makes no legal-clearance claim.
 
 `identity-manifest.json` maps each canonical source to its framework or public

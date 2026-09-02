@@ -54,6 +54,19 @@ jobs:
       - name: Apply every migration from a clean database
         run: supabase db start
 
+      - name: Export disposable full-stack configuration
+        run: |
+          supabase status -o env > /tmp/sunday-ledger-supabase.env
+          set -a
+          source /tmp/sunday-ledger-supabase.env
+          set +a
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "TEST_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "TEST_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "TEST_SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          echo "FULL_STACK_ACCEPTANCE=1" >> "$GITHUB_ENV"
+
       - name: Run complete pgTAP and Phase 8C isolation suite
         run: supabase test db
 
@@ -61,6 +74,15 @@ jobs:
         run: |
           supabase gen types typescript --local --schema api,public > /tmp/sunday-ledger-database.types.ts
           npm run types:supabase:check -- /tmp/sunday-ledger-database.types.ts
+
+      - name: Install full-stack browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run real Auth, server action, RSC, RPC, and authorization lane
+        run: >-
+          npx playwright test
+          tests/e2e/controlled-league-full-stack.spec.ts
+          --project=desktop --reporter=github
 
       - name: Stop disposable local database
         if: always()
@@ -90,6 +112,7 @@ jobs:
           tests/e2e/phase8b-markup.test.tsx
           tests/e2e/phase8c-markup.test.tsx
           tests/e2e/phase10-markup.test.tsx
+          tests/e2e/phase11-markup.test.tsx
 
       - name: Install bounded browser set
         run: npx playwright install --with-deps chromium webkit
@@ -102,6 +125,7 @@ jobs:
           tests/e2e/phase8c-simulation.spec.ts
           tests/e2e/phase8-accessibility.spec.ts
           tests/e2e/phase10-navigation-records.spec.ts
+          tests/e2e/phase11-identity.spec.ts
           --project=desktop --reporter=github
 
       - name: WebKit Phase 8 acceptance
@@ -112,4 +136,5 @@ jobs:
           tests/e2e/phase8c-simulation.spec.ts
           tests/e2e/phase8-accessibility.spec.ts
           tests/e2e/phase10-navigation-records.spec.ts
+          tests/e2e/phase11-identity.spec.ts
           --project=webkit --reporter=github

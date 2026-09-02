@@ -11,7 +11,7 @@ ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
 - Pure TypeScript odds, card-completion, settlement, matchup, schedule,
   standings, reveal, and playoff modules
 - Deterministic Week 6 simulation across the participant and commissioner UI
-- Supabase SSR magic-link Auth boundary
+- Supabase SSR email-link and password Auth boundary with required account setup
 - Reproducible profile, league, membership, invite, season, and RLS migration
 - Production-shaped Stage 1 Week 1 lifecycle backed by Supabase Postgres:
   eight-entry formation, four stored matchups, 1,000-credit grants, sealed
@@ -50,21 +50,27 @@ ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
   grants cards only to scheduled entries, applies the published higher-seed
   advancement rule to exact ties and dual incompletion, reseeds six-entry
   semifinals, and never rewrites the frozen regular-season standings
-- Terminal Live season archival after Week 17 finalization: the database
-  derives the champion and permanent member-visible record from immutable
-  scores, receipts, standings, bracket rounds, and corrections before moving
-  the season lifecycle to `FINAL`
+- Champion finality after Week 17, followed by a normal Week 18
+  exhibition/history card and a complete Weeks 1–18 archive that cannot alter
+  the champion, regular-season record, or playoff seed
 - Permission-aware desktop navigation, mobile access to Rules, Commissioner,
   league switching, and sign-out, plus accurate no-card postseason status
 - Deterministic provider-fixture ports for healthy, stale, outlier, suspended,
   provider-degraded, live, final, void, and corrected states
-- Vitest unit/property coverage and Playwright configuration
+- Owner-approved Phase 11 B+A identity across public, Auth, invitation, league,
+  receipt, platform-icon, PWA, and neutral social-preview surfaces
+- Stable logical-operation keys and caller-scoped command-result recovery for
+  card seals, invitation creation, and consequential commissioner commands
+- Vitest unit/property coverage, complete pgTAP/RLS suites, identity checks,
+  browser/accessibility coverage, and an isolated real Auth/RSC/RPC lane
 
-The simulation adapter is visibly labeled and never mixes with live data.
-Stages 1 through 3 form the Production baseline. Live provider requests are
-made only when the environment has an authorized API key. Imports remain
-noncompetitive until the commissioner publishes selected events, and that
-publication keeps cards closed until a valid even roster is locked.
+Live season is the normal/default creation path. The advanced
+`Practice/test · Simulation` path remains visibly labeled and never mixes with
+Live data, while exercising the same authoritative lifecycle. Live provider
+requests are made only by explicit commissioner actions when the environment
+has an authorized API key. Imports remain noncompetitive until the commissioner
+makes the reviewed week available, and cards stay closed until a valid even
+roster is locked.
 
 ## Local development
 
@@ -91,8 +97,14 @@ credentials remain untracked and must be configured through Vercel.
 npm run verify
 ```
 
-The gate checks formatting, lint, strict TypeScript, unit/property tests, and a
-production Next.js build. Browser tests run separately with:
+This local gate checks identity source/export consistency, formatting, lint with
+zero warnings, strict TypeScript, unit/property/component tests, and a
+production Next.js build. It does not start Postgres or a browser.
+
+The required pull-request workflow additionally performs a clean migration
+rebuild, the complete pgTAP/RLS suite, generated Supabase type comparison, the
+real local Auth → server action → RSC → RPC acceptance lane, and Chromium/WebKit
+browser, accessibility, and Phase 11 identity checks. A local browser run is:
 
 ```bash
 npm run test:e2e
@@ -109,10 +121,12 @@ RLS; the result suite verifies official-score provenance, correction replay,
 postponement voids, and final competitive snapshots; the progression suite
 verifies the Week 2–14 operational boundary and cumulative ledger; the playoff
 suites verify final qualification, eligibility, bracket immutability, real
-postseason card settlement, higher-seed advancement, and Week 16 reseeding. All
-run inside rollback transactions. The `api` schema is the reviewed Data API
-boundary; base relations live in the non-exposed `private` schema and remain
-protected by grants and Row Level Security.
+postseason card settlement, higher-seed advancement, Week 16 reseeding,
+champion finality, Week 18, and complete archive finality. The controlled-league
+suite verifies caller-scoped retry recovery and explicit private-helper ACLs.
+All suites run inside rollback transactions. The `api` schema is the reviewed
+Data API boundary; base relations live in the non-exposed `private` schema and
+remain protected by grants and Row Level Security.
 
 After authorization, link the intended Supabase development project, apply the
 migrations, expose only the `api` schema, generate project types, and run the

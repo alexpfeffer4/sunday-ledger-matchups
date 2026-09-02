@@ -84,6 +84,19 @@ export type Database = {
         };
         Returns: string;
       };
+      create_league_invite_retry_safe: {
+        Args: {
+          p_expires_in_days: number;
+          p_idempotency_key: string;
+          p_league_id: string;
+          p_max_uses: number;
+        };
+        Returns: Json;
+      };
+      get_my_command_receipt: {
+        Args: { p_command_name: string; p_idempotency_key: string };
+        Returns: Json | null;
+      };
       get_league_invite_preview: {
         Args: { p_token: string };
         Returns: {

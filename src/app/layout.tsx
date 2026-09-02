@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
+import { RouteFocusManager } from "@/components/navigation/route-focus-manager";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -23,14 +25,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Sunday Ledger",
     description:
-      "A neutral head-to-head preview for private Sunday Ledger matchups.",
+      "Private NFL head-to-head matchups using virtual credits. No cash wagering.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Sunday Ledger",
     description:
-      "A neutral head-to-head preview for private Sunday Ledger matchups.",
+      "Private NFL head-to-head matchups using virtual credits. No cash wagering.",
   },
 };
 
@@ -45,6 +47,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
+        <Suspense fallback={null}>
+          <RouteFocusManager />
+        </Suspense>
         <a className="skip-link" href="#main-content">
           Skip to main content
         </a>

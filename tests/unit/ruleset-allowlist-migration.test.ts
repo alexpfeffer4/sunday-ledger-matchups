@@ -8,7 +8,7 @@ describe("authoritative Ruleset migration constants", () => {
   it("match the compiled mode-specific Rulesets and their digests", async () => {
     const phase2Migration = readFileSync(
       new URL(
-        "../../supabase/migrations/20260829000000_phase2_official_rules_and_standings_integrity.sql",
+        "../../supabase/migrations/20260829023327_phase2_official_rules_and_standings_integrity.sql",
         import.meta.url,
       ),
       "utf8",

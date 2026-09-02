@@ -193,7 +193,7 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
   if (!state.week || !state.matchup || !state.ownerCard) {
     return (
       <PageFrame
-        eyebrow={`${state.league.name} · Simulation`}
+        eyebrow={`${state.league.name} · Practice/test · Simulation`}
         title="Your matchup"
         description="Your first matchup appears when the commissioner opens the season."
       >

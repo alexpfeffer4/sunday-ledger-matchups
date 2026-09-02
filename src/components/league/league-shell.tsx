@@ -67,7 +67,7 @@ export function LeagueShell({
         </Link>
 
         <Link
-          aria-label={`Switch leagues. Current league: ${leagueName}. ${nflYear}, Week ${week}, ${phaseLabel}, ${exampleMode ? "Example Season read-only" : mode === "LIVE" ? "Live" : "Simulation"}`}
+          aria-label={`Switch leagues. Current league: ${leagueName}. ${nflYear}, Week ${week}, ${phaseLabel}, ${exampleMode ? "Example Season read-only" : mode === "LIVE" ? "Live season" : "Practice/test Simulation"}`}
           className="bg-subtle hover:bg-boundary/60 mt-7 flex min-h-12 shrink-0 items-center justify-center rounded-lg p-2 transition-colors xl:justify-start xl:gap-3 xl:p-3"
           href="/leagues"
           title="Switch leagues"
@@ -87,8 +87,8 @@ export function LeagueShell({
               {exampleMode
                 ? "Example read-only"
                 : mode === "LIVE"
-                  ? "Live"
-                  : "Simulation"}
+                  ? "Live season"
+                  : "Practice/test · Simulation"}
             </span>
           </span>
           <span aria-hidden="true" className="text-muted hidden xl:block">
@@ -117,7 +117,7 @@ export function LeagueShell({
         <header className="border-boundary bg-canvas/95 sticky top-0 z-30 border-b backdrop-blur-sm">
           <div className="mx-auto flex min-h-16 max-w-[1480px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
             <Link
-              aria-label={`Switch leagues. Current league: ${leagueName}. ${nflYear}, Week ${week}, ${phaseLabel}, ${exampleMode ? "Example Season read-only" : mode === "LIVE" ? "Live" : "Simulation"}`}
+              aria-label={`Switch leagues. Current league: ${leagueName}. ${nflYear}, Week ${week}, ${phaseLabel}, ${exampleMode ? "Example Season read-only" : mode === "LIVE" ? "Live season" : "Practice/test Simulation"}`}
               className="flex min-w-0 items-center gap-3 lg:hidden"
               href="/leagues"
             >
@@ -131,8 +131,8 @@ export function LeagueShell({
                   {exampleMode
                     ? "Example Season · Read-only"
                     : mode === "LIVE"
-                      ? "Live"
-                      : "Simulation"}
+                      ? "Live season"
+                      : "Practice/test · Simulation"}
                 </p>
               </div>
             </Link>
@@ -148,8 +148,8 @@ export function LeagueShell({
                 {exampleMode
                   ? "Example Season · Read-only"
                   : mode === "LIVE"
-                    ? "Live"
-                    : "Simulation"}
+                    ? "Live season"
+                    : "Practice/test · Simulation"}
               </p>
             </div>
             <div className="flex items-center gap-2">

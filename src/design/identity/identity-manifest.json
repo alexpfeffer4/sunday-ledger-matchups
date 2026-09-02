@@ -171,7 +171,7 @@
     {
       "path": "src/app/icon.svg",
       "packagePath": "hybrid-ba/platform/favicon-64.svg",
-      "sha256": "618e9967a3a6ab97e82375602ac2919756cd09a3c6d35b87e1236f998be126cf",
+      "sha256": "331e4cf151db257aaf56b29993ebb6f39ab93d5de198b6b589f0d3f07c947799",
       "mimeType": "image/svg+xml",
       "sizes": "any",
       "purpose": "any"

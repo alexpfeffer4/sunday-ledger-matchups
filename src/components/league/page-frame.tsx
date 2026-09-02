@@ -38,6 +38,8 @@ export function PageFrame({
               {eyebrow}
             </p>
             <h1
+              data-route-heading
+              tabIndex={-1}
               className={`text-ink font-bold tracking-[-0.025em] ${
                 compact
                   ? "text-xl leading-7 sm:text-2xl sm:leading-8"

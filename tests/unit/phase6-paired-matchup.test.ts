@@ -150,7 +150,7 @@ describe("Phase 6 paired matchup projection", () => {
 describe("Phase 6 future-sealed migration", () => {
   it("projects the generic marker from public slate state, not hidden receipts", () => {
     const sql = readFileSync(
-      "supabase/migrations/20260830044648_phase6_future_sealed_projection.sql",
+      "supabase/migrations/20260830100902_phase6_future_sealed_projection.sql",
       "utf8",
     );
     const replacement = sql.match(

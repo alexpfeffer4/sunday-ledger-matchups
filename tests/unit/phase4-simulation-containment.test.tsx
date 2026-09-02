@@ -90,7 +90,7 @@ describe("Phase 4 Simulation containment", () => {
     const migrationSource = readFileSync(
       resolve(
         process.cwd(),
-        "supabase/migrations/20260829090000_phase4_simulation_containment.sql",
+        "supabase/migrations/20260829233237_phase4_simulation_containment.sql",
       ),
       "utf8",
     );

@@ -40,6 +40,9 @@ function ContextFields({ state }: { state: Stage1CommissionerControlState }) {
     <>
       <input type="hidden" name="leagueId" value={state.league.id} />
       <input type="hidden" name="leagueSlug" value={state.league.slug} />
+      {state.week ? (
+        <input type="hidden" name="expectedWeek" value={state.week.nflWeek} />
+      ) : null}
     </>
   );
 }
@@ -570,7 +573,7 @@ export function LiveWeekCommissionerControls({
                     Latest reviewed import · {nextWeekImport.eventCount} events
                   </p>
                   <p className="text-muted mt-1 text-xs">
-                    Fetched{" "}
+                    Last checked{" "}
                     {timestampFormatter.format(
                       new Date(nextWeekImport.fetchedAt),
                     )}{" "}
@@ -637,7 +640,7 @@ export function LiveWeekCommissionerControls({
                 >
                   {publishingNextWeek
                     ? `Publishing Week ${nextWeekNumber}…`
-                    : `Publish Week ${nextWeekNumber} & open all cards`}
+                    : `Make Week ${nextWeekNumber} available & open all cards`}
                 </button>
               </form>
               <ActionFeedback state={nextWeekState} />
@@ -694,7 +697,7 @@ export function LiveWeekCommissionerControls({
                     Latest reviewed import · {nextWeekImport.eventCount} events
                   </p>
                   <p className="text-muted mt-1 text-xs">
-                    Fetched{" "}
+                    Last checked{" "}
                     {timestampFormatter.format(
                       new Date(nextWeekImport.fetchedAt),
                     )}{" "}
@@ -761,7 +764,7 @@ export function LiveWeekCommissionerControls({
                 >
                   {publishingPostseasonWeek
                     ? `Publishing Week ${nextWeekNumber}…`
-                    : `Publish playoff Week ${nextWeekNumber}`}
+                    : `Make playoff Week ${nextWeekNumber} available`}
                 </button>
               </form>
               <ActionFeedback state={postseasonWeekState} />
@@ -874,7 +877,7 @@ export function LiveWeekCommissionerControls({
               >
                 {publishingWeek18
                   ? "Publishing exhibitions…"
-                  : "Publish Week 18 exhibitions"}
+                  : "Make Week 18 exhibitions available"}
               </button>
             </form>
           ) : null}
