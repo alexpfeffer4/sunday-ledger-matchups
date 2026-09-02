@@ -1,3 +1,5 @@
+import { formatCredits } from "@/domain/odds/american";
+
 export function AllocationMeter({
   allocatedCredits,
   remainingCredits,
@@ -20,8 +22,8 @@ export function AllocationMeter({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="font-semibold">
-            {allocatedCredits.toLocaleString()} used ·{" "}
-            {remainingCredits.toLocaleString()} left
+            {formatCredits(allocatedCredits)} used ·{" "}
+            {formatCredits(remainingCredits)} left
           </p>
           <p className="text-graphite mt-1 text-sm">
             {positionCount} of {maximumPositions} picks used
@@ -35,7 +37,7 @@ export function AllocationMeter({
         </div>
       </div>
       <div
-        aria-label={`${allocatedCredits} of ${weeklyAllocationCredits} credits used`}
+        aria-label={`${formatCredits(allocatedCredits)} of ${formatCredits(weeklyAllocationCredits)} credits used`}
         aria-valuemax={weeklyAllocationCredits}
         aria-valuemin={0}
         aria-valuenow={allocatedCredits}

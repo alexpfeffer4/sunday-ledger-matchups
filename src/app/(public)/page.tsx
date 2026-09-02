@@ -101,7 +101,7 @@ export default async function HomePage() {
     <main className="bg-canvas min-h-screen">
       <header className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
         <Link aria-label="Sunday Ledger home" href="/">
-          <BrandLockup />
+          <BrandLockup variant="horizontal" />
         </Link>
         <nav
           aria-label="Public navigation"
@@ -207,7 +207,7 @@ export default async function HomePage() {
 
       <footer className="border-boundary border-t">
         <div className="text-muted mx-auto flex max-w-7xl flex-col justify-between gap-4 px-5 py-8 text-sm sm:flex-row sm:px-8">
-          <BrandLockup />
+          <BrandLockup variant="horizontal" />
           <div className="flex items-center gap-5">
             <Link className="hover:text-ink" href="/rules">
               Rules

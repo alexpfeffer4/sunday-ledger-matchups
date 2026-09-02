@@ -18,6 +18,7 @@ import {
   SeasonArchiveSchedule,
 } from "@/components/season/archive-views";
 import {
+  Stage1CardView,
   Stage1ReceiptView,
   Stage1ScheduleView,
 } from "@/components/stage1/live-views";
@@ -273,6 +274,39 @@ describe("Phase 10 dense league records", () => {
     expect(container.textContent).toContain(
       "immutable receipt remain unchanged",
     );
+  });
+
+  it("keeps archived allocation in the summary without redundant status rows", () => {
+    render(<SeasonArchiveMyCard archive={exampleSeasonArchive} />);
+
+    expect(screen.getByText(/Week 18 allocated 1,000 credits/)).toBeVisible();
+    expect(
+      screen.queryByText("Allocation", { exact: true }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Card readiness")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Acceptance", { exact: true }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps sealed-card facts concise while preserving actionable readiness", () => {
+    const { state } = makePhase6State("FINAL");
+    render(<Stage1CardView state={state} />);
+
+    expect(screen.getByText("Ready", { exact: true })).toBeVisible();
+    expect(screen.getByText("Card total").nextElementSibling).toHaveTextContent(
+      "1,000 / 1,000",
+    );
+    expect(
+      screen.queryByText("Allocation", { exact: true }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Acceptance", { exact: true }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Receipt state", { exact: true }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/sealed picks cannot be changed/)).toBeVisible();
   });
 
   it("scopes an archived card correction to a receipt for the corrected event", () => {

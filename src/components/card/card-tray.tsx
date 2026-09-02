@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCredits } from "@/domain/odds/american";
+
 export function CardTray({
   aboveMobileNavigation = false,
   allocatedCredits,
@@ -28,12 +30,12 @@ export function CardTray({
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">
             {pickCount} {pickCount === 1 ? "pick" : "picks"} ·{" "}
-            {allocatedCredits.toLocaleString()} allocated
+            {formatCredits(allocatedCredits)} allocated
           </p>
           <p className="text-muted mt-0.5 text-xs">
             {remainingCredits >= 0
-              ? `${remainingCredits.toLocaleString()} remaining`
-              : `${Math.abs(remainingCredits).toLocaleString()} over`}
+              ? `${formatCredits(remainingCredits)} remaining`
+              : `${formatCredits(Math.abs(remainingCredits))} over`}
           </p>
         </div>
         <button

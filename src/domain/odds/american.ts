@@ -1,5 +1,7 @@
 export type SettlementOutcome = "WIN" | "LOSS" | "PUSH" | "VOID";
 
+const creditFormatter = new Intl.NumberFormat("en-US");
+
 function assertAmericanOdds(americanOdds: number): void {
   if (!Number.isInteger(americanOdds) || americanOdds === 0) {
     throw new RangeError("American odds must be a non-zero integer.");
@@ -67,11 +69,19 @@ export function formatCenticredits(
   const absolute = negative ? -value : value;
   const whole = absolute / 100n;
   const cents = absolute % 100n;
-  const formattedWhole = new Intl.NumberFormat("en-US").format(whole);
+  const formattedWhole = creditFormatter.format(whole);
 
   if (!includeWholeDecimals && cents === 0n) {
     return `${negative ? "−" : ""}${formattedWhole}`;
   }
 
   return `${negative ? "−" : ""}${formattedWhole}.${cents.toString().padStart(2, "0")}`;
+}
+
+export function formatCredits(value: number): string {
+  if (!Number.isSafeInteger(value)) {
+    throw new RangeError("Credits must be a safe whole number.");
+  }
+
+  return creditFormatter.format(value);
 }

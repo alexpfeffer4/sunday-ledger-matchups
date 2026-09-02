@@ -1,5 +1,7 @@
 "use client";
 
+import { BrandLockup } from "@/components/ui/register-mark";
+
 export default function GlobalError({ retry }: { retry: () => void }) {
   return (
     <html lang="en">
@@ -12,6 +14,10 @@ export default function GlobalError({ retry }: { retry: () => void }) {
         }}
       >
         <main style={{ margin: "0 auto", maxWidth: 560, padding: "48px 24px" }}>
+          <BrandLockup
+            style={{ height: "auto", minWidth: 132, width: 164 }}
+            variant="horizontal"
+          />
           <p
             style={{
               color: "#214e3e",
@@ -21,7 +27,7 @@ export default function GlobalError({ retry }: { retry: () => void }) {
               textTransform: "uppercase",
             }}
           >
-            Sunday Ledger · unavailable
+            Unavailable
           </p>
           <h1 style={{ fontSize: 36, lineHeight: 1.1 }}>
             The Ledger could not open

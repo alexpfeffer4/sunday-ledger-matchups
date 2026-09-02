@@ -5,6 +5,7 @@ import {
   OutcomeSelector,
   type OutcomeSelectorOption,
 } from "@/components/card/outcome-selector";
+import { formatCredits } from "@/domain/odds/american";
 
 export function PositionEditorSheet({
   confirmLabel,
@@ -136,7 +137,7 @@ export function PositionEditorSheet({
                 Stake in credits
               </label>
               <span className="text-muted text-xs">
-                {remainingCredits.toLocaleString()} available
+                {formatCredits(remainingCredits)} available
               </span>
             </div>
             <div className="border-control bg-surface focus-within:border-registry mt-2 flex min-h-12 items-center rounded-lg border">

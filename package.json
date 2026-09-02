@@ -13,13 +13,15 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "next typegen && tsc --noEmit",
     "types:supabase:check": "node scripts/check-generated-supabase-types.mjs",
+    "identity:generate": "node scripts/generate-identity-vectors.mjs",
+    "identity:verify": "node scripts/generate-identity-vectors.mjs --check && node scripts/verify-identity-assets.mjs",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "verify": "npm run format && npm run lint && npm run typecheck && npm run test && npm run build"
+    "verify": "npm run identity:verify && npm run format && npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.5",

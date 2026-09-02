@@ -49,16 +49,21 @@ export function LeagueShell({
         <Link
           href="/"
           aria-label="Sunday Ledger home"
-          className="text-registry flex h-7 shrink-0 items-center justify-center xl:hidden"
+          className="text-registry flex h-8 shrink-0 items-center justify-center xl:hidden"
         >
-          <RegisterMark className="h-7 w-7" />
+          <BrandLockup
+            className="text-registry"
+            master="compact"
+            tone="currentColor"
+            variant="mark-only"
+          />
         </Link>
         <Link
           href="/"
           aria-label="Sunday Ledger home"
           className="hidden shrink-0 px-2 xl:block"
         >
-          <BrandLockup />
+          <BrandLockup variant="horizontal" />
         </Link>
 
         <Link
@@ -117,7 +122,7 @@ export function LeagueShell({
               href="/leagues"
             >
               <span className="text-registry">
-                <RegisterMark className="h-7 w-7" />
+                <RegisterMark master="compact" />
               </span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold">{leagueName}</p>
@@ -132,7 +137,10 @@ export function LeagueShell({
               </div>
             </Link>
             <div className="hidden lg:block">
-              <p className="text-sm font-semibold">
+              <p
+                className="line-clamp-2 max-w-3xl text-sm font-semibold break-words"
+                title={`${leagueName} / ${nflYear}`}
+              >
                 {leagueName} / {nflYear}
               </p>
               <p className="text-muted text-xs">

@@ -10,14 +10,11 @@ import {
   type RulesetPresentation,
 } from "@/components/rules/ruleset-presentation";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { formatCredits } from "@/domain/odds/american";
 import { hashRuleset } from "@/rulesets/canonicalize";
 import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
 
 export const metadata: Metadata = { title: "League rules" };
-
-function credits(value: number): string {
-  return new Intl.NumberFormat("en-US").format(value);
-}
 
 function odds(value: number): string {
   return value < 0 ? `−${Math.abs(value)}` : `+${value}`;
@@ -68,11 +65,11 @@ export default async function LeagueRulesPage({
   const rules = [
     {
       title: "Weekly card",
-      body: `${credits(ruleset.card.weeklyAllocationCredits)} fresh virtual credits, ${ruleset.card.minimumPositions}–${ruleset.card.maximumPositions} picks, a ${credits(ruleset.card.minimumStakeCredits)}-credit minimum, and whole-credit stakes.${isV11 && !ruleset.card.carryoverCredits ? " Nothing carries forward." : ""}${isV11 && ruleset.card.acceptanceUnit === "WHOLE_CARD_ATOMIC" ? " Picks stay editable until Confirm and seal card accepts the complete card at once." : ""}`,
+      body: `${formatCredits(ruleset.card.weeklyAllocationCredits)} fresh virtual credits, ${ruleset.card.minimumPositions}–${ruleset.card.maximumPositions} picks, a ${formatCredits(ruleset.card.minimumStakeCredits)}-credit minimum, and whole-credit stakes.${isV11 && !ruleset.card.carryoverCredits ? " Nothing carries forward." : ""}${isV11 && ruleset.card.acceptanceUnit === "WHOLE_CARD_ATOMIC" ? " Picks stay editable until Confirm and seal card accepts the complete card at once." : ""}`,
     },
     {
       title: "Markets and big-favorite limit",
-      body: `${marketNames}. A favorite shorter than ${odds(ruleset.concentration.heavyFavoriteThresholdAmerican)} may use at most ${credits(ruleset.concentration.heavyFavoriteSinglePositionCapCredits)} credits; a price at ${odds(ruleset.concentration.heavyFavoriteThresholdAmerican)} or longer may use up to ${credits(ruleset.concentration.standardSinglePositionCapCredits)}. There is no blanket odds band or aggregate favorite cap.${isV11 ? " This package is settled for POC V1." : ""}`,
+      body: `${marketNames}. A favorite shorter than ${odds(ruleset.concentration.heavyFavoriteThresholdAmerican)} may use at most ${formatCredits(ruleset.concentration.heavyFavoriteSinglePositionCapCredits)} credits; a price at ${odds(ruleset.concentration.heavyFavoriteThresholdAmerican)} or longer may use up to ${formatCredits(ruleset.concentration.standardSinglePositionCapCredits)}. There is no blanket odds band or aggregate favorite cap.${isV11 ? " This package is settled for POC V1." : ""}`,
     },
     {
       title: "Card lock and reveal",

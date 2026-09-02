@@ -1,6 +1,7 @@
 import type { MatchupHomeDto } from "@/application/queries/league-dtos";
 import { AllocationMeter } from "@/components/matchup/allocation-meter";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { formatCredits } from "@/domain/odds/american";
 
 function MemberField({
   member,
@@ -64,7 +65,7 @@ export function MatchupCard({ matchup }: { matchup: MatchupHomeDto }) {
         <MemberField
           member={matchup.self}
           side="self"
-          detail={`${matchup.allocation.allocatedCredits} used · ${matchup.allocation.remainingCredits} left`}
+          detail={`${formatCredits(matchup.allocation.allocatedCredits)} used · ${formatCredits(matchup.allocation.remainingCredits)} left`}
         />
         <div className="pt-7 text-center">
           <p className="text-muted text-xs font-bold tracking-[0.1em] uppercase">

@@ -1,5 +1,5 @@
 import type { PairedMatchupDto } from "@/application/queries/project-paired-matchup";
-import { formatCenticredits } from "@/domain/odds/american";
+import { formatCenticredits, formatCredits } from "@/domain/odds/american";
 
 function credits(value: number): string {
   return formatCenticredits(BigInt(value), true);
@@ -24,7 +24,7 @@ export function ScorePath({ matchup }: { matchup: PairedMatchupDto }) {
         <div>
           <dt className="text-muted text-xs">Starting allocation</dt>
           <dd className="mt-1 font-mono font-semibold">
-            {matchup.scorePath.startingAllocationCredits} each
+            {formatCredits(matchup.scorePath.startingAllocationCredits)} each
           </dd>
         </div>
         <div>

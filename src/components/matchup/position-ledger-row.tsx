@@ -1,6 +1,6 @@
 import type { PositionLedgerItem } from "@/application/queries/project-paired-matchup";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { formatCenticredits } from "@/domain/odds/american";
+import { formatCenticredits, formatCredits } from "@/domain/odds/american";
 
 function formatOdds(odds: number): string {
   return odds > 0 ? `+${odds}` : `−${Math.abs(odds)}`;
@@ -39,7 +39,7 @@ export function PositionLedgerRow({ row }: { row: PositionLedgerItem }) {
 
   return (
     <li
-      aria-label={`${row.memberName}, ${row.eventLabel}, ${row.proposition}, ${formatOdds(row.americanOdds)}, ${row.stakeCredits} credits staked, ${status.label}, ${returnLabel} credits returned`}
+      aria-label={`${row.memberName}, ${row.eventLabel}, ${row.proposition}, ${formatOdds(row.americanOdds)}, ${formatCredits(row.stakeCredits)} credits staked, ${status.label}, ${returnLabel} credits returned`}
       className={`bg-surface rounded-lg border p-4 ${row.side === "SELF" ? "border-boundary border-l-registry border-l-4" : "border-boundary border-l-copper border-l-4"}`}
       data-position-id={row.id}
     >
@@ -74,7 +74,9 @@ export function PositionLedgerRow({ row }: { row: PositionLedgerItem }) {
         </div>
         <div className="sm:text-right">
           <p className="text-muted text-xs">Stake</p>
-          <p className="mt-1 font-mono font-semibold">{row.stakeCredits}</p>
+          <p className="mt-1 font-mono font-semibold">
+            {formatCredits(row.stakeCredits)}
+          </p>
         </div>
         <div className="text-right">
           <p className="text-muted text-xs">Returned</p>

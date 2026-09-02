@@ -23,14 +23,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Sunday Ledger",
     description:
-      "Build your card, beat your weekly matchup, and climb the standings.",
+      "A neutral head-to-head preview for private Sunday Ledger matchups.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Sunday Ledger",
     description:
-      "Build your card, beat your weekly matchup, and climb the standings.",
+      "A neutral head-to-head preview for private Sunday Ledger matchups.",
   },
 };
 

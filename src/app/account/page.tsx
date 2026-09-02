@@ -52,7 +52,7 @@ export default async function AccountPage({
       <div className="mx-auto max-w-xl">
         <div className="flex items-center justify-between gap-4">
           <Link href="/" aria-label="Sunday Ledger home">
-            <BrandLockup />
+            <BrandLockup variant="horizontal" />
           </Link>
           <Link
             className="text-registry hover:bg-subtle inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold"

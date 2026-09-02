@@ -34,7 +34,7 @@ export default async function JoinLeaguePage({
     <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">
       <div className="mx-auto max-w-xl">
         <Link href="/" aria-label="Sunday Ledger home">
-          <BrandLockup />
+          <BrandLockup variant="horizontal" />
         </Link>
 
         {preview ? (

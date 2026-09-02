@@ -33,6 +33,7 @@ import {
   maximumStakeForOdds,
   validateProposedPosition,
 } from "@/domain/cards/validate-position";
+import { formatCredits } from "@/domain/odds/american";
 import { pocSeason1Ruleset } from "@/rulesets/poc-season-1";
 
 type SlateEvent = Stage1StateDto["slate"][number];
@@ -549,7 +550,7 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                       {draft.reviewedProposition}
                     </span>
                     <span className="shrink-0 font-mono">
-                      {draft.stakeCredits} @{" "}
+                      {formatCredits(draft.stakeCredits)} @{" "}
                       {formatAmericanOdds(draft.reviewedAmericanOdds)}
                     </span>
                   </div>
@@ -591,9 +592,8 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
               Card total
             </p>
             <p className="mt-2 font-mono text-3xl font-bold">
-              {pocSeason1Ruleset.card.weeklyAllocationCredits.toLocaleString()}{" "}
-              /{" "}
-              {pocSeason1Ruleset.card.weeklyAllocationCredits.toLocaleString()}
+              {formatCredits(pocSeason1Ruleset.card.weeklyAllocationCredits)} /{" "}
+              {formatCredits(pocSeason1Ruleset.card.weeklyAllocationCredits)}
             </p>
             <p className="text-graphite mt-2 text-sm">
               {ownerCard.positions.length + drafts.length} total picks
@@ -649,8 +649,8 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
               Card progress
             </p>
             <p className="mt-2 font-mono text-2xl font-bold">
-              {totalCredits.toLocaleString()} /{" "}
-              {pocSeason1Ruleset.card.weeklyAllocationCredits.toLocaleString()}
+              {formatCredits(totalCredits)} /{" "}
+              {formatCredits(pocSeason1Ruleset.card.weeklyAllocationCredits)}
             </p>
             <p className="text-graphite mt-2 text-sm leading-6">
               Select one side per market. Your unfinished picks are saved on
@@ -793,8 +793,8 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
             </p>
             {ownerCard.positions.length > 0 ? (
               <p className="text-muted mt-2 text-xs">
-                {ownerCard.allocatedCredits} credits are already sealed and
-                can’t be changed.
+                {formatCredits(ownerCard.allocatedCredits)} credits are already
+                sealed and can’t be changed.
               </p>
             ) : null}
             {drafts.length === 0 ? (
@@ -819,7 +819,8 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                           </p>
                           <p className="text-muted mt-1 font-mono text-xs">
                             {formatAmericanOdds(selected.market.americanOdds)} ·
-                            cap {selected.market.maximumStakeCredits}
+                            cap{" "}
+                            {formatCredits(selected.market.maximumStakeCredits)}
                           </p>
                           {draft.quoteReviewRequired ? (
                             <div className="border-pending/40 bg-pending/10 mt-3 rounded-lg border p-3 text-xs leading-5">
@@ -862,10 +863,10 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
               </div>
             )}
             <p className="border-boundary text-graphite mt-4 border-t pt-4 text-sm font-semibold">
-              {totalCredits.toLocaleString()} used ·{" "}
+              {formatCredits(totalCredits)} used ·{" "}
               {remainingCredits >= 0
-                ? `${remainingCredits.toLocaleString()} left`
-                : `${Math.abs(remainingCredits).toLocaleString()} over`}
+                ? `${formatCredits(remainingCredits)} left`
+                : `${formatCredits(Math.abs(remainingCredits))} over`}
             </p>
           </section>
 
@@ -890,9 +891,9 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
                 ? `Review ${quoteReviewCount} updated quote${quoteReviewCount === 1 ? "" : "s"}`
                 : `Review ${drafts.length} picks`
               : remainingCredits > 0
-                ? `Use ${remainingCredits} more to review`
+                ? `Use ${formatCredits(remainingCredits)} more to review`
                 : remainingCredits < 0
-                  ? `Reduce by ${Math.abs(remainingCredits)} to review`
+                  ? `Reduce by ${formatCredits(Math.abs(remainingCredits))} to review`
                   : "Resolve card issues to review"}
           </button>
         </aside>
@@ -915,7 +916,7 @@ export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
         helper={
           editorMaximumStake === null
             ? "Choose an outcome to see its current limit."
-            : `This pick may use up to ${editorMaximumStake.toLocaleString()} credits under the current Ruleset.`
+            : `This pick may use up to ${formatCredits(editorMaximumStake)} credits under the current Ruleset.`
         }
         maximumStakeCredits={editorMaximumStake}
         minimumStakeCredits={pocSeason1Ruleset.card.minimumStakeCredits}

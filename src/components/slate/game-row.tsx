@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { SlateGameDto } from "@/application/queries/league-dtos";
+import { formatCredits } from "@/domain/odds/american";
 
 function formatOdds(odds: number): string {
   return odds > 0 ? `+${odds}` : `−${Math.abs(odds)}`;
@@ -47,7 +48,7 @@ export function GameRow({
                       {outcome.displayLine}
                     </span>
                     <span className="text-muted mt-1 block text-xs">
-                      Up to {outcome.maximumStakeCredits.toLocaleString()}
+                      Up to {formatCredits(outcome.maximumStakeCredits)}
                     </span>
                   </span>
                   <span className="shrink-0 font-mono text-sm font-semibold">
