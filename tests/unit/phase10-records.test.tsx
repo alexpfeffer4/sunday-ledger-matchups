@@ -275,6 +275,17 @@ describe("Phase 10 dense league records", () => {
     );
   });
 
+  it("formats archived allocation consistently without redundant receipt status fields", () => {
+    render(<SeasonArchiveMyCard archive={exampleSeasonArchive} />);
+
+    expect(screen.getByText("1,000 / 1,000")).toBeVisible();
+    expect(screen.getByText(/Week 18 allocated 1,000 credits/)).toBeVisible();
+    expect(screen.queryByText("Card readiness")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Acceptance", { exact: true }),
+    ).not.toBeInTheDocument();
+  });
+
   it("scopes an archived card correction to a receipt for the corrected event", () => {
     const viewerGame = exampleSeasonArchive.week18.find((game) =>
       game.cards.some(

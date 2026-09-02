@@ -334,23 +334,15 @@ export function SeasonArchiveMyCard({
             {corrected ? "Corrected · Archived" : "Archive final"}
           </StatusBadge>
         }
-        summary={`Week ${latest.game.week} allocated ${latest.card.allocatedCredits} credits and returned ${score(latest.card.scoreCenticredits)}. The whole card remains immutable.`}
+        summary={`Week ${latest.game.week} allocated ${latest.card.allocatedCredits.toLocaleString("en-US")} credits and returned ${score(latest.card.scoreCenticredits)}. The whole card remains immutable.`}
         title={`Week ${latest.game.week} archived card`}
       >
-        <dl className="grid gap-4 sm:grid-cols-3">
+        <dl>
           <div>
             <dt className="text-muted text-xs uppercase">Allocation</dt>
             <dd className="mt-1 font-mono font-semibold">
-              {latest.card.allocatedCredits} / 1,000
+              {latest.card.allocatedCredits.toLocaleString("en-US")} / 1,000
             </dd>
-          </div>
-          <div>
-            <dt className="text-muted text-xs uppercase">Card readiness</dt>
-            <dd className="mt-1 font-semibold">{latest.card.compliance}</dd>
-          </div>
-          <div>
-            <dt className="text-muted text-xs uppercase">Acceptance</dt>
-            <dd className="mt-1 font-semibold">Whole card · immutable</dd>
           </div>
         </dl>
         <ol className="border-boundary mt-5 divide-y border-y">
