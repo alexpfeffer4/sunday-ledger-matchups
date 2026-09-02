@@ -27,12 +27,17 @@ export function RouteFocusManager() {
     }
 
     const departingTarget = previousTarget.current;
+    const departingText = departingTarget?.textContent;
     let frame: number | undefined;
     let timeout: number | undefined;
 
     const focusDestination = () => {
       const target = findTarget();
-      if (!target || target === departingTarget) return false;
+      if (
+        !target ||
+        (target === departingTarget && target.textContent === departingText)
+      )
+        return false;
 
       previousPathname.current = pathname;
       previousTarget.current = target;
