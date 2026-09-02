@@ -48,29 +48,39 @@ The 28 repository timestamps were aligned to the already-hosted timestamps:
 | `phase7_weekly_close_read_model`                |           20260830153000 |            20260830154215 |
 
 The only new semantic migration is
-`20260902180000_controlled_league_reliability.sql`. It closes three confirmed
+`20260902201841_controlled_league_reliability.sql`. It closes three confirmed
 private `SECURITY DEFINER` default-execute gaps, adds caller-only command-result
 lookup, and replaces browser use of the non-recoverable invitation command with
 an atomic retry-safe command.
 
+On 2026-09-02, the exact migration was first executed against the hosted project
+inside an explicit rollback transaction with post-change ACL assertions. The
+dry run passed and left the hosted schema unchanged. The reviewed migration was
+then applied through the Supabase migration API as hosted version
+`20260902201841`. The repository and hosted ledgers now contain the same 38
+versions. Post-apply checks confirmed `pgrst.db_schemas=api`, the three private
+helpers have no `PUBLIC`, `anon`, or `authenticated` execute privilege, the
+caller-scoped receipt and retry-safe invitation APIs have the intended grants,
+and the retired invitation API is no longer executable by `authenticated`.
+
 ## Required release evidence
 
-| Layer      | Required proof                                                           |
-| ---------- | ------------------------------------------------------------------------ |
-| Local code | `npm run verify`                                                         |
-| Database   | clean `supabase db start`; complete `supabase test db`                   |
-| Types      | local `api,public` generation equals checked-in types                    |
-| Full stack | `controlled-league-full-stack.spec.ts` with local Auth and Postgres      |
-| Browser    | Phase 8/10/11 Chromium and WebKit jobs                                   |
-| Identity   | generated vectors, export hashes, icons, manifest, and social preview    |
-| Hosted     | supported migration dry run, reviewed apply, then a second no-op dry run |
-| Production | deployment commit alignment and read-only public/Auth/identity smoke     |
+| Layer      | Required proof                                                            |
+| ---------- | ------------------------------------------------------------------------- |
+| Local code | `npm run verify`                                                          |
+| Database   | clean `supabase db start`; complete `supabase test db`                    |
+| Types      | local `api,public` generation equals checked-in types                     |
+| Full stack | `controlled-league-full-stack.spec.ts` with local Auth and Postgres       |
+| Browser    | Phase 8/10/11 Chromium and WebKit jobs                                    |
+| Identity   | generated vectors, export hashes, icons, manifest, and social preview     |
+| Hosted     | rollback dry run, reviewed apply, 38-version and runtime ACL verification |
+| Production | deployment commit alignment and read-only public/Auth/identity smoke      |
 
-The hosted Data API schema list and leaked-password setting must be confirmed in
-the Supabase project settings before accepting a real card. The intended
-externally exposed schema is `api`; `private` must not be exposed. Leaked-password
-protection must be enabled through the supported Auth password-security setting
-when the project plan permits it. Do not emulate either control with SQL.
+The hosted Data API setting is confirmed as `pgrst.db_schemas=api`; `private` is
+not exposed. The owner has explicitly deferred leaked-password protection for
+this controlled release. It remains a tracked post-release hardening item and
+must be enabled through the supported Auth password-security setting when the
+project plan permits it. Do not emulate the control with SQL.
 
 ## Manual screen-reader acceptance
 

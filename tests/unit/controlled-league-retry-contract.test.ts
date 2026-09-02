@@ -8,7 +8,7 @@ const actions = readFileSync(
 );
 const migration = readFileSync(
   resolve(
-    "supabase/migrations/20260902180000_controlled_league_reliability.sql",
+    "supabase/migrations/20260902201841_controlled_league_reliability.sql",
   ),
   "utf8",
 );
