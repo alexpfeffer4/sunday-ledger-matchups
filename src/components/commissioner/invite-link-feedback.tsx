@@ -46,7 +46,8 @@ export function InviteLinkFeedback({ state }: { state: AppActionState }) {
         </button>
       </div>
       <p className="text-graphite mt-2 text-xs leading-5">
-        The raw link is shown only now. Create a new one if it is lost.
+        If the response is interrupted, reload and repeat the unchanged action
+        to recover this same link. A later new action creates a new link.
       </p>
     </div>
   );

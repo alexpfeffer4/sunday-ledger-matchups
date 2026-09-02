@@ -64,8 +64,8 @@ export function LeagueSetupForms() {
         >
           <h3 className="text-lg font-bold">Create a private league</h3>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Choose an authoritative Live or Simulation season. The mode is
-            frozen when the league is created.
+            Start a Live season with real NFL game times and reviewed weekly
+            odds. The season type cannot change after creation.
           </p>
           <label
             className="mt-5 block text-sm font-semibold"
@@ -83,29 +83,35 @@ export function LeagueSetupForms() {
             placeholder="Sunday League"
           />
           <fieldset className="mt-5">
-            <legend className="text-sm font-semibold">Season mode</legend>
-            <div className="mt-2 grid gap-3 sm:grid-cols-2">
-              <label className="border-control has-checked:border-registry has-checked:bg-subtle flex cursor-pointer gap-3 rounded-lg border p-4">
-                <input defaultChecked name="mode" type="radio" value="LIVE" />
-                <span>
-                  <span className="block font-semibold">Live</span>
-                  <span className="text-muted mt-1 block text-xs leading-5">
-                    Uses reviewed DraftKings-shaped provider observations and
-                    the real clock.
-                  </span>
+            <legend className="text-sm font-semibold">Season type</legend>
+            <label className="border-registry bg-registry/5 mt-2 flex cursor-pointer gap-3 rounded-lg border p-4">
+              <input defaultChecked name="mode" type="radio" value="LIVE" />
+              <span>
+                <span className="block font-semibold">Live season</span>
+                <span className="text-muted mt-1 block text-xs leading-5">
+                  The normal way to play: real NFL schedule, reviewed odds, and
+                  real game results.
                 </span>
-              </label>
-              <label className="border-control has-checked:border-registry has-checked:bg-subtle flex cursor-pointer gap-3 rounded-lg border p-4">
+              </span>
+            </label>
+            <details className="border-boundary mt-3 rounded-lg border p-4">
+              <summary className="min-h-11 cursor-pointer content-center text-sm font-semibold">
+                Advanced · Practice/test season
+              </summary>
+              <label className="border-control has-checked:border-registry has-checked:bg-subtle mt-3 flex cursor-pointer gap-3 rounded-lg border p-4">
                 <input name="mode" type="radio" value="SIMULATION" />
                 <span>
-                  <span className="block font-semibold">Simulation</span>
+                  <span className="block font-semibold">
+                    Practice/test · Simulation
+                  </span>
                   <span className="text-muted mt-1 block text-xs leading-5">
-                    Uses the approved deterministic fixture pack and a
-                    commissioner-controlled clock.
+                    Runs the same real game lifecycle with controlled fixture
+                    data and a commissioner-run clock. It does not use live
+                    provider data.
                   </span>
                 </span>
               </label>
-            </div>
+            </details>
           </fieldset>
           <button
             className="bg-registry hover:bg-registry-hover mt-5 min-h-11 w-full rounded-lg px-4 font-semibold text-white disabled:opacity-60"

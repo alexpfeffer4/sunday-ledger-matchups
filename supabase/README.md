@@ -5,8 +5,8 @@ tests. It does not contain credentials or a linked project identifier.
 
 After an authorized Supabase project is connected:
 
-1. Apply migrations to the linked development project. The migration exposes
-   only the `api` schema through the Data API.
+1. Confirm the project Data API exposes the intended `api` schema and does not
+   expose `private`, then apply reviewed migrations to the linked project.
 2. Generate TypeScript types from that project into
    `src/adapters/supabase/database.types.ts`.
 3. Run `supabase test db` against a local or isolated test database.
@@ -65,10 +65,17 @@ dual-incomplete higher-seed advancement, six-entry semifinal reseeding,
 idempotency, append-only round evidence, and the member playoff read model. It
 runs inside a rollback transaction.
 
-`tests/stage3_live_season_archive.test.sql` verifies that only the commissioner
-can close a complete final Week 17 ledger, that the champion is derived from
-the frozen bracket, and that the resulting member-scoped archive is immutable
-and idempotent. It runs inside a rollback transaction.
+The Phase 8 suites extend this through champion finality, correction-safe Week
+18 replacement, normal Week 18 cards and exhibitions, and a complete immutable
+Weeks 1–18 archive. The authoritative Simulation suite proves the same
+lifecycle runs from a reviewed fixture pack without using provider data.
+
+`tests/controlled_league_reliability.test.sql` verifies retry-safe private
+invitation creation, caller-only command-result recovery, changed-input
+rejection, duplicate prevention, retirement of the older invitation command,
+and explicit denial of `PUBLIC`, `anon`, and `authenticated` execution on the
+three confirmed private helper functions. It runs inside a rollback
+transaction.
 
 The hosted Stage 2 migrations are:
 
@@ -93,17 +100,17 @@ The hosted Stage 3 import migrations are:
 - `stage3_live_season_archive`
 - `stage3_live_season_archive_fk_index`
 
-After application, the security advisor reports no Stage 2 or Stage 3 issue and
-the performance advisor reports no unindexed Stage 2 or Stage 3 foreign key.
-Newly created indexes may appear as informationally unused until real traffic
-exercises them.
+The repository migration timestamps match the hosted ledger. The reconciliation
+record and release checks are in `docs/controlled-league-release-gate.md`.
+Always prove a clean rebuild, complete pgTAP run, generated type consistency,
+and linked-project dry run before applying a new migration. Never edit the
+Supabase migration system table directly.
 
 The server-only Supabase secret key is intentionally absent from general Auth
 and participant data helpers.
 
-The Supabase connector currently generates only `public`. For this project,
-regenerate the exposed API contract with the CLI when its access token is
-available:
+Regenerate the exposed API contract with the CLI from a disposable local stack
+or the authorized linked project:
 
 ```bash
 supabase gen types typescript --project-id "$SUPABASE_PROJECT_REF" --schema api,public > src/adapters/supabase/database.types.ts

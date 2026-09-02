@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, type FormEvent } from "react";
 import {
   correctLiveEventResultAction,
   finalizeChampionBracketAction,
@@ -40,8 +40,53 @@ function ContextFields({ state }: { state: Stage1CommissionerControlState }) {
     <>
       <input type="hidden" name="leagueId" value={state.league.id} />
       <input type="hidden" name="leagueSlug" value={state.league.slug} />
+      {state.week ? (
+        <input type="hidden" name="expectedWeek" value={state.week.nflWeek} />
+      ) : null}
     </>
   );
+}
+
+function prepareCorrectionOperation(
+  event: FormEvent<HTMLFormElement>,
+  leagueId: string,
+) {
+  const operationField = event.currentTarget.elements.namedItem("operationId");
+  const eventField = event.currentTarget.elements.namedItem("eventId");
+  const scopeField = event.currentTarget.elements.namedItem("correctionScope");
+  if (
+    !(operationField instanceof HTMLInputElement) ||
+    !(eventField instanceof HTMLInputElement)
+  )
+    return;
+
+  const scope =
+    scopeField instanceof HTMLInputElement ? scopeField.value : "CURRENT_WEEK";
+  const storageKey = `sunday-ledger:correction-operation:v1:${leagueId}:${eventField.value}:${scope}`;
+  try {
+    const stored = localStorage.getItem(storageKey);
+    const operationId = stored ?? crypto.randomUUID();
+    localStorage.setItem(storageKey, operationId);
+    operationField.value = operationId;
+  } catch {
+    operationField.value ||= crypto.randomUUID();
+  }
+}
+
+function clearCompletedCorrectionOperation(
+  leagueId: string,
+  operationId: string,
+) {
+  const prefix = `sunday-ledger:correction-operation:v1:${leagueId}:`;
+  try {
+    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+      const key = localStorage.key(index);
+      if (key?.startsWith(prefix) && localStorage.getItem(key) === operationId)
+        localStorage.removeItem(key);
+    }
+  } catch {
+    // A later correction still gets a fresh in-page operation identifier.
+  }
 }
 
 function scoreLine(event: LiveWeekOperations["events"][number]): string {
@@ -107,9 +152,13 @@ function LateWeek17CorrectionControls({
             <form
               action={correctionAction}
               className="mt-3 grid gap-3 sm:grid-cols-2"
+              onSubmit={(submitEvent) =>
+                prepareCorrectionOperation(submitEvent, state.league.id)
+              }
             >
               <ContextFields state={state} />
               <input type="hidden" name="eventId" value={event.id} />
+              <input type="hidden" name="operationId" />
               <input
                 name="correctionScope"
                 type="hidden"
@@ -241,6 +290,11 @@ export function LiveWeekCommissionerControls({
     publishLiveSeasonArchiveAction,
     initialAppActionState,
   );
+
+  useEffect(() => {
+    if (correctionState.status !== "success" || !correctionState.value) return;
+    clearCompletedCorrectionOperation(state.league.id, correctionState.value);
+  }, [correctionState.status, correctionState.value, state.league.id]);
 
   if (!state.week) return null;
   const weekNumber = state.week.nflWeek;
@@ -417,9 +471,13 @@ export function LiveWeekCommissionerControls({
                     <form
                       action={correctionAction}
                       className="mt-3 grid gap-3 sm:grid-cols-2"
+                      onSubmit={(submitEvent) =>
+                        prepareCorrectionOperation(submitEvent, state.league.id)
+                      }
                     >
                       <ContextFields state={state} />
                       <input type="hidden" name="eventId" value={event.id} />
+                      <input type="hidden" name="operationId" />
                       <label className="text-xs font-semibold">
                         {event.awayTeam}
                         <input
@@ -570,7 +628,7 @@ export function LiveWeekCommissionerControls({
                     Latest reviewed import · {nextWeekImport.eventCount} events
                   </p>
                   <p className="text-muted mt-1 text-xs">
-                    Fetched{" "}
+                    Last checked{" "}
                     {timestampFormatter.format(
                       new Date(nextWeekImport.fetchedAt),
                     )}{" "}
@@ -637,7 +695,7 @@ export function LiveWeekCommissionerControls({
                 >
                   {publishingNextWeek
                     ? `Publishing Week ${nextWeekNumber}…`
-                    : `Publish Week ${nextWeekNumber} & open all cards`}
+                    : `Make Week ${nextWeekNumber} available & open all cards`}
                 </button>
               </form>
               <ActionFeedback state={nextWeekState} />
@@ -694,7 +752,7 @@ export function LiveWeekCommissionerControls({
                     Latest reviewed import · {nextWeekImport.eventCount} events
                   </p>
                   <p className="text-muted mt-1 text-xs">
-                    Fetched{" "}
+                    Last checked{" "}
                     {timestampFormatter.format(
                       new Date(nextWeekImport.fetchedAt),
                     )}{" "}
@@ -761,7 +819,7 @@ export function LiveWeekCommissionerControls({
                 >
                   {publishingPostseasonWeek
                     ? `Publishing Week ${nextWeekNumber}…`
-                    : `Publish playoff Week ${nextWeekNumber}`}
+                    : `Make playoff Week ${nextWeekNumber} available`}
                 </button>
               </form>
               <ActionFeedback state={postseasonWeekState} />
@@ -874,7 +932,7 @@ export function LiveWeekCommissionerControls({
               >
                 {publishingWeek18
                   ? "Publishing exhibitions…"
-                  : "Publish Week 18 exhibitions"}
+                  : "Make Week 18 exhibitions available"}
               </button>
             </form>
           ) : null}

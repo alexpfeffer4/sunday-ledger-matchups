@@ -14,6 +14,7 @@ import { OddsProviderPayloadError } from "@/adapters/providers/the-odds-api/norm
 import type { Json } from "@/adapters/supabase/database.types";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import type { AppActionState } from "@/application/actions/action-state";
+import { stableOperationKey } from "@/application/actions/stable-operation-key";
 import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
 import { validateDraftCard } from "@/domain/cards/validate-card-draft";
 import { maximumStakeForOdds } from "@/domain/cards/validate-position";
@@ -27,6 +28,14 @@ const contextSchema = z.object({
 const inviteSettingsSchema = z.object({
   expiresInDays: z.coerce.number().int().min(1).max(30),
   maxUses: z.coerce.number().int().min(1).max(15),
+  operationId: z.uuid(),
+});
+
+const inviteReceiptSchema = z.object({
+  token: z.string().min(16).max(120),
+  expiresAt: z.iso.datetime({ offset: true }),
+  maxUses: z.number().int().min(1).max(15),
+  replayed: z.boolean(),
 });
 
 const revokeInviteSchema = z.object({ inviteId: z.uuid() });
@@ -38,8 +47,50 @@ function parseContext(formData: FormData) {
   });
 }
 
-function idempotencyKey(command: string): string {
-  return `${command}:${crypto.randomUUID()}`;
+type SupabaseServerClient = Awaited<
+  ReturnType<typeof createSupabaseServerClient>
+>;
+
+async function operationAlreadyCompleted(
+  supabase: SupabaseServerClient,
+  commandName: string,
+  operationKey: string,
+): Promise<boolean> {
+  const receipt = await supabase.schema("api").rpc("get_my_command_receipt", {
+    p_command_name: commandName,
+    p_idempotency_key: operationKey,
+  });
+  return !receipt.error && receipt.data !== null;
+}
+
+async function completed(
+  slug: string,
+  message: string,
+  link?: { href: string; label: string },
+): Promise<AppActionState> {
+  const state = await finish(slug, `Already completed. ${message}`);
+  return link ? { ...state, href: link.href, hrefLabel: link.label } : state;
+}
+
+async function reconcileCommandError(params: {
+  commandName: string;
+  completedMessage: string;
+  errorMessage: string;
+  link?: { href: string; label: string };
+  operationKey: string;
+  slug: string;
+  supabase: SupabaseServerClient;
+}): Promise<AppActionState> {
+  if (
+    await operationAlreadyCompleted(
+      params.supabase,
+      params.commandName,
+      params.operationKey,
+    )
+  ) {
+    return completed(params.slug, params.completedMessage, params.link);
+  }
+  return mutationError(params.errorMessage);
 }
 
 async function requestOrigin(): Promise<string> {
@@ -67,6 +118,24 @@ function mutationError(message: string): AppActionState {
       status: "error",
       message:
         "The quote changed. Review the current terms before confirming again.",
+    };
+  }
+  if (message.includes("Idempotency key was reused")) {
+    return {
+      status: "error",
+      message:
+        "The reviewed inputs changed after the earlier attempt. Nothing new was accepted; review them before trying again.",
+    };
+  }
+  if (
+    message.includes("Commissioner membership required") ||
+    message.includes("League membership required") ||
+    message.includes("Authentication required")
+  ) {
+    return {
+      status: "error",
+      message:
+        "You no longer have permission to do that. Sign in again or ask the league commissioner.",
     };
   }
   if (message.includes("exactly eight")) {
@@ -303,7 +372,8 @@ function mutationError(message: string): AppActionState {
   }
   return {
     status: "error",
-    message: "Nothing changed. Refresh the page and try again.",
+    message:
+      "No safe change was confirmed. Refresh the page to check the current league state before trying again.",
   };
 }
 
@@ -334,6 +404,7 @@ export async function createLeagueInviteAction(
   const settings = inviteSettingsSchema.safeParse({
     expiresInDays: formData.get("expiresInDays"),
     maxUses: formData.get("maxUses"),
+    operationId: formData.get("operationId"),
   });
   if (!settings.success) {
     return mutationError("Choose an expiry from 1–30 days and 1–15 uses.");
@@ -351,23 +422,32 @@ export async function createLeagueInviteAction(
   if (!claims.data?.claims?.sub) {
     return mutationError("Sign in again before creating an invitation.");
   }
-  const expiresAt = new Date(
-    Date.now() + settings.data.expiresInDays * 24 * 60 * 60 * 1000,
-  ).toISOString();
-  const result = await supabase.schema("api").rpc("create_league_invite", {
-    p_league_id: context.data.leagueId,
-    p_expires_at: expiresAt,
-    p_max_uses: settings.data.maxUses,
+  const operationKey = stableOperationKey({
+    command: "CREATE_LEAGUE_INVITE",
+    intentId: settings.data.operationId,
+    leagueId: context.data.leagueId,
   });
+  const result = await supabase
+    .schema("api")
+    .rpc("create_league_invite_retry_safe", {
+      p_league_id: context.data.leagueId,
+      p_expires_in_days: settings.data.expiresInDays,
+      p_max_uses: settings.data.maxUses,
+      p_idempotency_key: operationKey,
+    });
   if (result.error) return mutationError(result.error.message);
+  const receipt = inviteReceiptSchema.safeParse(result.data);
+  if (!receipt.success) {
+    return mutationError("The invitation receipt could not be verified.");
+  }
 
-  const inviteUrl = new URL(`/join/${result.data}`, origin).toString();
+  const inviteUrl = new URL(`/join/${receipt.data.token}`, origin).toString();
 
   revalidatePath(`/l/${context.data.leagueSlug}/commissioner`);
 
   return {
     status: "success",
-    message: `Private link created for ${settings.data.maxUses} ${settings.data.maxUses === 1 ? "join" : "joins"}. It expires in ${settings.data.expiresInDays} ${settings.data.expiresInDays === 1 ? "day" : "days"}.`,
+    message: `${receipt.data.replayed ? "Already completed. The original private link is shown again." : "Private link created."} It allows ${settings.data.maxUses} ${settings.data.maxUses === 1 ? "join" : "joins"} and expires in ${settings.data.expiresInDays} ${settings.data.expiresInDays === 1 ? "day" : "days"}.`,
     value: inviteUrl,
   };
 }
@@ -429,10 +509,23 @@ export async function importLiveOddsAction(
       .update(JSON.stringify(liveImport))
       .digest("hex");
     const supabase = await createSupabaseServerClient();
+    const operationKey = `live-odds:${payloadHash}`;
+    if (
+      await operationAlreadyCompleted(
+        supabase,
+        "STORE_LIVE_ODDS_IMPORT",
+        operationKey,
+      )
+    ) {
+      return completed(
+        context.data.leagueSlug,
+        "Those NFL odds are already saved for commissioner review.",
+      );
+    }
     const result = await supabase.schema("api").rpc("store_live_odds_import", {
       p_league_id: context.data.leagueId,
       p_import: liveImport as unknown as Json,
-      p_idempotency_key: `live-odds:${payloadHash}`,
+      p_idempotency_key: operationKey,
     });
     if (result.error) {
       console.error(
@@ -492,6 +585,31 @@ export async function publishLiveWeekSlateAction(
     return mutationError("Select between one and 32 imported events.");
   }
 
+  const operationKey = stableOperationKey({
+    command: "PUBLISH_LIVE_WEEK_SLATE",
+    externalEventIds: selection.data.externalEventIds,
+    importId: selection.data.importId,
+    leagueId: context.data.leagueId,
+    week: 1,
+  });
+  const supabase = await createSupabaseServerClient();
+  if (
+    await operationAlreadyCompleted(
+      supabase,
+      "PUBLISH_LIVE_WEEK_SLATE",
+      operationKey,
+    )
+  ) {
+    return completed(
+      context.data.leagueSlug,
+      "Week 1 is available and member cards remain closed until roster lock.",
+      {
+        href: `/l/${context.data.leagueSlug}/slate`,
+        label: "Review Week 1",
+      },
+    );
+  }
+
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
@@ -504,12 +622,11 @@ export async function publishLiveWeekSlateAction(
     return mutationError("A Draft Live season without a slate is required.");
   }
 
-  const supabase = await createSupabaseServerClient();
   const result = await supabase.schema("api").rpc("publish_live_week_slate", {
     p_league_id: context.data.leagueId,
     p_import_id: selection.data.importId,
     p_external_event_ids: selection.data.externalEventIds,
-    p_idempotency_key: idempotencyKey("publish-live-slate"),
+    p_idempotency_key: operationKey,
   });
   if (result.error) return mutationError(result.error.message);
 
@@ -542,6 +659,39 @@ export async function publishNextLiveWeekSlateAction(
     return mutationError("Select between one and 32 imported events.");
   }
 
+  const expectedWeek = z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(13)
+    .safeParse(formData.get("expectedWeek"));
+  if (!expectedWeek.success) return mutationError("The source week changed.");
+  const nextWeek = expectedWeek.data + 1;
+  const operationKey = stableOperationKey({
+    command: "PUBLISH_NEXT_LIVE_WEEK_SLATE",
+    externalEventIds: selection.data.externalEventIds,
+    importId: selection.data.importId,
+    leagueId: context.data.leagueId,
+    week: nextWeek,
+  });
+  const supabase = await createSupabaseServerClient();
+  if (
+    await operationAlreadyCompleted(
+      supabase,
+      "PUBLISH_NEXT_LIVE_WEEK_SLATE",
+      operationKey,
+    )
+  ) {
+    return completed(
+      context.data.leagueSlug,
+      `Week ${nextWeek} is available with the original reviewed games.`,
+      {
+        href: `/l/${context.data.leagueSlug}/slate`,
+        label: `Open Week ${nextWeek}`,
+      },
+    );
+  }
+
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
@@ -550,22 +700,20 @@ export async function publishNextLiveWeekSlateAction(
     state.league.mode !== "LIVE" ||
     state.league.lifecycle !== "REGULAR" ||
     state.week?.state !== "FINAL" ||
-    state.week.nflWeek >= 14
+    state.week.nflWeek !== expectedWeek.data
   ) {
     return mutationError(
       "The current week must be final before the next week can publish.",
     );
   }
 
-  const nextWeek = state.week.nflWeek + 1;
-  const supabase = await createSupabaseServerClient();
   const result = await supabase
     .schema("api")
     .rpc("publish_next_live_week_slate", {
       p_league_id: context.data.leagueId,
       p_import_id: selection.data.importId,
       p_external_event_ids: selection.data.externalEventIds,
-      p_idempotency_key: idempotencyKey(`publish-live-week-${nextWeek}`),
+      p_idempotency_key: operationKey,
     });
   if (result.error) return mutationError(result.error.message);
 
@@ -591,6 +739,29 @@ export async function publishLivePlayoffQualificationAction(
   const context = parseContext(formData);
   if (!context.success) return mutationError("invalid context");
 
+  const operationKey = stableOperationKey({
+    command: "PUBLISH_PLAYOFF_QUALIFICATION",
+    leagueId: context.data.leagueId,
+    throughWeek: 14,
+  });
+  const supabase = await createSupabaseServerClient();
+  if (
+    await operationAlreadyCompleted(
+      supabase,
+      "PUBLISH_PLAYOFF_QUALIFICATION",
+      operationKey,
+    )
+  ) {
+    return completed(
+      context.data.leagueSlug,
+      "The playoff field is already confirmed from the final Week 14 standings.",
+      {
+        href: `/l/${context.data.leagueSlug}/playoffs`,
+        label: "Open the bracket",
+      },
+    );
+  }
+
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
@@ -603,12 +774,11 @@ export async function publishLivePlayoffQualificationAction(
     );
   }
 
-  const supabase = await createSupabaseServerClient();
   const result = await supabase
     .schema("api")
     .rpc("publish_playoff_qualification", {
       p_league_id: context.data.leagueId,
-      p_idempotency_key: idempotencyKey("publish-live-playoff-qualification"),
+      p_idempotency_key: operationKey,
     });
   if (result.error) return mutationError(result.error.message);
 
@@ -648,6 +818,39 @@ export async function publishNextLivePostseasonWeekAction(
     return mutationError("Select between one and 32 imported events.");
   }
 
+  const expectedWeek = z.coerce
+    .number()
+    .int()
+    .min(14)
+    .max(16)
+    .safeParse(formData.get("expectedWeek"));
+  if (!expectedWeek.success) return mutationError("The source week changed.");
+  const nextWeek = expectedWeek.data + 1;
+  const operationKey = stableOperationKey({
+    command: "PUBLISH_POSTSEASON_WEEK",
+    externalEventIds: selection.data.externalEventIds,
+    importId: selection.data.importId,
+    leagueId: context.data.leagueId,
+    week: nextWeek,
+  });
+  const supabase = await createSupabaseServerClient();
+  if (
+    await operationAlreadyCompleted(
+      supabase,
+      "PUBLISH_POSTSEASON_WEEK",
+      operationKey,
+    )
+  ) {
+    return completed(
+      context.data.leagueSlug,
+      `Postseason Week ${nextWeek} is already available with its original matchups and games.`,
+      {
+        href: `/l/${context.data.leagueSlug}/playoffs`,
+        label: `Open Week ${nextWeek}`,
+      },
+    );
+  }
+
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
@@ -655,24 +858,19 @@ export async function publishNextLivePostseasonWeekAction(
     !state.commissioner.isCommissioner ||
     state.league.lifecycle !== "PLAYOFFS" ||
     !state.week ||
-    state.week.nflWeek < 14 ||
-    state.week.nflWeek >= 17
+    state.week.nflWeek !== expectedWeek.data ||
+    state.week.state !== "FINAL"
   ) {
     return mutationError(
       "The current week must be final before the next postseason week can publish.",
     );
   }
 
-  const nextWeek =
-    state.week.state === "FINAL" ? state.week.nflWeek + 1 : state.week.nflWeek;
-  const supabase = await createSupabaseServerClient();
   const result = await supabase.schema("api").rpc("publish_postseason_week", {
     p_league_id: context.data.leagueId,
     p_import_id: selection.data.importId,
     p_external_event_ids: selection.data.externalEventIds,
-    p_idempotency_key: idempotencyKey(
-      `publish-live-postseason-week-${nextWeek}`,
-    ),
+    p_idempotency_key: operationKey,
   });
   if (result.error) return mutationError(result.error.message);
 
@@ -703,6 +901,29 @@ export async function finalizeChampionBracketAction(
   const context = parseContext(formData);
   if (!context.success) return mutationError("invalid context");
 
+  const operationKey = stableOperationKey({
+    command: "FINALIZE_CHAMPION_BRACKET",
+    leagueId: context.data.leagueId,
+    week: 17,
+  });
+  const supabase = await createSupabaseServerClient();
+  if (
+    await operationAlreadyCompleted(
+      supabase,
+      "FINALIZE_CHAMPION_BRACKET",
+      operationKey,
+    )
+  ) {
+    return completed(
+      context.data.leagueSlug,
+      "The champion and final bracket are already confirmed.",
+      {
+        href: `/l/${context.data.leagueSlug}/playoffs`,
+        label: "Open the final bracket",
+      },
+    );
+  }
+
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
@@ -717,10 +938,9 @@ export async function finalizeChampionBracketAction(
     );
   }
 
-  const supabase = await createSupabaseServerClient();
   const result = await supabase.schema("api").rpc("finalize_champion_bracket", {
     p_league_id: context.data.leagueId,
-    p_idempotency_key: idempotencyKey("finalize-champion-bracket"),
+    p_idempotency_key: operationKey,
   });
   if (result.error) return mutationError(result.error.message);
   return finish(
@@ -747,6 +967,31 @@ export async function publishWeek18ExhibitionAction(
     return mutationError("Select between one and 32 imported events.");
   }
 
+  const operationKey = stableOperationKey({
+    command: "PUBLISH_POSTSEASON_WEEK",
+    externalEventIds: selection.data.externalEventIds,
+    importId: selection.data.importId,
+    leagueId: context.data.leagueId,
+    week: 18,
+  });
+  const supabase = await createSupabaseServerClient();
+  if (
+    await operationAlreadyCompleted(
+      supabase,
+      "PUBLISH_POSTSEASON_WEEK",
+      operationKey,
+    )
+  ) {
+    return completed(
+      context.data.leagueSlug,
+      "Week 18 exhibitions are already available with the original pairings and games.",
+      {
+        href: `/l/${context.data.leagueSlug}/playoffs`,
+        label: "Open Week 18",
+      },
+    );
+  }
+
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
@@ -760,12 +1005,11 @@ export async function publishWeek18ExhibitionAction(
     return mutationError("Confirm the champion before publishing Week 18.");
   }
 
-  const supabase = await createSupabaseServerClient();
   const result = await supabase.schema("api").rpc("publish_week18_exhibition", {
     p_league_id: context.data.leagueId,
     p_import_id: selection.data.importId,
     p_external_event_ids: selection.data.externalEventIds,
-    p_idempotency_key: idempotencyKey("publish-week18-exhibition"),
+    p_idempotency_key: operationKey,
   });
   if (result.error) return mutationError(result.error.message);
   return finish(
@@ -781,6 +1025,29 @@ export async function publishLiveSeasonArchiveAction(
   const context = parseContext(formData);
   if (!context.success) return mutationError("invalid context");
 
+  const operationKey = stableOperationKey({
+    command: "FINALIZE_SEASON_ARCHIVE",
+    leagueId: context.data.leagueId,
+    throughWeek: 18,
+  });
+  const supabase = await createSupabaseServerClient();
+  if (
+    await operationAlreadyCompleted(
+      supabase,
+      "FINALIZE_SEASON_ARCHIVE",
+      operationKey,
+    )
+  ) {
+    return completed(
+      context.data.leagueSlug,
+      "The complete season archive is already final through Week 18.",
+      {
+        href: `/l/${context.data.leagueSlug}/matchup`,
+        label: "Open the completed season",
+      },
+    );
+  }
+
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
@@ -795,10 +1062,9 @@ export async function publishLiveSeasonArchiveAction(
     );
   }
 
-  const supabase = await createSupabaseServerClient();
   const result = await supabase.schema("api").rpc("finalize_season_archive", {
     p_league_id: context.data.leagueId,
-    p_idempotency_key: idempotencyKey("publish-live-season-archive"),
+    p_idempotency_key: operationKey,
   });
   if (result.error) return mutationError(result.error.message);
 
@@ -830,12 +1096,22 @@ class LiveQuoteRefreshRejectedError extends Error {}
 async function refreshPublishedLiveQuoteHeads(params: {
   eventIds: string[];
   leagueId: string;
-}): Promise<number> {
+}): Promise<{ eventCount: number; replayed: boolean }> {
   const liveImport = await fetchNflOdds({ eventIds: params.eventIds });
   const payloadHash = createHash("sha256")
     .update(JSON.stringify(liveImport))
     .digest("hex");
   const supabase = await createSupabaseServerClient();
+  const refreshOperationKey = `refresh-live:${payloadHash}`;
+  if (
+    await operationAlreadyCompleted(
+      supabase,
+      "REFRESH_LIVE_WEEK_QUOTES",
+      refreshOperationKey,
+    )
+  ) {
+    return { eventCount: liveImport.events.length, replayed: true };
+  }
   const stored = await supabase.schema("api").rpc("store_live_odds_import", {
     p_league_id: params.leagueId,
     p_import: liveImport as unknown as Json,
@@ -856,7 +1132,7 @@ async function refreshPublishedLiveQuoteHeads(params: {
     .rpc("refresh_live_week_quotes", {
       p_league_id: params.leagueId,
       p_import_id: importReceipt.data.importId,
-      p_idempotency_key: `refresh-live:${payloadHash}`,
+      p_idempotency_key: refreshOperationKey,
     });
   if (refreshed.error) {
     console.error(
@@ -870,7 +1146,7 @@ async function refreshPublishedLiveQuoteHeads(params: {
     throw new LiveQuoteRefreshRejectedError(refreshed.error.message);
   }
 
-  return liveImport.events.length;
+  return { eventCount: liveImport.events.length, replayed: false };
 }
 
 export async function refreshLiveWeekQuotesAction(
@@ -894,7 +1170,7 @@ export async function refreshLiveWeekQuotesAction(
   }
 
   try {
-    const eventCount = await refreshPublishedLiveQuoteHeads({
+    const refresh = await refreshPublishedLiveQuoteHeads({
       leagueId: context.data.leagueId,
       eventIds: state.slate.map((event) => event.key),
     });
@@ -905,7 +1181,7 @@ export async function refreshLiveWeekQuotesAction(
     revalidatePath(`/l/${context.data.leagueSlug}/commissioner`);
     return {
       status: "success",
-      message: `${eventCount} published games refreshed. The selected games and card-lock time did not change.`,
+      message: `${refresh.replayed ? "Already completed. " : ""}${refresh.eventCount} published games refreshed. The selected games and card-lock time did not change.`,
     };
   } catch (error) {
     console.error(
@@ -940,6 +1216,28 @@ export async function lockLiveRosterAndOpenWeekAction(
   const context = parseContext(formData);
   if (!context.success) return mutationError("invalid context");
 
+  const operationKey = stableOperationKey({
+    command: "LOCK_LIVE_ROSTER_AND_OPEN_WEEK",
+    leagueId: context.data.leagueId,
+  });
+  const supabase = await createSupabaseServerClient();
+  if (
+    await operationAlreadyCompleted(
+      supabase,
+      "LOCK_LIVE_ROSTER_AND_OPEN_WEEK",
+      operationKey,
+    )
+  ) {
+    return completed(
+      context.data.leagueSlug,
+      "The roster and 14-week schedule are frozen, and Week 1 cards are open.",
+      {
+        href: `/l/${context.data.leagueSlug}/card`,
+        label: "Open Week 1",
+      },
+    );
+  }
+
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
@@ -970,14 +1268,27 @@ export async function lockLiveRosterAndOpenWeekAction(
       });
     }
 
-    const supabase = await createSupabaseServerClient();
     const locked = await supabase
       .schema("api")
       .rpc("lock_live_roster_and_open_week", {
         p_league_id: context.data.leagueId,
-        p_idempotency_key: idempotencyKey("lock-authoritative-roster"),
+        p_idempotency_key: operationKey,
       });
-    if (locked.error) return mutationError(locked.error.message);
+    if (locked.error) {
+      return reconcileCommandError({
+        commandName: "LOCK_LIVE_ROSTER_AND_OPEN_WEEK",
+        completedMessage:
+          "The roster and 14-week schedule are frozen, and Week 1 cards are open.",
+        errorMessage: locked.error.message,
+        link: {
+          href: `/l/${context.data.leagueSlug}/card`,
+          label: "Open Week 1",
+        },
+        operationKey,
+        slug: context.data.leagueSlug,
+        supabase,
+      });
+    }
 
     revalidatePath(`/l/${context.data.leagueSlug}/schedule`);
     revalidatePath(`/l/${context.data.leagueSlug}/slate`);
@@ -1052,10 +1363,27 @@ export async function importLiveScoresAction(
       .update(JSON.stringify(scoreImport))
       .digest("hex");
     const supabase = await createSupabaseServerClient();
+    const operationKey = `live-scores:${payloadHash}`;
+    if (
+      await operationAlreadyCompleted(
+        supabase,
+        "IMPORT_LIVE_SCORES",
+        operationKey,
+      )
+    ) {
+      return completed(
+        context.data.leagueSlug,
+        "That exact NFL score update is already recorded; no result or settlement was duplicated.",
+        {
+          href: `/l/${context.data.leagueSlug}/matchup`,
+          label: "Review the current matchup",
+        },
+      );
+    }
     const imported = await supabase.schema("api").rpc("import_live_scores", {
       p_league_id: context.data.leagueId,
       p_import: scoreImport as unknown as Json,
-      p_idempotency_key: `live-scores:${payloadHash}`,
+      p_idempotency_key: operationKey,
     });
     if (imported.error) return mutationError(imported.error.message);
 
@@ -1105,12 +1433,14 @@ export async function correctLiveEventResultAction(
       eventId: z.uuid(),
       awayScore: objectiveScoreSchema,
       homeScore: objectiveScoreSchema,
+      operationId: z.uuid(),
       reason: z.string().trim().min(10).max(500),
     })
     .safeParse({
       eventId: formData.get("eventId"),
       awayScore: formData.get("awayScore"),
       homeScore: formData.get("homeScore"),
+      operationId: formData.get("operationId"),
       reason: formData.get("reason"),
     });
   if (!context.success || !correction.success) {
@@ -1118,6 +1448,33 @@ export async function correctLiveEventResultAction(
       status: "error",
       message:
         "Enter both objective final scores and a correction reason of at least 10 characters.",
+    };
+  }
+
+  const lateWeek17 = formData.get("correctionScope") === "FINALIZED_WEEK17";
+  const commandName = lateWeek17
+    ? "CORRECT_FINALIZED_WEEK17_RESULT"
+    : "RECORD_STAGE1_RESULT";
+  const operationKey = stableOperationKey({
+    command: commandName,
+    eventId: correction.data.eventId,
+    intentId: correction.data.operationId,
+    leagueId: context.data.leagueId,
+  });
+  const supabase = await createSupabaseServerClient();
+  if (await operationAlreadyCompleted(supabase, commandName, operationKey)) {
+    return {
+      ...(await completed(
+        context.data.leagueSlug,
+        lateWeek17
+          ? "That Week 17 correction and its affected champion history are already recorded."
+          : "That corrected result and its affected scores are already recorded.",
+        {
+          href: `/l/${context.data.leagueSlug}/matchup`,
+          label: "Review the current result",
+        },
+      )),
+      value: correction.data.operationId,
     };
   }
 
@@ -1129,7 +1486,6 @@ export async function correctLiveEventResultAction(
   ) {
     return mutationError("A Live-league commissioner is required.");
   }
-  const lateWeek17 = formData.get("correctionScope") === "FINALIZED_WEEK17";
   if (
     lateWeek17 &&
     !["CHAMPION_FINAL", "WEEK_18_EXHIBITION", "FINAL"].includes(
@@ -1140,7 +1496,6 @@ export async function correctLiveEventResultAction(
       "Late Week 17 corrections require confirmed champion history.",
     );
   }
-  const supabase = await createSupabaseServerClient();
   const result = await supabase
     .schema("api")
     .rpc(
@@ -1153,18 +1508,37 @@ export async function correctLiveEventResultAction(
         p_away_score: correction.data.awayScore,
         p_home_score: correction.data.homeScore,
         p_reason: correction.data.reason,
-        p_idempotency_key: idempotencyKey(
-          lateWeek17 ? "correct-final-week17-result" : "correct-live-result",
-        ),
+        p_idempotency_key: operationKey,
       },
     );
-  if (result.error) return mutationError(result.error.message);
-  return finish(
-    context.data.leagueSlug,
-    lateWeek17
-      ? "The documented Week 17 correction and affected champion history were appended. Protected Week 18 facts were preserved."
-      : "The correction was recorded, and the affected scores and standings were updated.",
-  );
+  if (result.error) {
+    const reconciled = await reconcileCommandError({
+      commandName,
+      completedMessage: lateWeek17
+        ? "That Week 17 correction and its affected champion history are already recorded."
+        : "That corrected result and its affected scores are already recorded.",
+      errorMessage: result.error.message,
+      link: {
+        href: `/l/${context.data.leagueSlug}/matchup`,
+        label: "Review the current result",
+      },
+      operationKey,
+      slug: context.data.leagueSlug,
+      supabase,
+    });
+    return reconciled.status === "success"
+      ? { ...reconciled, value: correction.data.operationId }
+      : reconciled;
+  }
+  return {
+    ...(await finish(
+      context.data.leagueSlug,
+      lateWeek17
+        ? "The documented Week 17 correction and affected champion history were appended. Protected Week 18 facts were preserved."
+        : "The correction was recorded, and the affected scores and standings were updated.",
+    )),
+    value: correction.data.operationId,
+  };
 }
 
 export async function voidLiveEventAfterPostponementAction(
@@ -1177,14 +1551,35 @@ export async function voidLiveEventAfterPostponementAction(
     return mutationError("invalid event");
   }
 
+  const operationKey = stableOperationKey({
+    command: "RECORD_STAGE1_RESULT",
+    eventId: eventId.data,
+    result: "VOID_AFTER_POSTPONEMENT",
+  });
   const supabase = await createSupabaseServerClient();
+  if (
+    await operationAlreadyCompleted(
+      supabase,
+      "RECORD_STAGE1_RESULT",
+      operationKey,
+    )
+  ) {
+    return completed(
+      context.data.leagueSlug,
+      "That postponed event is already void and its stakes were returned.",
+      {
+        href: `/l/${context.data.leagueSlug}/matchup`,
+        label: "Review the current matchup",
+      },
+    );
+  }
   const result = await supabase
     .schema("api")
     .rpc("void_live_event_after_postponement_window", {
       p_event_id: eventId.data,
       p_reason:
         "No on-field official result was available within 48 hours of the original scheduled start.",
-      p_idempotency_key: idempotencyKey("void-live-event"),
+      p_idempotency_key: operationKey,
     });
   if (result.error) return mutationError(result.error.message);
   return finish(
@@ -1223,6 +1618,29 @@ export async function acceptStage1CardAction(
       status: "error",
       message: "The card draft is invalid. Refresh the slate and try again.",
     };
+  }
+
+  const operationKey = stableOperationKey({
+    command: "ACCEPT_STAGE1_CARD",
+    leagueSlug: context.data.leagueSlug,
+    positions: context.data.positions,
+  });
+  const supabase = await createSupabaseServerClient();
+  if (
+    await operationAlreadyCompleted(
+      supabase,
+      "ACCEPT_STAGE1_CARD",
+      operationKey,
+    )
+  ) {
+    return completed(
+      context.data.leagueSlug,
+      "Your original complete card is sealed; no pick was added twice.",
+      {
+        href: `/l/${context.data.leagueSlug}/card`,
+        label: "Open your accepted card",
+      },
+    );
   }
 
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
@@ -1302,13 +1720,26 @@ export async function acceptStage1CardAction(
     return { status: "error", message: validation.message };
   }
 
-  const supabase = await createSupabaseServerClient();
   const result = await supabase.schema("api").rpc("accept_stage1_card", {
     p_league_slug: context.data.leagueSlug,
     p_positions: context.data.positions as unknown as Json,
-    p_idempotency_key: idempotencyKey("card"),
+    p_idempotency_key: operationKey,
   });
-  if (result.error) return mutationError(result.error.message);
+  if (result.error) {
+    return reconcileCommandError({
+      commandName: "ACCEPT_STAGE1_CARD",
+      completedMessage:
+        "Your original complete card is sealed; no pick was added twice.",
+      errorMessage: result.error.message,
+      link: {
+        href: `/l/${context.data.leagueSlug}/card`,
+        label: "Open your accepted card",
+      },
+      operationKey,
+      slug: context.data.leagueSlug,
+      supabase,
+    });
+  }
   return finish(
     context.data.leagueSlug,
     `${context.data.positions.length} positions accepted together. Your complete card is now sealed.`,
@@ -1324,11 +1755,28 @@ export async function advanceStage1ClockAction(
   if (!context.success || !target.success)
     return mutationError("invalid clock");
 
+  const operationKey = stableOperationKey({
+    command: "ADVANCE_STAGE1_CLOCK",
+    leagueId: context.data.leagueId,
+    target: target.data,
+  });
   const supabase = await createSupabaseServerClient();
+  if (
+    await operationAlreadyCompleted(
+      supabase,
+      "ADVANCE_STAGE1_CLOCK",
+      operationKey,
+    )
+  ) {
+    return completed(
+      context.data.leagueSlug,
+      "The practice clock already reached that time.",
+    );
+  }
   const result = await supabase.schema("api").rpc("advance_simulated_time", {
     p_league_id: context.data.leagueId,
     p_target: target.data,
-    p_idempotency_key: idempotencyKey("clock"),
+    p_idempotency_key: operationKey,
   });
   if (result.error) return mutationError(result.error.message);
   return finish(
@@ -1350,6 +1798,29 @@ export async function publishSimulationFixtureWeekAction(
     .safeParse(formData.get("week"));
   if (!context.success || !week.success)
     return mutationError("invalid fixture week");
+  const operationKey = stableOperationKey({
+    command: "PUBLISH_SIMULATION_FIXTURE_WEEK",
+    leagueId: context.data.leagueId,
+    packId: canonicalSimulationFixturePackId,
+    week: week.data,
+  });
+  const supabase = await createSupabaseServerClient();
+  if (
+    await operationAlreadyCompleted(
+      supabase,
+      "PUBLISH_SIMULATION_FIXTURE_WEEK",
+      operationKey,
+    )
+  ) {
+    return completed(
+      context.data.leagueSlug,
+      `Practice/test Week ${week.data} is already available from the approved fixture.`,
+      {
+        href: `/l/${context.data.leagueSlug}/slate`,
+        label: `Open Week ${week.data}`,
+      },
+    );
+  }
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
@@ -1359,14 +1830,13 @@ export async function publishSimulationFixtureWeekAction(
   ) {
     return mutationError("A Simulation-league commissioner is required.");
   }
-  const supabase = await createSupabaseServerClient();
   const result = await supabase
     .schema("api")
     .rpc("publish_simulation_fixture_week", {
       p_league_id: context.data.leagueId,
       p_week: week.data,
       p_pack_id: canonicalSimulationFixturePackId,
-      p_idempotency_key: idempotencyKey(`publish-simulation-week-${week.data}`),
+      p_idempotency_key: operationKey,
     });
   if (result.error) return mutationError(result.error.message);
   return finish(
@@ -1388,6 +1858,30 @@ export async function applySimulationFixtureResultsAction(
     .safeParse({ week: formData.get("week"), step: formData.get("step") });
   if (!context.success || !parsed.success)
     return mutationError("invalid fixture result step");
+  const operationKey = stableOperationKey({
+    command: "APPLY_SIMULATION_FIXTURE_RESULTS",
+    leagueId: context.data.leagueId,
+    packId: canonicalSimulationFixturePackId,
+    step: parsed.data.step,
+    week: parsed.data.week,
+  });
+  const supabase = await createSupabaseServerClient();
+  if (
+    await operationAlreadyCompleted(
+      supabase,
+      "APPLY_SIMULATION_FIXTURE_RESULTS",
+      operationKey,
+    )
+  ) {
+    return completed(
+      context.data.leagueSlug,
+      `${parsed.data.step.toLowerCase()} results for practice/test Week ${parsed.data.week} are already recorded.`,
+      {
+        href: `/l/${context.data.leagueSlug}/matchup`,
+        label: "Review the current matchup",
+      },
+    );
+  }
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (
     !state ||
@@ -1397,7 +1891,6 @@ export async function applySimulationFixtureResultsAction(
   ) {
     return mutationError("A Simulation-league commissioner is required.");
   }
-  const supabase = await createSupabaseServerClient();
   const result = await supabase
     .schema("api")
     .rpc("apply_simulation_fixture_results", {
@@ -1405,9 +1898,7 @@ export async function applySimulationFixtureResultsAction(
       p_week: parsed.data.week,
       p_step: parsed.data.step,
       p_pack_id: canonicalSimulationFixturePackId,
-      p_idempotency_key: idempotencyKey(
-        `simulation-week-${parsed.data.week}-${parsed.data.step.toLowerCase()}`,
-      ),
+      p_idempotency_key: operationKey,
     });
   if (result.error) return mutationError(result.error.message);
   return finish(
@@ -1430,11 +1921,28 @@ export async function setStage1EventLiveAction(
   if (!context.success || !parsed.success)
     return mutationError("invalid event");
 
+  const operationKey = stableOperationKey({
+    actualStartedAt: parsed.data.actualStartedAt,
+    command: "SET_STAGE1_EVENT_LIVE",
+    eventId: parsed.data.eventId,
+  });
   const supabase = await createSupabaseServerClient();
+  if (
+    await operationAlreadyCompleted(
+      supabase,
+      "SET_STAGE1_EVENT_LIVE",
+      operationKey,
+    )
+  ) {
+    return completed(
+      context.data.leagueSlug,
+      "That kickoff is already confirmed and its picks can reveal.",
+    );
+  }
   const result = await supabase.schema("api").rpc("set_stage1_event_live", {
     p_event_id: parsed.data.eventId,
     p_actual_started_at: parsed.data.actualStartedAt,
-    p_idempotency_key: idempotencyKey("live"),
+    p_idempotency_key: operationKey,
   });
   if (result.error) return mutationError(result.error.message);
   return finish(
@@ -1452,10 +1960,27 @@ export async function lockStage1WeekAction(
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   const weekNumber = state?.week?.nflWeek ?? 1;
 
+  const operationKey = stableOperationKey({
+    command: "LOCK_STAGE1_WEEK",
+    leagueId: context.data.leagueId,
+    week: weekNumber,
+  });
   const supabase = await createSupabaseServerClient();
+  if (
+    await operationAlreadyCompleted(supabase, "LOCK_STAGE1_WEEK", operationKey)
+  ) {
+    return completed(
+      context.data.leagueSlug,
+      `Week ${weekNumber} cards are already locked.`,
+      {
+        href: `/l/${context.data.leagueSlug}/matchup`,
+        label: "Open the matchup",
+      },
+    );
+  }
   const result = await supabase.schema("api").rpc("lock_stage1_week", {
     p_league_id: context.data.leagueId,
-    p_idempotency_key: idempotencyKey("lock"),
+    p_idempotency_key: operationKey,
   });
   if (result.error) return mutationError(result.error.message);
   return finish(
@@ -1473,10 +1998,31 @@ export async function finalizeStage1WeekAction(
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   const weekNumber = state?.week?.nflWeek ?? 1;
 
+  const operationKey = stableOperationKey({
+    command: "FINALIZE_STAGE1_WEEK",
+    leagueId: context.data.leagueId,
+    week: weekNumber,
+  });
   const supabase = await createSupabaseServerClient();
+  if (
+    await operationAlreadyCompleted(
+      supabase,
+      "FINALIZE_STAGE1_WEEK",
+      operationKey,
+    )
+  ) {
+    return completed(
+      context.data.leagueSlug,
+      `Week ${weekNumber} is already final.`,
+      {
+        href: `/l/${context.data.leagueSlug}/matchup`,
+        label: "Open the final matchup",
+      },
+    );
+  }
   const result = await supabase.schema("api").rpc("finalize_stage1_week", {
     p_league_id: context.data.leagueId,
-    p_idempotency_key: idempotencyKey("finalize"),
+    p_idempotency_key: operationKey,
   });
   if (result.error) return mutationError(result.error.message);
   return finish(

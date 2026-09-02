@@ -24,6 +24,9 @@ function ContextFields({ state }: { state: Stage1CommissionerControlState }) {
     <>
       <input type="hidden" name="leagueId" value={state.league.id} />
       <input type="hidden" name="leagueSlug" value={state.league.slug} />
+      {state.week ? (
+        <input type="hidden" name="expectedWeek" value={state.week.nflWeek} />
+      ) : null}
     </>
   );
 }
@@ -90,22 +93,22 @@ export function SimulationCommissionerControls({
     state.league.memberCount % 2 === 0;
 
   return (
-    <div className="space-y-5" aria-label="Authoritative Simulation controls">
+    <div className="space-y-5" aria-label="Practice and test season controls">
       <section className="border-registry bg-registry/5 rounded-xl border p-5">
         <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-          Simulation · authoritative season
+          Practice/test · Simulation
         </p>
         <h2 className="mt-2 text-xl font-bold">Approved fixture operations</h2>
         <p className="text-graphite mt-2 text-sm leading-6">
-          These controls select the immutable 18-week fixture pack. They use the
-          same roster, card, receipt, settlement, standings, bracket,
-          correction, Week 18, and archive commands as Live.
+          This advanced mode uses a fixed 18-week data pack for rehearsal. It
+          follows the same roster, card, scoring, standings, playoff, Week 18,
+          and archive lifecycle as Live without calling the live provider.
         </p>
       </section>
 
       {!week ? (
         <section className="border-boundary bg-surface rounded-xl border p-5">
-          <h2 className="font-bold">Publish deterministic Week 1</h2>
+          <h2 className="font-bold">Make practice Week 1 available</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
             First advance to the reviewed quote time, then publish the fixed
             slate. No teams, odds, or results are accepted from this form.
@@ -125,7 +128,7 @@ export function SimulationCommissionerControls({
               disabled={publishing || !rosterValid}
               type="submit"
             >
-              Publish approved Week 1 fixture
+              Make reviewed Week 1 available
             </button>
           </form>
           <ActionFeedback state={clockState} />
@@ -157,9 +160,9 @@ export function SimulationCommissionerControls({
       {week && ["OPEN", "LOCKED", "PROVISIONAL"].includes(week.state) ? (
         <section className="border-boundary bg-surface rounded-xl border p-5">
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-            Simulation Week {week.nflWeek} · {week.state.toLowerCase()}
+            Practice/test Week {week.nflWeek} · {week.state.toLowerCase()}
           </p>
-          <h2 className="mt-2 font-bold">Clock, seal, and scripted evidence</h2>
+          <h2 className="mt-2 font-bold">Clock, cards, and practice results</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <form action={clockAction}>
               <ContextFields state={state} />
@@ -311,7 +314,7 @@ export function SimulationCommissionerControls({
 
       {week?.state === "FINAL" && week.nflWeek < 14 ? (
         <section className="border-boundary bg-surface rounded-xl border p-5">
-          <h2 className="font-bold">Publish Simulation Week {nextWeek}</h2>
+          <h2 className="font-bold">Make practice Week {nextWeek} available</h2>
           <form action={clockAction} className="mt-4">
             <ContextFields state={state} />
             <input
@@ -327,7 +330,7 @@ export function SimulationCommissionerControls({
             <ContextFields state={state} />
             <input type="hidden" name="week" value={nextWeek} />
             <button className={buttonClass} disabled={publishing} type="submit">
-              Publish approved Week {nextWeek} fixture
+              Make reviewed Week {nextWeek} available
             </button>
           </form>
           <ActionFeedback state={clockState} />
@@ -339,11 +342,11 @@ export function SimulationCommissionerControls({
       week.nflWeek === 14 &&
       state.league.lifecycle === "REGULAR" ? (
         <section className="border-boundary bg-surface rounded-xl border p-5">
-          <h2 className="font-bold">Publish approved qualification field</h2>
+          <h2 className="font-bold">Confirm the playoff field</h2>
           <form action={qualificationAction} className="mt-4">
             <ContextFields state={state} />
             <button className={buttonClass} disabled={qualifying} type="submit">
-              Publish playoff qualification
+              Confirm playoff qualification
             </button>
           </form>
           <ActionFeedback state={qualificationState} />
@@ -355,7 +358,7 @@ export function SimulationCommissionerControls({
       week.nflWeek < 17 &&
       state.league.lifecycle === "PLAYOFFS" ? (
         <section className="border-boundary bg-surface rounded-xl border p-5">
-          <h2 className="font-bold">Publish postseason Week {nextWeek}</h2>
+          <h2 className="font-bold">Make playoff Week {nextWeek} available</h2>
           <form action={clockAction} className="mt-4">
             <ContextFields state={state} />
             <input
@@ -371,7 +374,7 @@ export function SimulationCommissionerControls({
             <ContextFields state={state} />
             <input type="hidden" name="week" value={nextWeek} />
             <button className={buttonClass} disabled={publishing} type="submit">
-              Publish shared Week {nextWeek} round
+              Make Week {nextWeek} available
             </button>
           </form>
           <ActionFeedback state={clockState} />
@@ -402,7 +405,7 @@ export function SimulationCommissionerControls({
       week.nflWeek === 17 &&
       state.league.lifecycle === "CHAMPION_FINAL" ? (
         <section className="border-boundary bg-surface rounded-xl border p-5">
-          <h2 className="font-bold">Publish Week 18 exhibitions</h2>
+          <h2 className="font-bold">Make Week 18 exhibitions available</h2>
           <form action={clockAction} className="mt-4">
             <ContextFields state={state} />
             <input type="hidden" name="target" value={fixtureOpensAt(18)} />
@@ -414,7 +417,7 @@ export function SimulationCommissionerControls({
             <ContextFields state={state} />
             <input type="hidden" name="week" value="18" />
             <button className={buttonClass} disabled={publishing} type="submit">
-              Publish shared Week 18 exhibitions
+              Make Week 18 exhibitions available
             </button>
           </form>
           <ActionFeedback state={clockState} />

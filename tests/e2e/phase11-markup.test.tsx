@@ -55,44 +55,44 @@ function IdentityFixture() {
       >
         <span data-test-size="16">
           <RegisterMark
-            className="h-[16px] w-[16px]"
             label="Sunday Ledger Register at 16 pixels"
             master="micro"
+            style={{ height: 16, minHeight: 16, minWidth: 16, width: 16 }}
           />
         </span>
         <span data-test-size="20">
           <RegisterMark
-            className="h-[20px] w-[20px]"
             label="Sunday Ledger Register at 20 pixels"
             master="micro"
+            style={{ height: 20, minHeight: 20, minWidth: 20, width: 20 }}
           />
         </span>
         <span data-test-size="24">
           <RegisterMark
-            className="h-[24px] w-[24px]"
             label="Sunday Ledger Register at 24 pixels"
             master="compact"
+            style={{ height: 24, minHeight: 24, minWidth: 24, width: 24 }}
           />
         </span>
         <span data-test-size="32">
           <RegisterMark
-            className="h-[32px] w-[32px]"
             label="Sunday Ledger Register at 32 pixels"
             master="compact"
+            style={{ height: 32, minHeight: 32, minWidth: 32, width: 32 }}
           />
         </span>
         <span data-test-size="48">
           <RegisterMark
-            className="h-[48px] w-[48px]"
             label="Sunday Ledger Register at 48 pixels"
             master="standard"
+            style={{ height: 48, minHeight: 48, minWidth: 48, width: 48 }}
           />
         </span>
         <span data-test-size="64">
           <RegisterMark
-            className="h-[64px] w-[64px]"
             label="Sunday Ledger Register at 64 pixels"
             master="standard"
+            style={{ height: 64, minHeight: 64, minWidth: 64, width: 64 }}
           />
         </span>
       </section>

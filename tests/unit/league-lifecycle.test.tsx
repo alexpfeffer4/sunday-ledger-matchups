@@ -40,9 +40,16 @@ describe("league lifecycle experience", () => {
 
     expect(screen.getByLabelText("League name")).toBeVisible();
     expect(screen.getByRole("radio", { name: /Live/ })).toBeChecked();
+    fireEvent.click(
+      screen.getByText("Advanced · Practice/test season", {
+        selector: "summary",
+      }),
+    );
     expect(screen.getByRole("radio", { name: /Simulation/ })).toBeVisible();
-    expect(screen.getByText(/mode is frozen/i)).toBeVisible();
-    expect(screen.queryByText("Practice season")).not.toBeInTheDocument();
+    expect(screen.getByText(/does not use live provider data/i)).toBeVisible();
+    expect(
+      screen.getByText(/season type cannot change after creation/i),
+    ).toBeVisible();
   });
 
   it("offers guarded commissioner lifecycle controls", () => {

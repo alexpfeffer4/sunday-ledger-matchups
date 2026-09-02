@@ -69,7 +69,9 @@ export function InvitePreviewCard({
             <dt className="text-muted">Season</dt>
             <dd className="mt-1 font-semibold">
               NFL {preview.nfl_year} ·{" "}
-              {preview.mode === "LIVE" ? "Live season" : "Simulation season"}
+              {preview.mode === "LIVE"
+                ? "Live season"
+                : "Practice/test · Simulation"}
             </dd>
           </div>
           <div>

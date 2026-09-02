@@ -323,6 +323,48 @@ describe("The Odds API normalization", () => {
     expect(result.events[0].awayScore).toBeNull();
   });
 
+  it("fails closed on a network loss and permits a reviewed fixture retry", async () => {
+    const completed = {
+      id: "event-buf-nyj",
+      sport_key: "americanfootball_nfl",
+      commence_time: "2026-09-13T17:00:00.000Z",
+      home_team: "New York Jets",
+      away_team: "Buffalo Bills",
+      completed: true,
+      scores: [
+        { name: "New York Jets", score: "20" },
+        { name: "Buffalo Bills", score: "27" },
+      ],
+      last_update: "2026-09-13T20:12:30.000Z",
+    };
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("fixture connection lost"))
+      .mockResolvedValueOnce(new Response(JSON.stringify([completed])));
+
+    await expect(
+      fetchNflScores({
+        apiKey: "test-key",
+        eventIds: ["event-buf-nyj"],
+        fetchedAt: observedAt,
+        fetchImpl,
+      }),
+    ).rejects.toThrow("failed before a response");
+
+    const recovered = await fetchNflScores({
+      apiKey: "test-key",
+      eventIds: ["event-buf-nyj"],
+      fetchedAt: observedAt,
+      fetchImpl,
+    });
+    expect(recovered.events[0]).toMatchObject({
+      awayScore: 27,
+      completed: true,
+      homeScore: 20,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
   it("fails closed on partial scores and incomplete score slates", async () => {
     expect(() =>
       normalizeTheOddsApiScores(

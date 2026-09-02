@@ -101,7 +101,7 @@ export function RulesetAuditDetails({
               ? "Example Season · read-only"
               : presentation.mode === "LIVE"
                 ? "Live"
-                : "Simulation"}
+                : "Practice/test · Simulation"}
           </dd>
         </div>
         <div>

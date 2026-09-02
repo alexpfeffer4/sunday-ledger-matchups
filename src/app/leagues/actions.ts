@@ -118,7 +118,7 @@ export async function createLeagueAction(
     revalidatePath("/leagues");
     return {
       status: "success",
-      message: `${parsed.data.mode === "LIVE" ? "Live" : "Simulation"} league created. Invite members, then prepare Week 1 from the Commissioner page.`,
+      message: `${parsed.data.mode === "LIVE" ? "Live season" : "Practice/test · Simulation"} league created. Invite members, then prepare Week 1 from the Commissioner page.`,
       href: `/l/${result.data[0].league_slug}/commissioner`,
       hrefLabel: "Open commissioner setup",
     };

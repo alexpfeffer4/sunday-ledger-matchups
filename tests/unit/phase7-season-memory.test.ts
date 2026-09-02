@@ -145,7 +145,7 @@ describe("Phase 7 deterministic season memory", () => {
 
 describe("Phase 7 read-model authorization and lineage contract", () => {
   const sql = readFileSync(
-    "supabase/migrations/20260830153000_phase7_weekly_close_read_model.sql",
+    "supabase/migrations/20260830154215_phase7_weekly_close_read_model.sql",
     "utf8",
   );
 

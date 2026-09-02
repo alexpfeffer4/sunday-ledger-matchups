@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, type FormEvent } from "react";
 import {
   createLeagueInviteAction,
   importLiveOddsAction,
@@ -46,8 +46,28 @@ function ContextFields({ state }: { state: Stage1CommissionerControlState }) {
     <>
       <input type="hidden" name="leagueId" value={state.league.id} />
       <input type="hidden" name="leagueSlug" value={state.league.slug} />
+      {state.week ? (
+        <input type="hidden" name="expectedWeek" value={state.week.nflWeek} />
+      ) : null}
     </>
   );
+}
+
+function prepareInviteOperation(
+  event: FormEvent<HTMLFormElement>,
+  leagueId: string,
+) {
+  const field = event.currentTarget.elements.namedItem("operationId");
+  if (!(field instanceof HTMLInputElement)) return;
+  const storageKey = `sunday-ledger:invite-operation:v1:${leagueId}`;
+  try {
+    const stored = localStorage.getItem(storageKey);
+    const operationId = stored ?? crypto.randomUUID();
+    localStorage.setItem(storageKey, operationId);
+    field.value = operationId;
+  } catch {
+    field.value ||= crypto.randomUUID();
+  }
 }
 
 const buttonClass =
@@ -124,11 +144,11 @@ function commissionerNextStep({
   if (!state.week) {
     return {
       detail:
-        "Advance the Simulation clock to the reviewed quote time, then publish the approved deterministic Week 1 slate.",
+        "Advance the practice clock, then make the reviewed Week 1 slate available.",
       prerequisites: rosterIsValid
-        ? "Authoritative Simulation Week 1 is available"
+        ? "Practice/test Week 1 is ready"
         : `${state.league.memberCount} members · even 4–16 required`,
-      title: "Publish Simulation Week 1",
+      title: "Make practice Week 1 available",
     };
   }
 
@@ -231,6 +251,17 @@ export function Stage1CommissionerControls({
   });
   const rosterIsValid = isRosterValid(state);
 
+  useEffect(() => {
+    if (inviteState.status !== "success") return;
+    try {
+      localStorage.removeItem(
+        `sunday-ledger:invite-operation:v1:${state.league.id}`,
+      );
+    } catch {
+      // A fresh operation still works when browser storage is unavailable.
+    }
+  }, [inviteState.status, inviteState.value, state.league.id]);
+
   return (
     <div className="space-y-5">
       <section className="border-registry bg-registry/5 rounded-xl border p-5 shadow-[var(--shadow-card)]">
@@ -300,8 +331,13 @@ export function Stage1CommissionerControls({
         </div>
 
         {state.league.lifecycle === "DRAFT" ? (
-          <form action={inviteAction} className="mt-5">
+          <form
+            action={inviteAction}
+            className="mt-5"
+            onSubmit={(event) => prepareInviteOperation(event, state.league.id)}
+          >
             <ContextFields state={state} />
+            <input name="operationId" type="hidden" />
             <p className="text-sm font-semibold">Default invitation</p>
             <p className="text-muted mt-1 text-xs leading-5">
               Expires in 7 days · up to{" "}

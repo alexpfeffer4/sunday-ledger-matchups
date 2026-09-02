@@ -86,6 +86,20 @@ test("public and authentication identity remains responsive", async ({
   }
 });
 
+test("client-side route changes move focus to the new page heading", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.waitForFunction(
+    () => document.documentElement.dataset.routeFocusReady === "true",
+  );
+  await page.getByRole("link", { name: "Rules", exact: true }).last().click();
+
+  const heading = page.getByRole("heading", { name: "Season 1 rules" });
+  await expect(heading).toBeVisible();
+  await expect(heading).toBeFocused();
+});
+
 test("shell, invitation, receipt cue, and route states preserve identity hierarchy", async ({
   page,
 }) => {
@@ -199,4 +213,13 @@ test("framework metadata exposes the approved platform and social assets", async
   ]) {
     expect((await request.get(path)).ok(), `${path} should load`).toBe(true);
   }
+
+  const icon = await (await request.get("/icon.svg")).text();
+  expect(icon).toContain("Sunday Ledger Register icon");
+  expect(icon).not.toMatch(/proposed|not owner approved|not for production/i);
+
+  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
+    "content",
+    /virtual credits.*no cash wagering/i,
+  );
 });

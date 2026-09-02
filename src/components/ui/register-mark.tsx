@@ -49,10 +49,12 @@ export function RegisterMark({
   className,
   label,
   master,
+  style,
 }: {
   className?: string;
   label?: string;
   master: RegisterMaster;
+  style?: CSSProperties;
 }) {
   const vector = registerVectors[master];
 
@@ -67,6 +69,7 @@ export function RegisterMark({
       dangerouslySetInnerHTML={{ __html: vector.inner }}
       fill="none"
       focusable="false"
+      style={style}
       viewBox={vector.viewBox}
       xmlns="http://www.w3.org/2000/svg"
     />

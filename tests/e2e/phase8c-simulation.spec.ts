@@ -34,7 +34,8 @@ for (const viewport of [
 
     await expect(page.getByText(/Simulation/).first()).toBeVisible();
     await expect(page.getByText("Final").first()).toBeVisible();
-    await expect(page.getByText(/Practice|Example Season/)).toHaveCount(0);
+    await expect(page.getByText(/Practice\/test/).first()).toBeVisible();
+    await expect(page.getByText(/Example Season/)).toHaveCount(0);
     await expect(page.getByText(/SECRET FUTURE OPPONENT PICK/)).toHaveCount(0);
     const focusTarget = page.locator("a, button, summary").first();
     await focusTarget.focus();
