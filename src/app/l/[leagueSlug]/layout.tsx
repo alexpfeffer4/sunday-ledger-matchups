@@ -5,6 +5,7 @@ import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stag
 import { getSeasonArchive } from "@/application/queries/get-season-archive";
 import { LeagueShell } from "@/components/league/league-shell";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
+import { formatCredits } from "@/domain/odds/american";
 
 function shellPhaseLabel(state: Stage1StateDto): string {
   if (state.league.lifecycle === "CHAMPION_FINAL") return "Champion final";
@@ -117,7 +118,7 @@ export default async function LeagueLayout({
         }
         cardStatusLabel={
           live.ownerCard
-            ? `${live.ownerCard.allocatedCredits} / 1,000 used`
+            ? `${formatCredits(live.ownerCard.allocatedCredits)} / 1,000 used`
             : ["PLAYOFFS", "CHAMPION_FINAL"].includes(live.league.lifecycle)
               ? live.league.lifecycle === "CHAMPION_FINAL"
                 ? "Champion final · Week 18 next"

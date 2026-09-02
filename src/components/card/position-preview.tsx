@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from "react";
 import type { SlateOutcomeDto } from "@/application/queries/league-dtos";
-import { formatCenticredits, profitCenticredits } from "@/domain/odds/american";
+import {
+  formatCenticredits,
+  formatCredits,
+  profitCenticredits,
+} from "@/domain/odds/american";
 
 function formatOdds(odds: number): string {
   return odds > 0 ? `+${odds}` : `−${Math.abs(odds)}`;
@@ -15,11 +19,11 @@ export function PositionPreview({ outcome }: { outcome: SlateOutcomeDto }) {
     if (stake < 50) return "The minimum pick is 50 credits.";
     if (stake > 350) return "Only 350 credits are left on this practice card.";
     if (stake > outcome.maximumStakeCredits) {
-      return `At ${formatOdds(outcome.americanOdds)}, this pick may use at most ${outcome.maximumStakeCredits} credits.`;
+      return `At ${formatOdds(outcome.americanOdds)}, this pick may use at most ${formatCredits(outcome.maximumStakeCredits)} credits.`;
     }
     const remainder = 350 - stake;
     if (remainder > 0 && remainder < 50) {
-      return `${stake} would leave ${remainder} credits, below the 50-credit minimum.`;
+      return `${formatCredits(stake)} would leave ${formatCredits(remainder)} credits, below the 50-credit minimum.`;
     }
     return null;
   }, [outcome, stake]);
@@ -61,7 +65,7 @@ export function PositionPreview({ outcome }: { outcome: SlateOutcomeDto }) {
         </div>
         <p className="text-graphite mt-2 text-sm">
           At {formatOdds(outcome.americanOdds)}, this pick may use up to{" "}
-          {outcome.maximumStakeCredits.toLocaleString()} credits.
+          {formatCredits(outcome.maximumStakeCredits)} credits.
         </p>
         {validation ? (
           <p className="border-negative text-negative mt-3 border-l-2 pl-3 text-sm font-medium">
@@ -76,7 +80,7 @@ export function PositionPreview({ outcome }: { outcome: SlateOutcomeDto }) {
             Risk
           </p>
           <p className="mt-1 font-mono font-semibold">
-            {validation ? "—" : stake}
+            {validation ? "—" : formatCredits(stake)}
           </p>
         </div>
         <div>
@@ -99,8 +103,9 @@ export function PositionPreview({ outcome }: { outcome: SlateOutcomeDto }) {
 
       <div className="bg-subtle mt-5 rounded-lg p-4 text-sm">
         <p className="font-semibold">
-          After this pick: {validation ? "—" : 1_000 - (350 - stake)} used ·{" "}
-          {validation ? "—" : 350 - stake} left
+          After this pick:{" "}
+          {validation ? "—" : formatCredits(1_000 - (350 - stake))} used ·{" "}
+          {validation ? "—" : formatCredits(350 - stake)} left
         </p>
         <p className="text-graphite mt-1">
           Sealed picks cannot be changed or canceled.

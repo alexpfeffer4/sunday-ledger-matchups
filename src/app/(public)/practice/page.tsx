@@ -4,11 +4,13 @@ import { InteractiveWeekDemo } from "@/components/demo/interactive-week-demo";
 import { ButtonLink } from "@/components/ui/button-link";
 import { BrandLockup } from "@/components/ui/register-mark";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { formatCredits } from "@/domain/odds/american";
 import { pocSeason1Ruleset } from "@/rulesets/poc-season-1";
 
 export function generateMetadata(): Metadata {
-  const allocation =
-    pocSeason1Ruleset.card.weeklyAllocationCredits.toLocaleString();
+  const allocation = formatCredits(
+    pocSeason1Ruleset.card.weeklyAllocationCredits,
+  );
 
   return {
     title: "Practice Week",
@@ -17,8 +19,9 @@ export function generateMetadata(): Metadata {
 }
 
 export default function PracticePage() {
-  const allocation =
-    pocSeason1Ruleset.card.weeklyAllocationCredits.toLocaleString();
+  const allocation = formatCredits(
+    pocSeason1Ruleset.card.weeklyAllocationCredits,
+  );
 
   return (
     <main className="bg-canvas min-h-screen pb-28 lg:pb-12">

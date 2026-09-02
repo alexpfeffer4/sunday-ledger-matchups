@@ -28,7 +28,7 @@ import { AllocationMeter } from "@/components/matchup/allocation-meter";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { validateDraftCard } from "@/domain/cards/validate-card-draft";
 import { decideRegularSeasonMatchup } from "@/domain/matchups/decide";
-import { formatCenticredits } from "@/domain/odds/american";
+import { formatCenticredits, formatCredits } from "@/domain/odds/american";
 import { weeklyScore } from "@/domain/settlement/settle";
 import {
   cardCompliance,
@@ -129,7 +129,7 @@ function PracticeReceipts({
                 </p>
               </div>
               <p className="shrink-0 font-mono text-sm">
-                {position.stakeCredits} @{" "}
+                {formatCredits(position.stakeCredits)} @{" "}
                 {formatAmericanOdds(position.americanOdds)}
               </p>
             </div>
@@ -175,7 +175,7 @@ function SettledCard({
               </span>
             </div>
             <p className="text-muted mt-1 text-xs">
-              Staked {position.stakeCredits} @{" "}
+              Staked {formatCredits(position.stakeCredits)} @{" "}
               {formatAmericanOdds(position.americanOdds)} · returned{" "}
               {formatCenticredits(
                 position.settlement.returnedCenticredits ?? 0n,
@@ -643,7 +643,8 @@ export function InteractiveWeekDemo() {
                       </p>
                     </div>
                     <p className="shrink-0 font-mono text-sm">
-                      {item.stakeCredits} @ {formatAmericanOdds(currentOdds)}
+                      {formatCredits(item.stakeCredits)} @{" "}
+                      {formatAmericanOdds(currentOdds)}
                     </p>
                   </div>
                   {updated ? (
@@ -677,8 +678,8 @@ export function InteractiveWeekDemo() {
               Card total
             </p>
             <p className="mt-2 font-mono text-3xl font-bold">
-              {allocatedCredits.toLocaleString()} /{" "}
-              {pocSeason1Ruleset.card.weeklyAllocationCredits.toLocaleString()}
+              {formatCredits(allocatedCredits)} /{" "}
+              {formatCredits(pocSeason1Ruleset.card.weeklyAllocationCredits)}
             </p>
             <p className="text-graphite mt-2 text-sm">
               {drafts.length} {drafts.length === 1 ? "pick" : "picks"}
@@ -739,7 +740,7 @@ export function InteractiveWeekDemo() {
             <p className="text-graphite mt-4 text-sm leading-6">
               Choose an outcome, enter a whole-credit stake, and add the pick.
               Use exactly{" "}
-              {pocSeason1Ruleset.card.weeklyAllocationCredits.toLocaleString()}{" "}
+              {formatCredits(pocSeason1Ruleset.card.weeklyAllocationCredits)}{" "}
               credits before review.
             </p>
             {feedback ? (
@@ -827,7 +828,7 @@ export function InteractiveWeekDemo() {
                         />
                         {selected ? (
                           <p className="text-graphite mt-2 text-xs font-semibold">
-                            {selected.stakeCredits.toLocaleString()} credits in
+                            {formatCredits(selected.stakeCredits)} credits in
                             your draft
                           </p>
                         ) : null}
@@ -885,7 +886,8 @@ export function InteractiveWeekDemo() {
                             {opportunity.displayLine}
                           </p>
                           <p className="text-muted mt-1 font-mono text-xs">
-                            {item.stakeCredits} @ {formatAmericanOdds(odds)}
+                            {formatCredits(item.stakeCredits)} @{" "}
+                            {formatAmericanOdds(odds)}
                           </p>
                         </div>
                         <div className="flex flex-col items-end">
@@ -913,10 +915,10 @@ export function InteractiveWeekDemo() {
               </div>
             )}
             <p className="border-boundary text-graphite mt-4 border-t pt-4 text-sm font-semibold">
-              {allocatedCredits.toLocaleString()} allocated ·{" "}
+              {formatCredits(allocatedCredits)} allocated ·{" "}
               {remainingCredits >= 0
-                ? `${remainingCredits.toLocaleString()} remaining`
-                : `${Math.abs(remainingCredits).toLocaleString()} over`}
+                ? `${formatCredits(remainingCredits)} remaining`
+                : `${formatCredits(Math.abs(remainingCredits))} over`}
             </p>
           </section>
 
@@ -955,7 +957,7 @@ export function InteractiveWeekDemo() {
         helper={
           editorMaximum === null
             ? "Choose an outcome to see its limit."
-            : `This pick may use up to ${editorMaximum.toLocaleString()} credits under the current Ruleset.`
+            : `This pick may use up to ${formatCredits(editorMaximum)} credits under the current Ruleset.`
         }
         maximumStakeCredits={editorMaximum}
         minimumStakeCredits={pocSeason1Ruleset.card.minimumStakeCredits}

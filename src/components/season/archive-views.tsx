@@ -15,6 +15,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { AuditDetails } from "@/components/ui/audit-details";
 import { LeagueScoreboard } from "@/components/matchup/league-scoreboard";
 import { ReceiptPanel } from "@/components/ui/receipt-panel";
+import { formatCredits } from "@/domain/odds/american";
 
 function score(centicredits: number): string {
   return (centicredits / 100).toLocaleString("en-US", {
@@ -334,18 +335,10 @@ export function SeasonArchiveMyCard({
             {corrected ? "Corrected · Archived" : "Archive final"}
           </StatusBadge>
         }
-        summary={`Week ${latest.game.week} allocated ${latest.card.allocatedCredits.toLocaleString("en-US")} credits and returned ${score(latest.card.scoreCenticredits)}. The whole card remains immutable.`}
+        summary={`Week ${latest.game.week} allocated ${formatCredits(latest.card.allocatedCredits)} credits and returned ${score(latest.card.scoreCenticredits)}. The whole card remains immutable.`}
         title={`Week ${latest.game.week} archived card`}
       >
-        <dl>
-          <div>
-            <dt className="text-muted text-xs uppercase">Allocation</dt>
-            <dd className="mt-1 font-mono font-semibold">
-              {latest.card.allocatedCredits.toLocaleString("en-US")} / 1,000
-            </dd>
-          </div>
-        </dl>
-        <ol className="border-boundary mt-5 divide-y border-y">
+        <ol className="border-boundary divide-y border-y">
           {latest.card.receipts.map((receipt) => (
             <li
               className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto]"
@@ -358,7 +351,7 @@ export function SeasonArchiveMyCard({
                 <p className="text-muted mt-1 text-xs break-words">
                   Line {archiveLine(receipt.lineMilli, receipt.marketType)} ·
                   Odds {archiveOdds(receipt.americanOdds)} · Stake{" "}
-                  {receipt.stakeCredits}
+                  {formatCredits(receipt.stakeCredits)}
                 </p>
               </div>
               <p className="text-sm font-semibold sm:text-right">

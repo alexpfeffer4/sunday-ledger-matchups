@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatCenticredits,
+  formatCredits,
   profitCenticredits,
   returnedCenticredits,
 } from "@/domain/odds/american";
@@ -33,5 +34,12 @@ describe("American odds arithmetic", () => {
     expect(formatCenticredits(154_000n)).toBe("1,540");
     expect(formatCenticredits(154_055n)).toBe("1,540.55");
     expect(formatCenticredits(154_000n, true)).toBe("1,540.00");
+  });
+
+  it("formats whole credits consistently", () => {
+    expect(formatCredits(0)).toBe("0");
+    expect(formatCredits(1_000)).toBe("1,000");
+    expect(formatCredits(12_500)).toBe("12,500");
+    expect(() => formatCredits(1.5)).toThrow("safe whole number");
   });
 });

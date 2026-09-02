@@ -25,7 +25,7 @@ import { LeagueScoreboard } from "@/components/matchup/league-scoreboard";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AuditDetails } from "@/components/ui/audit-details";
 import { ReceiptPanel } from "@/components/ui/receipt-panel";
-import { formatCenticredits } from "@/domain/odds/american";
+import { formatCenticredits, formatCredits } from "@/domain/odds/american";
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -223,7 +223,7 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
           }
         : {
             href: `/l/${state.league.slug}/slate`,
-            label: `Use remaining ${state.ownerCard.remainingCredits}`,
+            label: `Use remaining ${formatCredits(state.ownerCard.remainingCredits)}`,
           }
       : state.week.state === "FINAL"
         ? {
@@ -284,7 +284,7 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
                 <p className="text-registry mt-3 text-sm font-semibold">
                   {result
                     ? formatScore(result.selfPointsForCenticredits)
-                    : `${state.ownerCard.allocatedCredits} used · ${state.ownerCard.remainingCredits} left`}
+                    : `${formatCredits(state.ownerCard.allocatedCredits)} used · ${formatCredits(state.ownerCard.remainingCredits)} left`}
                 </p>
               </div>
               <div className="pt-7 text-center">
@@ -589,7 +589,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
                     <div>
                       <dt className="text-muted">Stake</dt>
                       <dd className="mt-1 font-mono font-semibold">
-                        {position.stakeCredits}
+                        {formatCredits(position.stakeCredits)}
                       </dd>
                     </div>
                     <div className="sm:col-span-2">
@@ -631,30 +631,12 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
             Card total
           </p>
           <p className="mt-2 font-mono text-2xl font-bold">
-            {state.ownerCard.allocatedCredits} / 1,000
+            {formatCredits(state.ownerCard.allocatedCredits)} / 1,000
           </p>
           <p className="text-muted mt-2 text-sm">
-            {state.ownerCard.remainingCredits} left · sealed picks cannot be
-            changed.
+            {formatCredits(state.ownerCard.remainingCredits)} left · sealed
+            picks cannot be changed.
           </p>
-          <dl className="border-boundary mt-4 space-y-3 border-t pt-4 text-sm">
-            <div className="flex justify-between gap-3">
-              <dt>Allocation</dt>
-              <dd className="font-semibold">
-                {state.ownerCard.remainingCredits === 0
-                  ? "Reconciled"
-                  : "Incomplete"}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt>Acceptance</dt>
-              <dd className="font-semibold">Whole card</dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt>Receipt state</dt>
-              <dd className="font-semibold">Immutable</dd>
-            </div>
-          </dl>
         </aside>
       </div>
     </PageFrame>
@@ -696,7 +678,9 @@ export function Stage1LiveView({ state }: { state: Stage1StateDto }) {
                 </p>
                 <div className="mt-2 flex justify-between gap-4">
                   <p className="font-semibold">{position.proposition}</p>
-                  <p className="font-mono">{position.stakeCredits}</p>
+                  <p className="font-mono">
+                    {formatCredits(position.stakeCredits)}
+                  </p>
                 </div>
               </article>
             ))}
@@ -1311,7 +1295,7 @@ export function Stage1ReceiptView({
                 : "Sealed"}
           </StatusBadge>
         }
-        summary={`${receipt.proposition} at ${formatOdds(receipt.americanOdds)} for ${receipt.stakeCredits} credits. ${result === "Pending" ? "The official result is pending." : `Official result: ${result}.`}`}
+        summary={`${receipt.proposition} at ${formatOdds(receipt.americanOdds)} for ${formatCredits(receipt.stakeCredits)} credits. ${result === "Pending" ? "The official result is pending." : `Official result: ${result}.`}`}
         audit={
           <AuditDetails
             className="border-b-0 pb-0"
@@ -1356,7 +1340,7 @@ export function Stage1ReceiptView({
           <div>
             <dt className="text-muted text-xs uppercase">Stake</dt>
             <dd className="mt-1 font-mono font-semibold">
-              {receipt.stakeCredits}
+              {formatCredits(receipt.stakeCredits)}
             </dd>
           </div>
           <div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CardPositionDto } from "@/application/queries/league-dtos";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { formatCredits } from "@/domain/odds/american";
 
 function formatOdds(odds: number): string {
   return odds > 0 ? `+${odds}` : `−${Math.abs(odds)}`;
@@ -29,7 +30,7 @@ export function CardPositionRow({
         <div>
           <dt className="text-muted text-xs">Stake</dt>
           <dd className="mt-1 font-mono text-sm font-semibold">
-            {position.stakeCredits} credits
+            {formatCredits(position.stakeCredits)} credits
           </dd>
         </div>
         <div>

@@ -6,6 +6,7 @@ import {
   type PositionValidationCode,
   type ProposedCardPosition,
 } from "@/domain/cards/validate-position";
+import { formatCredits } from "@/domain/odds/american";
 import type { SeasonRuleset } from "@/rulesets/schema";
 
 export type DraftCardValidation =
@@ -67,7 +68,7 @@ export function validateDraftCard(params: {
     return {
       accepted: false,
       code: "INCOMPLETE_CARD",
-      message: `Allocate exactly ${params.ruleset.card.weeklyAllocationCredits.toLocaleString()} credits before sealing the card.`,
+      message: `Allocate exactly ${formatCredits(params.ruleset.card.weeklyAllocationCredits)} credits before sealing the card.`,
     };
   }
 

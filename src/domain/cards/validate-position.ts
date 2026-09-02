@@ -2,6 +2,7 @@ import {
   canCompleteCard,
   type CompletionOpportunity,
 } from "@/domain/cards/completion";
+import { formatCredits } from "@/domain/odds/american";
 import type { MarketType, SeasonRuleset } from "@/rulesets/schema";
 
 export type AcceptedCardPosition = {
@@ -88,7 +89,7 @@ export function validateProposedPosition(params: {
     return {
       accepted: false,
       code: "BELOW_MINIMUM",
-      message: `This pick must use at least ${minimumStakeCredits} credits.`,
+      message: `This pick must use at least ${formatCredits(minimumStakeCredits)} credits.`,
     };
   }
 
@@ -101,7 +102,7 @@ export function validateProposedPosition(params: {
       accepted: false,
       code: "ABOVE_POSITION_CAP",
       maximumStakeCredits,
-      message: `At these odds, this pick may use at most ${maximumStakeCredits} credits.`,
+      message: `At these odds, this pick may use at most ${formatCredits(maximumStakeCredits)} credits.`,
     };
   }
 
@@ -130,7 +131,7 @@ export function validateProposedPosition(params: {
     return {
       accepted: false,
       code: "OVER_ALLOCATION",
-      message: `This pick exceeds the ${weeklyAllocationCredits}-credit weekly allocation.`,
+      message: `This pick exceeds the ${formatCredits(weeklyAllocationCredits)}-credit weekly allocation.`,
     };
   }
 
@@ -159,8 +160,8 @@ export function validateProposedPosition(params: {
       code: "NO_LEGAL_COMPLETION",
       message:
         remainingCredits > 0 && remainingCredits < minimumStakeCredits
-          ? `${proposedPosition.stakeCredits} would leave ${remainingCredits} credits, below the ${minimumStakeCredits}-credit minimum.`
-          : `This pick would leave no way to use all ${weeklyAllocationCredits.toLocaleString()} credits.`,
+          ? `${formatCredits(proposedPosition.stakeCredits)} would leave ${formatCredits(remainingCredits)} credits, below the ${formatCredits(minimumStakeCredits)}-credit minimum.`
+          : `This pick would leave no way to use all ${formatCredits(weeklyAllocationCredits)} credits.`,
     };
   }
 
