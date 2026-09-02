@@ -4,8 +4,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 function findRouteTarget() {
-  return document.querySelector<HTMLElement>(
-    "[data-route-heading], main h1, main",
+  return (
+    document.querySelector<HTMLElement>("[data-route-heading]") ??
+    document.querySelector<HTMLElement>("main h1") ??
+    document.querySelector<HTMLElement>("main")
   );
 }
 
