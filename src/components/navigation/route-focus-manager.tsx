@@ -9,9 +9,9 @@ export function RouteFocusManager() {
 
   useEffect(() => {
     if (pathname === previousPathname.current) return;
-    previousPathname.current = pathname;
 
     const frame = window.requestAnimationFrame(() => {
+      previousPathname.current = pathname;
       const target = document.querySelector<HTMLElement>(
         "[data-route-heading], main h1, main",
       );
