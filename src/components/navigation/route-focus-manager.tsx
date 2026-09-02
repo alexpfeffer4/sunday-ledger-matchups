@@ -3,26 +3,107 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
+function findRouteTarget() {
+  return document.querySelector<HTMLElement>(
+    "[data-route-heading], main h1, main",
+  );
+}
+
+function focusRouteTarget(target: HTMLElement) {
+  if (!target.hasAttribute("tabindex")) target.tabIndex = -1;
+  target.focus();
+}
+
 export function RouteFocusManager() {
   const pathname = usePathname();
   const previousPathname = useRef(pathname);
   const previousTarget = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    let navigationFrame: number | undefined;
     document.documentElement.dataset.routeFocusReady = "true";
+
+    const waitForDestination = (
+      destinationPathname: string,
+      departingTarget: HTMLElement | null,
+      departingText: string | null | undefined,
+    ) => {
+      if (navigationFrame !== undefined)
+        window.cancelAnimationFrame(navigationFrame);
+      const deadline = window.performance.now() + 3_000;
+
+      const check = () => {
+        navigationFrame = undefined;
+        const target = findRouteTarget();
+        const destinationReady =
+          window.location.pathname === destinationPathname &&
+          target &&
+          (target !== departingTarget || target.textContent !== departingText);
+
+        if (destinationReady) {
+          previousPathname.current = destinationPathname;
+          previousTarget.current = target;
+          focusRouteTarget(target);
+          return;
+        }
+        if (window.performance.now() < deadline)
+          navigationFrame = window.requestAnimationFrame(check);
+      };
+
+      navigationFrame = window.requestAnimationFrame(check);
+    };
+
+    const handleClick = (event: MouseEvent) => {
+      if (
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey ||
+        !(event.target instanceof Element)
+      )
+        return;
+
+      const anchor = event.target.closest<HTMLAnchorElement>("a[href]");
+      if (!anchor || anchor.download || anchor.target === "_blank") return;
+      const destination = new URL(anchor.href, window.location.href);
+      if (
+        destination.origin !== window.location.origin ||
+        destination.pathname === window.location.pathname
+      )
+        return;
+
+      const departingTarget = findRouteTarget();
+      waitForDestination(
+        destination.pathname,
+        departingTarget,
+        departingTarget?.textContent,
+      );
+    };
+
+    const handlePopState = () => {
+      const departingTarget = findRouteTarget();
+      waitForDestination(
+        window.location.pathname,
+        departingTarget,
+        departingTarget?.textContent,
+      );
+    };
+
+    document.addEventListener("click", handleClick, true);
+    window.addEventListener("popstate", handlePopState);
     return () => {
+      document.removeEventListener("click", handleClick, true);
+      window.removeEventListener("popstate", handlePopState);
+      if (navigationFrame !== undefined)
+        window.cancelAnimationFrame(navigationFrame);
       delete document.documentElement.dataset.routeFocusReady;
     };
   }, []);
 
   useEffect(() => {
-    const findTarget = () =>
-      document.querySelector<HTMLElement>(
-        "[data-route-heading], main h1, main",
-      );
-
     if (pathname === previousPathname.current) {
-      previousTarget.current = findTarget();
+      previousTarget.current = findRouteTarget();
       return;
     }
 
@@ -32,7 +113,7 @@ export function RouteFocusManager() {
     let timeout: number | undefined;
 
     const focusDestination = () => {
-      const target = findTarget();
+      const target = findRouteTarget();
       if (
         !target ||
         (target === departingTarget && target.textContent === departingText)
@@ -41,8 +122,7 @@ export function RouteFocusManager() {
 
       previousPathname.current = pathname;
       previousTarget.current = target;
-      if (!target.hasAttribute("tabindex")) target.tabIndex = -1;
-      target.focus();
+      focusRouteTarget(target);
       return true;
     };
 
