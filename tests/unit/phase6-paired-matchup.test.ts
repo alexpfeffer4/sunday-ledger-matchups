@@ -145,6 +145,33 @@ describe("Phase 6 paired matchup projection", () => {
       2,
     );
   });
+
+  it("uses frozen qualification seeds for a championship matchup", () => {
+    const { now, operations, state } = makePhase6State("PREGAME");
+    if (!state.week || !state.matchup) {
+      throw new Error("Pregame fixture state missing.");
+    }
+    state.league.lifecycle = "PLAYOFFS";
+    state.week.nflWeek = 15;
+    state.week.scope = "PLAYOFF";
+    state.matchup.postseasonRole = "CHAMPIONSHIP";
+
+    const matchup = projectPairedMatchup(
+      state,
+      operations,
+      now,
+      new Map([
+        [state.viewer.entryId, 3],
+        [state.matchup.opponentEntryId, 6],
+      ]),
+    );
+
+    expect(matchup?.self).toMatchObject({ seed: 3, seedKind: "PLAYOFF" });
+    expect(matchup?.opponent).toMatchObject({
+      seed: 6,
+      seedKind: "PLAYOFF",
+    });
+  });
 });
 
 describe("Phase 6 future-sealed migration", () => {

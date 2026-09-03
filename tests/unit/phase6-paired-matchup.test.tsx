@@ -81,4 +81,25 @@ describe("Phase 6 paired matchup surface", () => {
       screen.getByLabelText("Jordan Rival score 200.00 credits"),
     ).toBeVisible();
   });
+
+  it("labels frozen playoff seeds without implying regular-season rank", () => {
+    const matchup = makePhase6Matchup("PREGAME");
+    matchup.week.nflWeek = 15;
+    matchup.week.scope = "PLAYOFF";
+    matchup.self.seed = 3;
+    matchup.self.seedKind = "PLAYOFF";
+    matchup.opponent.seed = 6;
+    matchup.opponent.seedKind = "PLAYOFF";
+
+    render(
+      <PairedMatchupView
+        matchup={matchup}
+        refreshControl={<MatchupStateRefresh />}
+      />,
+    );
+
+    expect(screen.getByText(/No\. 3 playoff seed/)).toBeVisible();
+    expect(screen.getByText(/No\. 6 playoff seed/)).toBeVisible();
+    expect(screen.queryByText(/No\. 2 seed/)).not.toBeInTheDocument();
+  });
 });

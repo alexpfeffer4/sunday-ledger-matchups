@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { formatCenticredits } from "@/domain/odds/american";
 
 export type StandingsRecord = {
@@ -11,7 +12,7 @@ export type StandingsRecord = {
   allPlayHalfWinUnits: number;
   allPlayComparisonCount: number;
   attendanceMisses: number;
-  playoffState: string;
+  playoffEligible: boolean;
   inPlayoffField: boolean;
   current: boolean;
 };
@@ -29,14 +30,6 @@ function allPlay(row: StandingsRecord): string {
   return `${wins}–${row.allPlayComparisonCount - wins}`;
 }
 
-function hasCutlineBefore(rows: StandingsRecord[], index: number): boolean {
-  return (
-    index > 0 &&
-    rows[index - 1]?.inPlayoffField === true &&
-    rows[index]?.inPlayoffField === false
-  );
-}
-
 function YouLabel() {
   return (
     <span className="border-registry/30 bg-registry/10 text-registry ml-2 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-[0.04em] uppercase">
@@ -45,25 +38,42 @@ function YouLabel() {
   );
 }
 
+function IneligibleLabel() {
+  return (
+    <span className="border-negative/30 bg-negative/10 text-negative ml-2 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-[0.04em] uppercase">
+      Ineligible
+    </span>
+  );
+}
+
 export function StandingsTable({
   caption,
+  playoffIneligibilityAtMisses,
   rows,
 }: {
   caption: string;
+  playoffIneligibilityAtMisses: number;
   rows: StandingsRecord[];
 }) {
+  const playoffLineLabel = "Playoff line";
+  const lastPlayoffFieldIndex = rows.reduce(
+    (lastIndex, row, index) => (row.inPlayoffField ? index : lastIndex),
+    -1,
+  );
+  const hasPlayoffLineBefore = (index: number) =>
+    index > 0 && index === lastPlayoffFieldIndex + 1;
   return (
     <>
       <div className="mt-6 space-y-2 md:hidden">
         {rows.map((row, index) => (
           <div key={row.entryId}>
-            {hasCutlineBefore(rows, index) ? (
+            {hasPlayoffLineBefore(index) ? (
               <p className="text-pending border-pending/40 mb-2 border-t pt-2 text-xs font-bold tracking-[0.06em] uppercase">
-                Playoff cutline
+                {playoffLineLabel}
               </p>
             ) : null}
             <article
-              aria-label={`Rank ${row.rank}, ${row.memberName}${row.current ? ", You" : ""}, ${record(row)}, ${score(row.pointsForCenticredits)} Points For, ${row.playoffState}`}
+              aria-label={`Rank ${row.rank}, ${row.memberName}${row.current ? ", You" : ""}, ${record(row)}, ${score(row.pointsForCenticredits)} Points For, ${allPlay(row)} versus the league, ${row.attendanceMisses} incomplete weeks${row.playoffEligible ? "" : ", playoff ineligible"}`}
               className={`border-boundary bg-surface rounded-lg border px-4 py-3 ${
                 row.current ? "border-l-registry bg-registry/5 border-l-4" : ""
               }`}
@@ -76,6 +86,7 @@ export function StandingsTable({
                   <p className="font-bold break-words">
                     {row.memberName}
                     {row.current ? <YouLabel /> : null}
+                    {!row.playoffEligible ? <IneligibleLabel /> : null}
                   </p>
                   <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                     <div>
@@ -89,17 +100,11 @@ export function StandingsTable({
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-muted text-xs">Playoff state</dt>
-                      <dd className="mt-0.5 font-semibold">
-                        {row.playoffState}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted text-xs">All-play</dt>
+                      <dt className="text-muted text-xs">Vs. league</dt>
                       <dd className="mt-0.5 font-semibold">{allPlay(row)}</dd>
                     </div>
                     <div>
-                      <dt className="text-muted text-xs">Attendance misses</dt>
+                      <dt className="text-muted text-xs">Incomplete weeks</dt>
                       <dd className="mt-0.5 font-semibold">
                         {row.attendanceMisses}
                       </dd>
@@ -118,7 +123,7 @@ export function StandingsTable({
         role="region"
         tabIndex={0}
       >
-        <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[680px] border-collapse text-left text-sm">
           <caption className="sr-only">{caption}</caption>
           <thead className="bg-subtle text-muted text-xs tracking-[0.06em] uppercase">
             <tr>
@@ -135,52 +140,54 @@ export function StandingsTable({
                 Points For
               </th>
               <th className="px-4 py-3" scope="col">
-                Playoff state
+                Vs. league
               </th>
               <th className="px-4 py-3" scope="col">
-                All-play
-              </th>
-              <th className="px-4 py-3" scope="col">
-                Misses
+                Incomplete weeks
               </th>
             </tr>
           </thead>
           <tbody className="divide-boundary divide-y">
             {rows.map((row, index) => (
-              <tr
-                className={`${row.current ? "bg-registry/5" : ""} ${
-                  hasCutlineBefore(rows, index)
-                    ? "border-pending border-t-2"
-                    : ""
-                }`}
-                key={row.entryId}
-              >
-                <td className="px-4 py-3 font-mono font-semibold">
-                  {row.rank}
-                </td>
-                <th className="px-4 py-3" scope="row">
-                  {row.memberName}
-                  {row.current ? <YouLabel /> : null}
-                </th>
-                <td className="px-4 py-3">{record(row)}</td>
-                <td className="px-4 py-3 font-mono">
-                  {score(row.pointsForCenticredits)}
-                </td>
-                <td className="px-4 py-3 font-semibold">
-                  {hasCutlineBefore(rows, index) ? (
-                    <span className="text-pending mr-2 text-xs font-bold uppercase">
-                      Below cutline
-                    </span>
-                  ) : null}
-                  {row.playoffState}
-                </td>
-                <td className="px-4 py-3">{allPlay(row)}</td>
-                <td className="px-4 py-3">{row.attendanceMisses}</td>
-              </tr>
+              <Fragment key={row.entryId}>
+                {hasPlayoffLineBefore(index) ? (
+                  <tr>
+                    <td
+                      className="border-pending bg-pending/5 text-pending border-y-2 px-4 py-2 text-xs font-bold tracking-[0.06em] uppercase"
+                      colSpan={6}
+                    >
+                      {playoffLineLabel}
+                    </td>
+                  </tr>
+                ) : null}
+                <tr className={row.current ? "bg-registry/5" : ""}>
+                  <td className="px-4 py-3 font-mono font-semibold">
+                    {row.rank}
+                  </td>
+                  <th className="px-4 py-3" scope="row">
+                    {row.memberName}
+                    {row.current ? <YouLabel /> : null}
+                    {!row.playoffEligible ? <IneligibleLabel /> : null}
+                  </th>
+                  <td className="px-4 py-3">{record(row)}</td>
+                  <td className="px-4 py-3 font-mono">
+                    {score(row.pointsForCenticredits)}
+                  </td>
+                  <td className="px-4 py-3">{allPlay(row)}</td>
+                  <td className="px-4 py-3">{row.attendanceMisses}</td>
+                </tr>
+              </Fragment>
             ))}
           </tbody>
         </table>
       </div>
+      <p className="text-muted mt-3 text-xs leading-5">
+        <strong className="text-graphite">Vs. league</strong> compares each
+        weekly score with every other member; a tie counts as half a win.{" "}
+        <strong className="text-graphite">Incomplete weeks</strong> count cards
+        that were not fully sealed. {playoffIneligibilityAtMisses} makes a
+        member playoff-ineligible.
+      </p>
     </>
   );
 }

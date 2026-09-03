@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { SlateOutcomeDto } from "@/application/queries/league-dtos";
+import { formatMarketProposition } from "@/components/card/market-option-copy";
 import {
   formatCenticredits,
   formatCredits,
@@ -39,7 +40,9 @@ export function PositionPreview({ outcome }: { outcome: SlateOutcomeDto }) {
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
             Add pick
           </p>
-          <h2 className="mt-2 text-xl font-bold">{outcome.proposition}.</h2>
+          <h2 className="mt-2 text-xl font-bold">
+            {formatMarketProposition(outcome.proposition)}.
+          </h2>
         </div>
         <p className="font-mono text-lg font-semibold">
           {formatOdds(outcome.americanOdds)}

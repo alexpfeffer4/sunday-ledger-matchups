@@ -18,6 +18,7 @@ import {
 } from "@/components/card/card-draft-storage";
 import {
   formatAmericanOdds,
+  formatMarketProposition,
   marketOptionCopy,
 } from "@/components/card/market-option-copy";
 import { CardTray } from "@/components/card/card-tray";
@@ -570,7 +571,7 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
                   </p>
                   <div className="mt-1 flex justify-between gap-4 text-sm">
                     <span className="font-semibold">
-                      {draft.reviewedProposition}
+                      {formatMarketProposition(draft.reviewedProposition)}
                     </span>
                     <span className="shrink-0 font-mono">
                       {formatCredits(draft.stakeCredits)} @{" "}
@@ -581,9 +582,11 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
                     <div className="border-pending/40 bg-pending/10 mt-3 rounded-lg border p-3 text-sm leading-5">
                       <p className="font-semibold">Updated quote</p>
                       <p className="text-graphite mt-1">
-                        Reviewed: {draft.reviewedProposition}{" "}
+                        Reviewed:{" "}
+                        {formatMarketProposition(draft.reviewedProposition)}{" "}
                         {formatAmericanOdds(draft.reviewedAmericanOdds)} →
-                        Current: {selected.market.proposition}{" "}
+                        Current:{" "}
+                        {formatMarketProposition(selected.market.proposition)}{" "}
                         {formatAmericanOdds(selected.market.americanOdds)}
                       </p>
                       {selected.market.qualityStatus === "HEALTHY" ? (
@@ -838,7 +841,9 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
                             Pick {String(index + 1).padStart(2, "0")}
                           </p>
                           <p className="mt-1 text-sm font-semibold">
-                            {selected.market.proposition}
+                            {formatMarketProposition(
+                              selected.market.proposition,
+                            )}
                           </p>
                           <p className="text-muted mt-1 font-mono text-xs">
                             {formatAmericanOdds(selected.market.americanOdds)} ·
@@ -849,9 +854,14 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
                             <div className="border-pending/40 bg-pending/10 mt-3 rounded-lg border p-3 text-xs leading-5">
                               <p className="font-semibold">Updated quote</p>
                               <p className="text-graphite mt-1">
-                                {draft.reviewedProposition}{" "}
+                                {formatMarketProposition(
+                                  draft.reviewedProposition,
+                                )}{" "}
                                 {formatAmericanOdds(draft.reviewedAmericanOdds)}{" "}
-                                → {selected.market.proposition}{" "}
+                                →{" "}
+                                {formatMarketProposition(
+                                  selected.market.proposition,
+                                )}{" "}
                                 {formatAmericanOdds(
                                   selected.market.americanOdds,
                                 )}

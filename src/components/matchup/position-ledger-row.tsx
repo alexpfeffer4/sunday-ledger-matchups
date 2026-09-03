@@ -1,4 +1,5 @@
 import type { PositionLedgerItem } from "@/application/queries/project-paired-matchup";
+import { formatMarketProposition } from "@/components/card/market-option-copy";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCenticredits, formatCredits } from "@/domain/odds/american";
 
@@ -32,6 +33,7 @@ function rowState(row: PositionLedgerItem): {
 
 export function PositionLedgerRow({ row }: { row: PositionLedgerItem }) {
   const status = rowState(row);
+  const proposition = formatMarketProposition(row.proposition);
   const returnLabel =
     row.returnedCenticredits === null
       ? "Pending"
@@ -39,7 +41,7 @@ export function PositionLedgerRow({ row }: { row: PositionLedgerItem }) {
 
   return (
     <li
-      aria-label={`${row.memberName}, ${row.eventLabel}, ${row.proposition}, ${formatOdds(row.americanOdds)}, ${formatCredits(row.stakeCredits)} credits staked, ${status.label}, ${returnLabel} credits returned`}
+      aria-label={`${row.memberName}, ${row.eventLabel}, ${proposition}, ${formatOdds(row.americanOdds)}, ${formatCredits(row.stakeCredits)} credits staked, ${status.label}, ${returnLabel} credits returned`}
       className={`bg-surface rounded-lg border p-4 ${row.side === "SELF" ? "border-boundary border-l-registry border-l-4" : "border-boundary border-l-copper border-l-4"}`}
       data-position-id={row.id}
     >
@@ -64,7 +66,7 @@ export function PositionLedgerRow({ row }: { row: PositionLedgerItem }) {
       <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 text-sm sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-end">
         <div className="min-w-0">
           <p className="text-muted text-xs">Accepted pick</p>
-          <p className="mt-1 font-semibold break-words">{row.proposition}</p>
+          <p className="mt-1 font-semibold break-words">{proposition}</p>
         </div>
         <div className="text-right">
           <p className="text-muted text-xs">Odds</p>

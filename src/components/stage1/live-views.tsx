@@ -7,6 +7,7 @@ import type { LiveRegularSeasonSchedule } from "@/application/queries/get-live-r
 import type { LiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import type { Week17CorrectionOperations } from "@/application/queries/get-week17-correction-operations";
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
+import { formatMarketProposition } from "@/components/card/market-option-copy";
 import { Stage1CommissionerControls } from "@/components/commissioner/stage1-controls";
 import { LeagueSettings } from "@/components/commissioner/league-settings";
 import type { MyLeagueSummary } from "@/application/queries/get-my-league-summary";
@@ -246,7 +247,7 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
   const consequence = result
     ? `${result.selfDecision === "WIN" ? "Win" : result.selfDecision === "LOSS" ? "Loss" : "Tie"} filed ${result.status.toLowerCase()}. The official standings update through the result shown here.`
     : state.week.scope === "PLAYOFF"
-      ? "The winner advances. If both completed cards finish with the same score, the higher regular-season seed advances."
+      ? "The winner advances. If both completed cards finish with the same score, the higher frozen playoff seed advances."
       : `A win would move you to ${(selfStanding?.wins ?? 0) + 1}–${selfStanding?.losses ?? 0}; a loss would move you to ${selfStanding?.wins ?? 0}–${(selfStanding?.losses ?? 0) + 1}.`;
   return (
     <PageFrame
@@ -438,7 +439,9 @@ export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
                     className="bg-subtle flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm"
                     key={market.id}
                   >
-                    <span className="truncate">{market.proposition}</span>
+                    <span className="truncate">
+                      {formatMarketProposition(market.proposition)}
+                    </span>
                     <span className="shrink-0 font-mono font-semibold">
                       {formatOdds(market.americanOdds)}
                     </span>
@@ -573,7 +576,9 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
                       <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
                         {position.marketType} · {position.eventLabel}
                       </p>
-                      <h2 className="mt-2 font-bold">{position.proposition}</h2>
+                      <h2 className="mt-2 font-bold">
+                        {formatMarketProposition(position.proposition)}
+                      </h2>
                     </div>
                     <p className="font-mono font-semibold">
                       {formatOdds(position.americanOdds)}
@@ -677,7 +682,9 @@ export function Stage1LiveView({ state }: { state: Stage1StateDto }) {
                   {position.eventLabel} · {position.marketType}
                 </p>
                 <div className="mt-2 flex justify-between gap-4">
-                  <p className="font-semibold">{position.proposition}</p>
+                  <p className="font-semibold">
+                    {formatMarketProposition(position.proposition)}
+                  </p>
                   <p className="font-mono">
                     {formatCredits(position.stakeCredits)}
                   </p>
@@ -798,6 +805,14 @@ export function Stage1StandingsView({
     state.league.memberCount <= playoffRules.smallLeagueMaximumSize
       ? playoffRules.smallLeagueQualifiers
       : playoffRules.largeLeagueQualifiers;
+  const playoffIneligibilityAtMisses =
+    ruleset.canonicalJson.attendance.playoffIneligibilityAtMisses;
+  const playoffFieldIds = new Set(
+    state.standings
+      .filter((row) => row.attendanceMisses < playoffIneligibilityAtMisses)
+      .slice(0, qualifierCount)
+      .map((row) => row.entryId),
+  );
   const rows = state.standings.map((row) => ({
     entryId: row.entryId,
     rank: row.seed,
@@ -809,15 +824,8 @@ export function Stage1StandingsView({
     allPlayHalfWinUnits: row.allPlayHalfWinUnits,
     allPlayComparisonCount: row.allPlayComparisonCount,
     attendanceMisses: row.attendanceMisses,
-    playoffState:
-      row.seed <= qualifierCount
-        ? state.league.lifecycle === "PLAYOFFS"
-          ? "Qualified"
-          : "Playoff seed"
-        : state.league.lifecycle === "PLAYOFFS"
-          ? "Outside field"
-          : "Outside cutline",
-    inPlayoffField: row.seed <= qualifierCount,
+    playoffEligible: row.attendanceMisses < playoffIneligibilityAtMisses,
+    inPlayoffField: playoffFieldIds.has(row.entryId),
     current: row.entryId === state.viewer.entryId,
   }));
 
@@ -846,6 +854,7 @@ export function Stage1StandingsView({
       ) : (
         <StandingsTable
           caption="Official league standings through the latest final matchup"
+          playoffIneligibilityAtMisses={playoffIneligibilityAtMisses}
           rows={rows}
         />
       )}
@@ -1260,7 +1269,9 @@ export function Stage1EventView({
                     ? "Available"
                     : "Unavailable"}
                 </p>
-                <h2 className="mt-2 font-bold">{market.proposition}</h2>
+                <h2 className="mt-2 font-bold">
+                  {formatMarketProposition(market.proposition)}
+                </h2>
               </div>
               <p className="font-mono font-semibold">
                 {formatOdds(market.americanOdds)}
@@ -1322,7 +1333,7 @@ export function Stage1ReceiptView({
                 : "Sealed"}
           </StatusBadge>
         }
-        summary={`${receipt.proposition} at ${formatOdds(receipt.americanOdds)} for ${formatCredits(receipt.stakeCredits)} credits. ${result === "Pending" ? "The official result is pending." : `Official result: ${result}.`}`}
+        summary={`${formatMarketProposition(receipt.proposition)} at ${formatOdds(receipt.americanOdds)} for ${formatCredits(receipt.stakeCredits)} credits. ${result === "Pending" ? "The official result is pending." : `Official result: ${result}.`}`}
         audit={
           <AuditDetails
             className="border-b-0 pb-0"
@@ -1342,7 +1353,9 @@ export function Stage1ReceiptView({
         <dl className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <div className="sm:col-span-2">
             <dt className="text-muted text-xs uppercase">Accepted pick</dt>
-            <dd className="mt-1 font-semibold">{receipt.proposition}</dd>
+            <dd className="mt-1 font-semibold">
+              {formatMarketProposition(receipt.proposition)}
+            </dd>
           </div>
           <div>
             <dt className="text-muted text-xs uppercase">Event</dt>

@@ -31,45 +31,45 @@ function deltaLabel(
   before: StandingFact | null,
   after: StandingFact | null,
 ): string {
-  if (!after?.seed) return "Standing update pending";
-  if (!before?.seed) return `Entered at No. ${after.seed}`;
-  if (before.seed === after.seed) return "Seed unchanged";
+  if (!after?.seed) return "Standings pending";
+  if (!before?.seed) return `Now No. ${after.seed}`;
+  if (before.seed === after.seed) return `Still No. ${after.seed}`;
   return after.seed < before.seed
-    ? `Up ${before.seed - after.seed}`
-    : `Down ${after.seed - before.seed}`;
+    ? `Up ${before.seed - after.seed} · now No. ${after.seed}`
+    : `Down ${after.seed - before.seed} · now No. ${after.seed}`;
 }
 
 function Cutline({ cutline }: { cutline: PlayoffCutlineFact }) {
   const viewerLabel = {
-    CURRENTLY_INSIDE: "Currently inside",
-    CURRENTLY_OUTSIDE: "Currently outside",
-    QUALIFIED: "Qualified",
-    DID_NOT_QUALIFY: "Did not qualify",
+    CURRENTLY_INSIDE: `Inside the top ${cutline.qualifierCount}`,
+    CURRENTLY_OUTSIDE: `Outside the top ${cutline.qualifierCount}`,
+    QUALIFIED: `Qualified for the ${cutline.qualifierCount}-team playoffs`,
+    DID_NOT_QUALIFY: `Outside the ${cutline.qualifierCount}-team playoff field`,
   }[cutline.viewerState];
   return (
     <section
       aria-labelledby="playoff-cutline-heading"
-      className="border-boundary bg-subtle rounded-lg border p-4"
+      className="border-boundary mt-5 border-t pt-5"
     >
       <p className="text-graphite text-xs font-bold tracking-[0.08em] uppercase">
         {cutline.kind === "FROZEN"
           ? "Official playoff field"
-          : "Current stored playoff field"}
+          : "Playoff picture"}
       </p>
       <h3 className="mt-1 font-bold" id="playoff-cutline-heading">
-        {viewerLabel} · top {cutline.qualifierCount}
+        {viewerLabel}
       </h3>
       <p className="text-graphite mt-2 text-sm leading-6">
         {cutline.lastIn
-          ? `Last in: No. ${cutline.lastIn.seed} ${cutline.lastIn.name}.`
-          : "The stored field has no last-in row."}{" "}
+          ? `Cut line: No. ${cutline.lastIn.seed} ${cutline.lastIn.name}.`
+          : "No cut line is available yet."}{" "}
         {cutline.firstOut
           ? `First out: No. ${cutline.firstOut.seed} ${cutline.firstOut.name}.`
-          : "Every stored member is inside the field."}
+          : "Every member is currently inside the field."}
       </p>
       {cutline.kind === "CURRENT" ? (
         <p className="text-graphite mt-2 text-xs">
-          Current position only; this is not a clinch or elimination claim.
+          This is today’s position, not a clinch or elimination.
         </p>
       ) : null}
     </section>
@@ -90,7 +90,7 @@ export function RecordBridge({
         className="border-boundary bg-surface rounded-xl border p-5"
       >
         <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-          RecordBridge
+          Standings impact
         </p>
         <h3 className="mt-1 text-lg font-bold" id="record-bridge-heading">
           Regular-season standings unchanged
@@ -132,38 +132,50 @@ export function RecordBridge({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-            RecordBridge
+            Standings impact
           </p>
           <h3 className="mt-1 text-lg font-bold" id="record-bridge-heading">
-            Before and after Week {bridge.matchup.nflWeek}
+            What Week {bridge.matchup.nflWeek} changed
           </h3>
         </div>
         <p className="text-graphite text-sm font-semibold">
           {deltaLabel(bridge.before, bridge.after)}
         </p>
       </div>
-      <dl className="border-boundary bg-surface mt-3 grid overflow-hidden rounded-xl border sm:grid-cols-2 xl:grid-cols-4">
+      <dl className="border-boundary bg-surface mt-3 grid overflow-hidden rounded-xl border sm:grid-cols-2">
         {facts.map((fact) => (
           <div
-            className="border-boundary border-b p-4 last:border-b-0 sm:nth-[n+3]:border-b-0 sm:nth-[odd]:border-r xl:border-r xl:border-b-0 xl:last:border-r-0"
+            className="border-boundary border-b p-4 last:border-b-0 sm:nth-[n+3]:border-b-0 sm:nth-[odd]:border-r"
             key={fact.label}
           >
             <dt className="text-muted text-xs font-bold tracking-[0.06em] uppercase">
               {fact.label}
             </dt>
-            <dd className="mt-2 flex min-w-0 items-center gap-2 font-mono text-sm font-semibold">
-              <span className="text-muted truncate">{fact.before}</span>
-              <span aria-hidden="true">→</span>
-              <span className="truncate">{fact.after}</span>
+            <dd className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-3">
+              <span>
+                <span className="text-muted block text-[10px] font-bold tracking-[0.05em] uppercase">
+                  Before
+                </span>
+                <span className="text-muted mt-1 block font-mono text-sm font-semibold whitespace-nowrap">
+                  {fact.before}
+                </span>
+              </span>
+              <span aria-hidden="true" className="pb-0.5">
+                →
+              </span>
+              <span>
+                <span className="text-muted block text-[10px] font-bold tracking-[0.05em] uppercase">
+                  After
+                </span>
+                <span className="mt-1 block font-mono text-sm font-semibold whitespace-nowrap">
+                  {fact.after}
+                </span>
+              </span>
             </dd>
           </div>
         ))}
       </dl>
-      {cutline ? (
-        <div className="mt-4">
-          <Cutline cutline={cutline} />
-        </div>
-      ) : null}
+      {cutline ? <Cutline cutline={cutline} /> : null}
     </section>
   );
 }

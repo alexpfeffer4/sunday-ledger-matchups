@@ -552,11 +552,7 @@ export function SeasonArchiveStandings({
     allPlayHalfWinUnits: standing.allPlayHalfWinUnits,
     allPlayComparisonCount: standing.allPlayComparisonCount,
     attendanceMisses: standing.attendanceMisses,
-    playoffState: !standing.playoffEligible
-      ? "Ineligible"
-      : qualifierIds.has(standing.entryId)
-        ? "Qualified"
-        : "Outside field",
+    playoffEligible: standing.playoffEligible,
     inPlayoffField: qualifierIds.has(standing.entryId),
     current: standing.entryId === archive.viewerEntryId,
   }));
@@ -589,6 +585,9 @@ export function SeasonArchiveStandings({
     >
       <StandingsTable
         caption={`Final ${archive.nflYear} season standings`}
+        playoffIneligibilityAtMisses={
+          ruleset.canonicalJson.attendance.playoffIneligibilityAtMisses
+        }
         rows={rows}
       />
       <StandingsRulesetSummary presentation={ruleset} />

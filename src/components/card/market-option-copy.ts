@@ -15,6 +15,12 @@ export function formatAmericanOdds(odds: number): string {
   return odds > 0 ? `+${odds}` : `−${Math.abs(odds)}`;
 }
 
+export function formatMarketProposition(proposition: string): string {
+  return proposition
+    .replace(/(\d+\.\d*?[1-9])0+(?=\D|$)/g, "$1")
+    .replace(/(\d+)\.0+(?=\D|$)/g, "$1");
+}
+
 function formatMilliValue(value: number): string {
   return String(Math.abs(value) / 1_000);
 }
