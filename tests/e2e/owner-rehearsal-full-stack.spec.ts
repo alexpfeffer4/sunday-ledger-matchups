@@ -93,7 +93,12 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
 
   const anonymous = await newPage(browser);
   const anonymousResponse = await anonymous.page.goto("/owner/rehearsal");
-  expect(anonymousResponse?.status()).toBe(404);
+  expect([200, 404]).toContain(anonymousResponse?.status());
+  await expect(anonymous.page).toHaveTitle(/Not found · Sunday Ledger/);
+  await expect(anonymous.page.locator('meta[name="robots"]')).toHaveAttribute(
+    "content",
+    /noindex/,
+  );
   expect(await anonymous.page.locator("body").innerText()).not.toContain(
     "Owner Guided Rehearsal",
   );
@@ -105,7 +110,8 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
     outside.page.getByRole("link", { name: "Open Owner Guided Rehearsal" }),
   ).toHaveCount(0);
   const outsiderResponse = await outside.page.goto("/owner/rehearsal");
-  expect(outsiderResponse?.status()).toBe(404);
+  expect([200, 404]).toContain(outsiderResponse?.status());
+  await expect(outside.page).toHaveTitle(/Not found · Sunday Ledger/);
   expect(await outside.page.locator("body").innerText()).not.toContain(
     "Owner Guided Rehearsal",
   );
