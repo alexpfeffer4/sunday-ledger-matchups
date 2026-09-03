@@ -268,7 +268,22 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     error: cookieClaims.error?.code ?? cookieClaims.error?.name ?? null,
     hasClaims: Boolean(cookieClaims.data?.claims?.sub),
   }).toEqual({ error: null, hasClaims: true });
+  let accountRequestHasAuthCookie = false;
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname !== "/account/setup") return;
+    accountRequestHasAuthCookie = Boolean(
+      request
+        .headers()
+        .cookie?.split(";")
+        .some(
+          (cookie) =>
+            cookie.trimStart().startsWith("sb-") &&
+            cookie.includes("auth-token"),
+        ),
+    );
+  });
   await page.goto(new URL(confirmationRedirect!, baseURL).toString());
+  expect(accountRequestHasAuthCookie).toBe(true);
   const confirmationDestination = new URL(page.url());
   expect({
     error: confirmationDestination.searchParams.get("error"),
