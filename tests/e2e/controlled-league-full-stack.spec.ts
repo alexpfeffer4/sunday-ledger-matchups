@@ -5,9 +5,22 @@ const baseURL = "http://127.0.0.1:3000";
 const supabaseUrl = process.env.TEST_SUPABASE_URL;
 const publishableKey = process.env.TEST_SUPABASE_PUBLISHABLE_KEY;
 const serviceRoleKey = process.env.TEST_SUPABASE_SERVICE_ROLE_KEY;
-const enabled =
-  process.env.FULL_STACK_ACCEPTANCE === "1" &&
-  Boolean(supabaseUrl && publishableKey && serviceRoleKey);
+const acceptanceRequested = process.env.FULL_STACK_ACCEPTANCE === "1";
+const missingSettings = [
+  ["TEST_SUPABASE_URL", supabaseUrl],
+  ["TEST_SUPABASE_PUBLISHABLE_KEY", publishableKey],
+  ["TEST_SUPABASE_SERVICE_ROLE_KEY", serviceRoleKey],
+]
+  .filter(([, value]) => !value)
+  .map(([name]) => name);
+
+if (acceptanceRequested && missingSettings.length > 0) {
+  throw new Error(
+    `Full-stack acceptance was requested without ${missingSettings.join(", ")}.`,
+  );
+}
+
+const enabled = acceptanceRequested && missingSettings.length === 0;
 
 type Identity = {
   displayName: string;
