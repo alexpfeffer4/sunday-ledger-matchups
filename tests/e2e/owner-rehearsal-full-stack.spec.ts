@@ -1,5 +1,11 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import {
+  expect,
+  test,
+  type Browser,
+  type Page,
+  type Response,
+} from "@playwright/test";
 
 const baseURL = "http://127.0.0.1:3000";
 const supabaseUrl = process.env.TEST_SUPABASE_URL;
@@ -71,6 +77,13 @@ async function newPage(browser: Browser) {
   return { context, page: await context.newPage() };
 }
 
+function expectPrivateResponse(response: Response | null) {
+  expect(response).not.toBeNull();
+  const cacheControl = response?.headers()["cache-control"] ?? "";
+  expect(cacheControl).toMatch(/private|no-cache|no-store/i);
+  expect(cacheControl).not.toMatch(/(?:^|,)\s*public\b|s-maxage/i);
+}
+
 async function advance(page: Page, name: string) {
   const guide = page.locator("[data-owner-rehearsal-guide]");
   const confirmation = guide.getByRole("checkbox");
@@ -103,6 +116,7 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   const anonymous = await newPage(browser);
   const anonymousResponse = await anonymous.page.goto("/owner/rehearsal");
   expect([200, 404]).toContain(anonymousResponse?.status());
+  expectPrivateResponse(anonymousResponse);
   await expect(anonymous.page).toHaveTitle(/Not found · Sunday Ledger/);
   await expect(
     anonymous.page.locator('meta[name="robots"]').first(),
@@ -119,6 +133,7 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   ).toHaveCount(0);
   const outsiderResponse = await outside.page.goto("/owner/rehearsal");
   expect([200, 404]).toContain(outsiderResponse?.status());
+  expectPrivateResponse(outsiderResponse);
   await expect(outside.page).toHaveTitle(/Not found · Sunday Ledger/);
   expect(await outside.page.locator("body").innerText()).not.toContain(
     "Owner Guided Rehearsal",
@@ -141,6 +156,7 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   await expect(
     page.getByRole("heading", { name: "Owner Guided Rehearsal" }),
   ).toBeVisible();
+  expectPrivateResponse(await page.reload());
   await page.getByRole("button", { name: "Start guided rehearsal" }).click();
   await expect(
     page.getByRole("heading", { name: "See formation before roster lock" }),
@@ -259,11 +275,39 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
     page.getByRole("heading", { name: "Watch event-timed reveal" }),
   ).toBeVisible();
 
+  const partialRscResponse = page.waitForResponse((response) => {
+    const request = response.request();
+    return (
+      new URL(response.url()).pathname === `/l/${leagueSlug}/matchup` &&
+      request.headers()["rsc"] === "1"
+    );
+  });
   await page.getByRole("link", { name: "See partial reveal" }).click();
+  const partialRsc = await partialRscResponse;
+  expectPrivateResponse(partialRsc);
   await expect(page.getByText("Future picks sealed")).toBeVisible();
+  await expect(page.getByTestId("future-sealed-placeholder")).toHaveCount(1);
   const partialHtml = await page.content();
-  expect(partialHtml).not.toMatch(
-    /position_receipts|market_snapshot_id|owner_rehearsal_bots/i,
+  const partialPayload = `${partialHtml}\n${await partialRsc.text()}`;
+  expect(partialPayload).not.toMatch(
+    /position_receipts|market_snapshot_id|owner_rehearsal_bots|payload_hash|receipt_hash/i,
+  );
+  const browserState = await page.evaluate(() =>
+    JSON.stringify({
+      local: Object.fromEntries(Object.entries(localStorage)),
+      session: Object.fromEntries(Object.entries(sessionStorage)),
+    }),
+  );
+  expect(browserState).not.toMatch(
+    /position_receipts|market_snapshot_id|owner_rehearsal_bots|payload_hash|receipt_hash/i,
+  );
+  const accessibleNames = await page
+    .locator("[aria-label]")
+    .evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute("aria-label")).join("\n"),
+    );
+  expect(accessibleNames).not.toMatch(
+    /position_receipts|market_snapshot_id|owner_rehearsal_bots|payload_hash|receipt_hash/i,
   );
   await page.goto(`/l/${leagueSlug}/live`);
   await expect(page.locator(".broadcast-dark")).toBeVisible();
@@ -335,6 +379,28 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   ).toBeVisible();
 
   await page.goto("/owner/rehearsal");
+  await page.getByText("Reset rehearsal", { exact: true }).click();
+  await page
+    .getByLabel("Type Sunday Ledger Owner Rehearsal to confirm")
+    .fill("Sunday Ledger Owner Rehearsal");
+  await page.getByRole("button", { name: "Reset simulated rehearsal" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Practice one complete season" }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.keys(localStorage).filter((key) =>
+          key.startsWith("sunday-ledger:owner-rehearsal:v1:"),
+        ),
+      ),
+    )
+    .toEqual([]);
+
+  await page.getByRole("button", { name: "Start guided rehearsal" }).click();
+  await expect(
+    page.getByRole("heading", { name: "See formation before roster lock" }),
+  ).toBeVisible();
   await page.getByText("Reset rehearsal", { exact: true }).click();
   await page
     .getByLabel("Type Sunday Ledger Owner Rehearsal to confirm")

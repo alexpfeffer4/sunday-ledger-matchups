@@ -69,18 +69,20 @@ function OperationForm({
 
 function useClearCompletedOperation(
   state: AppActionState,
-  operationName: string,
+  operationPrefix: string,
 ) {
   useEffect(() => {
     if (state.status !== "success") return;
     try {
-      localStorage.removeItem(
-        `sunday-ledger:owner-rehearsal:v1:${operationName}`,
-      );
+      const prefix = `sunday-ledger:owner-rehearsal:v1:${operationPrefix}`;
+      for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+        const key = localStorage.key(index);
+        if (key?.startsWith(prefix)) localStorage.removeItem(key);
+      }
     } catch {
       // Stable recovery still works for the current submission without storage.
     }
-  }, [operationName, state.status]);
+  }, [operationPrefix, state.status]);
 }
 
 export function OwnerRehearsalGuide({
@@ -113,14 +115,11 @@ export function OwnerRehearsalGuide({
 
   const generation = rehearsal?.generation ?? 0;
   const checkpoint = rehearsal?.checkpoint ?? "not-started";
-  useClearCompletedOperation(startState, `start:${generation}`);
-  useClearCompletedOperation(fillState, `fill:${generation}`);
-  useClearCompletedOperation(sampleState, `sample:${generation}:${checkpoint}`);
-  useClearCompletedOperation(
-    advanceState,
-    `advance:${generation}:${checkpoint}`,
-  );
-  useClearCompletedOperation(resetState, `reset:${generation}`);
+  useClearCompletedOperation(startState, "start:");
+  useClearCompletedOperation(fillState, "fill:");
+  useClearCompletedOperation(sampleState, "sample:");
+  useClearCompletedOperation(advanceState, "advance:");
+  useClearCompletedOperation(resetState, "");
 
   if (!rehearsal) {
     return (

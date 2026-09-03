@@ -42,6 +42,17 @@ describe("Owner Guided Rehearsal migration contract", () => {
     expect(functionBody("api.get_owner_rehearsal")).toMatch(
       /owner_rehearsal_entitled\(v_user_id\)/,
     );
+
+    const authoritativeQuery = readFileSync(
+      resolve(
+        process.cwd(),
+        "src/application/queries/get-live-stage1-league.ts",
+      ),
+      "utf8",
+    );
+    expect(authoritativeQuery).toMatch(
+      /state\.league\.mode === "SIMULATION"[\s\S]*getOwnerRehearsalForLeague\(leagueSlug\)[\s\S]*return state/,
+    );
   });
 
   it("does not accept caller-selected league, clock, score, or winner inputs", () => {
