@@ -240,16 +240,38 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   confirmationUrl.searchParams.set("type", verificationType!);
   confirmationUrl.searchParams.set("flow", "create-account");
   confirmationUrl.searchParams.set("next", invitePath);
+  const confirmationResponsePromise = page.waitForResponse(
+    (response) => response.url() === confirmationUrl.toString(),
+  );
   await page.goto(confirmationUrl.toString());
+  const confirmationResponse = await confirmationResponsePromise;
+  const confirmationSetCookie =
+    await confirmationResponse.headerValue("set-cookie");
+  const browserSessionCookies = (await page.context().cookies(baseURL))
+    .filter((cookie) => cookie.name.includes("auth-token"))
+    .map(({ domain, httpOnly, name, path, sameSite, secure }) => ({
+      domain,
+      httpOnly,
+      name,
+      path,
+      sameSite,
+      secure,
+    }));
   const confirmationDestination = new URL(page.url());
   expect({
+    browserSessionCookies,
     error: confirmationDestination.searchParams.get("error"),
     hasTokenHash: confirmationDestination.searchParams.has("token_hash"),
     pathname: confirmationDestination.pathname,
+    setsSessionCookie: Boolean(confirmationSetCookie?.includes("auth-token")),
   }).toEqual({
+    browserSessionCookies: expect.arrayContaining([
+      expect.objectContaining({ domain: "127.0.0.1", path: "/" }),
+    ]),
     error: null,
     hasTokenHash: false,
     pathname: "/account/setup",
+    setsSessionCookie: true,
   });
   await expect(
     page.getByRole("heading", { name: "Finish account setup" }),
