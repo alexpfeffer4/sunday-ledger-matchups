@@ -31,9 +31,14 @@ type Identity = {
 
 type StageState = {
   league: { id: string; name: string; slug: string };
-  matchup: { opponentEntryId: string } | null;
+  matchup: {
+    opponentEntryId: string;
+    opponentRevealedPositions: Array<{ proposition: string }>;
+  } | null;
   members: Array<{ entryId: string | null; userId: string }>;
+  season: { simulatedNow: string };
   slate: Array<{
+    scheduledStartAt: string;
     markets: Array<{
       americanOdds: number;
       id: string;
@@ -42,6 +47,11 @@ type StageState = {
       qualityStatus: string;
     }>;
   }>;
+  week: {
+    commonLockAt: string;
+    correctionWindowClosesAt: string | null;
+    state: string;
+  } | null;
 };
 
 function apiClient(key: string): SupabaseClient {
@@ -432,9 +442,18 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   await commissionerBrowser.page
     .getByRole("button", { name: "Advance past common lock" })
     .click();
+  await expect
+    .poll(async () => {
+      const state = await getState(invitedClient, slug);
+      return new Date(state.season.simulatedNow).getTime();
+    })
+    .toBeGreaterThan(new Date(invitedState.week!.commonLockAt).getTime());
   await commissionerBrowser.page
     .getByRole("button", { name: "Lock all cards" })
     .click();
+  await expect
+    .poll(async () => (await getState(invitedClient, slug)).week?.state)
+    .toBe("LOCKED");
 
   await page.goto(`/l/${slug}/matchup`);
   await expect(page.getByText("Future picks sealed")).toBeVisible();
@@ -480,15 +499,40 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   await commissionerBrowser.page
     .getByRole("button", { name: "Advance through kickoff" })
     .click();
+  const latestKickoff = Math.max(
+    ...invitedState.slate.map((event) =>
+      new Date(event.scheduledStartAt).getTime(),
+    ),
+  );
+  await expect
+    .poll(async () => {
+      const state = await getState(invitedClient, slug);
+      return new Date(state.season.simulatedNow).getTime();
+    })
+    .toBeGreaterThanOrEqual(latestKickoff + 6 * 60_000);
   await commissionerBrowser.page
     .getByRole("button", { name: "Mark fixture events live" })
     .click();
+  await expect
+    .poll(async () => {
+      const state = await getState(invitedClient, slug);
+      return state.matchup?.opponentRevealedPositions.some(
+        (position) => position.proposition === opponentMarket.proposition,
+      );
+    })
+    .toBe(true);
   await page.reload();
   await expect(page.getByText(opponentMarket.proposition)).toBeVisible();
 
   await commissionerBrowser.page
     .getByRole("button", { name: "Advance to scripted finals" })
     .click();
+  await expect
+    .poll(async () => {
+      const state = await getState(invitedClient, slug);
+      return new Date(state.season.simulatedNow).getTime();
+    })
+    .toBeGreaterThanOrEqual(latestKickoff + 4 * 60 * 60_000);
   let droppedCommissionerResponse = false;
   await commissionerBrowser.page.route(
     `**/l/${slug}/commissioner`,
@@ -578,9 +622,18 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   );
 
   await commissionerBrowser.page.reload();
+  const correctionWindowClosesAt = (await getState(invitedClient, slug)).week
+    ?.correctionWindowClosesAt;
+  expect(correctionWindowClosesAt).toBeTruthy();
   await commissionerBrowser.page
     .getByRole("button", { name: "Advance past correction window" })
     .click();
+  await expect
+    .poll(async () => {
+      const state = await getState(invitedClient, slug);
+      return new Date(state.season.simulatedNow).getTime();
+    })
+    .toBeGreaterThan(new Date(correctionWindowClosesAt!).getTime());
   await commissionerBrowser.page
     .getByRole("button", { name: "Finalize Week 1" })
     .click();
