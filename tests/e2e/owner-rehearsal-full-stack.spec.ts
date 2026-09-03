@@ -197,6 +197,7 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
     page.getByRole("heading", { name: "Freeze the season foundation" }),
   ).toBeVisible();
 
+  // 320 CSS pixels is also the 400% reflow target for a 1280px layout.
   for (const width of [320, 390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     const dimensions = await page.evaluate(() => ({
@@ -206,16 +207,16 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
     expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client + 1);
   }
   await page.setViewportSize({ width: 320, height: 900 });
-  for (const textSize of ["200%", "400%"] as const) {
-    await page.locator("html").evaluate((element, size) => {
-      element.style.fontSize = size;
-    }, textSize);
-    const dimensions = await page.evaluate(() => ({
-      client: document.documentElement.clientWidth,
-      scroll: document.documentElement.scrollWidth,
-    }));
-    expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client + 1);
-  }
+  await page.locator("html").evaluate((element) => {
+    element.style.fontSize = "200%";
+  });
+  const resizedTextDimensions = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(resizedTextDimensions.scroll).toBeLessThanOrEqual(
+    resizedTextDimensions.client + 1,
+  );
   await page.locator("html").evaluate((element) => {
     element.style.fontSize = "";
   });
