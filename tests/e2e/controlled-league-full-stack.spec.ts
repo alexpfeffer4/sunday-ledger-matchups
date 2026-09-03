@@ -245,6 +245,7 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   );
   await page.goto(confirmationUrl.toString());
   const confirmationResponse = await confirmationResponsePromise;
+  await page.waitForURL(/\/account\/setup/);
   const confirmationSetCookie =
     await confirmationResponse.headerValue("set-cookie");
   const browserSessionCookies = (await page.context().cookies(baseURL))
