@@ -1077,8 +1077,7 @@ begin
   end if;
   select rehearsal.* into v_rehearsal
   from private.owner_rehearsals as rehearsal
-  where rehearsal.owner_user_id = v_user_id and rehearsal.status = 'ACTIVE'
-  for share;
+  where rehearsal.owner_user_id = v_user_id and rehearsal.status = 'ACTIVE';
   if not found then
     return null;
   end if;
