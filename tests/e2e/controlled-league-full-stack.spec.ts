@@ -231,9 +231,16 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     type: "magiclink",
   });
   expect(generated.error).toBeNull();
-  const actionLink = generated.data.properties?.action_link;
-  expect(actionLink).toBeTruthy();
-  await page.goto(actionLink!);
+  const tokenHash = generated.data.properties?.hashed_token;
+  const verificationType = generated.data.properties?.verification_type;
+  expect(tokenHash).toBeTruthy();
+  expect(verificationType).toBe("magiclink");
+  const confirmationUrl = new URL("/auth/confirm", baseURL);
+  confirmationUrl.searchParams.set("token_hash", tokenHash!);
+  confirmationUrl.searchParams.set("type", verificationType!);
+  confirmationUrl.searchParams.set("flow", "create-account");
+  confirmationUrl.searchParams.set("next", invitePath);
+  await page.goto(confirmationUrl.toString());
   await expect(
     page.getByRole("heading", { name: "Finish account setup" }),
   ).toBeVisible();
