@@ -7,15 +7,24 @@ const publishableKey = process.env.TEST_SUPABASE_PUBLISHABLE_KEY;
 const serviceRoleKey = process.env.TEST_SUPABASE_SERVICE_ROLE_KEY;
 const ownerEmail = process.env.OWNER_REHEARSAL_TEST_EMAIL;
 const ownerPassword = process.env.OWNER_REHEARSAL_TEST_PASSWORD;
-const enabled =
-  process.env.FULL_STACK_ACCEPTANCE === "1" &&
-  Boolean(
-    supabaseUrl &&
-    publishableKey &&
-    serviceRoleKey &&
-    ownerEmail &&
-    ownerPassword,
+const acceptanceRequested = process.env.FULL_STACK_ACCEPTANCE === "1";
+const missingSettings = [
+  ["TEST_SUPABASE_URL", supabaseUrl],
+  ["TEST_SUPABASE_PUBLISHABLE_KEY", publishableKey],
+  ["TEST_SUPABASE_SERVICE_ROLE_KEY", serviceRoleKey],
+  ["OWNER_REHEARSAL_TEST_EMAIL", ownerEmail],
+  ["OWNER_REHEARSAL_TEST_PASSWORD", ownerPassword],
+]
+  .filter(([, value]) => !value)
+  .map(([name]) => name);
+
+if (acceptanceRequested && missingSettings.length > 0) {
+  throw new Error(
+    `Owner rehearsal full-stack acceptance was requested without ${missingSettings.join(", ")}.`,
   );
+}
+
+const enabled = acceptanceRequested && missingSettings.length === 0;
 
 type Identity = { email: string; password: string };
 
@@ -188,6 +197,7 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
 
   await advance(page, "Lock roster and open Week 1");
   await page.getByRole("link", { name: "Make my Week 1 card" }).click();
+  await expect(page).toHaveURL(new RegExp(`/l/${leagueSlug}/slate$`));
   const positiveOutcome = page
     .locator(".outcome-selector-group button:not([disabled])")
     .filter({ hasText: /\+\d/ })
@@ -198,7 +208,7 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   await page.getByRole("button", { name: "Add to card" }).click();
 
   let droppedSealResponse = false;
-  await page.route("**/l/*/card", async (route) => {
+  await page.route("**/l/*/slate", async (route) => {
     if (
       !droppedSealResponse &&
       route.request().method() === "POST" &&
@@ -213,7 +223,7 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   });
   await page.getByRole("button", { name: "Confirm and seal card" }).click();
   await expect.poll(() => droppedSealResponse).toBe(true);
-  await page.unroute("**/l/*/card");
+  await page.unroute("**/l/*/slate");
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "All 1,000 credits are sealed" }),

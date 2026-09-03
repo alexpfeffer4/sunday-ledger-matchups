@@ -85,7 +85,7 @@ export const ownerRehearsalGuide: Record<
       "Advancing locks every card and begins the first games. An unsealed owner card would become incomplete.",
     detail:
       "This is the ordinary member workflow. Your card becomes final only when every position is accepted together and its receipt is issued.",
-    href: (slug) => `/l/${slug}/card`,
+    href: (slug) => `/l/${slug}/slate`,
     linkLabel: "Make my Week 1 card",
     task: member,
     title: "Practice the weekly card loop",
@@ -130,7 +130,7 @@ export const ownerRehearsalGuide: Record<
       "Advancing locks the reviewed Week 2 card, completes the games, and finalizes the push lesson.",
     detail:
       "A deterministic quote changes before sealing. The changed terms are never accepted silently; review and confirm again with the same stable attempt.",
-    href: (slug) => `/l/${slug}/card`,
+    href: (slug) => `/l/${slug}/slate`,
     linkLabel: "Review Week 2 card",
     task: member,
     title: "Review a changed quote",
@@ -150,7 +150,7 @@ export const ownerRehearsalGuide: Record<
       "One rehearsal team intentionally leaves this week incomplete so you can see the visible consequence without missing your own card.",
     detail:
       "One neutral team records an attendance miss. Its hidden card content remains private; only the normal completion consequence is visible.",
-    href: (slug) => `/l/${slug}/card`,
+    href: (slug) => `/l/${slug}/slate`,
     linkLabel: "Make or sample my card",
     task: member,
     title: "Learn incomplete-card consequences",
@@ -172,7 +172,7 @@ export const ownerRehearsalGuide: Record<
       "The next result is intentionally provisional so the correction can be examined before finalization.",
     detail:
       "This week pauses before finality so you can see the original result and the later correction as separate versions.",
-    href: (slug) => `/l/${slug}/card`,
+    href: (slug) => `/l/${slug}/slate`,
     linkLabel: "Make or sample my card",
     task: member,
     title: "Set up a correction lesson",
@@ -208,7 +208,7 @@ export const ownerRehearsalGuide: Record<
       "This finalizes official regular-season standings and creates the six-member playoff field with two first-round byes.",
     detail:
       "Points For and all-play resolve meaningful ties. One bot’s third miss demonstrates the frozen attendance eligibility rule.",
-    href: (slug) => `/l/${slug}/card`,
+    href: (slug) => `/l/${slug}/slate`,
     linkLabel: "Make or sample my Week 14 card",
     task: member,
     title: "Finish the official standings",
@@ -230,7 +230,7 @@ export const ownerRehearsalGuide: Record<
       "This locks and settles every scheduled Week 15 scope through the normal receipt lifecycle.",
     detail:
       "The bracket advances winners while placement and exhibition matchups remain outside champion finality.",
-    href: (slug) => `/l/${slug}/card`,
+    href: (slug) => `/l/${slug}/slate`,
     linkLabel: "Make or sample my card",
     task: member,
     title: "Play the first postseason round",
@@ -252,7 +252,7 @@ export const ownerRehearsalGuide: Record<
       "This locks every semifinal scope and advances the championship bracket through the frozen Ruleset.",
     detail:
       "The Week 15 single-incomplete edge has already shown deterministic advancement. Sealed semifinal positions remain event-timed before settlement.",
-    href: (slug) => `/l/${slug}/card`,
+    href: (slug) => `/l/${slug}/slate`,
     linkLabel: "Make or sample my card",
     task: member,
     title: "See seeded semifinal advancement",
@@ -274,7 +274,7 @@ export const ownerRehearsalGuide: Record<
       "The champion and placements become final here. Week 18 remains exhibition-only and cannot alter them.",
     detail:
       "This is the last competitive round. Every scope settles normally, then one champion is frozen from the championship path.",
-    href: (slug) => `/l/${slug}/card`,
+    href: (slug) => `/l/${slug}/slate`,
     linkLabel: "Make or sample my card",
     task: member,
     title: "Complete Championship Week",
@@ -296,7 +296,7 @@ export const ownerRehearsalGuide: Record<
       "This settles exhibition cards and makes the season archive final without changing the Week 17 champion or official standings.",
     detail:
       "Every member participates, but exhibition outcomes remain outside official records and rivalry totals. Archive finality waits until this week ends.",
-    href: (slug) => `/l/${slug}/card`,
+    href: (slug) => `/l/${slug}/slate`,
     linkLabel: "Make or sample my exhibition card",
     task: member,
     title: "Finish without rewriting the season",

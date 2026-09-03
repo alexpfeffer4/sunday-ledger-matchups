@@ -75,4 +75,15 @@ describe("Owner Guided Rehearsal", () => {
     expect(ownerRehearsalSamplePlan("aa", 8).eventOrdinal).toBe(5);
     expect(ownerRehearsalSamplePlan("aa", 17).eventOrdinal).toBe(6);
   });
+
+  it("sends every open-week member task to the ordinary Make picks route", () => {
+    const openWeekRoutes = Object.entries(ownerRehearsalGuide)
+      .filter(([checkpoint]) => checkpoint.endsWith("_OPEN"))
+      .map(([, step]) => step.href?.("owner-rehearsal"));
+
+    expect(openWeekRoutes).toHaveLength(9);
+    expect(openWeekRoutes).toEqual(
+      Array.from({ length: 9 }, () => "/l/owner-rehearsal/slate"),
+    );
+  });
 });
