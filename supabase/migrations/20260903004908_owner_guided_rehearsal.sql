@@ -1246,6 +1246,7 @@ declare
   v_command private.command_receipts%rowtype;
   v_bot_number integer;
   v_bot_user_id uuid;
+  v_bot_hash text;
   v_name text;
   v_names constant text[] := array[
     'Cedar Eleven', 'Harbor Eleven', 'Northline Eleven',
@@ -1287,8 +1288,13 @@ begin
     'sunday_ledger.owner_rehearsal_operation', v_rehearsal.id::text, true
   );
   for v_bot_number in 1..9 loop
-    v_bot_user_id := md5(
+    v_bot_hash := md5(
       v_rehearsal.rehearsal_seed || ':bot:' || v_bot_number::text
+    );
+    v_bot_user_id := (
+      substr(v_bot_hash, 1, 8) || '-' || substr(v_bot_hash, 9, 4) || '-5'
+      || substr(v_bot_hash, 14, 3) || '-8' || substr(v_bot_hash, 18, 3) || '-'
+      || substr(v_bot_hash, 21, 12)
     )::uuid;
     v_name := v_names[v_bot_number];
     insert into auth.users (id) values (v_bot_user_id);

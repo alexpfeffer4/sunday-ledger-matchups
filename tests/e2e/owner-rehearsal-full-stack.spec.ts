@@ -113,6 +113,19 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   const admin = apiClient(serviceRoleKey!);
   const outsider = await createOutsider(admin);
   const owner = { email: ownerEmail!, password: ownerPassword! };
+  const ownerApi = apiClient(publishableKey!);
+  expect((await ownerApi.auth.signInWithPassword(owner)).error).toBeNull();
+  const existingRehearsal = await ownerApi
+    .schema("api")
+    .rpc("get_owner_rehearsal");
+  expect(existingRehearsal.error).toBeNull();
+  if (existingRehearsal.data !== null) {
+    const reset = await ownerApi.schema("api").rpc("reset_owner_rehearsal", {
+      p_confirmation_name: "Sunday Ledger Owner Rehearsal",
+      p_idempotency_key: `acceptance-preflight-reset-${Date.now()}`,
+    });
+    expect(reset.error).toBeNull();
+  }
   const unexpectedBrowserNetwork: string[] = [];
   page.on("request", (request) => {
     const hostname = new URL(request.url()).hostname;

@@ -148,6 +148,14 @@ select is(
 );
 select is(
   (select count(*)::integer
+   from private.owner_rehearsal_bots as bot
+   where bot.bot_user_id::text ~
+     '^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'),
+  9,
+  'all deterministic bot identifiers are valid private UUID principals'
+);
+select is(
+  (select count(*)::integer
    from private.league_invites as invite
    join private.owner_rehearsals as rehearsal
      on rehearsal.league_id = invite.league_id),
