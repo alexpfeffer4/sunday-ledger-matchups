@@ -17,9 +17,30 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const flow = request.nextUrl.searchParams.get("flow");
   const next = safeInternalPath(request.nextUrl.searchParams.get("next"));
+  const applyCookieWrites: Array<(response: NextResponse) => void> = [];
+  const authResponseHeaders: Record<string, string> = {};
+
+  function authRedirect(url: URL) {
+    const response = NextResponse.redirect(url);
+    applyCookieWrites.forEach((applyCookies) => applyCookies(response));
+    Object.entries(authResponseHeaders).forEach(([key, value]) =>
+      response.headers.set(key, value),
+    );
+    response.headers.set("Cache-Control", "private, no-store");
+    return response;
+  }
 
   try {
-    const supabase = await createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient(
+      (cookiesToSet, headers) => {
+        applyCookieWrites.push((response) => {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options),
+          );
+        });
+        Object.assign(authResponseHeaders, headers);
+      },
+    );
     let error: Error | null = null;
 
     if (
@@ -45,18 +66,18 @@ export async function GET(request: NextRequest) {
     if (flow === "create-account") {
       const setupUrl = new URL("/account/setup", request.url);
       setupUrl.searchParams.set("next", next);
-      return NextResponse.redirect(setupUrl);
+      return authRedirect(setupUrl);
     }
     if (flow === "recovery" || typeValue === "recovery") {
       const recoveryUrl = new URL("/account/recover-password", request.url);
       recoveryUrl.searchParams.set("next", next);
-      return NextResponse.redirect(recoveryUrl);
+      return authRedirect(recoveryUrl);
     }
-    return NextResponse.redirect(new URL(next, request.url));
+    return authRedirect(new URL(next, request.url));
   } catch {
     const signInUrl = new URL("/auth/sign-in", request.url);
     signInUrl.searchParams.set("error", "invalid_link");
     signInUrl.searchParams.set("next", next);
-    return NextResponse.redirect(signInUrl);
+    return authRedirect(signInUrl);
   }
 }
