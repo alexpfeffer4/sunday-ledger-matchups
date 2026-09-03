@@ -30,6 +30,12 @@ export async function GET(request: NextRequest) {
     return response;
   }
 
+  function confirmedRedirect(url: URL) {
+    const continuationUrl = new URL("/auth/continue", request.url);
+    continuationUrl.searchParams.set("next", `${url.pathname}${url.search}`);
+    return authRedirect(continuationUrl);
+  }
+
   try {
     const supabase = await createSupabaseServerClient(
       (cookiesToSet, headers) => {
@@ -66,14 +72,14 @@ export async function GET(request: NextRequest) {
     if (flow === "create-account") {
       const setupUrl = new URL("/account/setup", request.url);
       setupUrl.searchParams.set("next", next);
-      return authRedirect(setupUrl);
+      return confirmedRedirect(setupUrl);
     }
     if (flow === "recovery" || typeValue === "recovery") {
       const recoveryUrl = new URL("/account/recover-password", request.url);
       recoveryUrl.searchParams.set("next", next);
-      return authRedirect(recoveryUrl);
+      return confirmedRedirect(recoveryUrl);
     }
-    return authRedirect(new URL(next, request.url));
+    return confirmedRedirect(new URL(next, request.url));
   } catch {
     const signInUrl = new URL("/auth/sign-in", request.url);
     signInUrl.searchParams.set("error", "invalid_link");
