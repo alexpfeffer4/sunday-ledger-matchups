@@ -90,8 +90,11 @@ async function advance(page: Page, name: string) {
   const confirmation = guide.getByRole("checkbox");
   if (await confirmation.count()) await confirmation.check();
   const action = guide.getByRole("button", { name });
+  const pendingAction = guide.getByRole("button", { name: "Advancing…" });
   await action.click();
-  await expect(action).toHaveCount(0);
+  await expect
+    .poll(async () => (await action.count()) + (await pendingAction.count()))
+    .toBe(0);
   await expect(guide.getByRole("status").last()).toContainText(
     /Checkpoint completed|Already completed/,
   );
@@ -100,8 +103,13 @@ async function advance(page: Page, name: string) {
 async function sample(page: Page) {
   const guide = page.locator("[data-owner-rehearsal-guide]");
   const action = guide.getByRole("button", { name: "Use a sample card" });
+  const pendingAction = guide.getByRole("button", {
+    name: "Sealing sample…",
+  });
   await action.click();
-  await expect(action).toHaveCount(0);
+  await expect
+    .poll(async () => (await action.count()) + (await pendingAction.count()))
+    .toBe(0);
   await expect(
     guide.getByText(
       /sample card is sealed|original sample card remains sealed/i,
