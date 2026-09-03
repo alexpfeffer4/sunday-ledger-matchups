@@ -360,9 +360,9 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   await advance(page, "Open Week 2");
 
   await page.getByRole("button", { name: "Use a sample card" }).click();
-  await expect(page.getByRole("alert").last()).toContainText(
-    "The Week 2 quote changed",
-  );
+  await expect(
+    guide.getByText("The Week 2 quote changed", { exact: false }),
+  ).toBeVisible();
   await page.reload();
   await sample(page);
   await advance(page, "Finalize Week 2");
