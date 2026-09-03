@@ -266,7 +266,12 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     setsSessionCookie: Boolean(confirmationSetCookie?.includes("auth-token")),
   }).toEqual({
     browserSessionCookies: expect.arrayContaining([
-      expect.objectContaining({ domain: "127.0.0.1", path: "/" }),
+      expect.objectContaining({
+        domain: "127.0.0.1",
+        path: "/",
+        sameSite: "Lax",
+        secure: false,
+      }),
     ]),
     error: null,
     hasTokenHash: false,
