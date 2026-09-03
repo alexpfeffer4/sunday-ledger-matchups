@@ -7,6 +7,7 @@ import {
 import { completeAccountSetup } from "@/app/account/actions";
 import { joinLeagueAction } from "@/app/leagues/actions";
 import { GET as confirmEmailLink } from "@/app/(auth)/auth/confirm/route";
+import { GET as continueEmailLink } from "@/app/(auth)/auth/continue/route";
 import { initialMagicLinkState } from "@/app/(auth)/auth/state";
 import { initialAccountSetupState } from "@/app/account/state";
 import { initialAppActionState } from "@/application/actions/action-state";
@@ -92,7 +93,7 @@ describe("Phase 1 auth and join actions", () => {
     );
   });
 
-  it("sends a returning email-link sign-in directly to its safe destination", async () => {
+  it("commits a returning email-link session before its safe destination", async () => {
     mocks.createClient.mockResolvedValue({
       auth: {
         exchangeCodeForSession: vi.fn(async () => ({ error: null })),
@@ -107,7 +108,13 @@ describe("Phase 1 auth and join actions", () => {
 
     const response = await confirmEmailLink(request);
 
-    expect(response.headers.get("location")).toBe(
+    const continuation = new URL(response.headers.get("location")!);
+    expect(continuation.pathname).toBe("/auth/continue");
+    expect(continuation.searchParams.get("next")).toBe(
+      "/join/private-invite-token",
+    );
+    const continued = continueEmailLink(new NextRequest(continuation));
+    expect(continued.headers.get("location")).toBe(
       "https://sunday-ledger.example/join/private-invite-token",
     );
   });
@@ -150,8 +157,10 @@ describe("Phase 1 auth and join actions", () => {
 
     const response = await confirmEmailLink(request);
 
-    expect(response.headers.get("location")).toBe(
-      "https://sunday-ledger.example/account/setup?next=%2Fjoin%2Fprivate-invite-token",
+    const continuation = new URL(response.headers.get("location")!);
+    expect(continuation.pathname).toBe("/auth/continue");
+    expect(continuation.searchParams.get("next")).toBe(
+      "/account/setup?next=%2Fjoin%2Fprivate-invite-token",
     );
     expect(response.status).toBe(303);
     expect(response.cookies.get("sb-test-auth-token")?.value).toBe(
