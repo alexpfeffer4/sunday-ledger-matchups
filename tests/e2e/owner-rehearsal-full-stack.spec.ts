@@ -8,6 +8,7 @@ import {
 } from "@playwright/test";
 
 const baseURL = "http://127.0.0.1:3000";
+const localBrowserHosts = new Set(["127.0.0.1", "localhost"]);
 const supabaseUrl = process.env.TEST_SUPABASE_URL;
 const publishableKey = process.env.TEST_SUPABASE_PUBLISHABLE_KEY;
 const serviceRoleKey = process.env.TEST_SUPABASE_SERVICE_ROLE_KEY;
@@ -112,6 +113,13 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   const admin = apiClient(serviceRoleKey!);
   const outsider = await createOutsider(admin);
   const owner = { email: ownerEmail!, password: ownerPassword! };
+  const unexpectedBrowserNetwork: string[] = [];
+  page.on("request", (request) => {
+    const hostname = new URL(request.url()).hostname;
+    if (!localBrowserHosts.has(hostname)) {
+      unexpectedBrowserNetwork.push(request.url());
+    }
+  });
 
   const anonymous = await newPage(browser);
   const anonymousResponse = await anonymous.page.goto("/owner/rehearsal");
@@ -409,4 +417,5 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   await expect(
     page.getByRole("heading", { name: "Practice one complete season" }),
   ).toBeVisible();
+  expect(unexpectedBrowserNetwork).toEqual([]);
 });
