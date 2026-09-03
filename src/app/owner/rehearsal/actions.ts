@@ -9,10 +9,14 @@ import {
   getOwnerRehearsal,
   hasOwnerRehearsalEntitlement,
 } from "@/application/queries/get-owner-rehearsal";
-import { ownerRehearsalCheckpoints } from "@/domain/rehearsal/owner-rehearsal";
+import {
+  ownerRehearsalCheckpoints,
+  ownerRehearsalGuide,
+} from "@/domain/rehearsal/owner-rehearsal";
 
 const operationSchema = z.object({ operationId: z.uuid() });
 const advanceSchema = operationSchema.extend({
+  confirmed: z.literal("on").optional(),
   expectedCheckpoint: z.enum(ownerRehearsalCheckpoints),
 });
 const resetSchema = operationSchema.extend({
@@ -279,10 +283,20 @@ export async function advanceOwnerRehearsalAction(
   formData: FormData,
 ): Promise<AppActionState> {
   const context = advanceSchema.safeParse({
+    confirmed: formData.get("confirmed") ?? undefined,
     expectedCheckpoint: formData.get("expectedCheckpoint"),
     operationId: formData.get("operationId"),
   });
   if (!context.success) return safeError("Invalid operation");
+  if (
+    ownerRehearsalGuide[context.data.expectedCheckpoint].confirmation &&
+    context.data.confirmed !== "on"
+  ) {
+    return {
+      status: "error",
+      message: "Confirm the named boundary before advancing the rehearsal.",
+    };
+  }
   const denied = await ensureEntitled();
   if (denied) return denied;
   const rehearsal = await getOwnerRehearsal();
