@@ -465,11 +465,12 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   }
   const anonymous = await newPage(browser);
   const anonymousResponse = await anonymous.page.goto(`/l/${slug}/matchup`);
-  expect([200, 404]).toContain(anonymousResponse?.status());
+  expect(anonymousResponse?.status()).toBe(200);
+  await expect(anonymous.page).toHaveURL(
+    `/auth/sign-in?next=${encodeURIComponent(`/l/${slug}/matchup`)}`,
+  );
   await expect(
-    anonymous.page.getByRole("heading", {
-      name: /This league is not available|There is no Ledger page here/,
-    }),
+    anonymous.page.getByRole("heading", { name: "Sign in" }),
   ).toBeVisible();
   expect(await anonymous.page.locator("body").innerText()).not.toContain(
     opponentMarket.proposition,
