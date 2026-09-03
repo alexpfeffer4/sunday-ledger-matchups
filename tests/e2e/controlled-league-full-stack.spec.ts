@@ -337,11 +337,24 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   ).toBeVisible();
 
   await page.goto(`/l/${slug}/card`);
-  const standardOutcome = page
-    .getByRole("group", { name: / Total outcomes$/ })
-    .first()
-    .locator("button:not([disabled])")
-    .first();
+  const availableOutcomes = page.locator(
+    ".outcome-selector-group button:not([disabled])",
+  );
+  await expect.poll(() => availableOutcomes.count()).toBeGreaterThan(0);
+  const outcomeLabels = await availableOutcomes.evaluateAll((buttons) =>
+    buttons.map((button) => button.getAttribute("aria-label")),
+  );
+  const standardOutcomeIndex = outcomeLabels.findIndex((label) => {
+    const odds = label?.match(/([+−])(\d+)$/);
+    return Boolean(
+      odds && (odds[1] === "+" || Number.parseInt(odds[2]!, 10) <= 200),
+    );
+  });
+  expect(
+    standardOutcomeIndex,
+    `Rendered enabled card outcomes: ${JSON.stringify(outcomeLabels)}`,
+  ).toBeGreaterThanOrEqual(0);
+  const standardOutcome = availableOutcomes.nth(standardOutcomeIndex);
   await expect(standardOutcome).toBeVisible();
   await standardOutcome.click();
   await page.getByLabel("Stake in credits").fill("1000");
