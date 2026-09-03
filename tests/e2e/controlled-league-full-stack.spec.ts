@@ -241,6 +241,16 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   confirmationUrl.searchParams.set("flow", "create-account");
   confirmationUrl.searchParams.set("next", invitePath);
   await page.goto(confirmationUrl.toString());
+  const confirmationDestination = new URL(page.url());
+  expect({
+    error: confirmationDestination.searchParams.get("error"),
+    hasTokenHash: confirmationDestination.searchParams.has("token_hash"),
+    pathname: confirmationDestination.pathname,
+  }).toEqual({
+    error: null,
+    hasTokenHash: false,
+    pathname: "/account/setup",
+  });
   await expect(
     page.getByRole("heading", { name: "Finish account setup" }),
   ).toBeVisible();
