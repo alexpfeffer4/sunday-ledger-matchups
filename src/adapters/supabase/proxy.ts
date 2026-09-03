@@ -34,12 +34,12 @@ export async function updateSupabaseSession(request: NextRequest) {
     },
   });
 
-  const { data } = await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getUser();
   const isProtected = protectedPrefixes.some((prefix) =>
     request.nextUrl.pathname.startsWith(prefix),
   );
 
-  if (!data?.claims?.sub && isProtected) {
+  if (!data.user && isProtected) {
     const signInUrl = request.nextUrl.clone();
     signInUrl.pathname = "/auth/sign-in";
     signInUrl.search = "";
