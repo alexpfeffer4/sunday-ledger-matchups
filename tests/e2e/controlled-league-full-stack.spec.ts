@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
 const baseURL = "http://127.0.0.1:3000";
@@ -252,6 +253,21 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   expect(
     storedCookies.some((cookie) => cookie.name.includes("auth-token")),
   ).toBe(true);
+  const cookieVerificationClient = createServerClient(
+    supabaseUrl!,
+    publishableKey!,
+    {
+      cookies: {
+        getAll: () => storedCookies.map(({ name, value }) => ({ name, value })),
+        setAll: () => undefined,
+      },
+    },
+  );
+  const cookieClaims = await cookieVerificationClient.auth.getClaims();
+  expect({
+    error: cookieClaims.error?.code ?? cookieClaims.error?.name ?? null,
+    hasClaims: Boolean(cookieClaims.data?.claims?.sub),
+  }).toEqual({ error: null, hasClaims: true });
   await page.goto(new URL(confirmationRedirect!, baseURL).toString());
   const confirmationDestination = new URL(page.url());
   expect({
