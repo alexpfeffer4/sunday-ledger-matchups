@@ -95,10 +95,9 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   const anonymousResponse = await anonymous.page.goto("/owner/rehearsal");
   expect([200, 404]).toContain(anonymousResponse?.status());
   await expect(anonymous.page).toHaveTitle(/Not found · Sunday Ledger/);
-  await expect(anonymous.page.locator('meta[name="robots"]')).toHaveAttribute(
-    "content",
-    /noindex/,
-  );
+  await expect(
+    anonymous.page.locator('meta[name="robots"]').first(),
+  ).toHaveAttribute("content", /noindex/);
   expect(await anonymous.page.locator("body").innerText()).not.toContain(
     "Owner Guided Rehearsal",
   );
