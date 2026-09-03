@@ -53,19 +53,27 @@ const generatedPath = resolve(
 const checked = apiFunctions(readFileSync(checkedPath, "utf8"));
 const generated = apiFunctions(readFileSync(generatedPath, "utf8"));
 const differences = [];
-const phase8cFunctions = [
+const checkedFunctions = [
   "advance_simulated_time",
   "apply_simulation_fixture_results",
   "publish_simulation_fixture_week",
+  "advance_owner_rehearsal",
+  "fill_owner_rehearsal_bots",
+  "get_owner_rehearsal",
+  "has_owner_rehearsal_entitlement",
+  "prepare_owner_rehearsal_quote_review",
+  "reset_owner_rehearsal",
+  "start_owner_rehearsal",
+  "use_owner_rehearsal_sample_card",
 ];
 
-for (const name of phase8cFunctions) {
+for (const name of checkedFunctions) {
   if (!generated.has(name)) {
-    differences.push(`missing generated Phase 8C function ${name}`);
+    differences.push(`missing generated authoritative function ${name}`);
   } else if (!checked.has(name)) {
-    differences.push(`missing checked-in Phase 8C function ${name}`);
+    differences.push(`missing checked-in authoritative function ${name}`);
   } else if (checked.get(name) !== generated.get(name)) {
-    differences.push(`stale checked-in Phase 8C signature ${name}`);
+    differences.push(`stale checked-in authoritative signature ${name}`);
   }
 }
 
@@ -76,5 +84,5 @@ if (differences.length > 0) {
 }
 
 console.log(
-  `Verified ${phase8cFunctions.length} generated Phase 8C api function signatures.`,
+  `Verified ${checkedFunctions.length} generated authoritative api function signatures.`,
 );

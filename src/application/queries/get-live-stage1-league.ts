@@ -3,6 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
+import { getOwnerRehearsalForLeague } from "@/application/queries/get-owner-rehearsal";
 import {
   liveQuoteHeadsSchema,
   stage1StateSchema,
@@ -29,7 +30,13 @@ export const getAuthoritativeLeagueState = cache(
     }
 
     const state = stage1StateSchema.parse(result.data);
-    if (!state.week || state.league.mode === "SIMULATION") return state;
+    if (!state.week) return state;
+    if (
+      state.league.mode === "SIMULATION" &&
+      !(await getOwnerRehearsalForLeague(leagueSlug))
+    ) {
+      return state;
+    }
 
     const currentQuotes = await supabase
       .schema("api")

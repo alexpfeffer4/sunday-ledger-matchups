@@ -38,11 +38,14 @@ export default async function AccountPage({
 
   const email =
     typeof data.claims.email === "string" ? data.claims.email : "Your account";
-  const profileResult = await supabase
-    .schema("api")
-    .from("my_profile")
-    .select("display_name")
-    .maybeSingle();
+  const [profileResult, ownerEntitlementResult] = await Promise.all([
+    supabase
+      .schema("api")
+      .from("my_profile")
+      .select("display_name")
+      .maybeSingle(),
+    supabase.schema("api").rpc("has_owner_rehearsal_entitlement"),
+  ]);
   if (profileResult.error) throw profileResult.error;
   const currentUsername =
     profileResult.data?.display_name ?? email.split("@")[0] ?? "Member";
@@ -89,6 +92,27 @@ export default async function AccountPage({
           </p>
           <SetPasswordForm />
         </section>
+
+        {!ownerEntitlementResult.error && ownerEntitlementResult.data ? (
+          <section className="border-registry/35 bg-surface mt-6 rounded-xl border p-6 shadow-[var(--shadow-card)] sm:p-8">
+            <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">
+              Private owner tools
+            </p>
+            <h2 className="mt-3 text-2xl font-bold tracking-[-0.03em]">
+              Guided rehearsal
+            </h2>
+            <p className="text-graphite mt-3 leading-6">
+              Experience a complete simulated season through the ordinary member
+              and commissioner surfaces. It does not affect Live leagues.
+            </p>
+            <Link
+              className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
+              href="/owner/rehearsal"
+            >
+              Open Owner Guided Rehearsal
+            </Link>
+          </section>
+        ) : null}
 
         <div className="mt-5 flex justify-end">
           <SignOutForm className="text-muted hover:text-ink min-h-11 rounded-lg px-3 text-sm font-semibold" />

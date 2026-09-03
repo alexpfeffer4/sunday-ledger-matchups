@@ -28,6 +28,8 @@ export function LeagueShell({
   archiveMode = false,
   exampleMode = false,
   isCommissioner = false,
+  ownerRehearsal = false,
+  ownerRehearsalGuide,
 }: {
   children: ReactNode;
   leagueSlug: string;
@@ -42,9 +44,14 @@ export function LeagueShell({
   archiveMode?: boolean;
   exampleMode?: boolean;
   isCommissioner?: boolean;
+  ownerRehearsal?: boolean;
+  ownerRehearsalGuide?: ReactNode;
 }) {
   return (
-    <div className="bg-canvas min-h-screen lg:grid lg:grid-cols-[72px_minmax(0,1fr)] xl:grid-cols-[232px_minmax(0,1fr)]">
+    <div
+      className="bg-canvas min-h-screen lg:grid lg:grid-cols-[72px_minmax(0,1fr)] xl:grid-cols-[232px_minmax(0,1fr)]"
+      data-owner-rehearsal={ownerRehearsal ? "true" : undefined}
+    >
       <aside className="border-boundary bg-surface hidden min-h-0 border-r px-2 py-5 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col xl:px-4">
         <Link
           href="/"
@@ -167,10 +174,23 @@ export function LeagueShell({
               )}
             </div>
           </div>
+          {ownerRehearsal ? (
+            <p
+              className="border-registry/20 bg-registry/5 text-registry border-t px-4 py-1.5 text-center text-[11px] font-bold tracking-[0.035em] sm:px-6 sm:text-xs lg:px-8"
+              role="note"
+            >
+              Owner rehearsal · Simulated data · Does not affect Live leagues
+            </p>
+          ) : null}
         </header>
         <Suspense fallback={null}>
           <LeagueMobileSecondaryNav leagueSlug={leagueSlug} />
         </Suspense>
+        {ownerRehearsalGuide ? (
+          <div className="mx-auto max-w-[1480px] px-4 pt-4 sm:px-6 lg:px-8">
+            {ownerRehearsalGuide}
+          </div>
+        ) : null}
         {children}
       </div>
 

@@ -114,7 +114,30 @@ function subscribeToHydration() {
   return () => undefined;
 }
 
+function cardBuilderContextKey(state: Stage1StateDto): string {
+  const slateRevision = state.slate.flatMap((event) =>
+    event.markets.map((market) => [
+      market.id,
+      market.payloadHash,
+      market.qualityStatus,
+    ]),
+  );
+
+  return JSON.stringify([
+    state.league.id,
+    state.week?.id ?? null,
+    state.ownerCard?.id ?? null,
+    slateRevision,
+  ]);
+}
+
 export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
+  return (
+    <Stage1CardBuilderEditor key={cardBuilderContextKey(state)} state={state} />
+  );
+}
+
+function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
   const ownerCard = state.ownerCard;
   const draftStorageKey =
     ownerCard && state.week

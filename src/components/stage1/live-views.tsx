@@ -859,6 +859,7 @@ export function Stage1CommissionerView({
   leagueManagement,
   latestLiveImport,
   liveWeekOperations,
+  ownerRehearsal = false,
   providerConfigured,
   state,
   week17CorrectionOperations,
@@ -867,6 +868,7 @@ export function Stage1CommissionerView({
   leagueManagement: MyLeagueSummary | null;
   latestLiveImport: LiveOddsImportReview | null;
   liveWeekOperations: LiveWeekOperations | null;
+  ownerRehearsal?: boolean;
   providerConfigured: boolean;
   state: Stage1StateDto;
   week17CorrectionOperations: Week17CorrectionOperations | null;
@@ -924,60 +926,85 @@ export function Stage1CommissionerView({
               </dd>
             </div>
             <div className="flex justify-between gap-3 sm:block">
-              <dt className="text-muted">Ready cards · Corrections</dt>
+              <dt className="text-muted">
+                {ownerRehearsal ? "Corrections" : "Ready cards · Corrections"}
+              </dt>
               <dd className="font-semibold sm:mt-1">
-                {state.commissioner.readyCount ?? "Sealed"} ·{" "}
-                {state.commissioner.correctionCount}
+                {ownerRehearsal ? (
+                  state.commissioner.correctionCount
+                ) : (
+                  <>
+                    {state.commissioner.readyCount ?? "Sealed"} ·{" "}
+                    {state.commissioner.correctionCount}
+                  </>
+                )}
               </dd>
             </div>
           </dl>
         </section>
 
         <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <Stage1CommissionerControls
-            invites={invites}
-            latestLiveImport={latestLiveImport}
-            liveWeekOperations={liveWeekOperations}
-            providerConfigured={providerConfigured}
-            state={{
-              league: {
-                id: state.league.id,
-                slug: state.league.slug,
-                memberCount: state.league.memberCount,
-                lifecycle: state.league.lifecycle,
-                mode: state.league.mode,
-              },
-              week: state.week
-                ? {
-                    nflWeek: state.week.nflWeek,
-                    scope: state.week.scope,
-                    state: state.week.state,
-                    commonLockAt: state.week.commonLockAt,
-                    correctionWindowClosesAt:
-                      state.week.correctionWindowClosesAt,
-                  }
-                : null,
-              slate: state.slate.map((event) => ({
-                id: event.id,
-                key: event.key,
-                state: event.state,
-                scheduledStartAt: event.scheduledStartAt,
-                awayTeam: event.awayTeam,
-                homeTeam: event.homeTeam,
-                latestObservedAt: event.markets.reduce(
-                  (latest, market) =>
-                    market.observedAt > latest ? market.observedAt : latest,
-                  event.markets[0]?.observedAt ?? event.scheduledStartAt,
-                ),
-              })),
-              members: state.members.map((member) => ({
-                displayName: member.displayName,
-                role: member.role,
-                userId: member.userId,
-              })),
-            }}
-            week17CorrectionOperations={week17CorrectionOperations}
-          />
+          {ownerRehearsal ? (
+            <section className="border-boundary bg-surface rounded-xl border p-5">
+              <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+                Commissioner task
+              </p>
+              <h2 className="mt-2 text-lg font-bold">
+                Use the rehearsal guide to advance
+              </h2>
+              <p className="text-graphite mt-2 text-sm leading-6">
+                Formation, slate publication, card lock, results, corrections,
+                postseason, and archive still use the authoritative commands.
+                The guide exposes only the next safe checkpoint and never
+                reveals sealed opponent positions.
+              </p>
+            </section>
+          ) : (
+            <Stage1CommissionerControls
+              invites={invites}
+              latestLiveImport={latestLiveImport}
+              liveWeekOperations={liveWeekOperations}
+              providerConfigured={providerConfigured}
+              state={{
+                league: {
+                  id: state.league.id,
+                  slug: state.league.slug,
+                  memberCount: state.league.memberCount,
+                  lifecycle: state.league.lifecycle,
+                  mode: state.league.mode,
+                },
+                week: state.week
+                  ? {
+                      nflWeek: state.week.nflWeek,
+                      scope: state.week.scope,
+                      state: state.week.state,
+                      commonLockAt: state.week.commonLockAt,
+                      correctionWindowClosesAt:
+                        state.week.correctionWindowClosesAt,
+                    }
+                  : null,
+                slate: state.slate.map((event) => ({
+                  id: event.id,
+                  key: event.key,
+                  state: event.state,
+                  scheduledStartAt: event.scheduledStartAt,
+                  awayTeam: event.awayTeam,
+                  homeTeam: event.homeTeam,
+                  latestObservedAt: event.markets.reduce(
+                    (latest, market) =>
+                      market.observedAt > latest ? market.observedAt : latest,
+                    event.markets[0]?.observedAt ?? event.scheduledStartAt,
+                  ),
+                })),
+                members: state.members.map((member) => ({
+                  displayName: member.displayName,
+                  role: member.role,
+                  userId: member.userId,
+                })),
+              }}
+              week17CorrectionOperations={week17CorrectionOperations}
+            />
+          )}
           <aside>
             <details className="border-negative/25 bg-negative/10 overflow-hidden rounded-lg border">
               <summary className="text-negative flex min-h-12 cursor-pointer list-none items-center px-5 py-3 font-bold [&::-webkit-details-marker]:hidden">
@@ -990,7 +1017,7 @@ export function Stage1CommissionerView({
             </details>
           </aside>
         </div>
-        {leagueManagement ? (
+        {leagueManagement && !ownerRehearsal ? (
           <details className="border-boundary bg-surface mt-6 overflow-hidden rounded-lg border">
             <summary className="hover:bg-subtle flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 font-bold [&::-webkit-details-marker]:hidden">
               <span>Lifecycle and league settings</span>

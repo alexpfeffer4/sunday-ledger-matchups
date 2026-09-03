@@ -11,6 +11,7 @@ export const config = {
     "/l/:path*",
     "/join/:path*",
     "/leagues/:path*",
+    "/owner/:path*",
     "/auth/:path*",
   ],
 };

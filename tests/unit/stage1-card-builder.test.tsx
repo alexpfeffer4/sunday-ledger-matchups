@@ -1,13 +1,22 @@
 // @vitest-environment jsdom
 
 import {
+  cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
   within,
 } from "@testing-library/react";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
 
@@ -42,6 +51,14 @@ beforeAll(() => {
       },
     },
   });
+});
+
+beforeEach(() => {
+  localStorage.clear();
+});
+
+afterEach(() => {
+  cleanup();
 });
 
 const leagueId = "10000000-0000-4000-8000-000000000001";
@@ -124,6 +141,73 @@ const state = {
 } as unknown as Stage1StateDto;
 
 describe("authenticated card editor", () => {
+  it("reconciles a mounted draft when refreshed server state replaces its quote", async () => {
+    const originalState = {
+      ...state,
+      slate: [
+        {
+          ...state.slate[0],
+          markets: [
+            {
+              ...state.slate[0].markets[0],
+              americanOdds: -185,
+              payloadHash: "a".repeat(64),
+              qualityStatus: "HEALTHY",
+            },
+            state.slate[0].markets[1],
+          ],
+        },
+      ],
+    } as Stage1StateDto;
+    localStorage.setItem(
+      `sunday-ledger:card-draft:v1:${leagueId}:${weekId}:${cardId}`,
+      JSON.stringify({
+        version: 1,
+        drafts: [
+          {
+            eventId,
+            marketType: "MONEYLINE",
+            outcomeKey: "AWAY",
+            reviewedAmericanOdds: -185,
+            reviewedPayloadHash: "a".repeat(64),
+            reviewedProposition: "Harbor Club",
+            stakeCredits: 1_000,
+          },
+        ],
+      }),
+    );
+
+    const view = render(<Stage1CardBuilder state={originalState} />);
+    expect(screen.queryByText("Updated quote")).not.toBeInTheDocument();
+
+    const refreshedState = {
+      ...originalState,
+      slate: [
+        {
+          ...originalState.slate[0],
+          markets: [
+            {
+              ...originalState.slate[0].markets[0],
+              id: "10000000-0000-4000-8000-000000000008",
+              americanOdds: -190,
+              payloadHash: "d".repeat(64),
+            },
+            originalState.slate[0].markets[1],
+          ],
+        },
+      ],
+    } as Stage1StateDto;
+    view.rerender(<Stage1CardBuilder state={refreshedState} />);
+
+    expect(await screen.findByText("Updated quote")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Review 1 updated quote" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Use updated odds" }),
+    ).toBeEnabled();
+  });
+
   it("keeps an unavailable restored quote under review until a healthy outcome is selected", async () => {
     localStorage.setItem(
       `sunday-ledger:card-draft:v1:${leagueId}:${weekId}:${cardId}`,
