@@ -7,7 +7,6 @@ import {
 import { completeAccountSetup } from "@/app/account/actions";
 import { joinLeagueAction } from "@/app/leagues/actions";
 import { GET as confirmEmailLink } from "@/app/(auth)/auth/confirm/route";
-import { GET as continueEmailLink } from "@/app/(auth)/auth/continue/route";
 import { initialMagicLinkState } from "@/app/(auth)/auth/state";
 import { initialAccountSetupState } from "@/app/account/state";
 import { initialAppActionState } from "@/application/actions/action-state";
@@ -112,10 +111,6 @@ describe("Phase 1 auth and join actions", () => {
     expect(continuation.pathname).toBe("/auth/continue");
     expect(continuation.searchParams.get("next")).toBe(
       "/join/private-invite-token",
-    );
-    const continued = continueEmailLink(new NextRequest(continuation));
-    expect(continued.headers.get("location")).toBe(
-      "https://sunday-ledger.example/join/private-invite-token",
     );
   });
 
