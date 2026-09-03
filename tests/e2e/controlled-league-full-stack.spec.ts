@@ -240,7 +240,19 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   confirmationUrl.searchParams.set("type", verificationType!);
   confirmationUrl.searchParams.set("flow", "create-account");
   confirmationUrl.searchParams.set("next", invitePath);
-  await page.goto(confirmationUrl.toString());
+  const confirmationResponse = await page.request.get(
+    confirmationUrl.toString(),
+    { maxRedirects: 0 },
+  );
+  expect([302, 303, 307, 308]).toContain(confirmationResponse.status());
+  expect(Boolean(confirmationResponse.headers()["set-cookie"])).toBe(true);
+  const confirmationRedirect = confirmationResponse.headers().location;
+  expect(confirmationRedirect).toBeTruthy();
+  const storedCookies = await page.context().cookies(baseURL);
+  expect(
+    storedCookies.some((cookie) => cookie.name.includes("auth-token")),
+  ).toBe(true);
+  await page.goto(new URL(confirmationRedirect!, baseURL).toString());
   const confirmationDestination = new URL(page.url());
   expect({
     error: confirmationDestination.searchParams.get("error"),
