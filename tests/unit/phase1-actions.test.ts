@@ -92,7 +92,7 @@ describe("Phase 1 auth and join actions", () => {
     );
   });
 
-  it("sends a returning email-link sign-in directly to its safe destination", async () => {
+  it("sends a returning email-link sign-in to its safe destination", async () => {
     mocks.createClient.mockResolvedValue({
       auth: {
         exchangeCodeForSession: vi.fn(async () => ({ error: null })),
@@ -113,23 +113,57 @@ describe("Phase 1 auth and join actions", () => {
   });
 
   it("routes account-creation links through required setup", async () => {
-    mocks.createClient.mockResolvedValue({
-      auth: {
-        exchangeCodeForSession: vi.fn(async () => ({ error: null })),
+    mocks.createClient.mockImplementation(
+      async (
+        onCookiesToSet?: (
+          cookies: Array<{
+            name: string;
+            options: { path: string; sameSite: "lax" };
+            value: string;
+          }>,
+          headers: Record<string, string>,
+        ) => void,
+      ) => {
+        onCookiesToSet?.(
+          [
+            {
+              name: "sb-test-auth-token",
+              options: { path: "/", sameSite: "lax" },
+              value: "session-cookie",
+            },
+          ],
+          { "Cache-Control": "private, no-store" },
+        );
+        return {
+          auth: {
+            exchangeCodeForSession: vi.fn(async () => ({ error: null })),
+          },
+          schema: vi.fn(() => ({
+            rpc: vi.fn(async () => ({ error: null })),
+          })),
+        };
       },
-      schema: vi.fn(() => ({
-        rpc: vi.fn(async () => ({ error: null })),
-      })),
-    });
+    );
     const request = new NextRequest(
-      "https://sunday-ledger.example/auth/confirm?code=abc&flow=create-account&next=%2Fjoin%2Fprivate-invite-token",
+      "http://localhost:3000/auth/confirm?code=abc&flow=create-account&next=%2Fjoin%2Fprivate-invite-token",
+      {
+        headers: {
+          host: "127.0.0.1:3000",
+          "x-forwarded-proto": "http",
+        },
+      },
     );
 
     const response = await confirmEmailLink(request);
 
     expect(response.headers.get("location")).toBe(
-      "https://sunday-ledger.example/account/setup?next=%2Fjoin%2Fprivate-invite-token",
+      "http://127.0.0.1:3000/account/setup?next=%2Fjoin%2Fprivate-invite-token",
     );
+    expect(response.status).toBe(303);
+    expect(response.cookies.get("sb-test-auth-token")?.value).toBe(
+      "session-cookie",
+    );
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
   });
 
   it("requires both authoritative profile and password saves before setup redirects", async () => {

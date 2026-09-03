@@ -51,8 +51,8 @@ jobs:
       - name: Initialize disposable local configuration
         run: supabase init
 
-      - name: Apply every migration from a clean database
-        run: supabase db start
+      - name: Start disposable Supabase stack and apply every migration
+        run: supabase start
 
       - name: Export disposable full-stack configuration
         run: |
@@ -60,6 +60,12 @@ jobs:
           set -a
           source /tmp/sunday-ledger-supabase.env
           set +a
+          for required_name in API_URL ANON_KEY SERVICE_ROLE_KEY DB_URL; do
+            if [[ -z "${!required_name:-}" ]]; then
+              echo "Supabase did not export required local setting: $required_name" >&2
+              exit 1
+            fi
+          done
           echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
           echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> "$GITHUB_ENV"
           echo "TEST_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"

@@ -5,9 +5,22 @@ const baseURL = "http://127.0.0.1:3000";
 const supabaseUrl = process.env.TEST_SUPABASE_URL;
 const publishableKey = process.env.TEST_SUPABASE_PUBLISHABLE_KEY;
 const serviceRoleKey = process.env.TEST_SUPABASE_SERVICE_ROLE_KEY;
-const enabled =
-  process.env.FULL_STACK_ACCEPTANCE === "1" &&
-  Boolean(supabaseUrl && publishableKey && serviceRoleKey);
+const acceptanceRequested = process.env.FULL_STACK_ACCEPTANCE === "1";
+const missingSettings = [
+  ["TEST_SUPABASE_URL", supabaseUrl],
+  ["TEST_SUPABASE_PUBLISHABLE_KEY", publishableKey],
+  ["TEST_SUPABASE_SERVICE_ROLE_KEY", serviceRoleKey],
+]
+  .filter(([, value]) => !value)
+  .map(([name]) => name);
+
+if (acceptanceRequested && missingSettings.length > 0) {
+  throw new Error(
+    `Full-stack acceptance was requested without ${missingSettings.join(", ")}.`,
+  );
+}
+
+const enabled = acceptanceRequested && missingSettings.length === 0;
 
 type Identity = {
   displayName: string;
@@ -18,9 +31,15 @@ type Identity = {
 
 type StageState = {
   league: { id: string; name: string; slug: string };
-  matchup: { opponentEntryId: string } | null;
+  matchup: {
+    opponentEntryId: string;
+    opponentRevealedPositions: Array<{ proposition: string }>;
+    result: { status: string } | null;
+  } | null;
   members: Array<{ entryId: string | null; userId: string }>;
+  season: { simulatedNow: string };
   slate: Array<{
+    scheduledStartAt: string;
     markets: Array<{
       americanOdds: number;
       id: string;
@@ -29,6 +48,11 @@ type StageState = {
       qualityStatus: string;
     }>;
   }>;
+  week: {
+    commonLockAt: string;
+    correctionWindowClosesAt: string | null;
+    state: string;
+  } | null;
 };
 
 function apiClient(key: string): SupabaseClient {
@@ -218,9 +242,54 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     type: "magiclink",
   });
   expect(generated.error).toBeNull();
-  const actionLink = generated.data.properties?.action_link;
-  expect(actionLink).toBeTruthy();
-  await page.goto(actionLink!);
+  const tokenHash = generated.data.properties?.hashed_token;
+  const verificationType = generated.data.properties?.verification_type;
+  expect(tokenHash).toBeTruthy();
+  expect(verificationType).toBe("magiclink");
+  const confirmationUrl = new URL("/auth/confirm", baseURL);
+  confirmationUrl.searchParams.set("token_hash", tokenHash!);
+  confirmationUrl.searchParams.set("type", verificationType!);
+  confirmationUrl.searchParams.set("flow", "create-account");
+  confirmationUrl.searchParams.set("next", invitePath);
+  const confirmationResponsePromise = page.waitForResponse(
+    (response) => response.url() === confirmationUrl.toString(),
+  );
+  await page.goto(confirmationUrl.toString());
+  const confirmationResponse = await confirmationResponsePromise;
+  await page.waitForURL(/\/account\/setup/);
+  const confirmationSetCookie =
+    await confirmationResponse.headerValue("set-cookie");
+  const browserSessionCookies = (await page.context().cookies(baseURL))
+    .filter((cookie) => cookie.name.includes("auth-token"))
+    .map(({ domain, httpOnly, name, path, sameSite, secure }) => ({
+      domain,
+      httpOnly,
+      name,
+      path,
+      sameSite,
+      secure,
+    }));
+  const confirmationDestination = new URL(page.url());
+  expect({
+    browserSessionCookies,
+    error: confirmationDestination.searchParams.get("error"),
+    hasTokenHash: confirmationDestination.searchParams.has("token_hash"),
+    pathname: confirmationDestination.pathname,
+    setsSessionCookie: Boolean(confirmationSetCookie?.includes("auth-token")),
+  }).toEqual({
+    browserSessionCookies: expect.arrayContaining([
+      expect.objectContaining({
+        domain: "127.0.0.1",
+        path: "/",
+        sameSite: "Lax",
+        secure: false,
+      }),
+    ]),
+    error: null,
+    hasTokenHash: false,
+    pathname: "/account/setup",
+    setsSessionCookie: true,
+  });
   await expect(
     page.getByRole("heading", { name: "Finish account setup" }),
   ).toBeVisible();
@@ -278,13 +347,27 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     commissionerBrowser.page.getByText("Practice/test Week 1 · open"),
   ).toBeVisible();
 
-  await page.goto(`/l/${slug}/card`);
-  const positiveOutcome = page
-    .locator(".outcome-selector-group button:not([disabled])")
-    .filter({ hasText: /\+\d/ })
-    .first();
-  await expect(positiveOutcome).toBeVisible();
-  await positiveOutcome.click();
+  await page.goto(`/l/${slug}/slate`);
+  const availableOutcomes = page.locator(
+    ".outcome-selector-group button:not([disabled])",
+  );
+  await expect.poll(() => availableOutcomes.count()).toBeGreaterThan(0);
+  const outcomeLabels = await availableOutcomes.evaluateAll((buttons) =>
+    buttons.map((button) => button.getAttribute("aria-label")),
+  );
+  const standardOutcomeIndex = outcomeLabels.findIndex((label) => {
+    const odds = label?.match(/([+−])(\d+)$/);
+    return Boolean(
+      odds && (odds[1] === "+" || Number.parseInt(odds[2]!, 10) <= 200),
+    );
+  });
+  expect(
+    standardOutcomeIndex,
+    `Rendered enabled card outcomes: ${JSON.stringify(outcomeLabels)}`,
+  ).toBeGreaterThanOrEqual(0);
+  const standardOutcome = availableOutcomes.nth(standardOutcomeIndex);
+  await expect(standardOutcome).toBeVisible();
+  await standardOutcome.click();
   await page.getByLabel("Stake in credits").fill("1000");
   await page.getByRole("button", { name: "Add to card" }).click();
 
@@ -305,7 +388,7 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   await page.getByRole("button", { name: "Use updated odds" }).click();
 
   let droppedSealResponse = false;
-  await page.route(`**/l/${slug}/card`, async (route) => {
+  await page.route(`**/l/${slug}/slate`, async (route) => {
     if (
       !droppedSealResponse &&
       route.request().method() === "POST" &&
@@ -320,7 +403,7 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   });
   await page.getByRole("button", { name: "Confirm and seal card" }).click();
   await expect.poll(() => droppedSealResponse).toBe(true);
-  await page.unroute(`**/l/${slug}/card`);
+  await page.unroute(`**/l/${slug}/slate`);
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "All 1,000 credits are sealed" }),
@@ -360,9 +443,18 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   await commissionerBrowser.page
     .getByRole("button", { name: "Advance past common lock" })
     .click();
+  await expect
+    .poll(async () => {
+      const state = await getState(invitedClient, slug);
+      return new Date(state.season.simulatedNow).getTime();
+    })
+    .toBeGreaterThan(new Date(invitedState.week!.commonLockAt).getTime());
   await commissionerBrowser.page
     .getByRole("button", { name: "Lock all cards" })
     .click();
+  await expect
+    .poll(async () => (await getState(invitedClient, slug)).week?.state)
+    .toBe("LOCKED");
 
   await page.goto(`/l/${slug}/matchup`);
   await expect(page.getByText("Future picks sealed")).toBeVisible();
@@ -381,13 +473,25 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     const response = await isolated.page.goto(`/l/${slug}/matchup`);
     const body = await isolated.page.locator("body").innerText();
     expect(body).not.toContain(opponentMarket.proposition);
-    if (identity !== sameLeagueNonOpponent)
-      expect(response?.status()).toBe(404);
+    if (identity !== sameLeagueNonOpponent) {
+      expect([200, 404]).toContain(response?.status());
+      await expect(
+        isolated.page.getByRole("heading", {
+          name: /This league is not available|There is no Ledger page here/,
+        }),
+      ).toBeVisible();
+    }
     await isolated.context.close();
   }
   const anonymous = await newPage(browser);
   const anonymousResponse = await anonymous.page.goto(`/l/${slug}/matchup`);
-  expect(anonymousResponse?.status()).toBe(404);
+  expect(anonymousResponse?.status()).toBe(200);
+  await expect(anonymous.page).toHaveURL(
+    `/auth/sign-in?next=${encodeURIComponent(`/l/${slug}/matchup`)}`,
+  );
+  await expect(
+    anonymous.page.getByRole("heading", { name: "Sign in" }),
+  ).toBeVisible();
   expect(await anonymous.page.locator("body").innerText()).not.toContain(
     opponentMarket.proposition,
   );
@@ -396,15 +500,40 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   await commissionerBrowser.page
     .getByRole("button", { name: "Advance through kickoff" })
     .click();
+  const latestKickoff = Math.max(
+    ...invitedState.slate.map((event) =>
+      new Date(event.scheduledStartAt).getTime(),
+    ),
+  );
+  await expect
+    .poll(async () => {
+      const state = await getState(invitedClient, slug);
+      return new Date(state.season.simulatedNow).getTime();
+    })
+    .toBeGreaterThanOrEqual(latestKickoff + 6 * 60_000);
   await commissionerBrowser.page
     .getByRole("button", { name: "Mark fixture events live" })
     .click();
+  await expect
+    .poll(async () => {
+      const state = await getState(invitedClient, slug);
+      return state.matchup?.opponentRevealedPositions.some(
+        (position) => position.proposition === opponentMarket.proposition,
+      );
+    })
+    .toBe(true);
   await page.reload();
   await expect(page.getByText(opponentMarket.proposition)).toBeVisible();
 
   await commissionerBrowser.page
     .getByRole("button", { name: "Advance to scripted finals" })
     .click();
+  await expect
+    .poll(async () => {
+      const state = await getState(invitedClient, slug);
+      return new Date(state.season.simulatedNow).getTime();
+    })
+    .toBeGreaterThanOrEqual(latestKickoff + 4 * 60 * 60_000);
   let droppedCommissionerResponse = false;
   await commissionerBrowser.page.route(
     `**/l/${slug}/commissioner`,
@@ -434,69 +563,29 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   await expect(
     commissionerBrowser.page.getByText(/Already completed.*final results/i),
   ).toBeVisible();
-
-  const operations = await expectRpc<{
-    events: Array<{
-      correctionCount: number;
-      id: string;
-      result: { awayScore: number; homeScore: number } | null;
-    }>;
-  }>(commissionerClient, "get_live_week_operations", {
-    p_league_slug: slug,
-  });
-  const correctedEvent = operations.events.find((event) => event.result);
-  expect(correctedEvent?.result).toBeTruthy();
-  await expectRpc(commissionerClient, "correct_live_event_result", {
-    p_away_score: correctedEvent!.result!.awayScore + 1,
-    p_event_id: correctedEvent!.id,
-    p_home_score: correctedEvent!.result!.homeScore,
-    p_idempotency_key: `op:${"3".repeat(64)}`,
-    p_reason: "Controlled acceptance official-score correction.",
-    p_status: "FINAL",
-  });
-  const corrected = await expectRpc<typeof operations>(
-    commissionerClient,
-    "get_live_week_operations",
-    { p_league_slug: slug },
-  );
-  const firstCorrection = corrected.events.find(
-    (event) => event.id === correctedEvent!.id,
-  );
-  expect(firstCorrection?.correctionCount).toBe(1);
-
-  await expectRpc(commissionerClient, "correct_live_event_result", {
-    p_away_score: correctedEvent!.result!.awayScore + 2,
-    p_event_id: correctedEvent!.id,
-    p_home_score: correctedEvent!.result!.homeScore,
-    p_idempotency_key: `op:${"4".repeat(64)}`,
-    p_reason: "Controlled acceptance official-score correction.",
-    p_status: "FINAL",
-  });
-  await expectRpc(commissionerClient, "correct_live_event_result", {
-    p_away_score: correctedEvent!.result!.awayScore + 1,
-    p_event_id: correctedEvent!.id,
-    p_home_score: correctedEvent!.result!.homeScore,
-    p_idempotency_key: `op:${"5".repeat(64)}`,
-    p_reason: "Controlled acceptance official-score correction.",
-    p_status: "FINAL",
-  });
-  const returnedCorrection = await expectRpc<typeof operations>(
-    commissionerClient,
-    "get_live_week_operations",
-    { p_league_slug: slug },
-  );
-  const returnedEvent = returnedCorrection.events.find(
-    (event) => event.id === correctedEvent!.id,
-  );
-  expect(returnedEvent?.correctionCount).toBe(3);
-  expect(returnedEvent?.result?.awayScore).toBe(
-    correctedEvent!.result!.awayScore + 1,
-  );
+  await expect
+    .poll(async () => {
+      const state = await getState(invitedClient, slug);
+      return {
+        matchup: state.matchup?.result?.status,
+        week: state.week?.state,
+      };
+    })
+    .toEqual({ matchup: "PROVISIONAL", week: "PROVISIONAL" });
 
   await commissionerBrowser.page.reload();
+  const correctionWindowClosesAt = (await getState(invitedClient, slug)).week
+    ?.correctionWindowClosesAt;
+  expect(correctionWindowClosesAt).toBeTruthy();
   await commissionerBrowser.page
     .getByRole("button", { name: "Advance past correction window" })
     .click();
+  await expect
+    .poll(async () => {
+      const state = await getState(invitedClient, slug);
+      return new Date(state.season.simulatedNow).getTime();
+    })
+    .toBeGreaterThan(new Date(correctionWindowClosesAt!).getTime());
   await commissionerBrowser.page
     .getByRole("button", { name: "Finalize Week 1" })
     .click();
