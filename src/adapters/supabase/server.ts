@@ -1,11 +1,13 @@
 import "server-only";
 
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type SetAllCookies } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getSupabasePublicConfig } from "@/adapters/supabase/config";
 import type { Database } from "@/adapters/supabase/database.types";
 
-export async function createSupabaseServerClient() {
+export async function createSupabaseServerClient(
+  onCookiesToSet?: SetAllCookies,
+) {
   const cookieStore = await cookies();
   const { url, publishableKey } = getSupabasePublicConfig();
 
@@ -15,7 +17,7 @@ export async function createSupabaseServerClient() {
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet, headers) {
         try {
           cookiesToSet.forEach(({ name, value, options }) =>
             cookieStore.set(name, value, options),
@@ -24,6 +26,7 @@ export async function createSupabaseServerClient() {
           // Server Components cannot write cookies. The request Proxy refreshes
           // sessions before protected content renders.
         }
+        return onCookiesToSet?.(cookiesToSet, headers);
       },
     },
   });
