@@ -185,9 +185,13 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   await page.getByRole("button", { name: "Fill with rehearsal teams" }).click();
   await expect(page.getByText("1 of 22")).toBeVisible();
 
-  await page.getByRole("link", { name: "Enter rehearsal" }).click();
-  const leagueSlug = new URL(page.url()).pathname.split("/")[2];
+  const enterRehearsal = page.getByRole("link", { name: "Enter rehearsal" });
+  const rehearsalHref = await enterRehearsal.getAttribute("href");
+  expect(rehearsalHref).toMatch(/^\/l\/[^/]+\/matchup$/);
+  const leagueSlug = new URL(rehearsalHref!, page.url()).pathname.split("/")[2];
   expect(leagueSlug).toBeTruthy();
+  await enterRehearsal.click();
+  await expect(page).toHaveURL(new RegExp(`/l/${leagueSlug}/matchup$`));
   await expect(
     page.getByText(
       "Owner rehearsal · Simulated data · Does not affect Live leagues",
