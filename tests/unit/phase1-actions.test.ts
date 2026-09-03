@@ -92,7 +92,7 @@ describe("Phase 1 auth and join actions", () => {
     );
   });
 
-  it("commits a returning email-link session before its safe destination", async () => {
+  it("sends a returning email-link sign-in to its safe destination", async () => {
     mocks.createClient.mockResolvedValue({
       auth: {
         exchangeCodeForSession: vi.fn(async () => ({ error: null })),
@@ -107,10 +107,8 @@ describe("Phase 1 auth and join actions", () => {
 
     const response = await confirmEmailLink(request);
 
-    const continuation = new URL(response.headers.get("location")!);
-    expect(continuation.pathname).toBe("/auth/continue");
-    expect(continuation.searchParams.get("next")).toBe(
-      "/join/private-invite-token",
+    expect(response.headers.get("location")).toBe(
+      "https://sunday-ledger.example/join/private-invite-token",
     );
   });
 
@@ -147,15 +145,19 @@ describe("Phase 1 auth and join actions", () => {
       },
     );
     const request = new NextRequest(
-      "https://sunday-ledger.example/auth/confirm?code=abc&flow=create-account&next=%2Fjoin%2Fprivate-invite-token",
+      "http://localhost:3000/auth/confirm?code=abc&flow=create-account&next=%2Fjoin%2Fprivate-invite-token",
+      {
+        headers: {
+          host: "127.0.0.1:3000",
+          "x-forwarded-proto": "http",
+        },
+      },
     );
 
     const response = await confirmEmailLink(request);
 
-    const continuation = new URL(response.headers.get("location")!);
-    expect(continuation.pathname).toBe("/auth/continue");
-    expect(continuation.searchParams.get("next")).toBe(
-      "/account/setup?next=%2Fjoin%2Fprivate-invite-token",
+    expect(response.headers.get("location")).toBe(
+      "http://127.0.0.1:3000/account/setup?next=%2Fjoin%2Fprivate-invite-token",
     );
     expect(response.status).toBe(303);
     expect(response.cookies.get("sb-test-auth-token")?.value).toBe(
