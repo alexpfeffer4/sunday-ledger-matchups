@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { CardPositionDto } from "@/application/queries/league-dtos";
+import { formatMarketProposition } from "@/components/card/market-option-copy";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCredits } from "@/domain/odds/american";
 
@@ -22,7 +23,9 @@ export function CardPositionRow({
             {position.marketLabel} · {position.eventLabel}
           </p>
           <h2 className="mt-2 text-lg font-bold">{position.displayLine}</h2>
-          <p className="text-graphite mt-1 text-sm">{position.proposition}</p>
+          <p className="text-graphite mt-1 text-sm">
+            {formatMarketProposition(position.proposition)}
+          </p>
         </div>
         <StatusBadge tone="sealed">Sealed</StatusBadge>
       </div>

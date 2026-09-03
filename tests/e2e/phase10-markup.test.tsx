@@ -85,7 +85,7 @@ test("writes deterministic Phase 10 navigation and dense-record markup", () => {
             allPlayHalfWinUnits: 19,
             allPlayComparisonCount: 14,
             attendanceMisses: 0,
-            playoffState: "Qualified",
+            playoffEligible: true,
             inPlayoffField: true,
             current: true,
           },
@@ -100,11 +100,12 @@ test("writes deterministic Phase 10 navigation and dense-record markup", () => {
             allPlayHalfWinUnits: 14,
             allPlayComparisonCount: 14,
             attendanceMisses: 1,
-            playoffState: "Outside field",
+            playoffEligible: true,
             inPlayoffField: false,
             current: false,
           },
         ]}
+        playoffIneligibilityAtMisses={3}
       />
     </PageFrame>,
     "Archive final",

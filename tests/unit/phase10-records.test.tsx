@@ -60,7 +60,7 @@ function archiveWithCorrection(eventId: string): SeasonArchiveDto {
 }
 
 describe("Phase 10 dense league records", () => {
-  it("keeps rank, You, record, Points For, cutline, and playoff state decisive", () => {
+  it("keeps rank, You, record, Points For, and one playoff line decisive", () => {
     const rows = [
       {
         entryId: "self",
@@ -73,7 +73,7 @@ describe("Phase 10 dense league records", () => {
         allPlayHalfWinUnits: 15,
         allPlayComparisonCount: 11,
         attendanceMisses: 0,
-        playoffState: "Playoff seed",
+        playoffEligible: true,
         inPlayoffField: true,
         current: true,
       },
@@ -87,25 +87,32 @@ describe("Phase 10 dense league records", () => {
         pointsForCenticredits: 98_765,
         allPlayHalfWinUnits: 12,
         allPlayComparisonCount: 11,
-        attendanceMisses: 1,
-        playoffState: "Outside cutline",
+        attendanceMisses: 3,
+        playoffEligible: false,
         inPlayoffField: false,
         current: false,
       },
     ];
-    render(<StandingsTable caption="Official standings" rows={rows} />);
+    render(
+      <StandingsTable
+        caption="Official standings"
+        playoffIneligibilityAtMisses={3}
+        rows={rows}
+      />,
+    );
 
     expect(
       screen.getByRole("table", { name: "Official standings" }),
     ).toBeVisible();
     expect(screen.getAllByText("You")).toHaveLength(2);
-    expect(screen.getAllByText("Playoff cutline")).toHaveLength(1);
+    expect(screen.getAllByText("Playoff line")).toHaveLength(2);
     const current = screen.getByRole("article", {
-      name: /Rank 1, Alex Ledger.*You, 8–2–1, 1,234.56 Points For, Playoff seed/,
+      name: /Rank 1, Alex Ledger.*You, 8–2–1, 1,234.56 Points For, 7.5–3.5 versus the league, 0 incomplete weeks/,
     });
-    expect(within(current).getByText("Attendance misses")).toBeVisible();
+    expect(within(current).getByText("Incomplete weeks")).toBeVisible();
     expect(within(current).getByText("1,234.56")).toBeVisible();
-    expect(screen.getAllByText("Outside cutline").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Ineligible")).toHaveLength(2);
+    expect(screen.queryByText("Playoff state")).not.toBeInTheDocument();
   });
 
   it("shows one selected schedule week and retains labelled matchup facts", () => {

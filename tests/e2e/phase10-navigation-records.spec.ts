@@ -104,8 +104,9 @@ test("secondary navigation, mobile rows, text scaling, and reduced motion remain
   ).toHaveAttribute("aria-current", "page");
   await expect(page.getByText("You").first()).toBeVisible();
   await expect(page.getByText("Points For").first()).toBeVisible();
-  await expect(page.getByText("Playoff state").first()).toBeVisible();
-  await expect(page.getByText("Playoff cutline")).toBeVisible();
+  await expect(page.getByText("Vs. league").first()).toBeVisible();
+  await expect(page.getByText("Incomplete weeks").first()).toBeVisible();
+  await expect(page.getByText("Playoff line").first()).toBeVisible();
   await expectNoPageOverflow(page);
 
   const focusTarget = sections.getByRole("link", { name: "Standings" });

@@ -37,6 +37,7 @@ type MatchupMember = {
   displayName: string;
   record: string;
   seed: number | null;
+  seedKind: "PLAYOFF" | "REGULAR";
   scoreCenticredits: number;
   cardStatus: string;
   decision: "WIN" | "LOSS" | "TIE" | null;
@@ -241,6 +242,7 @@ export function projectPairedMatchup(
   state: Stage1StateDto,
   operations: LiveWeekOperations | null,
   now: Date = new Date(),
+  qualificationSeeds: ReadonlyMap<string, number> = new Map(),
 ): PairedMatchupDto | null {
   if (!state.week || !state.matchup || !state.ownerCard) return null;
 
@@ -442,11 +444,19 @@ export function projectPairedMatchup(
     (row) => row.entryId === state.matchup!.opponentEntryId,
   );
   const result = state.matchup.result;
+  const usesPlayoffSeeds = state.matchup.postseasonRole === "CHAMPIONSHIP";
+  const selfPlayoffSeed = usesPlayoffSeeds
+    ? (qualificationSeeds.get(state.viewer.entryId) ?? null)
+    : null;
+  const opponentPlayoffSeed = usesPlayoffSeeds
+    ? (qualificationSeeds.get(state.matchup.opponentEntryId) ?? null)
+    : null;
   const self: MatchupMember = {
     entryId: state.viewer.entryId,
     displayName: state.viewer.displayName,
     record: recordLabel(selfStanding),
-    seed: selfStanding?.seed ?? null,
+    seed: selfPlayoffSeed ?? selfStanding?.seed ?? null,
+    seedKind: selfPlayoffSeed === null ? "REGULAR" : "PLAYOFF",
     scoreCenticredits: selfScore,
     cardStatus: cardStatus(state.ownerCard, state.week.state),
     decision: result?.selfDecision ?? null,
@@ -455,7 +465,8 @@ export function projectPairedMatchup(
     entryId: state.matchup.opponentEntryId,
     displayName: state.matchup.opponentName,
     record: recordLabel(opponentStanding),
-    seed: opponentStanding?.seed ?? null,
+    seed: opponentPlayoffSeed ?? opponentStanding?.seed ?? null,
+    seedKind: opponentPlayoffSeed === null ? "REGULAR" : "PLAYOFF",
     scoreCenticredits: opponentScore,
     cardStatus: opponentCardStatus(state.matchup.opponentReadiness),
     decision: result?.opponentDecision ?? null,

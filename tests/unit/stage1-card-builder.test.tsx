@@ -67,6 +67,7 @@ const cardId = "10000000-0000-4000-8000-000000000003";
 const eventId = "10000000-0000-4000-8000-000000000004";
 const staleMarketId = "10000000-0000-4000-8000-000000000005";
 const healthyMarketId = "10000000-0000-4000-8000-000000000006";
+const totalMarketId = "10000000-0000-4000-8000-000000000009";
 
 const state = {
   league: {
@@ -141,6 +142,63 @@ const state = {
 } as unknown as Stage1StateDto;
 
 describe("authenticated card editor", () => {
+  it("shows a clean total on final review when the source has database-scale zeroes", async () => {
+    const totalState = {
+      ...state,
+      slate: [
+        {
+          ...state.slate[0],
+          markets: [
+            ...state.slate[0].markets,
+            {
+              id: totalMarketId,
+              marketType: "TOTAL",
+              outcomeKey: "OVER",
+              proposition: "Over 45.5000000000000000",
+              lineMilli: 45_500,
+              americanOdds: -110,
+              qualityStatus: "HEALTHY",
+              observedAt: "2026-09-13T16:42:00.000Z",
+              payloadHash: "e".repeat(64),
+              maximumStakeCredits: 1_000,
+            },
+          ],
+        },
+      ],
+    } as Stage1StateDto;
+    localStorage.setItem(
+      `sunday-ledger:card-draft:v1:${leagueId}:${weekId}:${cardId}`,
+      JSON.stringify({
+        version: 1,
+        drafts: [
+          {
+            eventId,
+            marketType: "TOTAL",
+            outcomeKey: "OVER",
+            reviewedAmericanOdds: -110,
+            reviewedPayloadHash: "e".repeat(64),
+            reviewedProposition: "Over 45.5000000000000000",
+            stakeCredits: 1_000,
+          },
+        ],
+      }),
+    );
+
+    render(<Stage1CardBuilder state={totalState} />);
+
+    expect(await screen.findByText("Over 45.5")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Over 45.5000000000000000"),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Review 1 picks" })[0],
+    );
+    expect(
+      screen.getByRole("heading", { name: "Review your complete card" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Over 45.5")).toBeInTheDocument();
+  });
+
   it("reconciles a mounted draft when refreshed server state replaces its quote", async () => {
     const originalState = {
       ...state,

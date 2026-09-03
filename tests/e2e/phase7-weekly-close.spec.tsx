@@ -52,7 +52,7 @@ test("corrected close is mobile, keyboard, zoom, and reduced-motion safe", async
   });
 
   await expect(page.getByText("Corrected final")).toBeVisible();
-  await expect(page.getByText("RecordBridge")).toBeVisible();
+  await expect(page.getByText("Standings impact")).toBeVisible();
   const correction = page.getByText("Correction · Harbor Club at Lake Club");
   await correction.focus();
   await expect(correction).toBeFocused();
@@ -86,15 +86,13 @@ test("provisional close states only supported cutline and preserves next access"
   await expect(
     page.getByTestId("weekly-close-module").getByText(/Provisional/),
   ).toBeVisible();
-  await expect(page.getByText("Current stored playoff field")).toBeVisible();
+  await expect(page.getByText("Playoff picture")).toBeVisible();
+  await expect(page.getByText(/not a clinch or elimination/)).toBeVisible();
   await expect(
-    page.getByText(/not a clinch or elimination claim/),
+    page.getByRole("link", { name: "View result in history" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Open final receipt in history" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Week 3: Devon Next" }),
+    page.getByRole("link", { name: "Next: Week 3 vs. Devon Next" }),
   ).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });

@@ -26,11 +26,11 @@ describe("Phase 7 weekly close surfaces", () => {
     );
 
     expect(screen.getByText("Provisional")).toBeVisible();
-    expect(screen.getByText("Before and after Week 2")).toBeVisible();
-    expect(screen.getByText("Current stored playoff field")).toBeVisible();
-    expect(screen.getByText(/not a clinch or elimination claim/)).toBeVisible();
+    expect(screen.getByText("What Week 2 changed")).toBeVisible();
+    expect(screen.getByText("Playoff picture")).toBeVisible();
+    expect(screen.getByText(/not a clinch or elimination/)).toBeVisible();
     expect(
-      screen.getByRole("link", { name: "Week 3: Devon Next" }),
+      screen.getByRole("link", { name: "Next: Week 3 vs. Devon Next" }),
     ).toHaveAttribute("href", "/l/sunday-ledger/matchup");
   });
 

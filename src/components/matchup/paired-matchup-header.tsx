@@ -52,7 +52,9 @@ function MemberScore({
       </h2>
       <p className="text-muted mt-1 text-xs sm:text-sm">
         {member.record}
-        {member.seed ? ` · No. ${member.seed} seed` : ""}
+        {member.seed
+          ? ` · No. ${member.seed} ${member.seedKind === "PLAYOFF" ? "playoff seed" : "seed"}`
+          : ""}
       </p>
       <p
         aria-label={`${member.displayName} score ${formatScore(member.scoreCenticredits)} credits`}
