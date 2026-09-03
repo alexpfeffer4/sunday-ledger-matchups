@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   const authResponseHeaders: Record<string, string> = {};
 
   function authRedirect(url: URL) {
-    const response = NextResponse.redirect(url);
+    const response = NextResponse.redirect(url, { status: 303 });
     applyCookieWrites.forEach((applyCookies) => applyCookies(response));
     Object.entries(authResponseHeaders).forEach(([key, value]) =>
       response.headers.set(key, value),
