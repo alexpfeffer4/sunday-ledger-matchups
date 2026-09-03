@@ -337,12 +337,13 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   ).toBeVisible();
 
   await page.goto(`/l/${slug}/card`);
-  const positiveOutcome = page
-    .locator(".outcome-selector-group button:not([disabled])")
-    .filter({ hasText: /\+\d/ })
+  const standardOutcome = page
+    .getByRole("group", { name: / Total outcomes$/ })
+    .first()
+    .locator("button:not([disabled])")
     .first();
-  await expect(positiveOutcome).toBeVisible();
-  await positiveOutcome.click();
+  await expect(standardOutcome).toBeVisible();
+  await standardOutcome.click();
   await page.getByLabel("Stake in credits").fill("1000");
   await page.getByRole("button", { name: "Add to card" }).click();
 
