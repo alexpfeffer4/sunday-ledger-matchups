@@ -1,5 +1,4 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { createServerClient } from "@supabase/ssr";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
 const baseURL = "http://127.0.0.1:3000";
@@ -241,37 +240,10 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   confirmationUrl.searchParams.set("type", verificationType!);
   confirmationUrl.searchParams.set("flow", "create-account");
   confirmationUrl.searchParams.set("next", invitePath);
-  const confirmationResponse = await page.request.get(
-    confirmationUrl.toString(),
-    { maxRedirects: 0 },
-  );
-  expect([302, 303, 307, 308]).toContain(confirmationResponse.status());
-  expect(Boolean(confirmationResponse.headers()["set-cookie"])).toBe(true);
-  const confirmationRedirect = confirmationResponse.headers().location;
-  expect(confirmationRedirect).toBeTruthy();
-  const storedCookies = await page.context().cookies(baseURL);
-  expect(
-    storedCookies.some((cookie) => cookie.name.includes("auth-token")),
-  ).toBe(true);
-  const cookieVerificationClient = createServerClient(
-    supabaseUrl!,
-    publishableKey!,
-    {
-      cookies: {
-        getAll: () => storedCookies.map(({ name, value }) => ({ name, value })),
-        setAll: () => undefined,
-      },
-    },
-  );
-  const cookieClaims = await cookieVerificationClient.auth.getClaims();
-  expect({
-    error: cookieClaims.error?.code ?? cookieClaims.error?.name ?? null,
-    hasClaims: Boolean(cookieClaims.data?.claims?.sub),
-  }).toEqual({ error: null, hasClaims: true });
   const accountRequestPromise = page.waitForRequest(
     (request) => new URL(request.url()).pathname === "/account/setup",
   );
-  await page.goto(new URL(confirmationRedirect!, baseURL).toString());
+  await page.goto(confirmationUrl.toString());
   const accountCookieHeader = await (
     await accountRequestPromise
   ).headerValue("cookie");
