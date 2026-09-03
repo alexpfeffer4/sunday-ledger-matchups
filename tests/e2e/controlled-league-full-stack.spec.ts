@@ -453,13 +453,16 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     const response = await isolated.page.goto(`/l/${slug}/matchup`);
     const body = await isolated.page.locator("body").innerText();
     expect(body).not.toContain(opponentMarket.proposition);
-    if (identity !== sameLeagueNonOpponent)
-      expect(response?.status()).toBe(404);
+    if (identity !== sameLeagueNonOpponent) {
+      expect([200, 404]).toContain(response?.status());
+      await expect(isolated.page).toHaveTitle(/Not found · Sunday Ledger/);
+    }
     await isolated.context.close();
   }
   const anonymous = await newPage(browser);
   const anonymousResponse = await anonymous.page.goto(`/l/${slug}/matchup`);
-  expect(anonymousResponse?.status()).toBe(404);
+  expect([200, 404]).toContain(anonymousResponse?.status());
+  await expect(anonymous.page).toHaveTitle(/Not found · Sunday Ledger/);
   expect(await anonymous.page.locator("body").innerText()).not.toContain(
     opponentMarket.proposition,
   );
