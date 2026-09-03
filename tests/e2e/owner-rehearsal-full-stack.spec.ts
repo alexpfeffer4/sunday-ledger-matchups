@@ -248,6 +248,10 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   await positiveOutcome.click();
   await page.getByLabel("Stake in credits").fill("1000");
   await page.getByRole("button", { name: "Add to card" }).click();
+  await page.getByRole("button", { name: "Review 1 picks" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Review your complete card" }),
+  ).toBeVisible();
 
   let droppedSealResponse = false;
   await page.route("**/l/*/slate", async (route) => {
