@@ -651,6 +651,19 @@ select is(
   'official history and rivalry inputs retain only 14 regular weeks'
 );
 select is(
+  (select count(*)::integer
+   from private.season_archive_versions as archive
+   join private.owner_rehearsals as rehearsal
+     on rehearsal.season_id = archive.season_id
+   cross join lateral jsonb_array_elements(
+     archive.archive_json #> '{qualification,frozenWeek14Standings}'
+   ) as standing(value)
+   where rehearsal.status = 'ACTIVE'
+     and jsonb_typeof(standing.value -> 'playoffEligible') = 'boolean'),
+  10,
+  'the frozen Week 14 archive standings use the complete public standings shape'
+);
+select is(
   (select season.lifecycle
    from private.seasons as season
    join private.owner_rehearsals as rehearsal

@@ -4,6 +4,26 @@
 -- lifecycle. It owns no schedule, card, receipt, result, standings, playoff,
 -- correction, champion, or archive implementation.
 
+-- Keep the frozen qualification table on the same public archive projection as
+-- every other standings table. The authoritative archive builder previously
+-- passed through the internal bracket rows here, which omitted the derived
+-- playoffEligible field required by the existing history reader.
+do $migration$
+declare
+  v_definition text;
+  v_old constant text := E'''frozenWeek14Standings'', v_bracket.standings_json,';
+  v_new constant text := E'''frozenWeek14Standings'', private.live_archive_standings(v_bracket.standings_json),';
+begin
+  select pg_get_functiondef(
+    'private.build_season_archive_v2(uuid,uuid,uuid,integer,uuid,uuid,timestamptz)'::regprocedure
+  ) into strict v_definition;
+  if strpos(v_definition, v_old) = 0 then
+    raise exception 'build_season_archive_v2 qualification projection changed; migration refused';
+  end if;
+  execute replace(v_definition, v_old, v_new);
+end;
+$migration$;
+
 create table private.owner_rehearsal_entitlements (
   user_id uuid primary key references private.profiles (id) on delete cascade,
   granted_at timestamptz not null default clock_timestamp(),
