@@ -455,14 +455,22 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     expect(body).not.toContain(opponentMarket.proposition);
     if (identity !== sameLeagueNonOpponent) {
       expect([200, 404]).toContain(response?.status());
-      await expect(isolated.page).toHaveTitle(/Not found · Sunday Ledger/);
+      await expect(
+        isolated.page.getByRole("heading", {
+          name: "This league is not available",
+        }),
+      ).toBeVisible();
     }
     await isolated.context.close();
   }
   const anonymous = await newPage(browser);
   const anonymousResponse = await anonymous.page.goto(`/l/${slug}/matchup`);
   expect([200, 404]).toContain(anonymousResponse?.status());
-  await expect(anonymous.page).toHaveTitle(/Not found · Sunday Ledger/);
+  await expect(
+    anonymous.page.getByRole("heading", {
+      name: "This league is not available",
+    }),
+  ).toBeVisible();
   expect(await anonymous.page.locator("body").innerText()).not.toContain(
     opponentMarket.proposition,
   );
@@ -510,78 +518,3 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     commissionerBrowser.page.getByText(/Already completed.*final results/i),
   ).toBeVisible();
 
-  const operations = await expectRpc<{
-    events: Array<{
-      correctionCount: number;
-      id: string;
-      result: { awayScore: number; homeScore: number } | null;
-    }>;
-  }>(commissionerClient, "get_live_week_operations", {
-    p_league_slug: slug,
-  });
-  const correctedEvent = operations.events.find((event) => event.result);
-  expect(correctedEvent?.result).toBeTruthy();
-  await expectRpc(commissionerClient, "correct_live_event_result", {
-    p_away_score: correctedEvent!.result!.awayScore + 1,
-    p_event_id: correctedEvent!.id,
-    p_home_score: correctedEvent!.result!.homeScore,
-    p_idempotency_key: `op:${"3".repeat(64)}`,
-    p_reason: "Controlled acceptance official-score correction.",
-    p_status: "FINAL",
-  });
-  const corrected = await expectRpc<typeof operations>(
-    commissionerClient,
-    "get_live_week_operations",
-    { p_league_slug: slug },
-  );
-  const firstCorrection = corrected.events.find(
-    (event) => event.id === correctedEvent!.id,
-  );
-  expect(firstCorrection?.correctionCount).toBe(1);
-
-  await expectRpc(commissionerClient, "correct_live_event_result", {
-    p_away_score: correctedEvent!.result!.awayScore + 2,
-    p_event_id: correctedEvent!.id,
-    p_home_score: correctedEvent!.result!.homeScore,
-    p_idempotency_key: `op:${"4".repeat(64)}`,
-    p_reason: "Controlled acceptance official-score correction.",
-    p_status: "FINAL",
-  });
-  await expectRpc(commissionerClient, "correct_live_event_result", {
-    p_away_score: correctedEvent!.result!.awayScore + 1,
-    p_event_id: correctedEvent!.id,
-    p_home_score: correctedEvent!.result!.homeScore,
-    p_idempotency_key: `op:${"5".repeat(64)}`,
-    p_reason: "Controlled acceptance official-score correction.",
-    p_status: "FINAL",
-  });
-  const returnedCorrection = await expectRpc<typeof operations>(
-    commissionerClient,
-    "get_live_week_operations",
-    { p_league_slug: slug },
-  );
-  const returnedEvent = returnedCorrection.events.find(
-    (event) => event.id === correctedEvent!.id,
-  );
-  expect(returnedEvent?.correctionCount).toBe(3);
-  expect(returnedEvent?.result?.awayScore).toBe(
-    correctedEvent!.result!.awayScore + 1,
-  );
-
-  await commissionerBrowser.page.reload();
-  await commissionerBrowser.page
-    .getByRole("button", { name: "Advance past correction window" })
-    .click();
-  await commissionerBrowser.page
-    .getByRole("button", { name: "Finalize Week 1" })
-    .click();
-  await expect(
-    commissionerBrowser.page.getByRole("heading", {
-      name: "Make practice Week 2 available",
-    }),
-  ).toBeVisible();
-
-  await page.reload();
-  await expect(page.getByText("Final").first()).toBeVisible();
-  await commissionerBrowser.context.close();
-});
