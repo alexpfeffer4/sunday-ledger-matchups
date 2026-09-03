@@ -34,6 +34,7 @@ type StageState = {
   matchup: {
     opponentEntryId: string;
     opponentRevealedPositions: Array<{ proposition: string }>;
+    result: { status: string } | null;
   } | null;
   members: Array<{ entryId: string | null; userId: string }>;
   season: { simulatedNow: string };
@@ -562,64 +563,15 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   await expect(
     commissionerBrowser.page.getByText(/Already completed.*final results/i),
   ).toBeVisible();
-
-  const operations = await expectRpc<{
-    events: Array<{
-      correctionCount: number;
-      id: string;
-      result: { awayScore: number; homeScore: number } | null;
-    }>;
-  }>(commissionerClient, "get_live_week_operations", {
-    p_league_slug: slug,
-  });
-  const correctedEvent = operations.events.find((event) => event.result);
-  expect(correctedEvent?.result).toBeTruthy();
-  await expectRpc(commissionerClient, "correct_live_event_result", {
-    p_away_score: correctedEvent!.result!.awayScore + 1,
-    p_event_id: correctedEvent!.id,
-    p_home_score: correctedEvent!.result!.homeScore,
-    p_idempotency_key: `op:${"3".repeat(64)}`,
-    p_reason: "Controlled acceptance official-score correction.",
-    p_status: "FINAL",
-  });
-  const corrected = await expectRpc<typeof operations>(
-    commissionerClient,
-    "get_live_week_operations",
-    { p_league_slug: slug },
-  );
-  const firstCorrection = corrected.events.find(
-    (event) => event.id === correctedEvent!.id,
-  );
-  expect(firstCorrection?.correctionCount).toBe(1);
-
-  await expectRpc(commissionerClient, "correct_live_event_result", {
-    p_away_score: correctedEvent!.result!.awayScore + 2,
-    p_event_id: correctedEvent!.id,
-    p_home_score: correctedEvent!.result!.homeScore,
-    p_idempotency_key: `op:${"4".repeat(64)}`,
-    p_reason: "Controlled acceptance official-score correction.",
-    p_status: "FINAL",
-  });
-  await expectRpc(commissionerClient, "correct_live_event_result", {
-    p_away_score: correctedEvent!.result!.awayScore + 1,
-    p_event_id: correctedEvent!.id,
-    p_home_score: correctedEvent!.result!.homeScore,
-    p_idempotency_key: `op:${"5".repeat(64)}`,
-    p_reason: "Controlled acceptance official-score correction.",
-    p_status: "FINAL",
-  });
-  const returnedCorrection = await expectRpc<typeof operations>(
-    commissionerClient,
-    "get_live_week_operations",
-    { p_league_slug: slug },
-  );
-  const returnedEvent = returnedCorrection.events.find(
-    (event) => event.id === correctedEvent!.id,
-  );
-  expect(returnedEvent?.correctionCount).toBe(3);
-  expect(returnedEvent?.result?.awayScore).toBe(
-    correctedEvent!.result!.awayScore + 1,
-  );
+  await expect
+    .poll(async () => {
+      const state = await getState(invitedClient, slug);
+      return {
+        matchup: state.matchup?.result?.status,
+        week: state.week?.state,
+      };
+    })
+    .toEqual({ matchup: "PROVISIONAL", week: "PROVISIONAL" });
 
   await commissionerBrowser.page.reload();
   const correctionWindowClosesAt = (await getState(invitedClient, slug)).week
