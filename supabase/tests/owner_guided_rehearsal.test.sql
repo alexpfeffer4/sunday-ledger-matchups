@@ -312,6 +312,31 @@ select lives_ok(
   )$$,
   'normal Weeks 3 and 4 run authoritatively before Week 5 opens'
 );
+select is(
+  (select count(*)::integer
+   from private.matchup_result_versions as result
+   join private.matchups as matchup on matchup.id = result.matchup_id
+   join private.season_weeks as week on week.id = matchup.week_id
+   join private.owner_rehearsals as rehearsal
+     on rehearsal.season_id = week.season_id
+   where rehearsal.status = 'ACTIVE' and week.nfl_week = 4
+     and result.status = 'FINAL'
+     and result.side_a_decision = 'TIE'
+     and result.side_b_decision = 'TIE'),
+  5,
+  'Week 4 creates five exact ties through ordinary settlement'
+);
+select is(
+  (select count(distinct score.score_centicredits)::integer
+   from private.weekly_score_versions as score
+   join private.season_weeks as week on week.id = score.week_id
+   join private.owner_rehearsals as rehearsal
+     on rehearsal.season_id = week.season_id
+   where rehearsal.status = 'ACTIVE' and week.nfl_week = 4
+     and score.compliance = 'COMPLIANT'),
+  5,
+  'the exact-tie lesson retains five distinct compliant score levels'
+);
 select lives_ok(
   $$select api.use_owner_rehearsal_sample_card('owner-sample-week-05')$$,
   'the owner seals Week 5 while a bot demonstrates incompletion'
@@ -413,11 +438,15 @@ select ok(
       with ordinality as first_row(value, ordinal)
     cross join lateral jsonb_array_elements(standing.ordered_rows)
       with ordinality as second_row(value, ordinal)
-    where rehearsal.status = 'ACTIVE' and standing.through_week = 14
+    where rehearsal.status = 'ACTIVE' and standing.through_week = 4
       and first_row.ordinal < second_row.ordinal
-      and first_row.value ->> 'wins' = second_row.value ->> 'wins'
-      and first_row.value ->> 'losses' = second_row.value ->> 'losses'
-      and first_row.value ->> 'ties' = second_row.value ->> 'ties'
+      and (
+        (first_row.value ->> 'wins')::integer * 2
+          + (first_row.value ->> 'ties')::integer
+      ) = (
+        (second_row.value ->> 'wins')::integer * 2
+          + (second_row.value ->> 'ties')::integer
+      )
       and (
         first_row.value ->> 'pointsForCenticredits'
           <> second_row.value ->> 'pointsForCenticredits'
@@ -425,7 +454,7 @@ select ok(
           <> second_row.value ->> 'allPlayHalfWinUnits'
       )
   ),
-  'Points For or all-play meaningfully resolves a tied matchup record'
+  'Points For or all-play meaningfully resolves a tied matchup percentage'
 );
 
 select lives_ok(

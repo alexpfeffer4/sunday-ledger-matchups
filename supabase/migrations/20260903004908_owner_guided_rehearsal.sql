@@ -1418,6 +1418,7 @@ declare
   v_entry_id uuid;
   v_week_id uuid;
   v_existing integer;
+  v_matchup_display_order integer;
 begin
   select entry.id into strict v_entry_id
   from private.season_entries as entry
@@ -1441,7 +1442,15 @@ begin
   left join private.owner_rehearsal_bots as bot
     on bot.rehearsal_id = p_rehearsal.id
    and bot.bot_user_id = p_actor_user_id;
-  if v_seed = 1 then
+  if p_week = 4 then
+    select matchup.display_order into strict v_matchup_display_order
+    from private.matchups as matchup
+    where matchup.week_id = v_week_id
+      and v_entry_id in (matchup.side_a_entry_id, matchup.side_b_entry_id);
+    v_event_ordinal := 1 + ((v_matchup_display_order - 1) % 8);
+    v_market_type := 'MONEYLINE';
+    v_outcome_key := 'HOME';
+  elsif v_seed = 1 then
     v_event_ordinal := case
       when p_week = 2 then 4
       when p_week = 3 then 3
