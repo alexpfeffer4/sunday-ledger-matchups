@@ -3,7 +3,9 @@ import type { ReactNode } from "react";
 import { exampleSeasonSlug } from "@/adapters/example/example-season";
 import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
 import { getSeasonArchive } from "@/application/queries/get-season-archive";
+import { getOwnerRehearsalForLeague } from "@/application/queries/get-owner-rehearsal";
 import { LeagueShell } from "@/components/league/league-shell";
+import { OwnerRehearsalGuide } from "@/components/rehearsal/owner-rehearsal-guide";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import { formatCredits } from "@/domain/odds/american";
 
@@ -79,9 +81,10 @@ export default async function LeagueLayout({
     );
   }
 
-  const [live, archive] = await Promise.all([
+  const [live, archive, ownerRehearsal] = await Promise.all([
     getAuthoritativeLeagueState(leagueSlug),
     getSeasonArchive(leagueSlug),
+    getOwnerRehearsalForLeague(leagueSlug),
   ]);
   if (archive) {
     const viewer = archive.members.find(
@@ -99,6 +102,12 @@ export default async function LeagueLayout({
         cardStatusLabel="Season final"
         phaseLabel="Archive final"
         archiveMode
+        ownerRehearsal={ownerRehearsal !== null}
+        ownerRehearsalGuide={
+          ownerRehearsal ? (
+            <OwnerRehearsalGuide rehearsal={ownerRehearsal} />
+          ) : null
+        }
       >
         {children}
       </LeagueShell>
@@ -127,6 +136,12 @@ export default async function LeagueLayout({
         }
         phaseLabel={shellPhaseLabel(live)}
         isCommissioner={live.league.role === "COMMISSIONER"}
+        ownerRehearsal={ownerRehearsal !== null}
+        ownerRehearsalGuide={
+          ownerRehearsal ? (
+            <OwnerRehearsalGuide rehearsal={ownerRehearsal} />
+          ) : null
+        }
       >
         {children}
       </LeagueShell>

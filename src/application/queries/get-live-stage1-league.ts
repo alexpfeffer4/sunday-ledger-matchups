@@ -29,7 +29,7 @@ export const getAuthoritativeLeagueState = cache(
     }
 
     const state = stage1StateSchema.parse(result.data);
-    if (!state.week || state.league.mode === "SIMULATION") return state;
+    if (!state.week) return state;
 
     const currentQuotes = await supabase
       .schema("api")

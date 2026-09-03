@@ -8,6 +8,7 @@ import { getLiveWeekOperations } from "@/application/queries/get-live-week-opera
 import { getWeek17CorrectionOperations } from "@/application/queries/get-week17-correction-operations";
 import { getMyLeagueSummary } from "@/application/queries/get-my-league-summary";
 import { getSeasonArchive } from "@/application/queries/get-season-archive";
+import { getOwnerRehearsalForLeague } from "@/application/queries/get-owner-rehearsal";
 import { Stage1CommissionerView } from "@/components/stage1/live-views";
 
 export const metadata: Metadata = { title: "Commissioner" };
@@ -26,6 +27,7 @@ export default async function CommissionerPage({
     invites,
     leagueManagement,
     week17CorrectionOperations,
+    ownerRehearsal,
   ] = await Promise.all([
     getSeasonArchive(leagueSlug),
     getAuthoritativeLeagueState(leagueSlug),
@@ -34,6 +36,7 @@ export default async function CommissionerPage({
     getLeagueInvites(leagueSlug),
     getMyLeagueSummary(leagueSlug),
     getWeek17CorrectionOperations(leagueSlug),
+    getOwnerRehearsalForLeague(leagueSlug),
   ]);
   if (live) {
     return (
@@ -43,6 +46,7 @@ export default async function CommissionerPage({
         latestLiveImport={latestLiveImport}
         liveWeekOperations={liveWeekOperations}
         providerConfigured={isOddsProviderConfigured()}
+        ownerRehearsal={ownerRehearsal !== null}
         state={live}
         week17CorrectionOperations={week17CorrectionOperations}
       />

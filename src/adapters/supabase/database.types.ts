@@ -53,6 +53,41 @@ export type Database = {
       };
     };
     Functions: {
+      advance_owner_rehearsal: {
+        Args: {
+          p_expected_checkpoint: string;
+          p_idempotency_key: string;
+        };
+        Returns: Json;
+      };
+      fill_owner_rehearsal_bots: {
+        Args: { p_idempotency_key: string };
+        Returns: Json;
+      };
+      get_owner_rehearsal: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json | null;
+      };
+      has_owner_rehearsal_entitlement: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      prepare_owner_rehearsal_quote_review: {
+        Args: { p_idempotency_key: string; p_league_slug: string };
+        Returns: Json;
+      };
+      reset_owner_rehearsal: {
+        Args: { p_confirmation_name: string; p_idempotency_key: string };
+        Returns: Json;
+      };
+      start_owner_rehearsal: {
+        Args: { p_idempotency_key: string };
+        Returns: Json;
+      };
+      use_owner_rehearsal_sample_card: {
+        Args: { p_idempotency_key: string };
+        Returns: Json;
+      };
       create_league: {
         Args: {
           p_canonical_ruleset?: Json;

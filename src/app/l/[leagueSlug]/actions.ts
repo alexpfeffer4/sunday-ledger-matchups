@@ -16,6 +16,7 @@ import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import type { AppActionState } from "@/application/actions/action-state";
 import { stableOperationKey } from "@/application/actions/stable-operation-key";
 import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
+import { getOwnerRehearsalForLeague } from "@/application/queries/get-owner-rehearsal";
 import { validateDraftCard } from "@/domain/cards/validate-card-draft";
 import { maximumStakeForOdds } from "@/domain/cards/validate-position";
 import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
@@ -1646,6 +1647,29 @@ export async function acceptStage1CardAction(
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
   if (!state?.week || !state.ownerCard || state.week.state !== "OPEN") {
     return mutationError("The Week 1 card is not open.");
+  }
+
+  const rehearsal = await getOwnerRehearsalForLeague(context.data.leagueSlug);
+  if (rehearsal?.quoteReviewPending) {
+    const quoteReview = await supabase
+      .schema("api")
+      .rpc("prepare_owner_rehearsal_quote_review", {
+        p_league_slug: context.data.leagueSlug,
+        p_idempotency_key: stableOperationKey({
+          command: "OWNER_REHEARSAL_QUOTE_REVIEW",
+          generation: rehearsal.generation,
+          reviewedCardOperation: operationKey,
+        }),
+      });
+    if (quoteReview.error) return mutationError(quoteReview.error.message);
+    revalidatePath(`/l/${context.data.leagueSlug}/slate`);
+    revalidatePath(`/l/${context.data.leagueSlug}/card`);
+    revalidatePath("/owner/rehearsal");
+    return {
+      status: "error",
+      message:
+        "The Week 2 quote changed. Review the updated terms before confirming the card again.",
+    };
   }
 
   const snapshots = new Map(

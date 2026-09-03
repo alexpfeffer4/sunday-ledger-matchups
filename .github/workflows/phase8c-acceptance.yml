@@ -65,6 +65,9 @@ jobs:
           echo "TEST_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
           echo "TEST_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> "$GITHUB_ENV"
           echo "TEST_SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          echo "TEST_SUPABASE_DB_URL=$DB_URL" >> "$GITHUB_ENV"
+          echo "OWNER_REHEARSAL_TEST_EMAIL=owner-rehearsal@acceptance.test" >> "$GITHUB_ENV"
+          echo "OWNER_REHEARSAL_TEST_PASSWORD=Owner-Rehearsal-Acceptance-48!" >> "$GITHUB_ENV"
           echo "FULL_STACK_ACCEPTANCE=1" >> "$GITHUB_ENV"
 
       - name: Run complete pgTAP and Phase 8C isolation suite
@@ -78,10 +81,21 @@ jobs:
       - name: Install full-stack browser
         run: npx playwright install --with-deps chromium
 
+      - name: Provision isolated entitled owner
+        run: |
+          OWNER_USER_ID="$(node scripts/provision-owner-rehearsal-acceptance.mjs)"
+          if ! [[ "$OWNER_USER_ID" =~ ^[0-9a-f-]{36}$ ]]; then
+            echo "Invalid disposable owner id" >&2
+            exit 1
+          fi
+          psql "$TEST_SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c \
+            "insert into private.owner_rehearsal_entitlements (user_id, note) values ('$OWNER_USER_ID'::uuid, 'Disposable CI owner');"
+
       - name: Run real Auth, server action, RSC, RPC, and authorization lane
         run: >-
           npx playwright test
           tests/e2e/controlled-league-full-stack.spec.ts
+          tests/e2e/owner-rehearsal-full-stack.spec.ts
           --project=desktop --reporter=github
 
       - name: Stop disposable local database
