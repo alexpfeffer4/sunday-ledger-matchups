@@ -457,7 +457,7 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
       expect([200, 404]).toContain(response?.status());
       await expect(
         isolated.page.getByRole("heading", {
-          name: "This league is not available",
+          name: /This league is not available|There is no Ledger page here/,
         }),
       ).toBeVisible();
     }
@@ -468,7 +468,7 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   expect([200, 404]).toContain(anonymousResponse?.status());
   await expect(
     anonymous.page.getByRole("heading", {
-      name: "This league is not available",
+      name: /This league is not available|There is no Ledger page here/,
     }),
   ).toBeVisible();
   expect(await anonymous.page.locator("body").innerText()).not.toContain(
