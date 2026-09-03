@@ -153,6 +153,7 @@ describe("Phase 1 auth and join actions", () => {
     expect(response.headers.get("location")).toBe(
       "https://sunday-ledger.example/account/setup?next=%2Fjoin%2Fprivate-invite-token",
     );
+    expect(response.status).toBe(303);
     expect(response.cookies.get("sb-test-auth-token")?.value).toBe(
       "session-cookie",
     );
