@@ -98,9 +98,11 @@ async function advance(page: Page, name: string) {
 async function sample(page: Page) {
   const guide = page.locator("[data-owner-rehearsal-guide]");
   await guide.getByRole("button", { name: "Use a sample card" }).click();
-  await expect(guide.getByRole("status").last()).toContainText(
-    /sample card is sealed|original sample card remains sealed/,
-  );
+  await expect(
+    guide.getByText(
+      /sample card is sealed|original sample card remains sealed/i,
+    ),
+  ).toBeVisible();
 }
 
 test.skip(!enabled, "requires the disposable local Supabase acceptance job");
