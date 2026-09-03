@@ -336,7 +336,7 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     commissionerBrowser.page.getByText("Practice/test Week 1 · open"),
   ).toBeVisible();
 
-  await page.goto(`/l/${slug}/card`);
+  await page.goto(`/l/${slug}/slate`);
   const availableOutcomes = page.locator(
     ".outcome-selector-group button:not([disabled])",
   );
@@ -377,7 +377,7 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   await page.getByRole("button", { name: "Use updated odds" }).click();
 
   let droppedSealResponse = false;
-  await page.route(`**/l/${slug}/card`, async (route) => {
+  await page.route(`**/l/${slug}/slate`, async (route) => {
     if (
       !droppedSealResponse &&
       route.request().method() === "POST" &&
@@ -392,7 +392,7 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   });
   await page.getByRole("button", { name: "Confirm and seal card" }).click();
   await expect.poll(() => droppedSealResponse).toBe(true);
-  await page.unroute(`**/l/${slug}/card`);
+  await page.unroute(`**/l/${slug}/slate`);
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "All 1,000 credits are sealed" }),
