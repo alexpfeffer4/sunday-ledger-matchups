@@ -65,11 +65,11 @@ export type Database = {
         Returns: Json;
       };
       get_owner_rehearsal: {
-        Args: Record<PropertyKey, never>;
-        Returns: Json | null;
+        Args: never;
+        Returns: Json;
       };
       has_owner_rehearsal_entitlement: {
-        Args: Record<PropertyKey, never>;
+        Args: never;
         Returns: boolean;
       };
       prepare_owner_rehearsal_quote_review: {
