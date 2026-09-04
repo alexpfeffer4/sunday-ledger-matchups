@@ -549,8 +549,6 @@ export function SeasonArchiveStandings({
     losses: standing.losses,
     ties: standing.ties,
     pointsForCenticredits: standing.pointsForCenticredits,
-    allPlayHalfWinUnits: standing.allPlayHalfWinUnits,
-    allPlayComparisonCount: standing.allPlayComparisonCount,
     attendanceMisses: standing.attendanceMisses,
     playoffEligible: standing.playoffEligible,
     inPlayoffField: qualifierIds.has(standing.entryId),
@@ -571,7 +569,7 @@ export function SeasonArchiveStandings({
       description={
         ruleset.context === "EXAMPLE"
           ? "Read-only illustrative standings with the complete published tiebreak chain below."
-          : "Record comes first, followed by Points For, all-play, attendance, and the league’s published final tiebreaker."
+          : "Record comes first, followed by Points For and the league’s published tiebreakers."
       }
       aside={
         <StatusBadge

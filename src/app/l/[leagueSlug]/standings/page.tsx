@@ -9,7 +9,7 @@ import {
 import { SeasonArchiveStandings } from "@/components/season/archive-views";
 import { Stage1StandingsView } from "@/components/stage1/live-views";
 import { hashRuleset } from "@/rulesets/canonicalize";
-import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
+import { simulationSeason11Ruleset } from "@/rulesets/simulation-season-1-1";
 
 export const metadata: Metadata = { title: "Official standings" };
 
@@ -26,8 +26,8 @@ export default async function StandingsPage({
   let presentation: RulesetPresentation;
   if (isExample) {
     presentation = exampleRulesetPresentation(
-      simulationSeason1Ruleset,
-      await hashRuleset(simulationSeason1Ruleset),
+      simulationSeason11Ruleset,
+      await hashRuleset(simulationSeason11Ruleset),
     );
   } else if (persistedSnapshot) {
     presentation = seasonRulesetPresentation(persistedSnapshot);

@@ -83,8 +83,8 @@ export function HistoryLedger({
                 {matchup.self.participation === "EXHIBITION_MISS" ? (
                   <p className="text-copper mt-3 text-sm font-semibold">
                     Exhibition miss · zero for this exhibition only. Official
-                    record, Points For, all-play, eligibility, seed, and bracket
-                    are unchanged.
+                    record, Points For, eligibility, seed, and bracket are
+                    unchanged.
                   </p>
                 ) : null}
                 <p

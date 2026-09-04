@@ -70,8 +70,6 @@ describe("Phase 10 dense league records", () => {
         losses: 2,
         ties: 1,
         pointsForCenticredits: 123_456,
-        allPlayHalfWinUnits: 15,
-        allPlayComparisonCount: 11,
         attendanceMisses: 0,
         playoffEligible: true,
         inPlayoffField: true,
@@ -85,8 +83,6 @@ describe("Phase 10 dense league records", () => {
         losses: 4,
         ties: 0,
         pointsForCenticredits: 98_765,
-        allPlayHalfWinUnits: 12,
-        allPlayComparisonCount: 11,
         attendanceMisses: 3,
         playoffEligible: false,
         inPlayoffField: false,
@@ -107,11 +103,12 @@ describe("Phase 10 dense league records", () => {
     expect(screen.getAllByText("You")).toHaveLength(2);
     expect(screen.getAllByText("Playoff line")).toHaveLength(2);
     const current = screen.getByRole("article", {
-      name: /Rank 1, Alex Ledger.*You, 8–2–1, 1,234.56 Points For, 7.5–3.5 versus the league, 0 incomplete weeks/,
+      name: /Rank 1, Alex Ledger.*You, 8–2–1, 1,234.56 Points For, 0 incomplete weeks/,
     });
     expect(within(current).getByText("Incomplete weeks")).toBeVisible();
     expect(within(current).getByText("1,234.56")).toBeVisible();
     expect(screen.getAllByText("Ineligible")).toHaveLength(2);
+    expect(screen.queryByText("Vs. league")).not.toBeInTheDocument();
     expect(screen.queryByText("Playoff state")).not.toBeInTheDocument();
   });
 

@@ -9,8 +9,6 @@ export type StandingsRecord = {
   losses: number;
   ties: number;
   pointsForCenticredits: number;
-  allPlayHalfWinUnits: number;
-  allPlayComparisonCount: number;
   attendanceMisses: number;
   playoffEligible: boolean;
   inPlayoffField: boolean;
@@ -23,11 +21,6 @@ function score(value: number): string {
 
 function record(row: StandingsRecord): string {
   return `${row.wins}–${row.losses}${row.ties > 0 ? `–${row.ties}` : ""}`;
-}
-
-function allPlay(row: StandingsRecord): string {
-  const wins = row.allPlayHalfWinUnits / 2;
-  return `${wins}–${row.allPlayComparisonCount - wins}`;
 }
 
 function YouLabel() {
@@ -73,7 +66,7 @@ export function StandingsTable({
               </p>
             ) : null}
             <article
-              aria-label={`Rank ${row.rank}, ${row.memberName}${row.current ? ", You" : ""}, ${record(row)}, ${score(row.pointsForCenticredits)} Points For, ${allPlay(row)} versus the league, ${row.attendanceMisses} incomplete weeks${row.playoffEligible ? "" : ", playoff ineligible"}`}
+              aria-label={`Rank ${row.rank}, ${row.memberName}${row.current ? ", You" : ""}, ${record(row)}, ${score(row.pointsForCenticredits)} Points For, ${row.attendanceMisses} incomplete weeks${row.playoffEligible ? "" : ", playoff ineligible"}`}
               className={`border-boundary bg-surface rounded-lg border px-4 py-3 ${
                 row.current ? "border-l-registry bg-registry/5 border-l-4" : ""
               }`}
@@ -100,10 +93,6 @@ export function StandingsTable({
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-muted text-xs">Vs. league</dt>
-                      <dd className="mt-0.5 font-semibold">{allPlay(row)}</dd>
-                    </div>
-                    <div>
                       <dt className="text-muted text-xs">Incomplete weeks</dt>
                       <dd className="mt-0.5 font-semibold">
                         {row.attendanceMisses}
@@ -123,7 +112,7 @@ export function StandingsTable({
         role="region"
         tabIndex={0}
       >
-        <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[600px] border-collapse text-left text-sm">
           <caption className="sr-only">{caption}</caption>
           <thead className="bg-subtle text-muted text-xs tracking-[0.06em] uppercase">
             <tr>
@@ -140,9 +129,6 @@ export function StandingsTable({
                 Points For
               </th>
               <th className="px-4 py-3" scope="col">
-                Vs. league
-              </th>
-              <th className="px-4 py-3" scope="col">
                 Incomplete weeks
               </th>
             </tr>
@@ -154,7 +140,7 @@ export function StandingsTable({
                   <tr>
                     <td
                       className="border-pending bg-pending/5 text-pending border-y-2 px-4 py-2 text-xs font-bold tracking-[0.06em] uppercase"
-                      colSpan={6}
+                      colSpan={5}
                     >
                       {playoffLineLabel}
                     </td>
@@ -173,7 +159,6 @@ export function StandingsTable({
                   <td className="px-4 py-3 font-mono">
                     {score(row.pointsForCenticredits)}
                   </td>
-                  <td className="px-4 py-3">{allPlay(row)}</td>
                   <td className="px-4 py-3">{row.attendanceMisses}</td>
                 </tr>
               </Fragment>
@@ -182,8 +167,6 @@ export function StandingsTable({
         </table>
       </div>
       <p className="text-muted mt-3 text-xs leading-5">
-        <strong className="text-graphite">Vs. league</strong> compares each
-        weekly score with every other member; a tie counts as half a win.{" "}
         <strong className="text-graphite">Incomplete weeks</strong> count cards
         that were not fully sealed. {playoffIneligibilityAtMisses} makes a
         member playoff-ineligible.

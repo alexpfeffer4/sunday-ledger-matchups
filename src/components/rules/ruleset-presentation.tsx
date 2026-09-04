@@ -1,5 +1,8 @@
 import type { SeasonRulesetSnapshotDto } from "@/application/queries/season-ruleset-dtos";
-import type { PersistedSeasonRuleset, SeasonRuleset } from "@/rulesets/schema";
+import type {
+  PersistedSeasonRuleset,
+  StandingsTiebreak,
+} from "@/rulesets/schema";
 import { AuditDetails } from "@/components/ui/audit-details";
 
 export type RulesetPresentation = {
@@ -15,10 +18,7 @@ export type RulesetPresentation = {
   frozenAt: string | null;
 };
 
-const tiebreakLabels: Record<
-  SeasonRuleset["standings"]["tiebreakOrder"][number],
-  string
-> = {
+const tiebreakLabels: Record<StandingsTiebreak, string> = {
   MATCHUP_WIN_PERCENTAGE: "Matchup win percentage",
   POINTS_FOR: "Points For",
   ALL_PLAY_PERCENTAGE: "All-play percentage",
@@ -47,7 +47,7 @@ export function seasonRulesetPresentation(
 }
 
 export function exampleRulesetPresentation(
-  ruleset: SeasonRuleset,
+  ruleset: PersistedSeasonRuleset,
   sha256Hash: string,
 ): RulesetPresentation {
   return {
