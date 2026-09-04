@@ -500,6 +500,7 @@ export function simulateSeason(params: {
           entryIds: members.map((member) => member.entryId),
           weeklyResults: standingInputs,
           deterministicTiebreaks,
+          tiebreakOrder: simulationSeason1Ruleset.standings.tiebreakOrder,
         }),
         membersById,
       ),
@@ -510,6 +511,7 @@ export function simulateSeason(params: {
     entryIds: members.map((member) => member.entryId),
     weeklyResults: standingInputs,
     deterministicTiebreaks,
+    tiebreakOrder: simulationSeason1Ruleset.standings.tiebreakOrder,
   });
   const finalStandings = standingArchive(finalStandingRows, membersById);
   const championshipField = selectChampionshipField({

@@ -50,8 +50,11 @@ provider evidence. It runs inside a rollback transaction.
 `tests/stage3_live_week_progression.test.sql` contains 26 assertions for the
 prior-week finalization gate, commissioner-only Week 2–14 publication, exact
 frozen-schedule pairings, equal fresh 1,000-credit cards, current-week card and
-lock commands, provider settlement, cumulative records/points/all-play/misses,
-and idempotent replay. It runs inside a rollback transaction.
+lock commands, provider settlement, cumulative records, Points For, incomplete
+weeks, and idempotent replay. Frozen V1.1 snapshots retain their historical
+All-play ordering; prospective V1.2 seasons omit All-play and order ties by
+record, Points For, balanced head-to-head, incomplete weeks, high week, then
+the stored tiebreak. It runs inside a rollback transaction.
 
 `tests/stage3_live_playoff_qualification.test.sql` verifies the final Week 14
 gate, commissioner-only publication, third-miss exclusion, top-four/top-six

@@ -76,7 +76,6 @@ export type StandingDto = {
   initials: string;
   record: string;
   pointsFor: string;
-  allPlay: string;
   misses: number;
   movement: string;
   state: string | null;

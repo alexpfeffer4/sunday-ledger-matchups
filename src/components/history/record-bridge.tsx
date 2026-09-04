@@ -14,15 +14,6 @@ function record(standing: StandingFact | null): string {
   return `${standing.wins}–${standing.losses}${standing.ties > 0 ? `–${standing.ties}` : ""}`;
 }
 
-function allPlay(standing: StandingFact | null): string {
-  if (!standing) return "—";
-  if (standing.allPlayComparisonCount === 0) return "0.0%";
-  return `${(
-    (standing.allPlayHalfWinUnits / (standing.allPlayComparisonCount * 2)) *
-    100
-  ).toFixed(1)}%`;
-}
-
 function seed(standing: StandingFact | null): string {
   return standing?.seed ? `No. ${standing.seed}` : "—";
 }
@@ -98,7 +89,7 @@ export function RecordBridge({
         <p className="text-graphite mt-2 text-sm leading-6">
           This {bridge.matchup.scope.toLowerCase()} result remains in history,
           but it does not change the official regular-season record, Points For,
-          all-play percentage, or seed.
+          or seed.
         </p>
       </section>
     );
@@ -114,11 +105,6 @@ export function RecordBridge({
       label: "Points For",
       before: bridge.before ? score(bridge.before.pointsForCenticredits) : "—",
       after: bridge.after ? score(bridge.after.pointsForCenticredits) : "—",
-    },
-    {
-      label: "All-play",
-      before: allPlay(bridge.before),
-      after: allPlay(bridge.after),
     },
     {
       label: "Seed",
@@ -142,10 +128,10 @@ export function RecordBridge({
           {deltaLabel(bridge.before, bridge.after)}
         </p>
       </div>
-      <dl className="border-boundary bg-surface mt-3 grid overflow-hidden rounded-xl border sm:grid-cols-2">
+      <dl className="border-boundary bg-surface mt-3 grid overflow-hidden rounded-xl border sm:grid-cols-3">
         {facts.map((fact) => (
           <div
-            className="border-boundary border-b p-4 last:border-b-0 sm:nth-[n+3]:border-b-0 sm:nth-[odd]:border-r"
+            className="border-boundary border-b p-4 last:border-b-0 sm:border-b-0 sm:[&:not(:last-child)]:border-r"
             key={fact.label}
           >
             <dt className="text-muted text-xs font-bold tracking-[0.06em] uppercase">
