@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, type FormEvent } from "react";
+import { useActionState, useEffect, useState, type FormEvent } from "react";
 import {
   createLeagueInviteAction,
   importLiveOddsAction,
@@ -9,6 +9,7 @@ import {
   refreshLiveWeekQuotesAction,
   revokeLeagueInviteAction,
 } from "@/app/l/[leagueSlug]/actions";
+import { timedCommissionerAction } from "@/application/queries/commissioner-next-action";
 import { initialAppActionState } from "@/application/actions/action-state";
 import { isStandardLiveSlateEvent } from "@/application/providers/select-standard-live-slate";
 import type { LeagueInviteSummary } from "@/application/queries/league-invite-dtos";
@@ -244,11 +245,20 @@ export function Stage1CommissionerControls({
     useActionState(refreshLiveWeekQuotesAction, initialAppActionState);
   const [liveRosterLockState, liveRosterLockAction, lockingLiveRoster] =
     useActionState(lockLiveRosterAndOpenWeekAction, initialAppActionState);
-  const nextStep = commissionerNextStep({
-    hasLiveImport: latestLiveImport !== null,
-    providerConfigured,
-    state,
-  });
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") setNow(new Date());
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const nextStep =
+    timedCommissionerAction(state, liveWeekOperations, now) ??
+    commissionerNextStep({
+      hasLiveImport: latestLiveImport !== null,
+      providerConfigured,
+      state,
+    });
   const rosterIsValid = isRosterValid(state);
 
   useEffect(() => {
@@ -277,8 +287,16 @@ export function Stage1CommissionerControls({
         </p>
       </section>
 
-      <section className="border-boundary bg-surface rounded-xl border p-5">
-        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+      <details
+        open={state.league.lifecycle === "DRAFT"}
+        className="border-boundary bg-surface rounded-xl border p-5"
+      >
+        <summary className="min-h-11 cursor-pointer content-center font-semibold">
+          {state.league.lifecycle === "DRAFT"
+            ? "League setup and invitations"
+            : "Completed league setup"}
+        </summary>
+        <div className="mt-3 flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
           <div>
             <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
               League formation
@@ -437,7 +455,7 @@ export function Stage1CommissionerControls({
             <ActionFeedback state={revokeInviteState} />
           </details>
         ) : null}
-      </section>
+      </details>
 
       {!state.week && state.league.mode === "LIVE" ? (
         <section

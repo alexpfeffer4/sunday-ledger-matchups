@@ -57,7 +57,15 @@ export default async function MatchupPage({
     return matchup ? (
       <PairedMatchupView
         matchup={matchup}
-        refreshControl={<MatchupStateRefresh />}
+        refreshControl={
+          <MatchupStateRefresh
+            active={
+              live.league.mode === "LIVE" &&
+              live.week?.state !== "FINAL" &&
+              live.week?.state !== "OPEN"
+            }
+          />
+        }
         weeklyClose={
           memory?.recordBridge ? (
             <WeeklyCloseModule

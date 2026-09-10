@@ -76,6 +76,7 @@ jobs:
           echo "OWNER_REHEARSAL_TEST_PASSWORD=Owner-Rehearsal-Acceptance-48!" >> "$GITHUB_ENV"
           echo "FULL_STACK_ACCEPTANCE=1" >> "$GITHUB_ENV"
           echo "SUPABASE_SECRET_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          echo "SCORE_JOB_SECRET=disposable-score-job-secret-for-ci-only" >> "$GITHUB_ENV"
           echo "ODDS_API_KEY=disposable-provider-fixture" >> "$GITHUB_ENV"
           echo "ODDS_TEST_FIXTURE=/tmp/sunday-ledger-odds-fixture.json" >> "$GITHUB_ENV"
 

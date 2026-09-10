@@ -53,6 +53,27 @@ export type Database = {
       };
     };
     Functions: {
+      claim_provider_odds_request: {
+        Args: { p_league_id: string };
+        Returns: string;
+      };
+      claim_scheduled_score_refresh: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      claim_live_score_refresh: {
+        Args: { p_league_id: string };
+        Returns: Json;
+      };
+      complete_provider_request: {
+        Args: {
+          p_request_id: string;
+          p_import: Json;
+          p_requests_remaining?: number;
+        };
+        Returns: Json;
+      };
+
       claim_live_quote_refresh: {
         Args: { p_league_id: string };
         Returns: Json;

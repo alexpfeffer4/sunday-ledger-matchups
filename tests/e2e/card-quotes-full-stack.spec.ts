@@ -68,7 +68,7 @@ test("members refresh, review, seal, and recover through real Auth and database"
   browser,
   page,
 }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(240_000);
   const run = Date.now().toString(36);
   const admin = client(secret!);
   const identities = [];
@@ -398,4 +398,143 @@ test("members refresh, review, seal, and recover through real Auth and database"
     thirdPage.getByRole("heading", { name: "All 1,000 credits are sealed" }),
   ).toBeVisible();
   await third.close();
+  // Stage 2: real scheduler endpoint -> provider adapter -> DB -> member RSC,
+  // then the actual commissioner server action as outage fallback. Time changes
+  // below affect this disposable fixture only, never a hosted league.
+  const jobSecret = process.env.SCORE_JOB_SECRET;
+  expect(jobSecret).toBeTruthy();
+  const startedAt = new Date(
+    Date.now() - 4 * 60 * 60_000 - 60_000,
+  ).toISOString();
+  sql(`update private.season_weeks set common_lock_at=clock_timestamp()-interval '5 minutes' where league_id='${leagueId}';
+    update private.sports_events set scheduled_start_at='${startedAt}' where league_id='${leagueId}';
+    update private.score_refresh_policy set enabled=true;
+    update private.odds_refresh_policy set next_request_at='-infinity';`);
+  await rpc(members[0]!, "lock_stage1_week", {
+    p_league_id: leagueId,
+    p_idempotency_key: `score-lock-${run}`,
+  });
+  const scoreboardBefore = await rpc(members[1]!, "get_stage1_state", {
+    p_league_slug: slug,
+  });
+  expect(scoreboardBefore.matchup.opponentRevealedPositions).toEqual([]);
+  const scorePayload = (completed: boolean) => [
+    {
+      id: `quote-game-${run}`,
+      sport_key: "americanfootball_nfl",
+      commence_time: startedAt,
+      away_team: "Buffalo Bills",
+      home_team: "New York Jets",
+      completed,
+      scores: [
+        { name: "Buffalo Bills", score: "20" },
+        { name: "New York Jets", score: "27" },
+      ],
+      last_update: new Date().toISOString(),
+    },
+  ];
+  writeFileSync(
+    `${fixturePath}.scores`,
+    JSON.stringify({ payload: scorePayload(false) }),
+  );
+  const unauthorized = await page.request.post("/api/operations/scores");
+  expect(unauthorized.status()).toBe(401);
+  const invoke = () =>
+    page.request.post("/api/operations/scores", {
+      headers: { authorization: `Bearer ${jobSecret}` },
+    });
+  const firstCheck = await invoke();
+  expect(firstCheck.status()).toBe(200);
+  expect((await firstCheck.json()).status).toBe("SUCCEEDED");
+  expect(
+    sql(
+      `select count(*) from private.event_result_versions where league_id='${leagueId}'`,
+    ),
+  ).toBe("0");
+  await page.goto(`/l/${slug}/matchup`);
+  await expect(page.getByText(/Scores checked/)).toBeVisible();
+  const firstCount = readFileSync(`${fixturePath}.calls`, "utf8").split(
+    "scores",
+  ).length;
+  const refreshButton = page.getByRole("button", { name: "Refresh matchup" });
+  await refreshButton.focus();
+  await refreshButton.click();
+  await expect(refreshButton).toBeFocused();
+  expect(
+    readFileSync(`${fixturePath}.calls`, "utf8").split("scores").length,
+  ).toBe(firstCount);
+  // Age already-LIVE evidence and miss its checkpoint. Revealed data stays visible.
+  sql(`update private.live_score_checks set fetched_at=clock_timestamp()-interval '1 hour',source_updated_at=clock_timestamp()-interval '1 hour',next_check_at=clock_timestamp()-interval '20 minutes' where event_id in (select id from private.sports_events where league_id='${leagueId}');
+    update private.provider_requests set attempted_at=clock_timestamp()-interval '2 minutes' where kind='SCORES';
+    update private.odds_refresh_policy set next_request_at='-infinity';`);
+  await page.reload();
+  await expect(
+    page.getByText("Updates delayed", { exact: true }),
+  ).toBeVisible();
+  writeFileSync(
+    `${fixturePath}.scores`,
+    JSON.stringify({ payload: {}, status: 503 }),
+  );
+  expect((await invoke()).status()).toBe(503);
+  expect(
+    sql(
+      `select count(*) from private.event_result_versions where league_id='${leagueId}'`,
+    ),
+  ).toBe("0");
+  sql(
+    `update private.provider_requests set attempted_at=clock_timestamp()-interval '2 minutes' where kind='SCORES'; update private.odds_refresh_policy set next_request_at='-infinity';`,
+  );
+  writeFileSync(
+    `${fixturePath}.scores`,
+    JSON.stringify({ payload: scorePayload(true) }),
+  );
+  const operatorContext = await browser.newContext({
+    baseURL: "http://127.0.0.1:3000",
+  });
+  const operator = await operatorContext.newPage();
+  await operator.goto(
+    `/auth/sign-in?next=${encodeURIComponent(`/l/${slug}/commissioner`)}`,
+  );
+  await operator.getByLabel("Email address").fill(identities[0]!.email);
+  await operator
+    .getByLabel("Password", { exact: true })
+    .fill(identities[0]!.password);
+  await operator.getByRole("button", { name: "Sign in with password" }).click();
+  await operator.waitForURL(`**/l/${slug}/commissioner`);
+  await operator
+    .getByRole("button", {
+      name: "Refresh NFL scores & settle completed games",
+    })
+    .click();
+  await expect(operator.getByText(/1 NFL game updates captured/)).toBeVisible();
+  const afterScores = await rpc(members[1]!, "get_stage1_state", {
+    p_league_slug: slug,
+  });
+  expect(afterScores.week.state).toBe("PROVISIONAL");
+  expect(afterScores.ownerCard.positions[0].receiptHash).toBe(
+    originalReceipt[0].receiptHash,
+  );
+  expect(afterScores.ownerCard.positions[0].settlement.outcome).toBe("WIN");
+  const lastRequest = sql(
+    "select id from private.provider_requests where kind='SCORES' order by attempted_at desc limit 1",
+  );
+  const replay = await rpc(admin, "complete_provider_request", {
+    p_request_id: lastRequest,
+    p_import: null,
+  });
+  expect(replay.status).toBe("SUCCEEDED");
+  expect(
+    sql(
+      `select count(*) from private.event_result_versions where league_id='${leagueId}'`,
+    ),
+  ).toBe("1");
+  await page.reload();
+  await expect(
+    page.getByText("Provisional", { exact: true }).first(),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "test-results/score-checkpoint-mobile.png",
+    fullPage: true,
+  });
+  await operatorContext.close();
 });

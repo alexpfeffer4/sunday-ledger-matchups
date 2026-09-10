@@ -365,7 +365,7 @@ describe("The Odds API normalization", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
-  it("fails closed on partial scores and incomplete score slates", async () => {
+  it("rejects incomplete team scores but retains available games from a partial slate", async () => {
     expect(() =>
       normalizeTheOddsApiScores(
         [
@@ -406,6 +406,8 @@ describe("The Odds API normalization", () => {
           ),
         ),
       }),
-    ).rejects.toThrow("complete published NFL score slate");
+    ).resolves.toMatchObject({
+      events: [{ externalEventId: "event-buf-nyj" }],
+    });
   });
 });

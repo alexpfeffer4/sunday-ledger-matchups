@@ -21,7 +21,7 @@ const providerScoreEventSchema = z.object({
   last_update: z.iso.datetime().nullable(),
 });
 
-const responseSchema = z.array(providerScoreEventSchema).min(1).max(32);
+const responseSchema = z.array(providerScoreEventSchema).max(32);
 
 function teamScore(
   scores: z.infer<typeof scoreSchema>[],

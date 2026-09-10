@@ -41,7 +41,6 @@ describe("controlled-league retry contract", () => {
       "FINALIZE_SEASON_ARCHIVE",
       "REFRESH_LIVE_WEEK_QUOTES",
       "LOCK_LIVE_ROSTER_AND_OPEN_WEEK",
-      "IMPORT_LIVE_SCORES",
       "RECORD_STAGE1_RESULT",
       "CORRECT_FINALIZED_WEEK17_RESULT",
       "ADVANCE_STAGE1_CLOCK",
@@ -53,6 +52,25 @@ describe("controlled-league retry contract", () => {
     ]) {
       expect(actions, command).toContain(`"${command}"`);
     }
+  });
+
+  it("reconciles score checks through their leased completion receipt", () => {
+    const adapter = readFileSync(
+      resolve("src/adapters/providers/the-odds-api/provider-requests.ts"),
+      "utf8",
+    );
+    const scoreMigration = readFileSync(
+      resolve(
+        "supabase/migrations/20260910214029_dependable_live_operations.sql",
+      ),
+      "utf8",
+    );
+    expect(actions).toContain("refreshLiveScores(context.data.leagueId)");
+    expect(adapter).toContain('"complete_provider_request"');
+    expect(scoreMigration).toContain(
+      "if r.state<>'RUNNING' then return r.response;",
+    );
+    expect(scoreMigration).toContain("private.import_live_scores_as");
   });
 
   it("keeps invitation recovery atomic and caller-scoped", () => {

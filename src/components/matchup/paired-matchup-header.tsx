@@ -1,3 +1,4 @@
+import { easternTime } from "@/application/queries/score-freshness";
 import type {
   PairedMatchupDto,
   PairedMatchupPhase,
@@ -22,15 +23,6 @@ const phaseTones: Record<
 
 function formatScore(value: number): string {
   return formatCenticredits(BigInt(value), true);
-}
-
-function formatUpdatedAt(value: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/New_York",
-    timeZoneName: "short",
-  }).format(new Date(value));
 }
 
 function MemberScore({
@@ -96,11 +88,7 @@ export function PairedMatchupHeader({
         </StatusBadge>
       </div>
 
-      <div
-        aria-atomic="true"
-        aria-live="polite"
-        className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 py-5 sm:gap-8 sm:py-7"
-      >
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 py-5 sm:gap-8 sm:py-7">
         <MemberScore member={matchup.self} />
         <p
           aria-hidden="true"
@@ -114,25 +102,33 @@ export function PairedMatchupHeader({
       <div className="border-boundary flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold">
-            Updated{" "}
-            <time dateTime={matchup.freshness.updatedAt}>
-              {formatUpdatedAt(matchup.freshness.updatedAt)}
-            </time>
+            {matchup.freshness.updatedAt ? (
+              <>
+                Scores checked {matchup.freshness.ageLabel}
+                {" · "}
+                <time dateTime={matchup.freshness.updatedAt}>
+                  {easternTime(matchup.freshness.updatedAt)}
+                </time>
+              </>
+            ) : (
+              "Scores not checked yet"
+            )}
           </p>
           {matchup.freshness.message ? (
-            <p
-              className="text-pending mt-1 max-w-3xl text-sm leading-5"
-              role="status"
-            >
+            <p className="text-pending mt-1 max-w-3xl text-sm leading-5">
               {matchup.freshness.message}
             </p>
           ) : (
             <p className="text-muted mt-1 text-xs">
-              Refresh checks official stored state; it does not start a provider
-              import.
+              Refresh shows the latest saved result.
             </p>
           )}
         </div>
+        <span className="sr-only" role="status" aria-atomic="true">
+          {matchup.phaseLabel}. Your score{" "}
+          {formatScore(matchup.self.scoreCenticredits)}. Opponent score{" "}
+          {formatScore(matchup.opponent.scoreCenticredits)}.
+        </span>
         {refreshControl}
       </div>
     </section>
