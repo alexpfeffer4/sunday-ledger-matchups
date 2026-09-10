@@ -193,6 +193,106 @@ describe("Phase 1 auth and join actions", () => {
     expect(mocks.redirect).toHaveBeenCalledWith("/join/private-invite-token");
   });
 
+  it("verifies signup token hashes without needing a browser verifier", async () => {
+    const verifyOtp = vi.fn(async () => ({ error: null }));
+    const exchangeCodeForSession = vi.fn();
+    mocks.createClient.mockResolvedValue({
+      auth: { verifyOtp, exchangeCodeForSession },
+      schema: vi.fn(() => ({ rpc: vi.fn(async () => ({ error: null })) })),
+    });
+    const response = await confirmEmailLink(
+      new NextRequest(
+        "https://sunday-ledger.example/auth/confirm?token_hash=test-only-hash&type=signup&next=%2Fjoin%2Fprivate-invite-token",
+      ),
+    );
+    expect(verifyOtp).toHaveBeenCalledWith({
+      token_hash: "test-only-hash",
+      type: "signup",
+    });
+    expect(exchangeCodeForSession).not.toHaveBeenCalled();
+    expect(response.headers.get("location")).toBe(
+      "https://sunday-ledger.example/account/setup?next=%2Fjoin%2Fprivate-invite-token",
+    );
+  });
+
+  it.each([
+    ["create-account", "create-account"],
+    ["sign-in", "sign-in"],
+    ["recovery", "recover"],
+  ])("keeps failed %s links in their original flow", async (flow, path) => {
+    mocks.createClient.mockResolvedValue({
+      auth: {
+        exchangeCodeForSession: vi.fn(async () => ({
+          error: { code: "otp_expired" },
+        })),
+      },
+    });
+    const response = await confirmEmailLink(
+      new NextRequest(
+        `https://sunday-ledger.example/auth/confirm?code=invalid&flow=${flow}&next=%2Fjoin%2Fprivate-invite-token`,
+      ),
+    );
+    expect(response.headers.get("location")).toBe(
+      `https://sunday-ledger.example/auth/${path}?error=invalid_link&next=%2Fjoin%2Fprivate-invite-token`,
+    );
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+  });
+
+  it.each(["pkce_code_verifier_not_found", "bad_code_verifier"])(
+    "distinguishes %s from an expired email and preserves the flow id",
+    async (code) => {
+      const exchangeCodeForSession = vi.fn(async () => ({ error: { code } }));
+      mocks.createClient.mockResolvedValue({
+        auth: { exchangeCodeForSession },
+      });
+      const response = await confirmEmailLink(
+        new NextRequest(
+          "https://sunday-ledger.example/auth/confirm?code=abc&sb_flow_id=test-flow-id&flow=create-account&next=%2Fjoin%2Fprivate-invite-token",
+        ),
+      );
+      expect(exchangeCodeForSession).toHaveBeenCalledWith("abc", {
+        flowId: "test-flow-id",
+      });
+      expect(response.headers.get("location")).toBe(
+        "https://sunday-ledger.example/auth/create-account?error=browser_mismatch&next=%2Fjoin%2Fprivate-invite-token",
+      );
+    },
+  );
+
+  it("does not report a verified email as expired when profile setup fails", async () => {
+    mocks.createClient.mockResolvedValue({
+      auth: { exchangeCodeForSession: vi.fn(async () => ({ error: null })) },
+      schema: vi.fn(() => ({
+        rpc: vi.fn(async () => ({ error: { message: "Temporary failure" } })),
+      })),
+    });
+    const response = await confirmEmailLink(
+      new NextRequest(
+        "https://sunday-ledger.example/auth/confirm?code=abc&flow=create-account&next=%2Fjoin%2Fprivate-invite-token",
+      ),
+    );
+    expect(response.headers.get("location")).toBe(
+      "https://sunday-ledger.example/account/setup?next=%2Fjoin%2Fprivate-invite-token",
+    );
+  });
+
+  it("returns a cooldown after an email rate limit", async () => {
+    mocks.createClient.mockResolvedValue({
+      auth: {
+        signInWithOtp: vi.fn(async () => ({
+          error: { code: "over_email_send_rate_limit", status: 429 },
+        })),
+      },
+    });
+    const data = new FormData();
+    data.set("email", "new@example.com");
+    const result = await sendCreateAccountLink(initialMagicLinkState, data);
+    expect(result.status).toBe("error");
+    expect(result.retryAfterSeconds).toBe(60);
+    expect(result.message).toContain("same browser");
+  });
+
   it("guards joining in the action and lands repeated acceptance in the league", async () => {
     const joinLeague = vi.fn(async () => ({
       data: [{ joined: false, league_slug: "sunday-friends" }],

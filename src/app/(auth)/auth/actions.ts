@@ -99,7 +99,8 @@ async function sendEmailLink(
         return {
           status: "error",
           message:
-            "An email was just requested. Use the newest email or wait before requesting another.",
+            "An email was just requested. Wait a minute before trying again, and use only the newest email. Open its link in the same browser where you requested it.",
+          retryAfterSeconds: 60,
         };
       }
       if (error.code === "email_address_not_authorized") {
@@ -120,10 +121,11 @@ async function sendEmailLink(
 
     return {
       status: "sent",
+      retryAfterSeconds: 60,
       message:
         intent === "create-account"
-          ? "Check your email for a one-time account link. It continues to required username and password setup."
-          : "Check your email for a one-time sign-in link. It returns you directly to where you left off.",
+          ? "Check your email for a one-time account link. Open it in this same browser to continue to username and password setup. Use only the newest email."
+          : "Check your email for a one-time sign-in link. Open it in this same browser to return to where you left off. Use only the newest email.",
     };
   } catch {
     return {

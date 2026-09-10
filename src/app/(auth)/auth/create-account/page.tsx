@@ -12,7 +12,10 @@ export const metadata: Metadata = { title: "Create account" };
 export default async function CreateAccountPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string | string[] }>;
+  searchParams: Promise<{
+    next?: string | string[];
+    error?: string | string[];
+  }>;
 }) {
   const query = await searchParams;
   const next = safeInternalPath(
@@ -47,7 +50,13 @@ export default async function CreateAccountPage({
             must save the public username your league sees and a password for
             future sign-ins.
           </p>
-          <MagicLinkForm intent="create-account" next={next} />
+          <MagicLinkForm
+            intent="create-account"
+            next={next}
+            linkError={
+              Array.isArray(query.error) ? query.error[0] : query.error
+            }
+          />
           <Link
             className="text-action mt-5 inline-flex min-h-11 items-center font-semibold hover:underline"
             href={`/auth/sign-in?next=${encodeURIComponent(next)}`}

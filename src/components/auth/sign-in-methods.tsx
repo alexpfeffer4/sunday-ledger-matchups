@@ -9,9 +9,11 @@ type SignInMethod = "password" | "email";
 export function SignInMethods({
   next,
   defaultMethod = "password",
+  linkError,
 }: {
   next: string;
   defaultMethod?: SignInMethod;
+  linkError?: string;
 }) {
   const [method, setMethod] = useState<SignInMethod>(defaultMethod);
 
@@ -52,7 +54,7 @@ export function SignInMethods({
         {method === "password" ? (
           <PasswordSignInForm next={next} />
         ) : (
-          <MagicLinkForm next={next} />
+          <MagicLinkForm next={next} linkError={linkError} />
         )}
       </div>
     </div>

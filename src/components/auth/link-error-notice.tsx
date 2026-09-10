@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-export function LinkErrorNotice() {
+export function LinkErrorNotice({ reason }: { reason?: string }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -16,7 +16,9 @@ export function LinkErrorNotice() {
       role="alert"
       tabIndex={-1}
     >
-      That email link is invalid or expired. Request a fresh link below.
+      {reason === "browser_mismatch"
+        ? "This email link could not find the browser session that requested it. Open the link in that same browser. If you cannot, request a new link below and open it in this browser."
+        : "This email link could not be verified. It may have expired or already been used. Request a new link below, then open only the newest email in the same browser."}
     </div>
   );
 }
