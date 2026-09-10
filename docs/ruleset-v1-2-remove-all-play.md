@@ -65,7 +65,7 @@ revision. Unrelated open decisions must keep their existing status and scope.
 
 ## Migration and rollback
 
-Migration `20260904173852_ruleset_v1_2_remove_all_play.sql` updates only the two
+Migration `20260910173048_ruleset_v1_2_remove_all_play.sql` updates only the two
 exact migration-owned V1.1 catalog rows and exact matching unfrozen snapshots.
 It fails closed if the expected catalog baseline is absent. It does not mutate
 frozen snapshots.
