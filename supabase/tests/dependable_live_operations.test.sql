@@ -303,7 +303,7 @@ as $$
         'completed', p_event_one_completed,
         'awayScore', p_event_one_away,
         'homeScore', p_event_one_home,
-        'lastUpdate', case when p_event_one_away is null then null else now() - interval '1 minute' end
+        'lastUpdate', case when p_event_one_away is null then null else clock_timestamp() - interval '1 second' end
       ),
       (
         select jsonb_build_object(
@@ -316,7 +316,7 @@ as $$
           'completed', p_event_two_completed,
           'awayScore', p_event_two_away,
           'homeScore', p_event_two_home,
-          'lastUpdate', case when p_event_two_away is null then null else now() - interval '1 minute' end
+          'lastUpdate', case when p_event_two_away is null then null else clock_timestamp() - interval '1 second' end
         )
         from private.sports_events as event_two
         where event_two.id = '88000000-0000-4000-8000-000000000002'
@@ -391,6 +391,26 @@ select is(api.complete_provider_request((select (value->>'leaseId')::uuid from c
 select is((select count(*) from private.event_result_versions),1::bigint,'replay does not duplicate settlement');
 select is((select requests_remaining from private.odds_refresh_policy),461,'replayed response cannot increase provider balance');
 select is((select state from private.season_weeks where id='85000000-0000-4000-8000-000000000001'),'LOCKED','future unresolved game prevents provisional week');
+-- An equal provider timestamp is not a new result, even under a new actor.
+savepoint transferred_objective_correction;
+select lives_ok($$select api.transfer_league_commissioner('stage3-live-result-test','81000000-0000-4000-8000-000000000003')$$,'transfer after provider final succeeds');
+select set_config('request.jwt.claims','{"sub":"81000000-0000-4000-8000-000000000003","role":"authenticated"}',true);
+select lives_ok($$select api.correct_live_event_result('88000000-0000-4000-8000-000000000001','FINAL',14,20,'Official gamebook corrects the away score after operator transfer.','transfer-objective-correction')$$,'new commissioner records an objective correction');
+create temp table unchanged_provider_payload as
+select jsonb_set(jsonb_set(pg_temp.live_score_import(true,27,20,false,null,null),'{events}',
+  jsonb_build_array(pg_temp.live_score_import(true,27,20,false,null,null)->'events'->0)),
+  '{events,0,lastUpdate}',to_jsonb((select source_updated_at from private.live_score_checks where event_id='88000000-0000-4000-8000-000000000001'))) as value;
+update private.provider_requests set attempted_at=clock_timestamp()-interval '2 minutes';
+update private.odds_refresh_policy set next_request_at='-infinity';
+truncate checkpoint_claim;
+insert into checkpoint_claim select api.claim_live_score_refresh('82000000-0000-4000-8000-000000000001');
+select is(api.complete_provider_request((select (value->>'leaseId')::uuid from checkpoint_claim),
+  jsonb_set((select value from unchanged_provider_payload),'{fetchedAt}',to_jsonb(clock_timestamp())),459)->>'status','SUCCEEDED','unchanged provider evidence is a successful check, not an outage');
+select is((select count(*) from private.event_result_versions),2::bigint,'repeated source evidence creates no correction under the new commissioner');
+select is((select source from private.event_result_versions where event_id='88000000-0000-4000-8000-000000000001' order by version desc limit 1),'MANUAL_OBJECTIVE','objective correction provenance survives stale provider replay');
+select is((select returned_centicredits from private.settlement_versions where receipt_id='8b000000-0000-4000-8000-000000000001' order by created_at desc,id desc limit 1),0::bigint,'corrected losing settlement is not reverted by old provider evidence');
+select is((select failure_count from private.live_score_checks where event_id='88000000-0000-4000-8000-000000000001'),0,'equal source timestamp does not trigger outage retries');
+rollback to savepoint transferred_objective_correction;
 -- Different dates: an old unreturned event cannot prevent the newer final.
 update private.sports_events set scheduled_start_at=clock_timestamp()-interval '80 hours' where fixture_event_key='provider-live-result-one';
 update private.sports_events set scheduled_start_at=clock_timestamp()-interval '4 hours' where fixture_event_key='provider-live-result-two';

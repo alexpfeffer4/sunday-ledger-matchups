@@ -363,7 +363,7 @@ as $$
         'completed', p_event_one_completed,
         'awayScore', p_event_one_away,
         'homeScore', p_event_one_home,
-        'lastUpdate', case when p_event_one_away is null then null else now() - interval '1 minute' end
+        'lastUpdate', case when p_event_one_away is null then null else clock_timestamp() - interval '1 second' end
       ),
       (
         select jsonb_build_object(
@@ -376,7 +376,7 @@ as $$
           'completed', p_event_two_completed,
           'awayScore', p_event_two_away,
           'homeScore', p_event_two_home,
-          'lastUpdate', case when p_event_two_away is null then null else now() - interval '1 minute' end
+          'lastUpdate', case when p_event_two_away is null then null else clock_timestamp() - interval '1 second' end
         )
         from private.sports_events as event_two
         where event_two.id = '88000000-0000-4000-8000-000000000002'
