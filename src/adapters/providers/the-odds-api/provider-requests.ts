@@ -7,11 +7,12 @@ import {
   fetchNflScores,
 } from "@/adapters/providers/the-odds-api/client";
 import { getSupabasePublicConfig } from "@/adapters/supabase/config";
+import { getSupabaseServerSecret } from "@/adapters/supabase/server-secret";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import type { Database, Json } from "@/adapters/supabase/database.types";
 
 function providerClient() {
-  const secret = process.env.SUPABASE_SECRET_KEY;
+  const secret = getSupabaseServerSecret();
   if (!secret || !process.env.ODDS_API_KEY)
     throw new Error("PROVIDER_UNCONFIGURED");
   return createClient<Database>(getSupabasePublicConfig().url, secret, {

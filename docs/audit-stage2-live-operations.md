@@ -122,7 +122,11 @@ delay and use objective-result recovery; manual provider checks cannot bypass it
    It installs Cron/pg_net and the job but leaves the score policy disabled. A fresh
    database therefore cannot dispatch HTTP until its own explicit activation.
 2. Merge/deploy the tested code under the owner's rollout approval. Retain existing
-   `ODDS_API_KEY` and `SUPABASE_SECRET_KEY`; add a random server-only
+   `ODDS_API_KEY` and the database server key. Production currently stores the
+   latter as `SUPABASE_Secret_KEY`; Vercel makes this secret write-only and its
+   name non-editable. Both provider adapters accept that existing spelling as a
+   server-only fallback, preferring the documented `SUPABASE_SECRET_KEY` when set.
+   No credential value, privilege, or public configuration changes. Add a random server-only
    `SCORE_JOB_SECRET` of at least 32 characters to Production. Never print it or
    expose it via `NEXT_PUBLIC_` configuration.
 3. Save the matching secret as `score_job_secret` in Supabase Vault, and
