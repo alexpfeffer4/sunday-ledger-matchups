@@ -167,9 +167,11 @@ begin
   end if;
   update private.odds_refresh_policy set
     daily_credits = v_policy.daily_credits + 3, monthly_credits = v_policy.monthly_credits + 3,
+    requests_remaining = v_policy.requests_remaining - 3,
     usage_day = (v_now at time zone 'UTC')::date,
     usage_month = date_trunc('month', v_now at time zone 'UTC')::date,
-    next_request_at = v_now + interval '3 seconds';
+    next_request_at = v_now + interval '3 seconds'
+    where singleton;
   insert into private.live_quote_refreshes(week_id,lease_id,actor_user_id,attempted_at,lease_expires_at,state)
     values(v_week.id,v_lease,v_user,v_now,v_now + interval '45 seconds','RUNNING')
     on conflict(week_id) do update set lease_id=excluded.lease_id,actor_user_id=excluded.actor_user_id,
@@ -204,7 +206,8 @@ begin
   v_now := clock_timestamp();
   if v_refresh.state <> 'RUNNING' or v_refresh.lease_expires_at <= v_now then raise exception 'QUOTE_REFRESH_LEASE_INVALID'; end if;
   if p_requests_remaining is not null and p_requests_remaining >= 0 then
-    update private.odds_refresh_policy set requests_remaining=least(coalesce(requests_remaining,p_requests_remaining),p_requests_remaining);
+    update private.odds_refresh_policy set requests_remaining=least(coalesce(requests_remaining,p_requests_remaining),p_requests_remaining)
+      where singleton;
   end if;
   if p_import is null or p_import = 'null'::jsonb then
     update private.live_quote_refreshes set state='FAILED' where lease_id=p_lease_id;
@@ -358,8 +361,8 @@ begin
   v_definition := replace(v_definition,'v_now := private.stage1_season_time(v_season.id);',
     'v_now := private.card_confirmation_time(v_season.id);');
   v_definition := replace(v_definition,v_old,
-    'and ((not exists(select 1 from private.odds_refresh_policy where enabled) and snapshot.observed_at >= v_now - interval ''2 minutes'')
-      or (exists(select 1 from private.odds_refresh_policy where enabled)
+    'and (((v_season.mode<>''LIVE'' or not exists(select 1 from private.odds_refresh_policy where enabled)) and snapshot.observed_at >= v_now - interval ''2 minutes'')
+      or (v_season.mode=''LIVE'' and exists(select 1 from private.odds_refresh_policy where enabled)
         and snapshot.observed_at >= v_now - interval ''10 minutes''
         and exists(select 1 from private.live_odds_imports i where i.id=head.verified_import_id
           and i.fetched_at<=v_now and i.fetched_at>=v_now-interval ''120 seconds'')))');

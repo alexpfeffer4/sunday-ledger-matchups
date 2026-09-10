@@ -46,10 +46,11 @@ $$;
 select api.publish_live_week_slate(q.league_id,
  (api.store_live_odds_import(q.league_id,pg_temp.quote_import(),'initial-quote-import')->>'importId')::uuid,
  array['quote-game'],'initial-quote-publication') from quote_context q;
-update private.odds_refresh_policy set enabled=true;
+update private.odds_refresh_policy set enabled=true,requests_remaining=500;
 update quote_context set lease_id=(api.claim_live_quote_refresh(league_id)->>'leaseId')::uuid;
 select throws_ok($$select api.claim_live_quote_refresh(league_id) from quote_context$$,'55000','QUOTE_REFRESH_BUSY','overlapping requests share one lease');
 select is((select daily_credits from private.odds_refresh_policy),3,'one request reserves three credits');
+select is((select requests_remaining from private.odds_refresh_policy),497,'provider balance is reserved before the HTTP response so overlapping leagues cannot spend the reserve');
 select lives_ok($$select api.complete_live_quote_refresh(lease_id,pg_temp.quote_import(),497) from quote_context$$,'a successful fetch retains an aged source time');
 select lives_ok($$select api.lock_live_roster_and_open_week(league_id,'quote-roster-lock') from quote_context$$,'aged unchanged terms no longer block opening the roster');
 select is((select api.claim_live_quote_refresh(league_id)->>'status' from quote_context),'CACHED','a recent fetch is shared');

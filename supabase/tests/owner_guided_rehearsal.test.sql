@@ -3,6 +3,9 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
 
+-- A Live quote rollout must not change the canonical owner Simulation.
+update private.odds_refresh_policy set enabled=true where singleton;
+
 select has_table(
   'private', 'owner_rehearsal_entitlements',
   'owner entitlement is explicit and private'

@@ -3,6 +3,9 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
 
+-- Exercise frozen Simulation behavior while the optional Live policy is on.
+update private.odds_refresh_policy set enabled=true where singleton;
+
 select has_table(
   'private', 'simulation_fixture_manifests',
   'the reviewed Simulation adapter manifest is stored privately'

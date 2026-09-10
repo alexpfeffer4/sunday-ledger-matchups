@@ -35,11 +35,23 @@ restriction in D-009. This is a proposal, not an assertion of prior approval:
    common lock, immutable accepted terms, correction history, and event-based
    opponent visibility retain their existing authority. Simulation is unchanged.
 
-The audit observed that a successful fetch can return unchanged terms whose
-provider timestamp is older than two minutes. This implementation reproduces
-that case with a fixed five-minute-old provider timestamp through real Auth,
-server actions, PostgreSQL, and receipt creation. No new live-provider sample
-was taken during this implementation. The provider documents featured-market
+The audit identified that a new fetch can still carry a provider timestamp
+older than the two-minute acceptance window; it did not measure production
+rejection frequency. A read-only check on September 10 of the latest 50 stored
+Live imports (excluding owner rehearsals and requiring provider-shaped event
+IDs) found 15 imports containing 1,440 market observations, fetched August 27
+through September 1. Source age at fetch ranged from 4.3 to 103.3 seconds;
+median 49.8 seconds, 95th percentile 103.3 seconds. None exceeded 120 seconds
+at fetch. The oldest responses therefore left less than 17 seconds under the
+old source-only acceptance gate. This sample supports separating the clocks;
+it does not establish a stale-fetch failure rate or validate a ten-minute
+ceiling near kickoff. The proposed ceiling still requires approval and
+monitoring. No new provider request was made for this evidence.
+
+The five-minute-old unchanged-source case runs through the database and
+full-stack lane; the 25-minute-old rejected-source case runs in pgTAP. Both are
+explicit fixtures, not measured production observations.
+The provider documents featured-market
 updates around 60 seconds pregame, accelerating near kickoff; that is not a
 promise that every bookmaker market timestamp changes on every request.
 See [update intervals](https://the-odds-api.com/sports-odds-data/update-intervals.html)
