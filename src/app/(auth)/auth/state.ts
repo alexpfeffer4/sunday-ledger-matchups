@@ -2,6 +2,7 @@ export type MagicLinkState = {
   status: "idle" | "error" | "sent";
   message: string;
   field?: "email";
+  retryAfterSeconds?: number;
 };
 
 export const initialMagicLinkState: MagicLinkState = {

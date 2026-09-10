@@ -1,27 +1,53 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
   sendCreateAccountLink,
   sendSignInLink,
 } from "@/app/(auth)/auth/actions";
 import { initialMagicLinkState } from "@/app/(auth)/auth/state";
+import { LinkErrorNotice } from "@/components/auth/link-error-notice";
 
 export function MagicLinkForm({
   intent = "sign-in",
   next,
+  linkError,
 }: {
   intent?: "create-account" | "sign-in";
   next: string;
+  linkError?: string;
 }) {
+  const [email, setEmail] = useState("");
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [now, setNow] = useState(0);
   const [state, formAction, pending] = useActionState(
-    intent === "create-account" ? sendCreateAccountLink : sendSignInLink,
+    async (previousState: typeof initialMagicLinkState, formData: FormData) => {
+      const send =
+        intent === "create-account" ? sendCreateAccountLink : sendSignInLink;
+      const result = await send(previousState, formData);
+      if (result.retryAfterSeconds) {
+        const requestedAt = Date.now();
+        setNow(requestedAt);
+        setCooldownUntil(requestedAt + result.retryAfterSeconds * 1000);
+      }
+      return result;
+    },
     initialMagicLinkState,
   );
+  const secondsRemaining = Math.max(0, Math.ceil((cooldownUntil - now) / 1000));
+
+  useEffect(() => {
+    if (!secondsRemaining) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [secondsRemaining]);
   const emailError = state.status === "error" && state.field === "email";
 
   return (
     <form action={formAction} className="mt-7 space-y-5">
+      {linkError && state.status === "idle" ? (
+        <LinkErrorNotice reason={linkError} />
+      ) : null}
       <input type="hidden" name="next" value={next} />
       <div>
         <label htmlFor="email" className="text-sm font-bold">
@@ -31,6 +57,8 @@ export function MagicLinkForm({
           id="email"
           name="email"
           type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
           autoComplete="email"
           required
           className="border-control bg-surface focus:border-action mt-2 min-h-12 w-full rounded-lg border px-3 text-base"
@@ -45,6 +73,11 @@ export function MagicLinkForm({
             ? "The link signs you in once, then opens required username and password setup."
             : "Email links are for existing accounts and return you directly to your destination."}
         </p>
+        <p className="text-muted mt-2 text-xs leading-5">
+          On your phone, open the email link in the same browser you are using
+          now. You can copy the link from Mail and paste it into this browser’s
+          address bar.
+        </p>
         {emailError ? (
           <p id="email-error" className="text-negative mt-2 text-sm">
             {state.message}
@@ -53,14 +86,18 @@ export function MagicLinkForm({
       </div>
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || secondsRemaining > 0}
         className="border-registry bg-registry hover:border-registry-hover hover:bg-registry-hover min-h-12 w-full rounded-lg border px-5 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-70"
       >
         {pending
           ? "Sending…"
-          : intent === "create-account"
-            ? "Email account link"
-            : "Send sign-in link"}
+          : secondsRemaining > 0
+            ? `Resend available in ${secondsRemaining}s`
+            : state.status === "sent"
+              ? "Resend email link"
+              : intent === "create-account"
+                ? "Email account link"
+                : "Send sign-in link"}
       </button>
       {state.status !== "idle" && !emailError ? (
         <p

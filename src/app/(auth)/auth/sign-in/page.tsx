@@ -5,7 +5,6 @@ import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import { SignInMethods } from "@/components/auth/sign-in-methods";
-import { LinkErrorNotice } from "@/components/auth/link-error-notice";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -47,10 +46,12 @@ export default async function SignInPage({
             Use your password or request a one-time email link for an existing
             account.
           </p>
-          {hasLinkError ? <LinkErrorNotice /> : null}
           <SignInMethods
             next={next}
             defaultMethod={hasLinkError ? "email" : "password"}
+            linkError={
+              Array.isArray(query.error) ? query.error[0] : query.error
+            }
           />
           <Link
             className="text-action mt-5 inline-flex min-h-11 items-center font-semibold hover:underline"

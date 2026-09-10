@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { PasswordRecoveryForm } from "@/components/auth/password-recovery-form";
+import { LinkErrorNotice } from "@/components/auth/link-error-notice";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Recover password" };
@@ -9,7 +10,10 @@ export const metadata: Metadata = { title: "Recover password" };
 export default async function RecoverPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string | string[] }>;
+  searchParams: Promise<{
+    next?: string | string[];
+    error?: string | string[];
+  }>;
 }) {
   const query = await searchParams;
   const next = safeInternalPath(
@@ -34,6 +38,11 @@ export default async function RecoverPasswordPage({
             setup screen where you can save a new password of at least eight
             characters.
           </p>
+          {query.error ? (
+            <LinkErrorNotice
+              reason={Array.isArray(query.error) ? query.error[0] : query.error}
+            />
+          ) : null}
           <PasswordRecoveryForm next={next} />
           <Link
             className="text-action mt-5 inline-flex min-h-11 items-center font-semibold hover:underline"

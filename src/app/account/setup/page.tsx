@@ -24,6 +24,11 @@ export default async function AccountSetupPage({
     redirect(`/auth/create-account?next=${encodeURIComponent(next)}`);
   }
 
+  // This is idempotent, including when email verification succeeded but the
+  // callback's profile request failed temporarily.
+  const ensuredProfile = await supabase.schema("api").rpc("ensure_profile");
+  if (ensuredProfile.error) throw ensuredProfile.error;
+
   const email =
     typeof data.claims.email === "string" ? data.claims.email : "Your account";
   const profileResult = await supabase

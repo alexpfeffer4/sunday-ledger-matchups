@@ -2,6 +2,7 @@
 
 import {
   cleanup,
+  act,
   fireEvent,
   render,
   screen,
@@ -16,6 +17,7 @@ import { MagicLinkForm } from "@/components/auth/magic-link-form";
 import { RecoveryPasswordForm } from "@/components/auth/recovery-password-form";
 import { SignInMethods } from "@/components/auth/sign-in-methods";
 import { UsernameForm } from "@/components/auth/username-form";
+import { sendCreateAccountLink } from "@/app/(auth)/auth/actions";
 
 vi.mock("@/app/(auth)/auth/actions", () => ({
   finishPasswordRecovery: vi.fn(),
@@ -101,6 +103,40 @@ describe("password authentication options", () => {
     expect(
       screen.getByRole("button", { name: "Email account link" }),
     ).toBeVisible();
+  });
+
+  it("keeps the email entered and replaces stale link errors with a resend countdown", async () => {
+    vi.mocked(sendCreateAccountLink).mockResolvedValue({
+      status: "sent",
+      message: "Check the newest email in this browser.",
+      retryAfterSeconds: 60,
+    });
+    render(
+      <MagicLinkForm
+        intent="create-account"
+        next="/join/invite-token"
+        linkError="browser_mismatch"
+      />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("browser session");
+    fireEvent.change(screen.getByLabelText("Email address"), {
+      target: { value: "new@example.com" },
+    });
+    await act(async () => {
+      fireEvent.submit(
+        screen
+          .getByRole("button", { name: "Email account link" })
+          .closest("form")!,
+      );
+    });
+    expect(screen.getByLabelText("Email address")).toHaveValue(
+      "new@example.com",
+    );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("newest email");
+    expect(
+      screen.getByRole("button", { name: /Resend available in/ }),
+    ).toBeDisabled();
   });
 
   it("shows one sign-in method at a time", () => {
