@@ -72,7 +72,7 @@ test("members refresh, review, seal, and recover through real Auth and database"
   const run = Date.now().toString(36);
   const admin = client(secret!);
   const identities = [];
-  const members = [];
+  const members: SupabaseClient[] = [];
   for (let i = 0; i < 4; i++) {
     const identity = {
       email: `quote-${run}-${i}@acceptance.test`,
@@ -374,9 +374,26 @@ test("members refresh, review, seal, and recover through real Auth and database"
   await expect(
     thirdPage.getByRole("button", { name: "Confirm and seal card" }),
   ).toBeEnabled();
-  await thirdPage
-    .getByRole("button", { name: "Confirm and seal card" })
-    .click();
+  // Two actual HTTP confirmations contend on the same card and operation key.
+  // The first two members above already exercise confirmation via server action.
+  const reviewedPositions = JSON.parse(
+    await thirdPage.locator('input[name="positions"]').inputValue(),
+  ) as Record<string, unknown>[];
+  reviewedPositions[0].reviewId = await thirdPage
+    .locator('input[name="reviewId"]')
+    .inputValue();
+  const confirmations = await Promise.all(
+    [1, 2].map(() =>
+      rpc(members[3]!, "accept_stage1_card", {
+        p_league_slug: slug,
+        p_positions: reviewedPositions,
+        p_idempotency_key: `concurrent-confirm-${run}`,
+      }),
+    ),
+  );
+  expect(confirmations.filter((result) => result.replayed)).toHaveLength(1);
+  expect(confirmations[0].receipts).toEqual(confirmations[1].receipts);
+  await thirdPage.reload();
   await expect(
     thirdPage.getByRole("heading", { name: "All 1,000 credits are sealed" }),
   ).toBeVisible();
