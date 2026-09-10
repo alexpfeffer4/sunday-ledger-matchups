@@ -15,6 +15,16 @@ create table private.odds_refresh_policy (
 );
 insert into private.odds_refresh_policy default values;
 
+-- Evaluate Live confirmation after acquiring locks, rather than using the
+-- transaction-start time returned by now(). Keep the canonical Simulation clock.
+create function private.card_confirmation_time(p_season_id uuid)
+returns timestamptz language sql volatile security definer set search_path = '' as $$
+  select case when s.mode='LIVE' then clock_timestamp()
+    else private.stage1_season_time(s.id) end
+  from private.seasons s where s.id=p_season_id;
+$$;
+revoke all on function private.card_confirmation_time(uuid) from public,anon,authenticated;
+
 create table private.live_quote_refreshes (
   week_id uuid primary key references private.season_weeks(id),
   lease_id uuid not null unique,
@@ -328,7 +338,7 @@ begin
         if v_command.request_hash<>v_request_hash then raise exception using errcode=''22000'', message=''Idempotency key was reused with a different request.''; end if;
         return v_command.response_json || jsonb_build_object(''replayed'',true);
       end if;
-      v_now := private.stage1_season_time(v_season.id);');
+      v_now := private.card_confirmation_time(v_season.id);');
   v_definition := replace(v_definition, '  update private.slates',
     '  if v_quote_review_id is not null then
       insert into private.card_quote_review_acceptances(card_id,review_id) values(v_card.id,v_quote_review_id);
@@ -345,6 +355,8 @@ declare v_definition text; v_old text := 'and snapshot.observed_at >= v_now - in
 begin
   select pg_get_functiondef('api.lock_live_roster_and_open_week(uuid,text)'::regprocedure) into v_definition;
   if strpos(v_definition,v_old)=0 then raise exception 'Roster freshness baseline changed'; end if;
+  v_definition := replace(v_definition,'v_now := private.stage1_season_time(v_season.id);',
+    'v_now := private.card_confirmation_time(v_season.id);');
   v_definition := replace(v_definition,v_old,
     'and ((not exists(select 1 from private.odds_refresh_policy where enabled) and snapshot.observed_at >= v_now - interval ''2 minutes'')
       or (exists(select 1 from private.odds_refresh_policy where enabled)

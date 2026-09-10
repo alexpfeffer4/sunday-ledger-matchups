@@ -84,6 +84,9 @@ If the new price makes the stake invalid, the member must edit it; there is no
 silent reduction. A lock-time rejection creates no partial receipts. A repeated
 successful confirmation returns its existing command receipt, including after
 lock. Concurrent confirmations recheck that receipt after acquiring card locks.
+Live confirmation and roster opening read wall time after locking, so a
+transaction started before lock cannot bypass the deadline by waiting on a lock.
+The canonical Simulation clock retains its existing meaning.
 
 ## Rollout and rollback
 

@@ -25,6 +25,7 @@ alter table quote_context add column lease_id uuid;
 alter table quote_context add column review jsonb;
 alter table quote_context add column positions jsonb;
 alter table quote_context add column accepted jsonb;
+select cmp_ok((select private.card_confirmation_time(season_id) from quote_context),'>',transaction_timestamp(),'Live confirmation uses wall time rather than transaction-start time');
 insert into private.league_memberships(league_id,user_id,role)
  select q.league_id,('71000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'MEMBER' from quote_context q,generate_series(2,4) n;
 insert into private.season_entries(season_id,league_id,user_id,standing_tiebreak)
@@ -116,7 +117,7 @@ select throws_ok($$select api.review_live_card_quotes('quote-contract',pg_temp.c
 
 -- Deadline crossing is asserted against the shared acceptance engine clock.
 -- A test-only function replacement moves time; no production clock or frozen slate changes.
-create or replace function private.stage1_season_time(p_season_id uuid) returns timestamptz language sql stable set search_path='' as $$
+create or replace function private.card_confirmation_time(p_season_id uuid) returns timestamptz language sql volatile set search_path='' as $$
  select common_lock_at from private.season_weeks where season_id=p_season_id order by nfl_week desc limit 1;
 $$;
 select throws_ok($$select api.accept_stage1_card('quote-contract',positions,'confirmation-at-lock') from quote_context$$,'55000','The current card is not open.','confirmation crossing lock accepts nothing');
