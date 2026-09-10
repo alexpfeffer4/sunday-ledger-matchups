@@ -11,6 +11,7 @@ on:
       - "scripts/check-generated-supabase-types.mjs"
       - "src/**"
       - "supabase/migrations/**"
+      - "supabase/operations/**"
       - "supabase/tests/**"
       - "tests/**"
   workflow_dispatch:
@@ -82,6 +83,23 @@ jobs:
 
       - name: Run complete pgTAP and Phase 8C isolation suite
         run: supabase test db
+
+      - name: Verify disabled scheduler configuration on disposable database
+        run: |
+          psql "$TEST_SUPABASE_DB_URL" -v ON_ERROR_STOP=1 --single-transaction \
+            -f supabase/operations/enable-score-checkpoints.sql \
+            -c "DO \$\$ BEGIN
+              IF (SELECT enabled FROM private.score_refresh_policy) THEN
+                RAISE EXCEPTION 'Score automation must default to disabled';
+              END IF;
+              IF private.dispatch_score_checkpoints() IS NOT NULL THEN
+                RAISE EXCEPTION 'Disabled dispatch must make no HTTP request';
+              END IF;
+              IF has_function_privilege('authenticated', 'private.dispatch_score_checkpoints()', 'execute') THEN
+                RAISE EXCEPTION 'Members must not invoke the scheduler';
+              END IF;
+            END \$\$;" \
+            -c "SELECT cron.unschedule('sunday-ledger-score-checkpoints');"
 
       - name: Verify checked-in Phase 8C Supabase function types
         run: |

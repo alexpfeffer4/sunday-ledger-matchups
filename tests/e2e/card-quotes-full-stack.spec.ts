@@ -443,9 +443,20 @@ test("members refresh, review, seal, and recover through real Auth and database"
     page.request.post("/api/operations/scores", {
       headers: { authorization: `Bearer ${jobSecret}` },
     });
-  const firstCheck = await invoke();
-  expect(firstCheck.status()).toBe(200);
-  expect((await firstCheck.json()).status).toBe("SUCCEEDED");
+  const overlappingChecks = await Promise.all([invoke(), invoke()]);
+  expect(overlappingChecks.map((response) => response.status())).toEqual([
+    200, 200,
+  ]);
+  expect(
+    (await Promise.all(overlappingChecks.map((response) => response.json())))
+      .map((body) => body.status)
+      .sort(),
+  ).toEqual(["BUSY", "SUCCEEDED"]);
+  expect(
+    readFileSync(`${fixturePath}.calls`, "utf8")
+      .split("\n")
+      .filter((call) => call === "scores"),
+  ).toHaveLength(1);
   expect(
     sql(
       `select count(*) from private.event_result_versions where league_id='${leagueId}'`,

@@ -349,6 +349,14 @@ select is((api.claim_scheduled_score_refresh()->>'status'),'BUSY','overlapping i
 select is((select daily_credits from private.odds_refresh_policy),2,'scores reserve two shared credits once');
 select is((select requests_remaining from private.odds_refresh_policy),465,'reservation debits known balance before HTTP');
 select is((select jsonb_array_length(api.get_stage1_state('stage3-live-result-test')->'matchup'->'opponentRevealedPositions')),0,'scheduled kickoff alone reveals no opponent positions');
+select throws_ok($$select api.import_live_scores('82000000-0000-4000-8000-000000000001',
+  jsonb_set(jsonb_set(pg_temp.live_score_import(false,0,0,false,null,null),'{events}',jsonb_build_array(pg_temp.live_score_import(false,0,0,false,null,null)->'events'->0)),
+    '{events,0,lastUpdate}',to_jsonb(clock_timestamp()+interval '1 minute')),'reject-future-score-source')$$,
+  '22023','A live score event is internally inconsistent.','provider evidence after fetch cannot reveal a pick');
+select throws_ok($$select api.import_live_scores('82000000-0000-4000-8000-000000000001',
+  jsonb_set(jsonb_set(pg_temp.live_score_import(false,0,0,false,null,null),'{events}',jsonb_build_array(pg_temp.live_score_import(false,0,0,false,null,null)->'events'->0)),
+    '{events,0,lastUpdate}',to_jsonb((select scheduled_start_at-interval '1 minute' from private.sports_events where fixture_event_key='provider-live-result-one'))),'reject-pregame-score-source')$$,
+  '22023','A live score event is internally inconsistent.','pre-kickoff evidence cannot reveal a pick');
 select is(api.complete_provider_request((select (value->>'leaseId')::uuid from checkpoint_claim),
   jsonb_set(pg_temp.live_score_import(false,0,0,false,null,null),'{events}',jsonb_build_array(pg_temp.live_score_import(false,0,0,false,null,null)->'events'->0)),465)->>'status','SUCCEEDED','provider scores confirm a start without settling');
 select is((select state from private.sports_events where fixture_event_key='provider-live-result-one'),'LIVE','confirmed start recorded');

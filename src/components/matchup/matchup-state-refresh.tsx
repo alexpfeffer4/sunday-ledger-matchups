@@ -18,9 +18,11 @@ export function MatchupStateRefresh({ active = false }: { active?: boolean }) {
 
   return (
     <button
-      className="bg-registry hover:bg-registry-hover text-canvas inline-flex min-h-11 items-center justify-center rounded-lg px-4 text-sm font-semibold disabled:cursor-wait disabled:opacity-75"
-      disabled={isPending}
-      onClick={() => startTransition(() => router.refresh())}
+      className="bg-registry hover:bg-registry-hover text-canvas inline-flex min-h-11 items-center justify-center rounded-lg px-4 text-sm font-semibold aria-disabled:cursor-wait aria-disabled:opacity-75"
+      aria-disabled={isPending}
+      onClick={() => {
+        if (!isPending) startTransition(() => router.refresh());
+      }}
       type="button"
     >
       {isPending ? "Checking updates…" : "Refresh matchup"}

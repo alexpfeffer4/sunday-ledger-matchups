@@ -189,7 +189,7 @@ begin
     return jsonb_build_object('status','BUSY'); end if;
   select array_agg(event_id) into ids from private.due_score_events(p_league_id,p_manual);
   if ids is null then return jsonb_build_object('status','IDLE'); end if;
-  -- NFL endpoint accepts at most 32 unique games; several leagues can share them.
+  -- Bound each request to 32 unique games; several leagues can share them.
   select jsonb_agg(k order by k) into external_ids from
     (select distinct fixture_event_key k from private.sports_events where id=any(ids) order by k limit 32) keys;
   select array_agg(e.id) into ids from private.sports_events e where e.id=any(ids)
