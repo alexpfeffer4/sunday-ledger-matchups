@@ -1,5 +1,8 @@
 "use server";
 
+import { refreshCardQuotes } from "@/adapters/providers/the-odds-api/refresh-card-quotes";
+import { quoteRecoveryMessage } from "@/application/providers/card-quote-review";
+
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -114,6 +117,9 @@ async function requestOrigin(): Promise<string> {
 }
 
 function mutationError(message: string): AppActionState {
+  if (/QUOTE_(REVIEW|REFRESH|SOURCE|FETCH)/.test(message)) {
+    return { status: "error", message: quoteRecoveryMessage(message) };
+  }
   if (message.includes("QUOTE_CHANGED")) {
     return {
       status: "error",
@@ -1098,6 +1104,13 @@ async function refreshPublishedLiveQuoteHeads(params: {
   eventIds: string[];
   leagueId: string;
 }): Promise<{ eventCount: number; replayed: boolean }> {
+  const coordinated = await refreshCardQuotes(params.leagueId);
+  if (coordinated !== "DISABLED") {
+    return {
+      eventCount: params.eventIds.length,
+      replayed: coordinated === "CACHED",
+    };
+  }
   const liveImport = await fetchNflOdds({ eventIds: params.eventIds });
   const payloadHash = createHash("sha256")
     .update(JSON.stringify(liveImport))
@@ -1590,6 +1603,7 @@ export async function voidLiveEventAfterPostponementAction(
 }
 
 const cardDraftPositionSchema = z.object({
+  reviewId: z.uuid().optional(),
   marketSnapshotId: z.uuid(),
   payloadHash: z.string().regex(/^[0-9a-f]{64}$/),
   stakeCredits: z.number().int().min(50).max(1_000),
@@ -1608,7 +1622,11 @@ export async function acceptStage1CardAction(
       leagueSlug: formData.get("leagueSlug"),
       positions: (() => {
         try {
-          return JSON.parse(String(formData.get("positions")));
+          const positions = JSON.parse(String(formData.get("positions")));
+          const reviewId = formData.get("reviewId");
+          if (reviewId && Array.isArray(positions) && positions[0])
+            positions[0].reviewId = reviewId;
+          return positions;
         } catch {
           return null;
         }
