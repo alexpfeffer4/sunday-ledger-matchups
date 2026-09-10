@@ -24,7 +24,7 @@ describe("authoritative Ruleset migration constants", () => {
     );
     const v12Migration = readFileSync(
       new URL(
-        "../../supabase/migrations/20260904173852_ruleset_v1_2_remove_all_play.sql",
+        "../../supabase/migrations/20260910173048_ruleset_v1_2_remove_all_play.sql",
         import.meta.url,
       ),
       "utf8",
