@@ -31,6 +31,22 @@ create index live_quote_refreshes_import_idx on private.live_quote_refreshes(imp
 alter table private.live_quote_heads add column verified_import_id uuid references private.live_odds_imports(id);
 create index live_quote_heads_verified_import_idx on private.live_quote_heads(verified_import_id);
 
+-- A legacy commissioner import must not carry a previous fetch attestation
+-- onto different terms. The coordinated transaction attaches its own evidence
+-- only after the complete import and head update have succeeded.
+create function private.invalidate_changed_quote_verification()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+  if new.market_snapshot_id is distinct from old.market_snapshot_id then
+    new.verified_import_id := null;
+  end if;
+  return new;
+end;
+$$;
+revoke all on function private.invalidate_changed_quote_verification() from public,anon,authenticated;
+create trigger invalidate_changed_quote_verification before update of market_snapshot_id
+  on private.live_quote_heads for each row execute function private.invalidate_changed_quote_verification();
+
 create table private.live_card_quote_reviews (
   id uuid primary key default gen_random_uuid(),
   card_id uuid not null references private.weekly_cards(id),

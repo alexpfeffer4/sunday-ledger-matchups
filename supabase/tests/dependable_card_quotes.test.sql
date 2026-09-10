@@ -40,7 +40,7 @@ returns jsonb language sql as $$
       ('MONEYLINE','HOME','New York Jets to win',null::integer,price),
       ('SPREAD','AWAY','Buffalo Bills -3.5',-3500,-110),('SPREAD','HOME','New York Jets +3.5',3500,-110),
       ('TOTAL','OVER','Over 44.5',44500,-110),('TOTAL','UNDER','Under 44.5',44500,-110)) m(market,side,proposition,line,odds)
-   ))) from quote_context q;
+   )))) from quote_context q;
 $$;
 select api.publish_live_week_slate(q.league_id,
  (api.store_live_odds_import(q.league_id,pg_temp.quote_import(),'initial-quote-import')->>'importId')::uuid,
@@ -105,6 +105,14 @@ update private.odds_refresh_policy set daily_credit_limit=daily_credits,next_req
 select throws_ok($$select api.claim_live_quote_refresh(league_id) from quote_context$$,'55000','QUOTE_REFRESH_BUDGET','daily provider quota cannot be exceeded');
 update private.odds_refresh_policy set daily_credit_limit=300,requests_remaining=30;
 select throws_ok($$select api.claim_live_quote_refresh(league_id) from quote_context$$,'55000','QUOTE_REFRESH_BUDGET','provider remaining-credit reserve is enforced');
+
+-- A direct legacy commissioner refresh cannot inherit a different quote's verification.
+select pg_temp.as_member(1);
+select lives_ok($$select api.refresh_live_week_quotes(q.league_id,
+ (api.store_live_odds_import(q.league_id,pg_temp.quote_import(125),'legacy-quote-store')->>'importId')::uuid,
+ 'legacy-quote-heads') from quote_context q$$,'legacy commissioner refresh remains available');
+select pg_temp.as_member(3);
+select throws_ok($$select api.review_live_card_quotes('quote-contract',pg_temp.current_positions())$$,'P0001','QUOTE_SOURCE_STALE','changed legacy heads cannot inherit a prior verified fetch');
 
 -- Deadline crossing is asserted against the shared acceptance engine clock.
 -- A test-only function replacement moves time; no production clock or frozen slate changes.
