@@ -58,7 +58,7 @@ export type Database = {
         Returns: string;
       };
       claim_scheduled_score_refresh: {
-        Args: Record<PropertyKey, never>;
+        Args: never;
         Returns: Json;
       };
       claim_live_score_refresh: {
@@ -67,8 +67,8 @@ export type Database = {
       };
       complete_provider_request: {
         Args: {
-          p_request_id: string;
           p_import: Json;
+          p_request_id: string;
           p_requests_remaining?: number;
         };
         Returns: Json;

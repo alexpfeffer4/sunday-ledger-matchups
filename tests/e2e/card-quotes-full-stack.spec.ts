@@ -480,7 +480,7 @@ test("members refresh, review, seal, and recover through real Auth and database"
     update private.odds_refresh_policy set next_request_at='-infinity';`);
   await page.reload();
   await expect(
-    page.getByText("Updates delayed", { exact: true }),
+    page.locator(".status-badge").filter({ hasText: "Updates delayed" }),
   ).toBeVisible();
   writeFileSync(
     `${fixturePath}.scores`,
