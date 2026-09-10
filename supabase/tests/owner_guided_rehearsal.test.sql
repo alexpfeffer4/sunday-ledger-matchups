@@ -458,11 +458,25 @@ select ok(
       and (
         first_row.value ->> 'pointsForCenticredits'
           <> second_row.value ->> 'pointsForCenticredits'
-        or first_row.value ->> 'allPlayHalfWinUnits'
-          <> second_row.value ->> 'allPlayHalfWinUnits'
       )
   ),
-  'Points For or all-play meaningfully resolves a tied matchup percentage'
+  'Points For meaningfully resolves a tied matchup percentage'
+);
+select ok(
+  not exists (
+    select 1
+    from private.standings_snapshots as standing
+    join private.owner_rehearsals as rehearsal
+      on rehearsal.season_id = standing.season_id
+    cross join lateral jsonb_array_elements(standing.ordered_rows) as row(value)
+    where rehearsal.status = 'ACTIVE'
+      and standing.through_week = 14
+      and (
+        (row.value ->> 'allPlayHalfWinUnits')::integer <> 0
+        or (row.value ->> 'allPlayComparisonCount')::integer <> 0
+      )
+  ),
+  'the V1.2 full-season rehearsal does not calculate All-play'
 );
 
 select lives_ok(
@@ -628,7 +642,7 @@ select results_eq(
       on rehearsal.season_id = standing.season_id
     where rehearsal.status = 'ACTIVE' and standing.through_week = 14
       and standing.status = 'FINAL'$$,
-  'Week 18 leaves official records, Points For, all-play, and misses unchanged'
+  'Week 18 leaves official records, Points For, and incomplete weeks unchanged'
 );
 select is(
   (select jsonb_array_length(archive.archive_json -> 'week18')

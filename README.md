@@ -39,8 +39,8 @@ ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
 - Week 2–14 Live progression after each prior final: commissioner-reviewed NFL
   slates, frozen-schedule matchup materialization, fresh equal 1,000-credit
   cards, generalized card/lock/result RPCs, and cumulative standings with the
-  ordered win percentage, points-for, all-play, balanced head-to-head,
-  attendance, high-week, and deterministic tiebreak chain
+  ordered win percentage, Points For, balanced head-to-head, incomplete-week,
+  high-week, and deterministic tiebreak chain
 - Immutable Live playoff qualification after Week 14 finalization: the frozen
   standings and third-miss eligibility rule produce the roster-size-specific
   field, qualification seeds, bracket template, and member-visible audit hash

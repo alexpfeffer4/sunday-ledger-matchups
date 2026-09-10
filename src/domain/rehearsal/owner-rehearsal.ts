@@ -207,7 +207,7 @@ export const ownerRehearsalGuide: Record<
     confirmation:
       "This finalizes official regular-season standings and creates the six-member playoff field with two first-round byes.",
     detail:
-      "Points For and all-play resolve meaningful ties. One bot’s third miss demonstrates the frozen attendance eligibility rule.",
+      "Points For and balanced head-to-head results resolve meaningful ties. One bot’s third incomplete week demonstrates the frozen attendance eligibility rule.",
     href: (slug) => `/l/${slug}/slate`,
     linkLabel: "Make or sample my Week 14 card",
     task: member,
@@ -283,7 +283,7 @@ export const ownerRehearsalGuide: Record<
     action: "Inspect the final champion, then open Week 18 exhibition.",
     advanceLabel: "Open Week 18 exhibition",
     detail:
-      "The champion is already final. Week 18 gives every member one last card but cannot change placement, eligibility, official records, Points For, or all-play.",
+      "The champion is already final. Week 18 gives every member one last card but cannot change placement, eligibility, official records, or Points For.",
     href: (slug) => `/l/${slug}/playoffs`,
     linkLabel: "See champion finality",
     task: commissioner,

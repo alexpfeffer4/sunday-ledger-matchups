@@ -3,6 +3,9 @@ import {
   calculateStandings,
   type WeeklyStandingInput,
 } from "@/domain/standings/rank";
+import { pocSeason11Ruleset } from "@/rulesets/poc-season-1-1";
+import { pocSeason1Ruleset } from "@/rulesets/poc-season-1";
+import type { StandingsTiebreak } from "@/rulesets/schema";
 
 type Decision = WeeklyStandingInput["decision"];
 type Compliance = WeeklyStandingInput["compliance"];
@@ -43,17 +46,20 @@ function matchup(
 function rankedEntries(
   weeklyResults: WeeklyStandingInput[],
   deterministicTiebreaks: Record<string, string> = {},
+  tiebreakOrder: readonly StandingsTiebreak[] = pocSeason1Ruleset.standings
+    .tiebreakOrder,
 ): string[] {
   const entryIds = [...new Set(weeklyResults.map((result) => result.entryId))];
   return calculateStandings({
     entryIds,
     weeklyResults,
     deterministicTiebreaks,
+    tiebreakOrder,
   }).map((row) => row.entryId);
 }
 
 describe("standings", () => {
-  it("keeps record primary, excludes incomplete cards from all-play, and counts misses", () => {
+  it("keeps record primary, does not compute all-play in V1.2, and counts incomplete weeks", () => {
     const results: WeeklyStandingInput[] = [
       {
         week: 1,
@@ -92,6 +98,7 @@ describe("standings", () => {
       entryIds: ["a", "b", "c", "d"],
       weeklyResults: results,
       deterministicTiebreaks: { a: "a", b: "b", c: "c", d: "d" },
+      tiebreakOrder: pocSeason1Ruleset.standings.tiebreakOrder,
     });
     expect(rows.map((row) => row.entryId)).toEqual(["a", "d", "b", "c"]);
     expect(rows.find((row) => row.entryId === "c")).toMatchObject({
@@ -111,6 +118,7 @@ describe("standings", () => {
       entryIds: ["a", "b"],
       weeklyResults: results,
       deterministicTiebreaks: { a: "1", b: "2" },
+      tiebreakOrder: pocSeason1Ruleset.standings.tiebreakOrder,
     });
 
     expect(rows.map((row) => row.entryId)).toEqual(["a", "b"]);
@@ -195,7 +203,7 @@ describe("standings", () => {
       ),
     ).toEqual(["a", "b"]);
 
-    const allPlay = [
+    const legacyAllPlay = [
       ...matchup(1, "a", "x", "WIN", "LOSS", {
         firstPoints: 200_000n,
         secondPoints: 100_000n,
@@ -214,10 +222,17 @@ describe("standings", () => {
       }),
     ];
     expect(
-      rankedEntries(allPlay, { a: "9", b: "1" }).filter((entry) =>
+      rankedEntries(
+        legacyAllPlay,
+        { a: "9", b: "1" },
+        pocSeason11Ruleset.standings.tiebreakOrder,
+      ).filter((entry) => ["a", "b"].includes(entry)),
+    ).toEqual(["a", "b"]);
+    expect(
+      rankedEntries(legacyAllPlay, { a: "9", b: "1" }).filter((entry) =>
         ["a", "b"].includes(entry),
       ),
-    ).toEqual(["a", "b"]);
+    ).toEqual(["b", "a"]);
 
     const balancedHeadToHead = [
       ...matchup(1, "a", "b", "WIN", "LOSS"),

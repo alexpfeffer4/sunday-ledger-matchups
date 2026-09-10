@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { canonicalizeRuleset, hashRuleset } from "@/rulesets/canonicalize";
+import { pocSeason11Ruleset } from "@/rulesets/poc-season-1-1";
 import { pocSeason1Ruleset } from "@/rulesets/poc-season-1";
+import { simulationSeason11Ruleset } from "@/rulesets/simulation-season-1-1";
 import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
 
 describe("season rulesets", () => {
@@ -14,7 +16,13 @@ describe("season rulesets", () => {
       eligibleOddsMaximum: null,
       aggregateFavoriteExposureCapCredits: null,
     });
-    expect(pocSeason1Ruleset.version).toBe("1.1");
+    expect(pocSeason1Ruleset.version).toBe("1.2");
+    expect(pocSeason1Ruleset.standings.tiebreakOrder).not.toContain(
+      "ALL_PLAY_PERCENTAGE",
+    );
+    expect(pocSeason11Ruleset.standings.tiebreakOrder).toContain(
+      "ALL_PLAY_PERCENTAGE",
+    );
   });
 
   it("keeps simulation visibly distinct without changing participant rules", () => {
@@ -61,9 +69,15 @@ describe("season rulesets", () => {
       await hashRuleset({ a: 1, b: 2 }),
     );
     await expect(hashRuleset(pocSeason1Ruleset)).resolves.toBe(
-      "047550e7661915d3ba4d8e4046f85ab9474eac7b857fbba398cb4d9b91a5766c",
+      "6d9c85a0763b8c140296bda409ed3eecbe0ac4b91466b3504dd23ff4489e4ac7",
     );
     await expect(hashRuleset(simulationSeason1Ruleset)).resolves.toBe(
+      "d7b74cb761ca652fad2ffff32f6e20a16326434d7e0f19d86a7e32b6a818ef8b",
+    );
+    await expect(hashRuleset(pocSeason11Ruleset)).resolves.toBe(
+      "047550e7661915d3ba4d8e4046f85ab9474eac7b857fbba398cb4d9b91a5766c",
+    );
+    await expect(hashRuleset(simulationSeason11Ruleset)).resolves.toBe(
       "64772aad744ed8d5ec12b9e43e1303a610fc92051c250204bffb20c00f5e7a7d",
     );
   });

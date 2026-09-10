@@ -1,3 +1,5 @@
+import type { StandingsTiebreak } from "@/rulesets/schema";
+
 export type WeeklyStandingInput = {
   week: number;
   entryId: string;
@@ -49,7 +51,11 @@ function officialHalfGameUnits(row: StandingRow): number {
   return (row.wins + row.losses + row.ties) * 2;
 }
 
-function compareCore(left: StandingRow, right: StandingRow): number {
+function compareCore(
+  left: StandingRow,
+  right: StandingRow,
+  usesAllPlay: boolean,
+): number {
   const winPercentage = compareRatioDescending(
     officialHalfWinUnits(left),
     officialHalfGameUnits(left),
@@ -62,16 +68,22 @@ function compareCore(left: StandingRow, right: StandingRow): number {
     return left.pointsForCenticredits > right.pointsForCenticredits ? -1 : 1;
   }
 
-  return compareRatioDescending(
-    left.allPlayHalfWinUnits,
-    left.allPlayComparisonCount * 2,
-    right.allPlayHalfWinUnits,
-    right.allPlayComparisonCount * 2,
-  );
+  return usesAllPlay
+    ? compareRatioDescending(
+        left.allPlayHalfWinUnits,
+        left.allPlayComparisonCount * 2,
+        right.allPlayHalfWinUnits,
+        right.allPlayComparisonCount * 2,
+      )
+    : 0;
 }
 
-function equalCore(left: StandingRow, right: StandingRow): boolean {
-  return compareCore(left, right) === 0;
+function equalCore(
+  left: StandingRow,
+  right: StandingRow,
+  usesAllPlay: boolean,
+): boolean {
+  return compareCore(left, right, usesAllPlay) === 0;
 }
 
 function groupAdjacent<T>(
@@ -139,7 +151,9 @@ export function calculateStandings(params: {
   entryIds: readonly string[];
   weeklyResults: readonly WeeklyStandingInput[];
   deterministicTiebreaks: Readonly<Record<string, string>>;
+  tiebreakOrder: readonly StandingsTiebreak[];
 }): StandingRow[] {
+  const usesAllPlay = params.tiebreakOrder.includes("ALL_PLAY_PERCENTAGE");
   const rows = new Map<string, StandingRow>(
     params.entryIds.map((entryId) => [
       entryId,
@@ -172,23 +186,25 @@ export function calculateStandings(params: {
     }
   }
 
-  const byWeek = Map.groupBy(params.weeklyResults, (result) => result.week);
-  for (const weekResults of byWeek.values()) {
-    const compliant = weekResults.filter(
-      (result) => result.compliance === "COMPLIANT",
-    );
-    for (const result of compliant) {
-      const row = rows.get(result.entryId);
-      if (!row) continue;
-      for (const comparison of compliant) {
-        if (comparison.entryId === result.entryId) continue;
-        row.allPlayComparisonCount += 1;
-        if (result.pointsForCenticredits > comparison.pointsForCenticredits) {
-          row.allPlayHalfWinUnits += 2;
-        } else if (
-          result.pointsForCenticredits === comparison.pointsForCenticredits
-        ) {
-          row.allPlayHalfWinUnits += 1;
+  if (usesAllPlay) {
+    const byWeek = Map.groupBy(params.weeklyResults, (result) => result.week);
+    for (const weekResults of byWeek.values()) {
+      const compliant = weekResults.filter(
+        (result) => result.compliance === "COMPLIANT",
+      );
+      for (const result of compliant) {
+        const row = rows.get(result.entryId);
+        if (!row) continue;
+        for (const comparison of compliant) {
+          if (comparison.entryId === result.entryId) continue;
+          row.allPlayComparisonCount += 1;
+          if (result.pointsForCenticredits > comparison.pointsForCenticredits) {
+            row.allPlayHalfWinUnits += 2;
+          } else if (
+            result.pointsForCenticredits === comparison.pointsForCenticredits
+          ) {
+            row.allPlayHalfWinUnits += 1;
+          }
         }
       }
     }
@@ -222,8 +238,12 @@ export function calculateStandings(params: {
     meetingMap.set(key, completeMeetings);
   }
 
-  const coreSorted = [...rows.values()].sort(compareCore);
-  const coreGroups = groupAdjacent(coreSorted, equalCore);
+  const coreSorted = [...rows.values()].sort((left, right) =>
+    compareCore(left, right, usesAllPlay),
+  );
+  const coreGroups = groupAdjacent(coreSorted, (left, right) =>
+    equalCore(left, right, usesAllPlay),
+  );
   const ranked: StandingRow[] = [];
 
   for (const group of coreGroups) {

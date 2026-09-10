@@ -66,7 +66,7 @@ const phase8PlayoffRulesSchema = z.object({
   }),
 });
 
-export const seasonRulesetSchema = z.object({
+export const seasonRulesetV11Schema = z.object({
   id: z.string().min(1),
   version: z.literal("1.1"),
   productBibleId: z.string().min(1),
@@ -147,11 +147,28 @@ export const seasonRulesetSchema = z.object({
   playoffs: phase8PlayoffRulesSchema,
 });
 
+export const seasonRulesetSchema = seasonRulesetV11Schema.extend({
+  version: z.literal("1.2"),
+  standings: z.object({
+    tiebreakOrder: z
+      .tuple([
+        z.literal("MATCHUP_WIN_PERCENTAGE"),
+        z.literal("POINTS_FOR"),
+        z.literal("BALANCED_HEAD_TO_HEAD"),
+        z.literal("FEWER_ATTENDANCE_MISSES"),
+        z.literal("HIGHEST_SINGLE_WEEK_SCORE"),
+        z.literal("STORED_DETERMINISTIC_RANDOM"),
+      ])
+      .readonly(),
+  }),
+});
+
 export type RosterSize = z.infer<typeof rosterSizeSchema>;
 export type MarketType = z.infer<typeof marketTypeSchema>;
+export type StandingsTiebreak = z.infer<typeof standingsTiebreakSchema>;
 export type SeasonRuleset = z.infer<typeof seasonRulesetSchema>;
 
-const legacySeasonRulesetV11Schema = seasonRulesetSchema.extend({
+const legacySeasonRulesetV11Schema = seasonRulesetV11Schema.extend({
   playoffs: z.object({
     smallLeagueMaximumSize: rosterSizeSchema,
     smallLeagueQualifiers: z.number().int().positive(),
@@ -162,29 +179,32 @@ const legacySeasonRulesetV11Schema = seasonRulesetSchema.extend({
 
 const historicalSeasonRulesetV1Schema = legacySeasonRulesetV11Schema.extend({
   version: z.literal("1.0"),
-  card: seasonRulesetSchema.shape.card.omit({
+  card: seasonRulesetV11Schema.shape.card.omit({
     carryoverCredits: true,
     acceptanceUnit: true,
     irreversibleAction: true,
   }),
-  concentration: seasonRulesetSchema.shape.concentration.omit({ status: true }),
-  slate: seasonRulesetSchema.shape.slate.omit({ revealTrigger: true }),
-  settlement: seasonRulesetSchema.shape.settlement.omit({
+  concentration: seasonRulesetV11Schema.shape.concentration.omit({
+    status: true,
+  }),
+  slate: seasonRulesetV11Schema.shape.slate.omit({ revealTrigger: true }),
+  settlement: seasonRulesetV11Schema.shape.settlement.omit({
     winReturn: true,
     lossReturn: true,
     pushVoidReturn: true,
   }),
-  attendance: seasonRulesetSchema.shape.attendance.omit({
+  attendance: seasonRulesetV11Schema.shape.attendance.omit({
     incompleteCardDecision: true,
     incompleteCardPointsForCenticredits: true,
     incompleteCardMisses: true,
     dualIncompleteDecisions: true,
   }),
-  standings: seasonRulesetSchema.shape.standings.optional(),
+  standings: seasonRulesetV11Schema.shape.standings.optional(),
 });
 
 export const persistedSeasonRulesetSchema = z.union([
   seasonRulesetSchema,
+  seasonRulesetV11Schema,
   legacySeasonRulesetV11Schema,
   historicalSeasonRulesetV1Schema,
 ]);

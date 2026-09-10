@@ -2,9 +2,9 @@ import { seasonRulesetSchema } from "@/rulesets/schema";
 
 export const pocSeason1Ruleset = seasonRulesetSchema.parse({
   id: "SUNDAY-LEDGER-POC-SEASON-RULESET-V1",
-  version: "1.1",
+  version: "1.2",
   productBibleId: "SUNDAY-LEDGER-PRODUCT-BIBLE-V3",
-  productBibleVersion: "3.0",
+  productBibleVersion: "3.1",
   format: "SUNDAY_LEDGER_MATCHUPS",
   mode: "LIVE",
   sport: "NFL",
@@ -70,7 +70,6 @@ export const pocSeason1Ruleset = seasonRulesetSchema.parse({
     tiebreakOrder: [
       "MATCHUP_WIN_PERCENTAGE",
       "POINTS_FOR",
-      "ALL_PLAY_PERCENTAGE",
       "BALANCED_HEAD_TO_HEAD",
       "FEWER_ATTENDANCE_MISSES",
       "HIGHEST_SINGLE_WEEK_SCORE",

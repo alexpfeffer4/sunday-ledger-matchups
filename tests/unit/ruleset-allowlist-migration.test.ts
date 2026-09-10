@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { hashRuleset } from "@/rulesets/canonicalize";
+import { pocSeason11Ruleset } from "@/rulesets/poc-season-1-1";
 import { pocSeason1Ruleset } from "@/rulesets/poc-season-1";
+import { simulationSeason11Ruleset } from "@/rulesets/simulation-season-1-1";
 import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
 
 describe("authoritative Ruleset migration constants", () => {
@@ -20,6 +22,13 @@ describe("authoritative Ruleset migration constants", () => {
       ),
       "utf8",
     );
+    const v12Migration = readFileSync(
+      new URL(
+        "../../supabase/migrations/20260904173852_ruleset_v1_2_remove_all_play.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    );
     expect(phase2Migration).toContain("private.authoritative_season_rulesets");
     const live = phase8Migration.match(
       /\$phase8_live\$(.*?)\$phase8_live\$::jsonb/s,
@@ -27,7 +36,7 @@ describe("authoritative Ruleset migration constants", () => {
     const simulation = phase8Migration.match(
       /\$phase8_simulation\$(.*?)\$phase8_simulation\$::jsonb/s,
     );
-    const constants = [
+    const historicalConstants = [
       {
         ruleset: JSON.parse(live?.[1] ?? "null") as unknown,
         hash: "047550e7661915d3ba4d8e4046f85ab9474eac7b857fbba398cb4d9b91a5766c",
@@ -38,12 +47,22 @@ describe("authoritative Ruleset migration constants", () => {
       },
     ];
 
-    expect(constants).toHaveLength(2);
-    expect(constants[0]?.ruleset).toEqual(pocSeason1Ruleset);
-    expect(constants[0]?.hash).toBe(await hashRuleset(pocSeason1Ruleset));
-    expect(constants[1]?.ruleset).toEqual(simulationSeason1Ruleset);
-    expect(constants[1]?.hash).toBe(
-      await hashRuleset(simulationSeason1Ruleset),
+    expect(historicalConstants).toHaveLength(2);
+    expect(historicalConstants[0]?.ruleset).toEqual(pocSeason11Ruleset);
+    expect(historicalConstants[0]?.hash).toBe(
+      await hashRuleset(pocSeason11Ruleset),
+    );
+    expect(historicalConstants[1]?.ruleset).toEqual(simulationSeason11Ruleset);
+    expect(historicalConstants[1]?.hash).toBe(
+      await hashRuleset(simulationSeason11Ruleset),
+    );
+    expect(v12Migration).toContain(await hashRuleset(pocSeason1Ruleset));
+    expect(v12Migration).toContain(await hashRuleset(simulationSeason1Ruleset));
+    expect(v12Migration).toContain(
+      '["MATCHUP_WIN_PERCENTAGE", "POINTS_FOR", "BALANCED_HEAD_TO_HEAD", "FEWER_ATTENDANCE_MISSES", "HIGHEST_SINGLE_WEEK_SCORE", "STORED_DETERMINISTIC_RANDOM"]',
+    );
+    expect(v12Migration).toContain(
+      "snapshot.canonical_json #> '{standings,tiebreakOrder}'",
     );
   });
 });

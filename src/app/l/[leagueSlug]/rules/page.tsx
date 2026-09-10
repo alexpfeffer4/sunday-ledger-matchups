@@ -12,7 +12,7 @@ import {
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCredits } from "@/domain/odds/american";
 import { hashRuleset } from "@/rulesets/canonicalize";
-import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
+import { simulationSeason11Ruleset } from "@/rulesets/simulation-season-1-1";
 
 export const metadata: Metadata = { title: "League rules" };
 
@@ -33,8 +33,8 @@ export default async function LeagueRulesPage({
   let presentation: RulesetPresentation;
   if (isExample) {
     presentation = exampleRulesetPresentation(
-      simulationSeason1Ruleset,
-      await hashRuleset(simulationSeason1Ruleset),
+      simulationSeason11Ruleset,
+      await hashRuleset(simulationSeason11Ruleset),
     );
   } else if (persistedSnapshot) {
     presentation = seasonRulesetPresentation(persistedSnapshot);
@@ -42,9 +42,9 @@ export default async function LeagueRulesPage({
     throw new Error("The persisted season Ruleset is unavailable.");
   }
   const ruleset = presentation.canonicalJson;
-  const isV11 = ruleset.version === "1.1";
+  const hasExpandedLifecycle = ruleset.version !== "1.0";
   const phase8APlayoffRules =
-    isV11 && "minimumChampionshipField" in ruleset.playoffs
+    hasExpandedLifecycle && "minimumChampionshipField" in ruleset.playoffs
       ? ruleset.playoffs
       : null;
   const rosterSize = archive?.members.length ?? live?.members.length ?? 10;
@@ -65,27 +65,30 @@ export default async function LeagueRulesPage({
   const rules = [
     {
       title: "Weekly card",
-      body: `${formatCredits(ruleset.card.weeklyAllocationCredits)} fresh virtual credits, ${ruleset.card.minimumPositions}–${ruleset.card.maximumPositions} picks, a ${formatCredits(ruleset.card.minimumStakeCredits)}-credit minimum, and whole-credit stakes.${isV11 && !ruleset.card.carryoverCredits ? " Nothing carries forward." : ""}${isV11 && ruleset.card.acceptanceUnit === "WHOLE_CARD_ATOMIC" ? " Picks stay editable until Confirm and seal card accepts the complete card at once." : ""}`,
+      body: `${formatCredits(ruleset.card.weeklyAllocationCredits)} fresh virtual credits, ${ruleset.card.minimumPositions}–${ruleset.card.maximumPositions} picks, a ${formatCredits(ruleset.card.minimumStakeCredits)}-credit minimum, and whole-credit stakes.${hasExpandedLifecycle && "carryoverCredits" in ruleset.card && !ruleset.card.carryoverCredits ? " Nothing carries forward." : ""}${hasExpandedLifecycle && "acceptanceUnit" in ruleset.card && ruleset.card.acceptanceUnit === "WHOLE_CARD_ATOMIC" ? " Picks stay editable until Confirm and seal card accepts the complete card at once." : ""}`,
     },
     {
       title: "Markets and big-favorite limit",
-      body: `${marketNames}. A favorite shorter than ${odds(ruleset.concentration.heavyFavoriteThresholdAmerican)} may use at most ${formatCredits(ruleset.concentration.heavyFavoriteSinglePositionCapCredits)} credits; a price at ${odds(ruleset.concentration.heavyFavoriteThresholdAmerican)} or longer may use up to ${formatCredits(ruleset.concentration.standardSinglePositionCapCredits)}. There is no blanket odds band or aggregate favorite cap.${isV11 ? " This package is settled for POC V1." : ""}`,
+      body: `${marketNames}. A favorite shorter than ${odds(ruleset.concentration.heavyFavoriteThresholdAmerican)} may use at most ${formatCredits(ruleset.concentration.heavyFavoriteSinglePositionCapCredits)} credits; a price at ${odds(ruleset.concentration.heavyFavoriteThresholdAmerican)} or longer may use up to ${formatCredits(ruleset.concentration.standardSinglePositionCapCredits)}. There is no blanket odds band or aggregate favorite cap.${hasExpandedLifecycle ? " This package is settled for POC V1." : ""}`,
     },
     {
       title: "Card lock and reveal",
-      body: `Cards lock ${ruleset.slate.commonLockOffsetMinutes} minutes before the first selected game.${isV11 && ruleset.slate.revealTrigger === "EVENT_START" ? " Each pick reveals when its game begins." : ""}`,
+      body: `Cards lock ${ruleset.slate.commonLockOffsetMinutes} minutes before the first selected game.${hasExpandedLifecycle && "revealTrigger" in ruleset.slate && ruleset.slate.revealTrigger === "EVENT_START" ? " Each pick reveals when its game begins." : ""}`,
     },
     {
       title: "Scoring",
-      body: isV11
-        ? `A win returns stake plus profit, a loss returns zero, and a push or void returns stake. Returns round half up to ${(ruleset.settlement.precisionCenticredits / 100).toFixed(2)} credit.`
-        : `Returns round half up to ${(ruleset.settlement.precisionCenticredits / 100).toFixed(2)} credit under this historical snapshot.`,
+      body:
+        hasExpandedLifecycle && "winReturn" in ruleset.settlement
+          ? `A win returns stake plus profit, a loss returns zero, and a push or void returns stake. Returns round half up to ${(ruleset.settlement.precisionCenticredits / 100).toFixed(2)} credit.`
+          : `Returns round half up to ${(ruleset.settlement.precisionCenticredits / 100).toFixed(2)} credit under this historical snapshot.`,
     },
     {
       title: "Attendance",
-      body: isV11
-        ? `An incomplete card records a loss, ${ruleset.attendance.incompleteCardPointsForCenticredits} Points For, and ${ruleset.attendance.incompleteCardMisses} miss. If both cards are incomplete, both members lose. Reaching ${ruleset.attendance.playoffIneligibilityAtMisses} regular-season misses removes playoff eligibility.`
-        : `Reaching ${ruleset.attendance.playoffIneligibilityAtMisses} regular-season misses removes playoff eligibility.`,
+      body:
+        hasExpandedLifecycle &&
+        "incompleteCardPointsForCenticredits" in ruleset.attendance
+          ? `An incomplete card records a loss, ${ruleset.attendance.incompleteCardPointsForCenticredits} Points For, and ${ruleset.attendance.incompleteCardMisses} miss. If both cards are incomplete, both members lose. Reaching ${ruleset.attendance.playoffIneligibilityAtMisses} regular-season misses removes playoff eligibility.`
+          : `Reaching ${ruleset.attendance.playoffIneligibilityAtMisses} regular-season misses removes playoff eligibility.`,
     },
     {
       title: "Standings and playoffs",

@@ -821,8 +821,6 @@ export function Stage1StandingsView({
     losses: row.losses,
     ties: row.ties,
     pointsForCenticredits: row.pointsForCenticredits,
-    allPlayHalfWinUnits: row.allPlayHalfWinUnits,
-    allPlayComparisonCount: row.allPlayComparisonCount,
     attendanceMisses: row.attendanceMisses,
     playoffEligible: row.attendanceMisses < playoffIneligibilityAtMisses,
     inPlayoffField: playoffFieldIds.has(row.entryId),
