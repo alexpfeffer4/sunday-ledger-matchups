@@ -47,7 +47,12 @@ test("partial reveal keeps sealed receipt data out of DOM and accessible names",
 }) => {
   await mountMatchup(page, "PARTIAL_REVEAL");
 
-  await expect(page.getByText("Partial reveal")).toBeVisible();
+  await expect(
+    page.getByText("Partial reveal", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText(
+    "Partial reveal. Your score 200.00. Opponent score 0.00.",
+  );
   const placeholder = page.getByTestId("future-sealed-placeholder");
   await expect(placeholder).toHaveCount(1);
   expect((await placeholder.boundingBox())?.height).toBeGreaterThanOrEqual(96);
