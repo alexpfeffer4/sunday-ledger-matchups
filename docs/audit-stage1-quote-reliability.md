@@ -1,16 +1,20 @@
 # Audit Stage 1: dependable card quotes
 
-Status: proposed A01 implementation; production activation is **not approved**.
+Status: A01 policy and production rollout approved by the owner on 2026-09-10.
+The production migration is applied with the policy disabled; activation still
+requires verified existing provider allowance and server configuration.
 Baseline: main `d6e666e2575b534cf1d2954f4988a19f1fe2fd4a` (PR #28).
 The existing importer, quote heads, whole-card acceptance engine, immutable
 receipts, frozen Ruleset versions, and owner rehearsal already existed. This
 change extends those paths. Invite/account work from #28 is retained.
 
-## Proposed governing amendment
+## Approved governing amendment
 
-Approve the following technical Live operating contract as an amendment to
+The owner approved the following technical Live operating contract as an amendment to
 Architecture revision 1.1 section 10 and the commissioner-only ingestion
-restriction in D-009. This is a proposal, not an assertion of prior approval:
+restriction in D-009. Approval includes the database migration, PR #29 merge,
+deployment, and activation within the existing provider plan, with no additional
+spending. It does not authorize a subscription upgrade or purchase.
 
 1. `observed_at` / receipt `quote_observed_at` remains the provider market's
    `last_update`. It is never replaced with fetch or review time.
@@ -20,8 +24,8 @@ restriction in D-009. This is a proposal, not an assertion of prior approval:
    using an authenticated, database-issued lease for the selected slate.
 3. The provider observation must be no more than **10 minutes old**, no later
    than the fetch, and no later than confirmation. Older responses fail closed
-   even when the HTTP request succeeds. Ten minutes is a proposed conservative
-   availability bound, not a claimed provider guarantee or approved game rule.
+   even when the HTTP request succeeds. Ten minutes is the approved initial
+   technical availability bound, not a claimed provider guarantee.
 4. A database-issued review binds the actor, card, every snapshot/hash/stake,
    review time, and fetch evidence. Confirmation must occur within **30 seconds**
    and before the common lock. Odds are not held. All snapshots must still be
@@ -45,8 +49,8 @@ median 49.8 seconds, 95th percentile 103.3 seconds. None exceeded 120 seconds
 at fetch. The oldest responses therefore left less than 17 seconds under the
 old source-only acceptance gate. This sample supports separating the clocks;
 it does not establish a stale-fetch failure rate or validate a ten-minute
-ceiling near kickoff. The proposed ceiling still requires approval and
-monitoring. No new provider request was made for this evidence.
+ceiling near kickoff. The approved ceiling still requires monitoring.
+No new provider request was made for this evidence.
 
 The five-minute-old unchanged-source case runs through the database and
 full-stack lane; the 25-minute-old rejected-source case runs in pgTAP. Both are
@@ -104,7 +108,7 @@ The canonical Simulation clock retains its existing meaning.
 
 1. Review/approve the exact amendment above and PR evidence. Merge requires
    separate authorization. Recheck current main and required checks first.
-2. Apply `20260910185129_dependable_card_quotes.sql` only through the normal
+2. Apply `20260910202847_dependable_card_quotes.sql` only through the normal
    authorized production migration process. It creates private operational and
    append-only review evidence tables, adds a nullable verification link to
    current quote heads, and extends existing functions. It performs no receipt
@@ -130,6 +134,22 @@ two-minute source path remains available; it retains the original availability
 limitation. Keep review evidence and receipt links; do not delete or rewrite
 them. Roll the application back only after disabling the policy. There is no
 new job, paid service, or scheduler to remove.
+
+## Approved rollout record — 2026-09-10
+
+- Rechecked main and production at `d6e666e2575b534cf1d2954f4988a19f1fe2fd4a`.
+  All four PR workflows passed at `1e1a4e3254d24f9020a63ce642539ff7349f3245`.
+- Applied the reviewed migration through Supabase's migration API. Hosted
+  version is `20260910202847`; the repository filename was aligned before
+  merge. SQL is byte-identical (MD5 `bf57d0b0f3147396d1ef58327e198b9e`).
+- Post-apply checks confirmed the policy is disabled, counters are zero,
+  member claim access is present, and only the server role can complete a
+  refresh. The exposed schema remains `api`; operational tables remain private.
+- The provider account requires sign-in. Account allowance and production
+  secret configuration remain activation prerequisites. No provider request,
+  new charge, participant card, or competitive record was created by rollout.
+- Read the latest PR rollout record and standalone Stage 1 completion note for
+  the final deployment and activation state; approval alone is not activation.
 
 ## Stage 2 handoff
 
