@@ -85,7 +85,7 @@ function expectPrivateResponse(response: Response | null) {
   expect(cacheControl).not.toMatch(/(?:^|,)\s*public\b|s-maxage/i);
 }
 
-async function advance(page: Page, name: string) {
+async function advance(page: Page, name: string, timeout = 5_000) {
   const guide = page.locator("[data-owner-rehearsal-guide]");
   const confirmation = guide.getByRole("checkbox");
   if (await confirmation.count()) await confirmation.check();
@@ -93,7 +93,9 @@ async function advance(page: Page, name: string) {
   const pendingAction = guide.getByRole("button", { name: "Advancing…" });
   await action.click();
   await expect
-    .poll(async () => (await action.count()) + (await pendingAction.count()))
+    .poll(async () => (await action.count()) + (await pendingAction.count()), {
+      timeout,
+    })
     .toBe(0);
   await expect(guide.getByRole("status").last()).toContainText(
     /Checkpoint completed|Already completed/,
@@ -390,7 +392,9 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   await page.getByRole("link", { name: "See corrected result" }).click();
   await expect(page.getByText(/Corrected/).first()).toBeVisible();
   await page.goto("/owner/rehearsal");
-  await advance(page, "Finalize through Week 14");
+  // This checkpoint runs several complete weeks through the real lifecycle.
+  // Allow its batched work to finish on shared CI before asserting completion.
+  await advance(page, "Finalize through Week 14", 30_000);
   await sample(page);
   await advance(page, "Finalize Week 14 and playoff field");
   await advance(page, "Open Week 15 playoffs");
