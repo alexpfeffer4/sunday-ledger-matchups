@@ -30,6 +30,7 @@ export function isOddsProviderConfigured(): boolean {
 async function fetchProviderJson(
   url: URL,
   fetchImpl: typeof fetch,
+  onUsage?: (remaining: number | null) => void,
 ): Promise<unknown> {
   let response: Response;
   try {
@@ -44,6 +45,9 @@ async function fetchProviderJson(
     );
   }
 
+  const remainingHeader = response.headers.get("x-requests-remaining");
+  const remaining = remainingHeader === null ? NaN : Number(remainingHeader);
+  onUsage?.(Number.isInteger(remaining) && remaining >= 0 ? remaining : null);
   if (!response.ok) {
     throw new OddsProviderRequestError(
       `The Odds API request failed with status ${response.status}.`,
@@ -64,6 +68,7 @@ export async function fetchNflOdds(options?: {
   eventIds?: string[];
   fetchImpl?: typeof fetch;
   fetchedAt?: string;
+  onUsage?: (remaining: number | null) => void;
 }): Promise<LiveOddsImport> {
   const apiKey = options?.apiKey ?? process.env.ODDS_API_KEY;
   if (!apiKey) {
@@ -102,7 +107,7 @@ export async function fetchNflOdds(options?: {
   oddsUrl.searchParams.set("oddsFormat", "american");
   oddsUrl.searchParams.set("dateFormat", "iso");
   oddsUrl.searchParams.set("eventIds", eventIds.join(","));
-  const payload = await fetchProviderJson(oddsUrl, fetchImpl);
+  const payload = await fetchProviderJson(oddsUrl, fetchImpl, options?.onUsage);
 
   const liveImport = normalizeTheOddsApiOdds(
     payload,

@@ -54,6 +54,9 @@ const checked = apiFunctions(readFileSync(checkedPath, "utf8"));
 const generated = apiFunctions(readFileSync(generatedPath, "utf8"));
 const differences = [];
 const checkedFunctions = [
+  "claim_live_quote_refresh",
+  "complete_live_quote_refresh",
+  "review_live_card_quotes",
   "advance_simulated_time",
   "apply_simulation_fixture_results",
   "publish_simulation_fixture_week",

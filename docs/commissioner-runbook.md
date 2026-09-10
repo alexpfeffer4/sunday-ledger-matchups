@@ -5,6 +5,12 @@ Commissioner console is the only intended control surface. It never grants
 access to sealed card terms and never permits direct edits to scores, records,
 standings, schedules, seeds, or bracket winners.
 
+The optional [Stage 1 quote policy](audit-stage1-quote-reliability.md) adds
+bounded server refresh on explicit member review. It is disabled until its
+documented amendment and rollout are approved. When enabled, commissioner
+refresh shares the same lease and quota; the manual steps below still govern
+publication, scores, and finalization.
+
 ## Before roster lock
 
 1. Create the Live league and privately share a seven-day invitation code.

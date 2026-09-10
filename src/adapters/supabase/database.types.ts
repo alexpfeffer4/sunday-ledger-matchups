@@ -53,6 +53,23 @@ export type Database = {
       };
     };
     Functions: {
+      claim_live_quote_refresh: {
+        Args: { p_league_id: string };
+        Returns: Json;
+      };
+      complete_live_quote_refresh: {
+        Args: {
+          p_import: Json;
+          p_lease_id: string;
+          p_requests_remaining?: number;
+        };
+        Returns: Json;
+      };
+      review_live_card_quotes: {
+        Args: { p_league_slug: string; p_positions: Json };
+        Returns: Json;
+      };
+
       advance_owner_rehearsal: {
         Args: {
           p_expected_checkpoint: string;

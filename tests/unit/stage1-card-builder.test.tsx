@@ -19,6 +19,11 @@ import {
 } from "vitest";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
+import { reviewLiveCardQuotes } from "@/app/l/[leagueSlug]/card-quote-actions";
+
+vi.mock("@/app/l/[leagueSlug]/card-quote-actions", () => ({
+  reviewLiveCardQuotes: vi.fn(async () => ({ status: "disabled" })),
+}));
 
 vi.mock("next/link", () => ({
   default: ({
@@ -55,6 +60,8 @@ beforeAll(() => {
 
 beforeEach(() => {
   localStorage.clear();
+  vi.mocked(reviewLiveCardQuotes).mockReset();
+  vi.mocked(reviewLiveCardQuotes).mockResolvedValue({ status: "disabled" });
 });
 
 afterEach(() => {
@@ -194,7 +201,7 @@ describe("authenticated card editor", () => {
       screen.getAllByRole("button", { name: "Review 1 picks" })[0],
     );
     expect(
-      screen.getByRole("heading", { name: "Review your complete card" }),
+      await screen.findByRole("heading", { name: "Review your complete card" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Over 45.5")).toBeInTheDocument();
   });
@@ -236,7 +243,7 @@ describe("authenticated card editor", () => {
     );
 
     const view = render(<Stage1CardBuilder state={originalState} />);
-    expect(screen.queryByText("Updated quote")).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Updated quote/)).not.toBeInTheDocument();
 
     const refreshedState = {
       ...originalState,
@@ -257,12 +264,12 @@ describe("authenticated card editor", () => {
     } as Stage1StateDto;
     view.rerender(<Stage1CardBuilder state={refreshedState} />);
 
-    expect(await screen.findByText("Updated quote")).toBeInTheDocument();
+    expect(await screen.findByText(/^Updated quote/)).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", { name: "Review 1 updated quote" }),
     );
     expect(
-      screen.getByRole("button", { name: "Use updated odds" }),
+      await screen.findByRole("button", { name: "Use updated odds" }),
     ).toBeEnabled();
   });
 
@@ -287,7 +294,7 @@ describe("authenticated card editor", () => {
 
     render(<Stage1CardBuilder state={state} />);
 
-    expect(await screen.findByText("Updated quote")).toBeInTheDocument();
+    expect(await screen.findByText(/^Updated quote/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Edit pick" }));
 
     const dialog = screen.getByRole("dialog");
@@ -304,7 +311,7 @@ describe("authenticated card editor", () => {
     expect(within(dialog).getByRole("alert")).toHaveTextContent(
       "Choose an available outcome before saving this pick.",
     );
-    expect(screen.getByText("Updated quote")).toBeInTheDocument();
+    expect(screen.getByText(/^Updated quote/)).toBeInTheDocument();
 
     fireEvent.click(
       within(dialog).getByRole("button", { name: /^Lake Club.*165$/ }),
@@ -323,7 +330,160 @@ describe("authenticated card editor", () => {
       ).toHaveAttribute("aria-pressed", "true"),
     );
     await waitFor(() =>
-      expect(screen.queryByText("Updated quote")).not.toBeInTheDocument(),
+      expect(screen.queryByText(/^Updated quote/)).not.toBeInTheDocument(),
     );
+  });
+  function storeHomeDraft() {
+    localStorage.setItem(
+      `sunday-ledger:card-draft:v1:${leagueId}:${weekId}:${cardId}`,
+      JSON.stringify({
+        version: 1,
+        drafts: [
+          {
+            eventId,
+            marketType: "MONEYLINE",
+            outcomeKey: "HOME",
+            reviewedAmericanOdds: 165,
+            reviewedPayloadHash: "c".repeat(64),
+            reviewedProposition: "Lake Club",
+            stakeCredits: 1000,
+          },
+        ],
+      }),
+    );
+  }
+
+  function readyReview(
+    odds = 165,
+    expiresAt = new Date(Date.now() + 30000).toISOString(),
+  ) {
+    return {
+      status: "ready" as const,
+      review: {
+        reviewId: "10000000-0000-4000-8000-000000000099",
+        reviewedAt: new Date().toISOString(),
+        expiresAt,
+        fetchedAt: new Date().toISOString(),
+        quotes: [
+          {
+            eventId,
+            markets: state.slate[0].markets.map((m) =>
+              m.outcomeKey === "HOME"
+                ? {
+                    ...m,
+                    id: "10000000-0000-4000-8000-000000000098",
+                    americanOdds: odds,
+                    payloadHash: "f".repeat(64),
+                    observedAt: new Date(Date.now() - 300000).toISOString(),
+                    maximumStakeCredits: odds < -200 ? 750 : 1000,
+                  }
+                : m,
+            ),
+          },
+        ],
+      },
+    };
+  }
+
+  it("reviews a freshly fetched unchanged price without relabeling its old source time", async () => {
+    storeHomeDraft();
+    vi.mocked(reviewLiveCardQuotes).mockResolvedValue(readyReview());
+    render(<Stage1CardBuilder state={state} />);
+    fireEvent.click(
+      (await screen.findAllByRole("button", { name: "Review 1 picks" }))[0],
+    );
+    expect(
+      await screen.findByRole("button", { name: "Confirm and seal card" }),
+    ).toBeEnabled();
+    expect(screen.queryByText(/^Updated quote/)).not.toBeInTheDocument();
+    expect(document.querySelector('input[name="reviewId"]')).toHaveValue(
+      "10000000-0000-4000-8000-000000000099",
+    );
+    expect(
+      JSON.parse(
+        document.querySelector<HTMLInputElement>('input[name="positions"]')!
+          .value,
+      )[0].payloadHash,
+    ).toBe("f".repeat(64));
+  });
+
+  it("requires per-pick approval of changed odds and never silently lowers the stake", async () => {
+    storeHomeDraft();
+    vi.mocked(reviewLiveCardQuotes).mockResolvedValue(readyReview(-300));
+    render(<Stage1CardBuilder state={state} />);
+    fireEvent.click(
+      (await screen.findAllByRole("button", { name: "Review 1 picks" }))[0],
+    );
+    expect(await screen.findByText(/^Updated quote/)).toHaveTextContent(
+      "Harbor Club at Lake Club",
+    );
+    expect(
+      screen.getByRole("button", { name: "Review changed quotes first" }),
+    ).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Use updated odds" }));
+    expect(
+      screen.getByRole("button", { name: "Confirm and seal card" }),
+    ).toBeDisabled();
+    expect(
+      JSON.parse(
+        document.querySelector<HTMLInputElement>('input[name="positions"]')!
+          .value,
+      )[0].stakeCredits,
+    ).toBe(1000);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Return to editing to adjust your stake",
+    );
+  });
+
+  it("keeps the complete draft after a provider failure and allows a fresh review", async () => {
+    storeHomeDraft();
+    vi.mocked(reviewLiveCardQuotes)
+      .mockResolvedValueOnce({
+        status: "error",
+        message: "The provider is unavailable. Your draft has been kept.",
+      })
+      .mockResolvedValueOnce(readyReview());
+    render(<Stage1CardBuilder state={state} />);
+    fireEvent.click(
+      (await screen.findAllByRole("button", { name: "Review 1 picks" }))[0],
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Your draft has been kept",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Confirm and seal card" }),
+    ).not.toBeInTheDocument();
+    expect(
+      JSON.parse(
+        localStorage.getItem(
+          `sunday-ledger:card-draft:v1:${leagueId}:${weekId}:${cardId}`,
+        )!,
+      ).drafts[0].stakeCredits,
+    ).toBe(1000);
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Review 1 picks" })[0],
+    );
+    expect(
+      await screen.findByRole("button", { name: "Confirm and seal card" }),
+    ).toBeEnabled();
+  });
+
+  it("requires another check after the server review expires", async () => {
+    storeHomeDraft();
+    vi.mocked(reviewLiveCardQuotes).mockResolvedValue(
+      readyReview(165, new Date(Date.now() - 1000).toISOString()),
+    );
+    render(<Stage1CardBuilder state={state} />);
+    fireEvent.click(
+      (await screen.findAllByRole("button", { name: "Review 1 picks" }))[0],
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Confirm and seal card" }),
+      ).toBeDisabled(),
+    );
+    expect(
+      screen.getByRole("button", { name: "Check current odds again" }),
+    ).toBeEnabled();
   });
 });
