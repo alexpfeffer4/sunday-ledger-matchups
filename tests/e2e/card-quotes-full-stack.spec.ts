@@ -57,7 +57,11 @@ async function buildCard(
   await page.getByRole("button", { name: "Sign in with password" }).click();
   await page.waitForURL(`**/l/${slug}/${verifyJourney ? "matchup" : "slate"}`);
   if (verifyJourney) {
-    await expect(page.getByText("Not started", { exact: true })).toBeVisible();
+    await expect(
+      page
+        .getByRole("region", { name: "Your weekly card", exact: true })
+        .locator(".status-badge"),
+    ).toContainText("Not started");
     await expect(page.getByText(/Seal by/)).toBeVisible();
     await page
       .getByRole("link", { name: "Make picks", exact: true })
@@ -81,7 +85,11 @@ async function buildCard(
     ).toBeVisible();
     await expect(page.getByText(/Draft saved on this device/)).toBeVisible();
     await page.goto(`/l/${slug}/card`);
-    await expect(page.getByText("Draft", { exact: true })).toBeVisible();
+    await expect(
+      page
+        .getByRole("region", { name: "Your weekly card", exact: true })
+        .locator(".status-badge"),
+    ).toContainText("Draft");
     await expect(page.getByText(/500/).first()).toBeVisible();
     await page.reload();
     await expect(
@@ -93,8 +101,10 @@ async function buildCard(
     await page.getByRole("button", { name: "Update pick" }).click();
     await page.goto(`/l/${slug}/matchup`);
     await expect(
-      page.getByText("Ready to review", { exact: true }),
-    ).toBeVisible();
+      page
+        .getByRole("region", { name: "Your weekly card", exact: true })
+        .locator(".status-badge"),
+    ).toContainText("Ready to review");
     await page.screenshot({
       path: "test-results/stage3-matchup-ready-mobile.png",
       fullPage: true,
@@ -327,8 +337,10 @@ test("members refresh, review, seal, and recover through real Auth and database"
     .getByRole("button", { name: "Sign in with password" })
     .click();
   await expect(
-    otherPage.getByText("Not started", { exact: true }),
-  ).toBeVisible();
+    otherPage
+      .getByRole("region", { name: "Your weekly card", exact: true })
+      .locator(".status-badge"),
+  ).toContainText("Not started");
   const deviceDraft = await page.evaluate(() =>
     Object.entries(localStorage).filter(([key]) =>
       key.startsWith("sunday-ledger:card-draft:"),

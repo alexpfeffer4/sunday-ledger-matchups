@@ -408,8 +408,9 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   await expect(
     page.getByRole("heading", { name: "All 1,000 credits are sealed" }),
   ).toBeVisible();
+  await page.getByRole("link", { name: "View card", exact: true }).click();
   await expect(
-    page.getByRole("link", { name: /receipt/i }).first(),
+    page.getByRole("link", { name: "View receipt", exact: true }).first(),
   ).toBeVisible();
 
   const invitedClient = await signedInClient(invited);
