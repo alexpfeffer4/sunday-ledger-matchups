@@ -58,6 +58,24 @@ describe("checkpoint freshness, without continuous score promises", () => {
     expect(easternTime("2026-09-13T17:00:00Z")).toMatch(/Sep 13.*1:00 PM EDT/);
     expect(easternTime("2026-12-13T18:00:00Z")).toMatch(/Dec 13.*1:00 PM EST/);
   });
+  it("requires operator recovery after an unfinished game's checks stop", () => {
+    const { operations } = makePhase6State("LIVE");
+    operations.events = [operations.events[0]];
+    operations.events[0].scoreCheck = {
+      attemptedAt: "2026-09-13T22:02:00Z",
+      fetchedAt: "2026-09-13T22:03:00Z",
+      sourceUpdatedAt: "2026-09-13T22:02:00Z",
+      nextCheckAt: null,
+      state: "STOPPED",
+    };
+    const freshness = scoreFreshness(
+      operations,
+      new Date("2026-09-13T22:04:00Z"),
+    );
+    expect(freshness.delayed).toBe(true);
+    expect(freshness.nextCheckAt).toBeNull();
+    expect(freshness.message).toContain("Commissioner review is required");
+  });
   it("makes lock and correction actions time-aware", () => {
     const { state } = makePhase6State("PREGAME");
     const control = {

@@ -35,6 +35,7 @@ export function scoreFreshness(
   const due = unfinished.filter(
     (event) => Date.parse(event.scheduledStartAt) <= now.getTime(),
   );
+  const stopped = due.some((event) => event.scoreCheck?.state === "STOPPED");
   const delayed = due.some((event) => {
     const start = Date.parse(event.scheduledStartAt);
     const check = event.scoreCheck;
@@ -43,6 +44,7 @@ export function scoreFreshness(
     const source = check?.sourceUpdatedAt
       ? Date.parse(check.sourceUpdatedAt)
       : 0;
+    if (check?.state === "STOPPED") return true;
     if (
       event.state === "SCHEDULED" &&
       now.getTime() > start + SCORE_CHECK_GRACE_MS
@@ -68,6 +70,7 @@ export function scoreFreshness(
     fetches.sort().at(-1) ?? operations?.latestImportAt ?? null;
   const next =
     unfinished
+      .filter((event) => event.scoreCheck?.state !== "STOPPED")
       .map((event) => {
         if (event.scoreCheck?.nextCheckAt) return event.scoreCheck.nextCheckAt;
         return new Date(
@@ -82,14 +85,16 @@ export function scoreFreshness(
     delayed,
     latestFetch,
     nextCheckAt: next,
-    message: delayed
-      ? unknownStart
-        ? "Start confirmation is delayed. Picks stay sealed until play is confirmed."
-        : "A scheduled result update is delayed. Confirmed starts and stored results remain visible."
-      : unknownStart
-        ? "Waiting for confirmed play. Scheduled kickoff alone does not reveal picks."
-        : unfinished.length > 0
-          ? "Scores settle after games finish. Results are checked about four hours after kickoff; longer games are checked again."
-          : "Final game results are captured. The weekly result follows its correction window.",
+    message: stopped
+      ? "Automatic checks have ended for an unresolved game. Commissioner review is required."
+      : delayed
+        ? unknownStart
+          ? "Start confirmation is delayed. Picks stay sealed until play is confirmed."
+          : "A scheduled result update is delayed. Confirmed starts and stored results remain visible."
+        : unknownStart
+          ? "Waiting for confirmed play. Scheduled kickoff alone does not reveal picks."
+          : unfinished.length > 0
+            ? "Scores settle after games finish. Results are checked about four hours after kickoff; longer games are checked again."
+            : "Final game results are captured. The weekly result follows its correction window.",
   };
 }

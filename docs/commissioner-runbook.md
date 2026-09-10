@@ -90,7 +90,7 @@ conditions genuinely apply. Never fabricate a score or finalize an unresolved we
   the unchanged action uses the same logical operation key and reports
   **Already completed**. Changed games, quotes, scores, or correction text
   require a fresh review and cannot reuse the ambiguous operation.
-- A failed import saves no partial provider batch. An earlier reviewed week and
+- A failed odds import saves no partial provider batch. An earlier reviewed week and
   accepted cards remain unchanged.
 - A failed quote refresh keeps the published game set, lock time, current quote
   heads, and accepted receipts unchanged. Do not seal against an unreviewed
@@ -144,13 +144,13 @@ retaining the prior Week 18 pairings and results.
 - Vercel reports no current-deployment runtime errors.
 - Supabase retains append-only receipts and version history.
 
-## D-009 evidence note
+## D-009 evidence and Stage 2 status
 
-The deterministic provider rehearsal covers a complete week plus a simulated
-network loss followed by a successful explicit retry. The current manual
-cadence, 48-hour capture target, backup procedure, exact-set imports, stable
-operation keys, and append-only corrections are adequate for one controlled
-league. A future small idempotent completed-score check around already-published
-events may be worth evaluating, but D-009 remains owner-gated. No automatic
-refresh, queue, scheduler, second provider, or unattended finalization is part
-of this release.
+The original deterministic provider rehearsal covered a complete week plus a
+simulated network loss followed by a successful explicit retry. Stage 2 implements
+the owner's selected game checkpoints, partial score capture, shared budget,
+and existing authorized backup transfer. Its migration and scheduler activation
+remain separately owner-gated. The console must report whether automatic checks
+are enabled; while off, follow the manual cadence above. There is no second
+provider or unattended finalization. Real-world operator effort and ordinary
+Production result capture remain pilot evidence to collect.
