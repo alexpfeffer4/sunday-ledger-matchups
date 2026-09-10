@@ -26,7 +26,7 @@ manual inference of kickoff, a new role, or changes to frozen season meaning.
 
 Release review also identified a stale-evidence edge case after commissioner
 transfer and an objective correction. Forward migration
-`20260910224119_preserve_objective_score_corrections.sql` requires a strictly newer
+`20260910224551_preserve_objective_score_corrections.sql` requires a strictly newer
 provider source timestamp before changing a result. Repeated evidence updates
 fetch timing without replacing the correction or scheduling outage retries.
 The regression exercises the actual transfer, objective correction, request lease,
