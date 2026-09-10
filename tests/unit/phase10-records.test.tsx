@@ -297,10 +297,10 @@ describe("Phase 10 dense league records", () => {
     const { state } = makePhase6State("FINAL");
     render(<Stage1CardView state={state} />);
 
-    expect(screen.getByText("Ready", { exact: true })).toBeVisible();
-    expect(screen.getByText("Card total").nextElementSibling).toHaveTextContent(
-      "1,000 / 1,000",
-    );
+    expect(screen.getByRole("heading", { name: "Card sealed" })).toBeVisible();
+    expect(
+      screen.getByRole("region", { name: "Your weekly card" }),
+    ).toHaveTextContent("1,000 / 1,000");
     expect(
       screen.queryByText("Allocation", { exact: true }),
     ).not.toBeInTheDocument();
@@ -310,7 +310,7 @@ describe("Phase 10 dense league records", () => {
     expect(
       screen.queryByText("Receipt state", { exact: true }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/sealed picks cannot be changed/)).toBeVisible();
+    expect(screen.getByText(/Sealed picks cannot be changed/)).toBeVisible();
   });
 
   it("scopes an archived card correction to a receipt for the corrected event", () => {

@@ -52,10 +52,11 @@ export function restoreCardDrafts(
         typeof draft.eventId !== "string" ||
         !validMarketTypes.includes(draft.marketType) ||
         !validOutcomeKeys.includes(draft.outcomeKey) ||
-        !Number.isInteger(draft.reviewedAmericanOdds) ||
+        !Number.isSafeInteger(draft.reviewedAmericanOdds) ||
+        draft.reviewedAmericanOdds === 0 ||
         typeof draft.reviewedPayloadHash !== "string" ||
         typeof draft.reviewedProposition !== "string" ||
-        !Number.isInteger(draft.stakeCredits) ||
+        !Number.isSafeInteger(draft.stakeCredits) ||
         draft.stakeCredits <= 0
       ) {
         return [];

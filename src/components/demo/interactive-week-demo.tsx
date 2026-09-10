@@ -947,6 +947,7 @@ export function InteractiveWeekDemo() {
       />
 
       <PositionEditorSheet
+        americanOdds={editorOdds ?? null}
         confirmLabel={editor?.existing ? "Update pick" : "Add to card"}
         context={
           editorEvent

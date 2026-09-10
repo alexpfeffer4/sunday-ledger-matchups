@@ -33,7 +33,7 @@ test("renders authoritative Simulation through the shared matchup component", ()
   expect(matchup).toContain("Simulation");
   expect(matchup).toContain("Practice/test");
   expect(matchup).toContain(">Final<");
-  expect(matchup).toContain("Position ledger");
+  expect(matchup).toContain("Picks by game");
   expect(matchup).not.toContain("Example Season");
   expect(matchup).not.toContain("SECRET FUTURE OPPONENT PICK");
   expect(sealedMatchup).toContain("Future picks sealed");

@@ -1634,8 +1634,18 @@ export async function acceptStage1CardAction(
   }
 
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
+  if (state?.ownerCard?.compliance === "COMPLIANT") {
+    return completed(
+      context.data.leagueSlug,
+      "Your card is already sealed. Your saved picks and receipts are unchanged.",
+      {
+        href: `/l/${context.data.leagueSlug}/card`,
+        label: "View card",
+      },
+    );
+  }
   if (!state?.week || !state.ownerCard || state.week.state !== "OPEN") {
-    return mutationError("The Week 1 card is not open.");
+    return mutationError("This week’s card is not open.");
   }
 
   const rehearsal = await getOwnerRehearsalForLeague(context.data.leagueSlug);
