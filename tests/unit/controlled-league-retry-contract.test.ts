@@ -61,7 +61,7 @@ describe("controlled-league retry contract", () => {
     );
     const scoreMigration = readFileSync(
       resolve(
-        "supabase/migrations/20260910214029_dependable_live_operations.sql",
+        "supabase/migrations/20260910223407_dependable_live_operations.sql",
       ),
       "utf8",
     );

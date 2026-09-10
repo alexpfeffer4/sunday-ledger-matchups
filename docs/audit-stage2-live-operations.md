@@ -2,8 +2,10 @@
 
 Scope: A02 and A10, including the owner's September 10 instruction to update
 scores at game end / about four hours after start instead of continuously.
-Implementation is for a tested PR. Production migration, merge, scheduler,
-configuration, and activation are not authorized by this stage prompt.
+The implementation prompt required separate rollout approval. On September 10,
+the owner approved the reviewed production migration, merge/deployment, scheduler
+configuration and activation, and 450/month internal cap within the existing free
+plan. No paid-plan change is authorized or needed.
 
 ## Authority and verified starting state
 
@@ -106,16 +108,20 @@ The existing 300/month cap is preserved by the migration. Proposed activation
 within the verified 500-credit free plan: retain **90/day and reserve 30**, raise
 the shared monthly cap to **450**, and reconcile the actual remaining balance.
 This reserves 50 plan credits outside the cap; actual remaining balance minus 30
-is an additional hard stop. No charge/upgrade occurs. The owner must approve the
-concrete production cap change with activation. If the cap is exhausted, show
+is an additional hard stop. No charge/upgrade occurs. The owner approved this
+concrete production cap change with activation on September 10. If the cap is exhausted, show
 delay and use objective-result recovery; manual provider checks cannot bypass it.
 
-## Rollout to review after PR verification
+## Approved production rollout
 
-1. Apply `20260910214029_dependable_live_operations.sql` through the authorized
-   migration process; align the repository filename if the hosted version differs.
-   The policy stays disabled; no cron extension/job is installed by the migration.
-2. Merge/deploy the tested code only after separate approval. Retain existing
+1. The production migration was applied as
+   `20260910223407_dependable_live_operations.sql`; the repository filename matches
+   the hosted history. The policy defaults disabled. The reviewed dispatch template
+   was subsequently applied as `20260910223527_install_score_checkpoint_dispatch.sql`
+   and is retained byte-for-byte in migrations for reproducible database history.
+   It installs Cron/pg_net and the job but leaves the score policy disabled. A fresh
+   database therefore cannot dispatch HTTP until its own explicit activation.
+2. Merge/deploy the tested code under the owner's rollout approval. Retain existing
    `ODDS_API_KEY` and `SUPABASE_SECRET_KEY`; add a random server-only
    `SCORE_JOB_SECRET` of at least 32 characters to Production. Never print it or
    expose it via `NEXT_PUBLIC_` configuration.
