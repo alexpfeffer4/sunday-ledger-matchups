@@ -17,6 +17,7 @@ const liveEventResultSchema = z.object({
 });
 
 const liveWeekOperationsSchema = z.object({
+  automationEnabled: z.boolean().optional(),
   weekState: z.enum(["PLANNED", "OPEN", "LOCKED", "PROVISIONAL", "FINAL"]),
   correctionWindowClosesAt: z.string().nullable(),
   latestImportAt: z.string().nullable(),
@@ -28,6 +29,16 @@ const liveWeekOperationsSchema = z.object({
       homeTeam: z.string().min(1),
       scheduledStartAt: z.string(),
       state: z.enum(["SCHEDULED", "LIVE", "FINAL", "VOID", "CORRECTED"]),
+      scoreCheck: z
+        .object({
+          attemptedAt: z.string().nullable(),
+          fetchedAt: z.string().nullable(),
+          sourceUpdatedAt: z.string().nullable(),
+          nextCheckAt: z.string().nullable(),
+          state: z.enum(["WAITING", "CHECKED", "MISSING", "FAILED", "STOPPED"]),
+        })
+        .nullable()
+        .optional(),
       canVoidAfterPostponement: z.boolean(),
       correctionCount: z.number().int().nonnegative(),
       result: liveEventResultSchema.nullable(),

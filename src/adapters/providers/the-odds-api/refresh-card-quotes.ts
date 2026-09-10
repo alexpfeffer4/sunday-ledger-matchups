@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { fetchNflOdds } from "@/adapters/providers/the-odds-api/client";
 import { getSupabasePublicConfig } from "@/adapters/supabase/config";
+import { getSupabaseServerSecret } from "@/adapters/supabase/server-secret";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import type { Database, Json } from "@/adapters/supabase/database.types";
 
@@ -31,7 +32,7 @@ export async function refreshCardQuotes(leagueId: string) {
 
   // This privileged client exists only inside the provider persistence adapter.
   // It never reads participant data or accepts cards on a member's behalf.
-  const secret = process.env.SUPABASE_SECRET_KEY;
+  const secret = getSupabaseServerSecret();
   if (!secret) throw new Error("QUOTE_REFRESH_UNCONFIGURED");
   const admin = createClient<Database>(getSupabasePublicConfig().url, secret, {
     auth: { persistSession: false, autoRefreshToken: false },

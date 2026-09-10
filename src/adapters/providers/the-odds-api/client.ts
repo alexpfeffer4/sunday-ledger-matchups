@@ -96,7 +96,11 @@ export async function fetchNflOdds(options?: {
     const eventsUrl = new URL(nflEventsUrl);
     eventsUrl.searchParams.set("apiKey", apiKey);
     eventsUrl.searchParams.set("dateFormat", "iso");
-    const discoveryPayload = await fetchProviderJson(eventsUrl, fetchImpl);
+    const discoveryPayload = await fetchProviderJson(
+      eventsUrl,
+      fetchImpl,
+      options?.onUsage,
+    );
     eventIds = selectNearestNflSlateEventIds(discoveryPayload);
   }
 
@@ -145,6 +149,7 @@ export async function fetchNflScores(options: {
   eventIds: string[];
   fetchImpl?: typeof fetch;
   fetchedAt?: string;
+  onUsage?: (remaining: number | null) => void;
 }): Promise<LiveScoreImport> {
   const apiKey = options.apiKey ?? process.env.ODDS_API_KEY;
   if (!apiKey) {
@@ -171,21 +176,21 @@ export async function fetchNflScores(options: {
   const payload = await fetchProviderJson(
     scoresUrl,
     options.fetchImpl ?? fetch,
+    options.onUsage,
   );
   const scoreImport = normalizeTheOddsApiScores(
     payload,
     options.fetchedAt ?? new Date().toISOString(),
   );
 
-  const returnedEventIds = new Set(
-    scoreImport.events.map((event) => event.externalEventId),
-  );
+  const requestedEventIds = new Set(options.eventIds);
   if (
-    scoreImport.events.length !== options.eventIds.length ||
-    options.eventIds.some((eventId) => !returnedEventIds.has(eventId))
+    scoreImport.events.some(
+      (event) => !requestedEventIds.has(event.externalEventId),
+    )
   ) {
     throw new OddsProviderPayloadError(
-      "The Odds API did not return the complete published NFL score slate.",
+      "The Odds API returned a score outside the requested NFL events.",
     );
   }
   return scoreImport;

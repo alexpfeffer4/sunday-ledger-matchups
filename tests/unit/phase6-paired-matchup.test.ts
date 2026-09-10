@@ -131,7 +131,7 @@ describe("Phase 6 paired matchup projection", () => {
     expect(matchup?.phase).toBe("DELAYED");
     expect(matchup?.rows.IN_PROGRESS).toEqual([]);
     expect(matchup?.futureSealed).toBe(true);
-    expect(matchup?.freshness.message).toMatch(/reliable Live state/);
+    expect(matchup?.freshness.message).toMatch(/Start confirmation is delayed/);
   });
 
   it("marks corrected official state without changing row identity", () => {

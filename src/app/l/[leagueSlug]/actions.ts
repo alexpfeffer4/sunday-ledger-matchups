@@ -1,5 +1,9 @@
 "use server";
 
+import {
+  fetchBudgetedNflOdds,
+  refreshLiveScores,
+} from "@/adapters/providers/the-odds-api/provider-requests";
 import { refreshCardQuotes } from "@/adapters/providers/the-odds-api/refresh-card-quotes";
 import { quoteRecoveryMessage } from "@/application/providers/card-quote-review";
 
@@ -8,11 +12,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { canonicalSimulationFixturePackId } from "@/adapters/simulation";
-import {
-  fetchNflOdds,
-  fetchNflScores,
-  OddsProviderRequestError,
-} from "@/adapters/providers/the-odds-api/client";
+import { OddsProviderRequestError } from "@/adapters/providers/the-odds-api/client";
 import { OddsProviderPayloadError } from "@/adapters/providers/the-odds-api/normalize";
 import type { Json } from "@/adapters/supabase/database.types";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
@@ -511,7 +511,7 @@ export async function importLiveOddsAction(
   }
 
   try {
-    const liveImport = await fetchNflOdds();
+    const liveImport = await fetchBudgetedNflOdds(context.data.leagueId);
     const payloadHash = createHash("sha256")
       .update(JSON.stringify(liveImport))
       .digest("hex");
@@ -1111,7 +1111,10 @@ async function refreshPublishedLiveQuoteHeads(params: {
       replayed: coordinated === "CACHED",
     };
   }
-  const liveImport = await fetchNflOdds({ eventIds: params.eventIds });
+  const liveImport = await fetchBudgetedNflOdds(
+    params.leagueId,
+    params.eventIds,
+  );
   const payloadHash = createHash("sha256")
     .update(JSON.stringify(liveImport))
     .digest("hex");
@@ -1337,16 +1340,6 @@ export async function lockLiveRosterAndOpenWeekAction(
   }
 }
 
-const liveScoreImportReceiptSchema = z.object({
-  eventCount: z.number().int().positive(),
-  pendingCount: z.number().int().nonnegative(),
-  liveCount: z.number().int().nonnegative(),
-  settledCount: z.number().int().nonnegative(),
-  correctedCount: z.number().int().nonnegative(),
-  unchangedCount: z.number().int().nonnegative(),
-  weekState: z.enum(["LOCKED", "PROVISIONAL"]),
-});
-
 export async function importLiveScoresAction(
   _state: AppActionState,
   formData: FormData,
@@ -1370,45 +1363,23 @@ export async function importLiveScoresAction(
   }
 
   try {
-    const scoreImport = await fetchNflScores({
-      eventIds: state.slate.map((event) => event.key),
-    });
-    const payloadHash = createHash("sha256")
-      .update(JSON.stringify(scoreImport))
-      .digest("hex");
-    const supabase = await createSupabaseServerClient();
-    const operationKey = `live-scores:${payloadHash}`;
-    if (
-      await operationAlreadyCompleted(
-        supabase,
-        "IMPORT_LIVE_SCORES",
-        operationKey,
-      )
-    ) {
-      return completed(
-        context.data.leagueSlug,
-        "That exact NFL score update is already recorded; no result or settlement was duplicated.",
-        {
-          href: `/l/${context.data.leagueSlug}/matchup`,
-          label: "Review the current matchup",
-        },
+    const result = await refreshLiveScores(context.data.leagueId);
+    if (result.status === "BUSY")
+      return mutationError(
+        "A score check is already running. Wait a minute, then refresh this page.",
       );
-    }
-    const imported = await supabase.schema("api").rpc("import_live_scores", {
-      p_league_id: context.data.leagueId,
-      p_import: scoreImport as unknown as Json,
-      p_idempotency_key: operationKey,
-    });
-    if (imported.error) return mutationError(imported.error.message);
-
-    const receipt = liveScoreImportReceiptSchema.safeParse(imported.data);
-    if (!receipt.success) {
-      return mutationError("The stored live score receipt is invalid.");
-    }
-
+    if (result.status === "IDLE")
+      return finish(
+        context.data.leagueSlug,
+        "No automatic score check is due. Games outside the provider capture window need the documented objective-result recovery.",
+      );
+    if (result.status === "FAILED")
+      return mutationError(
+        "Scores are unavailable. Stored results remain unchanged; check the recovery guidance before retrying.",
+      );
     return finish(
       context.data.leagueSlug,
-      `${receipt.data.eventCount} NFL games checked: ${receipt.data.settledCount} newly settled, ${receipt.data.correctedCount} corrected, ${receipt.data.liveCount} live, ${receipt.data.pendingCount} pending, and ${receipt.data.unchangedCount} unchanged.`,
+      `${result.eventCount} NFL game updates captured${result.status === "PARTIAL" ? "; some games are still unavailable" : ""}. Only provider-confirmed final results settle cards. Finalization remains a separate action.`,
     );
   } catch (error) {
     console.error(

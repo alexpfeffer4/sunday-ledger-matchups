@@ -17,6 +17,7 @@ import {
   refreshLiveWeekQuotesAction,
   voidLiveEventAfterPostponementAction,
 } from "@/app/l/[leagueSlug]/actions";
+import { easternTime } from "@/application/queries/score-freshness";
 import { initialAppActionState } from "@/application/actions/action-state";
 import { isStandardLiveSlateEvent } from "@/application/providers/select-standard-live-slate";
 import type { LiveOddsImportReview } from "@/application/queries/get-live-odds-import";
@@ -372,10 +373,39 @@ export function LiveWeekCommissionerControls({
             ) : null}
           </div>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Refresh the published games for live and final scores. Completed
-            games score the affected picks, and official changes remain visible
-            as corrections.
+            {liveWeekOperations?.automationEnabled
+              ? "Automatic game checks are on."
+              : "Automatic game checks are off; use the check below."}{" "}
+            Starts are checked near kickoff; results are checked about four
+            hours later. Only confirmed finals settle picks. Overtime stays
+            pending, and corrections remain visible.
           </p>
+          <details className="border-boundary mt-3 rounded-lg border p-3">
+            <summary className="min-h-11 cursor-pointer content-center font-semibold">
+              Score update recovery
+            </summary>
+            <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm leading-6">
+              <li>
+                Refresh this page first. If a check is running, wait one minute
+                before retrying.
+              </li>
+              <li>
+                Use the score check below. A failed or partial check preserves
+                captured results. Credit limits also apply to manual checks.
+              </li>
+              <li>
+                If an event remains unavailable, record an identifiable official
+                source through the existing objective-result controls. Capture
+                each game within 48 hours of its scheduled start; automatic
+                retries stop at 60 hours.
+              </li>
+              <li>
+                Before you become unavailable, transfer commissioner controls to
+                your backup in League settings. A named backup has no operating
+                rights until that transfer completes.
+              </li>
+            </ol>
+          </details>
           <form action={scoreAction} className="mt-4">
             <ContextFields state={state} />
             <button
@@ -423,6 +453,19 @@ export function LiveWeekCommissionerControls({
                   </p>
                 </div>
 
+                <p className="text-muted mt-2 text-xs">
+                  {event.scoreCheck?.fetchedAt
+                    ? `Last successful check ${easternTime(event.scoreCheck.fetchedAt)}.`
+                    : "No successful game check recorded."}{" "}
+                  {event.scoreCheck?.sourceUpdatedAt
+                    ? `Provider update ${easternTime(event.scoreCheck.sourceUpdatedAt)}.`
+                    : "Start not yet confirmed by a score update."}{" "}
+                  {event.scoreCheck?.nextCheckAt
+                    ? `Next check ${easternTime(event.scoreCheck.nextCheckAt)}.`
+                    : event.result
+                      ? "Final captured."
+                      : "Follow the check schedule above."}
+                </p>
                 {event.result ? (
                   <div className="border-boundary bg-subtle mt-3 rounded-lg border p-3 text-xs leading-5">
                     <p className="font-semibold">{event.result.reason}</p>

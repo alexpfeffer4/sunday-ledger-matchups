@@ -17,7 +17,7 @@ function timeLabel(value: string): string {
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
-    timeZone: "UTC",
+    timeZone: "America/New_York",
   }).format(new Date(value));
 }
 
@@ -51,7 +51,7 @@ function CorrectionDetails({
         <p>
           {correction.actorName} recorded this correction on{" "}
           <time dateTime={correction.correctedAt}>
-            {timeLabel(correction.correctedAt)} UTC
+            {timeLabel(correction.correctedAt)} ET
           </time>
           . Reason: {correction.reason}
         </p>
@@ -136,10 +136,10 @@ export function WeeklyCloseModule({
       <p className="text-graphite mt-3 text-xs leading-5">
         {matchup.status === "PROVISIONAL"
           ? bridge.correctionWindowClosesAt
-            ? `Correction window closes ${timeLabel(bridge.correctionWindowClosesAt)} UTC.`
+            ? `Correction window closes ${timeLabel(bridge.correctionWindowClosesAt)} ET.`
             : "This result remains provisional; no correction deadline is stored."
           : bridge.correctionWindowClosesAt
-            ? `Correction window closed ${timeLabel(bridge.correctionWindowClosesAt)} UTC.`
+            ? `Correction window closed ${timeLabel(bridge.correctionWindowClosesAt)} ET.`
             : "This matchup result is final."}
         {matchup.nflWeek === 17 && matchup.scope === "PLAYOFF"
           ? " This receipt does not by itself assert champion or archive finality."

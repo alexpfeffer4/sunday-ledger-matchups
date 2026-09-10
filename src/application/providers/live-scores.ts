@@ -39,7 +39,7 @@ export const liveEventScoreSchema = z
 export const liveScoreImportSchema = z.object({
   source: z.literal("THE_ODDS_API"),
   fetchedAt: z.iso.datetime(),
-  events: z.array(liveEventScoreSchema).min(1).max(32),
+  events: z.array(liveEventScoreSchema).max(32),
 });
 
 export type LiveEventScore = z.infer<typeof liveEventScoreSchema>;

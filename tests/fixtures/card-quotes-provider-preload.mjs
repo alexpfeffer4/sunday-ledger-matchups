@@ -12,6 +12,16 @@ if (
     );
     if (url.hostname !== "api.the-odds-api.com")
       return originalFetch(input, init);
+    if (url.pathname.endsWith("/scores")) {
+      const fixture = JSON.parse(
+        readFileSync(`${process.env.ODDS_TEST_FIXTURE}.scores`, "utf8"),
+      );
+      appendFileSync(`${process.env.ODDS_TEST_FIXTURE}.calls`, "scores\n");
+      return Response.json(fixture.payload, {
+        status: fixture.status ?? 200,
+        headers: { "x-requests-remaining": "1400" },
+      });
+    }
     if (!url.pathname.endsWith("/odds"))
       throw new Error("Unexpected provider endpoint in quote acceptance");
     const fixture = JSON.parse(

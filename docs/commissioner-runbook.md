@@ -5,11 +5,12 @@ Commissioner console is the only intended control surface. It never grants
 access to sealed card terms and never permits direct edits to scores, records,
 standings, schedules, seeds, or bracket winners.
 
-The optional [Stage 1 quote policy](audit-stage1-quote-reliability.md) adds
-bounded server refresh on explicit member review. It is disabled until its
-documented amendment and rollout are approved. When enabled, commissioner
-refresh shares the same lease and quota; the manual steps below still govern
-publication, scores, and finalization.
+The [Stage 1 quote policy](audit-stage1-quote-reliability.md) is active as of
+September 10, 2026 (PR #29). Members explicitly review current quotes; commissioner
+refresh shares its lease and quota. [Stage 2 checkpoint score updates](audit-stage2-live-operations.md)
+are implemented for separate rollout approval. Check the console's automation status;
+a merge alone does not enable them. Publication, card lock, and finalization remain
+explicit commissioner actions.
 
 ## Before roster lock
 
@@ -37,10 +38,15 @@ published event set is intentionally immutable.
    exact published event set.
 5. At common lock, lock the week. Database time enforces the deadline even if
    the button is pressed late.
-6. The primary operator checks scores at halftime, at the end of each game
-   window (roughly 4:15 p.m., 7:30 p.m., and 11:30 p.m. Eastern on Sunday), and
-   by 10:00 a.m. Eastern the next morning. Refresh again after any known official
-   correction. The console's **last checked** time is the operating record.
+6. Confirm each game start near kickoff. With Stage 2 enabled, the server checks
+   at kickoff +2, +7, and +17 minutes until play is confirmed, with up to five
+   minutes of scheduler delay. Scheduled time alone never reveals picks. After
+   confirmation, no continuous score fetch runs: the first result check is at
+   kickoff +4 hours. Only a provider-confirmed final settles a game. Check again
+   for overtime/unfinished games at +4h30, +5h, +6h, +12h, +24h, +48h, and +60h
+   as needed. An unavailable response gets two short retries, then returns to
+   remaining checkpoints. If automatic checks are off, use **Refresh NFL scores
+   & settle completed games** at these times; the same budget and lease apply.
 7. Review provisional settlements, incomplete-card consequences, corrections,
    and the derived standings.
 8. Finalize only after the 24-hour correction window closes and no correction is
@@ -48,19 +54,27 @@ published event set is intentionally immutable.
 
 ## Backup operator and retention deadline
 
-Before Week 1, the commissioner names one league member as the backup operator
-and privately shares this runbook—not credentials. If the commissioner cannot
-act, the backup contacts the commissioner to restore access or arrange a normal
-commissioner ownership transfer; nobody shares passwords or uses service-role
-credentials. The backup records the missed check time and resumes the same
-manual sequence from the Commissioner console.
+Choose a backup member before Week 1. Naming someone is **not** authorization.
+While still available, the current commissioner uses **League settings → Transfer
+commissioner**, selects that member, and confirms the named impact. The existing
+`api.transfer_league_commissioner` changes the roles atomically. The new operator
+can run score/correction/finalization controls; the old commissioner immediately
+loses those rights. Neither gains access to unstarted opponent receipts. The new
+commissioner must transfer the role back later. Test this in the disposable lane.
 
-Completed-score retrieval uses the provider's three-day window. Finish the
-final-score capture no later than 48 hours after the last selected game ends,
-leaving a full day for login, network, or provider recovery. If the deadline is
-at risk, preserve the week as pending and use only the documented objective
-correction path with an identifiable official source. Never fabricate a score
-or finalize an unresolved week.
+If the current commissioner is already unavailable, the backup cannot self-promote.
+Restore that commissioner's account through normal account recovery first; otherwise
+leave the week pending and escalate to the owner for a separately authorized access
+recovery. Never share passwords or provide service credentials to a league member.
+
+Completed-score retrieval covers up to three days. Capture **each selected game's**
+final within 48 hours of its original scheduled kickoff. This is a conservative
+operating target; do not wait until the last game of the entire slate finishes.
+Automatic retries stop at kickoff +60 hours. A previously captured final remains
+stored when that event disappears from the provider; other dates continue importing.
+If a game has never been captured, use the existing objective result/correction path
+with an identifiable official source, or the frozen 48-hour void policy when its
+conditions genuinely apply. Never fabricate a score or finalize an unresolved week.
 
 ## Corrections, retry recovery, and safe failures
 
@@ -76,15 +90,17 @@ or finalize an unresolved week.
   the unchanged action uses the same logical operation key and reports
   **Already completed**. Changed games, quotes, scores, or correction text
   require a fresh review and cannot reuse the ambiguous operation.
-- A failed import saves no partial provider batch. An earlier reviewed week and
+- A failed odds import saves no partial provider batch. An earlier reviewed week and
   accepted cards remain unchanged.
 - A failed quote refresh keeps the published game set, lock time, current quote
   heads, and accepted receipts unchanged. Do not seal against an unreviewed
   changed quote.
 - A failed lock leaves cards open unless database time has already made them
   unavailable. Reload to confirm; it never reveals future opponent terms.
-- A failed score capture creates no partial result batch. Existing results and
-  settlements remain authoritative and the week stays pending or provisional.
+- A partial provider response can capture the available selected games. Missing
+  games remain pending and are retried separately. Each league/week import is
+  transactional; one failed week cannot discard another league's captured finals.
+  A failed game update never invents a final or erases a prior result.
 - A failed settlement, correction, finalization, playoff, champion, Week 18, or
   archive command is atomic. Reload before retrying; prior versions remain
   intact, and a committed unchanged retry returns the original outcome.
@@ -128,13 +144,13 @@ retaining the prior Week 18 pairings and results.
 - Vercel reports no current-deployment runtime errors.
 - Supabase retains append-only receipts and version history.
 
-## D-009 evidence note
+## D-009 evidence and Stage 2 status
 
-The deterministic provider rehearsal covers a complete week plus a simulated
-network loss followed by a successful explicit retry. The current manual
-cadence, 48-hour capture target, backup procedure, exact-set imports, stable
-operation keys, and append-only corrections are adequate for one controlled
-league. A future small idempotent completed-score check around already-published
-events may be worth evaluating, but D-009 remains owner-gated. No automatic
-refresh, queue, scheduler, second provider, or unattended finalization is part
-of this release.
+The original deterministic provider rehearsal covered a complete week plus a
+simulated network loss followed by a successful explicit retry. Stage 2 implements
+the owner's selected game checkpoints, partial score capture, shared budget,
+and existing authorized backup transfer. Its migration and scheduler activation
+remain separately owner-gated. The console must report whether automatic checks
+are enabled; while off, follow the manual cadence above. There is no second
+provider or unattended finalization. Real-world operator effort and ordinary
+Production result capture remain pilot evidence to collect.

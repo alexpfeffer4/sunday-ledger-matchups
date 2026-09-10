@@ -1,3 +1,7 @@
+import {
+  scoreFreshness,
+  updateAge,
+} from "@/application/queries/score-freshness";
 import type { LiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import { returnedCenticredits } from "@/domain/odds/american";
@@ -88,7 +92,9 @@ export type PairedMatchupDto = {
     sentence: string | null;
   };
   freshness: {
-    updatedAt: string;
+    updatedAt: string | null;
+    ageLabel: string;
+    nextCheckAt: string | null;
     delayed: boolean;
     message: string | null;
   };
@@ -386,7 +392,12 @@ export function projectPairedMatchup(
       event.state === "SCHEDULED" &&
       new Date(event.scheduledStartAt).getTime() <= now.getTime(),
   );
-  const delayed = hasDegradedProvider || hasUnconfirmedPastStart;
+  const scoreUpdate = scoreFreshness(operations, now);
+  const delayed =
+    hasDegradedProvider ||
+    (state.league.mode === "LIVE" && operations
+      ? scoreUpdate.delayed
+      : hasUnconfirmedPastStart);
 
   let phase: PairedMatchupPhase;
   if (correctedCount > 0) phase = "CORRECTED";
@@ -400,8 +411,8 @@ export function projectPairedMatchup(
     state.week.state === "PROVISIONAL"
   )
     phase = "PROVISIONAL";
-  else if (hasLiveEvent) phase = "LIVE";
   else if (delayed) phase = "DELAYED";
+  else if (hasLiveEvent) phase = "LIVE";
   else if (hasRevealedEvent) phase = "PARTIAL_REVEAL";
   else if (state.week.state === "LOCKED") phase = "LOCKED";
   else phase = "PREGAME";
@@ -420,21 +431,18 @@ export function projectPairedMatchup(
     (event) => event.result?.recordedAt,
   );
   const updatedAt =
-    maxIso([
-      operations?.latestImportAt,
-      ...(operationResultTimes ?? []),
-      ...state.slate.map((event) => event.actualStartedAt),
-      state.week.lockedAt,
-      state.week.opensAt,
-    ]) ?? state.week.opensAt;
+    state.league.mode === "LIVE"
+      ? scoreUpdate.latestFetch
+      : maxIso([
+          ...(operationResultTimes ?? []),
+          ...state.slate.map((event) => event.actualStartedAt),
+        ]);
   const freshnessMessage = hasDegradedProvider
-    ? "The provider has marked this feed degraded. Stored facts remain visible while new updates may be delayed."
-    : hasUnconfirmedPastStart
-      ? "Scheduled kickoff has passed, but reliable Live state has not arrived. Future picks remain sealed."
-      : operations &&
-          operations.latestImportAt === null &&
-          state.week.state !== "OPEN"
-        ? "No score update has been stored yet. Scheduled time alone does not reveal picks."
+    ? "The feed is delayed. Stored facts remain visible."
+    : state.league.mode === "LIVE" && operations
+      ? scoreUpdate.message
+      : hasUnconfirmedPastStart
+        ? "Scheduled kickoff has passed, but reliable Live state has not arrived. Future picks remain sealed."
         : null;
 
   const selfStanding = state.standings.find(
@@ -479,8 +487,8 @@ export function projectPairedMatchup(
     if (selected && phase === "CORRECTED") return "Corrected";
     if (scheduleResult?.status === "FINAL") return "Final";
     if (scheduleResult?.status === "PROVISIONAL") return "Provisional";
-    if (hasLiveEvent || hasRevealedEvent) return "Live";
     if (delayed) return "Delayed";
+    if (hasLiveEvent || hasRevealedEvent) return "Live";
     if (phase === "PREGAME") return "Pregame";
     return "Locked";
   };
@@ -541,7 +549,13 @@ export function projectPairedMatchup(
         scope: state.week.scope,
       }),
     },
-    freshness: { updatedAt, delayed, message: freshnessMessage },
+    freshness: {
+      updatedAt,
+      delayed,
+      message: freshnessMessage,
+      ageLabel: updatedAt ? updateAge(updatedAt, now) : "Not checked yet",
+      nextCheckAt: scoreUpdate.nextCheckAt,
+    },
     correctedCount,
     scoreboard: state.schedule.map((matchup) => ({
       id: matchup.id,

@@ -492,7 +492,8 @@ select lives_ok(
           'completed', true,
           'awayScore', 21,
           'homeScore', 14,
-          'lastUpdate', clock_timestamp()
+          -- Provider evidence must precede its successful fetch.
+          'lastUpdate', clock_timestamp() - interval '1 second'
         ))
         from private.sports_events as event
         join private.season_weeks as week on week.id = event.week_id
