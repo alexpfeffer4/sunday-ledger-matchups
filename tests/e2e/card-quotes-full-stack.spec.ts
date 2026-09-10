@@ -406,7 +406,7 @@ test("members refresh, review, seal, and recover through real Auth and database"
   const startedAt = new Date(
     Date.now() - 4 * 60 * 60_000 - 60_000,
   ).toISOString();
-  sql(`update private.season_weeks set common_lock_at=clock_timestamp()-interval '5 minutes' where league_id='${leagueId}';
+  sql(`update private.season_weeks set opens_at=clock_timestamp()-interval '6 hours',common_lock_at='${startedAt}'::timestamptz-interval '5 minutes' where league_id='${leagueId}';
     update private.sports_events set scheduled_start_at='${startedAt}' where league_id='${leagueId}';
     update private.score_refresh_policy set enabled=true;
     update private.odds_refresh_policy set next_request_at='-infinity';`);
