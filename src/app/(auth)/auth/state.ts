@@ -26,7 +26,11 @@ export const initialPasswordActionState: PasswordActionState = {
   message: "",
 };
 
-export type EmailCodeState = { status: "idle" | "error"; message: string };
+export type EmailCodeState = {
+  status: "idle" | "error";
+  message: string;
+  requestFailed?: boolean;
+};
 export type EmailCodeAction = (
   state: EmailCodeState,
   data: FormData,

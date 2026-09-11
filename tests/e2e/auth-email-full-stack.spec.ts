@@ -59,6 +59,56 @@ function sql(statement: string) {
 function freshEmail(label: string) {
   return `auth-${label}-${Date.now().toString(36)}@acceptance.test`;
 }
+
+test("recovery code survives switching away and an interrupted submission", async ({
+  page,
+  context,
+  request,
+}) => {
+  const email = freshEmail("interrupted-recovery");
+  const created = await client(secret!).auth.admin.createUser({
+    email,
+    email_confirm: true,
+  });
+  expect(created.error).toBeNull();
+  await page.goto("/auth/recover?next=%2Fleagues");
+  await page.getByLabel("Email address").fill(email);
+  await page.getByRole("button", { name: "Email recovery link" }).click();
+  await expect(page.getByRole("status")).toContainText("newest recovery link");
+  const recovery = await capturedEmail(request, email, "recovery");
+
+  // Approximate returning from another tab/app. Physical Safari/Mail remains
+  // a separate check; CI does not claim to emulate iOS process suspension.
+  const otherTab = await context.newPage();
+  await otherTab.goto("about:blank");
+  await otherTab.bringToFront();
+  await page.bringToFront();
+  await otherTab.close();
+  const code = page.getByLabel("Email verification code");
+  await code.fill(recovery.code);
+  const interrupt = async (route: import("@playwright/test").Route) => {
+    if (route.request().method() === "POST") await route.abort("failed");
+    else await route.continue();
+  };
+  await page.route("**/auth/recover?*", interrupt);
+  await page.getByRole("button", { name: "Verify code and continue" }).click();
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "couldn’t complete code verification" }),
+  ).toBeVisible();
+  // Do not include credential values in assertion output.
+  expect((await code.inputValue()) === recovery.code).toBeTruthy();
+  await expect(
+    page.getByRole("heading", { name: "Choose a new password" }),
+  ).toBeVisible();
+  await page.unroute("**/auth/recover?*", interrupt);
+  await page.getByRole("button", { name: "Verify code and continue" }).click();
+  await expectLocation(page, /\/account\/recover-password/);
+  await expect(
+    page.getByRole("heading", { name: "Save a new password" }),
+  ).toBeVisible();
+});
 async function capturedEmail(
   request: APIRequestContext,
   email: string,

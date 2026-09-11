@@ -82,6 +82,7 @@ jobs:
           echo "TEST_MAIL_URL=http://127.0.0.1:54324" >> "$GITHUB_ENV"
           echo "AUTH_TEST_FAILURE_FILE=/tmp/sunday-ledger-auth-failure.json" >> "$GITHUB_ENV"
           echo "FULL_STACK_ACCEPTANCE=1" >> "$GITHUB_ENV"
+          echo "PLAYWRIGHT_PRODUCTION=1" >> "$GITHUB_ENV"
           echo "SUPABASE_SECRET_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
           echo "SCORE_JOB_SECRET=disposable-score-job-secret-for-ci-only" >> "$GITHUB_ENV"
           echo "ODDS_API_KEY=disposable-provider-fixture" >> "$GITHUB_ENV"
@@ -124,6 +125,9 @@ jobs:
           fi
           psql "$TEST_SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c \
             "insert into private.owner_rehearsal_entitlements (user_id, note) values ('$OWNER_USER_ID'::uuid, 'Disposable CI owner');"
+
+      - name: Build the production app against disposable Auth
+        run: npm run build
 
       - name: Run real Auth, server action, RSC, RPC, and authorization lane
         env:
