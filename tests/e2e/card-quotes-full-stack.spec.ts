@@ -112,7 +112,8 @@ async function buildCard(
   }
 }
 
-test("members refresh, review, seal, and recover through real Auth and database", async ({
+for (const frozenVersion of ["1.1", "1.2"] as const) {
+test(`V${frozenVersion} members refresh, review, seal, and recover through real Auth and database`, async ({
   browser,
   page,
 }) => {
@@ -278,6 +279,20 @@ test("members refresh, review, seal, and recover through real Auth and database"
   });
   expect(opened.week.state).toBe("OPEN");
   expect(opened.schedule).toHaveLength(2);
+  // Construct a historical fixture in disposable loopback CI before any card
+  // is accepted. Never run this fixture operation against a hosted database.
+  expect(new URL(url!).hostname).toMatch(/^(127\\.0\\.0\\.1|localhost)$/);
+  if (frozenVersion === "1.1") {
+    sql(`begin; set local session_replication_role=replica;
+      update private.season_ruleset_snapshots r set ruleset_version='1.1',
+        product_bible_version='3.0',
+        canonical_json=jsonb_set(jsonb_set(jsonb_set(r.canonical_json,'{version}','"1.1"'),'{productBibleVersion}','"3.0"'),
+          '{standings,tiebreakOrder}','["MATCHUP_WIN_PERCENTAGE","POINTS_FOR","ALL_PLAY_PERCENTAGE","BALANCED_HEAD_TO_HEAD","FEWER_ATTENDANCE_MISSES","HIGHEST_SINGLE_WEEK_SCORE","STORED_DETERMINISTIC_RANDOM"]')
+      from private.seasons s where s.ruleset_snapshot_id=r.id and s.league_id='${leagueId}'; commit;`);
+  }
+  const ruleState = await rpc(members[0]!, "get_stage1_state", { p_league_slug: slug });
+  expect(ruleState.season.rulesetSnapshot.rulesetVersion).toBe(frozenVersion);
+  const frozenSnapshot = ruleState.season.rulesetSnapshot;
   await setupContext.close();
   expireRefresh(leagueId);
 
@@ -419,6 +434,7 @@ test("members refresh, review, seal, and recover through real Auth and database"
     new Date(original.ownerCard.positions[0].quoteObservedAt).getTime(),
   ).toBeLessThan(Date.now() - 120_000);
   const originalReceipt = original.ownerCard.positions;
+  expect(original.season.rulesetSnapshot).toEqual(frozenSnapshot);
   await otherPage
     .getByRole("button", { name: "Confirm and seal card" })
     .click();
@@ -718,3 +734,5 @@ test("members refresh, review, seal, and recover through real Auth and database"
   });
   await operatorContext.close();
 });
+
+}

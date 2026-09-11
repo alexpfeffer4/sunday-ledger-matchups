@@ -30,12 +30,12 @@ authority for that season:
 
 No old standing, playoff field, result, champion, or archive is recalculated.
 
-## Proposed governing decision entry
+## Recorded governing amendment
 
-The governing Project Sources supplied for this work are not stored in this
-repository, and the next Decision Register identifier is ambiguous. The owner
-explicitly approved this prospective change on September 4, 2026. This pull
-request proposes the following exact entry for the governing-source workflow:
+The owner explicitly approved the prospective change on September 4, 2026.
+The [current governing addendum](governance/2026-09-11-governing-addendum.md)
+records the amendment without inventing a Decision Register identifier. The
+original unnumbered decision text is retained below:
 
 > **Identifier:** Assign the next valid Decision Register identifier at
 > governing-source acceptance.

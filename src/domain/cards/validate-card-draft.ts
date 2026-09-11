@@ -7,7 +7,7 @@ import {
   type ProposedCardPosition,
 } from "@/domain/cards/validate-position";
 import { formatCredits } from "@/domain/odds/american";
-import type { SeasonRuleset } from "@/rulesets/schema";
+import type { CardRules } from "@/rulesets/card-rules";
 
 export type DraftCardValidation =
   | {
@@ -27,7 +27,7 @@ export function validateDraftCard(params: {
   acceptedPositions?: readonly AcceptedCardPosition[];
   draftPositions: readonly ProposedCardPosition[];
   eligibleOpportunities: readonly EligibleCardOpportunity[];
-  ruleset: SeasonRuleset;
+  ruleset: CardRules;
 }): DraftCardValidation {
   const positions = [...(params.acceptedPositions ?? [])];
 

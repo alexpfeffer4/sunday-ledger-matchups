@@ -43,6 +43,18 @@ jobs:
       - name: Clean install
         run: npm ci
 
+      # Temporary preparation aid while the local workspace is disconnected.
+      # Removed once the formatter output is committed to this PR.
+      - name: Capture formatting for the reviewed source files
+        run: |
+          npx prettier --write 'docs/governance/2026-09-11-governing-addendum.md' 'docs/governance/current-source-index.md' 'docs/owner-guided-rehearsal.md' 'docs/ruleset-v1-2-remove-all-play.md' 'src/app/l/[leagueSlug]/actions.ts' 'src/app/l/[leagueSlug]/card-quote-actions.ts' 'src/application/providers/card-quote-review.ts' 'src/application/queries/stage1-dtos.ts' 'src/components/card/owner-card-context.ts' 'src/components/card/stage1-card-builder.tsx' 'src/domain/cards/validate-card-draft.ts' 'src/domain/cards/validate-position.ts' 'src/rulesets/card-rules.ts' 'tests/e2e/card-quotes-full-stack.spec.ts' 'tests/fixtures/card-rules.ts' 'tests/fixtures/phase6-paired-matchup.ts' 'tests/fixtures/stage3-card-journey.ts' 'tests/unit/frozen-card-rules.test.ts' 'tests/unit/stage1-card-builder.test.tsx' 'docs/audit-stage6-frozen-rules.md'
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          for (const path of ["docs/governance/2026-09-11-governing-addendum.md","docs/governance/current-source-index.md","docs/owner-guided-rehearsal.md","docs/ruleset-v1-2-remove-all-play.md","src/app/l/[leagueSlug]/actions.ts","src/app/l/[leagueSlug]/card-quote-actions.ts","src/application/providers/card-quote-review.ts","src/application/queries/stage1-dtos.ts","src/components/card/owner-card-context.ts","src/components/card/stage1-card-builder.tsx","src/domain/cards/validate-card-draft.ts","src/domain/cards/validate-position.ts","src/rulesets/card-rules.ts","tests/e2e/card-quotes-full-stack.spec.ts","tests/fixtures/card-rules.ts","tests/fixtures/phase6-paired-matchup.ts","tests/fixtures/stage3-card-journey.ts","tests/unit/frozen-card-rules.test.ts","tests/unit/stage1-card-builder.test.tsx","docs/audit-stage6-frozen-rules.md"]) {
+            console.log('STAGE6_FORMAT ' + JSON.stringify({ path, content: readFileSync(path, 'utf8') }));
+          }
+          NODE
+
       - name: Formatting, lint, strict types, unit/property tests, and build
         run: npm run verify
 

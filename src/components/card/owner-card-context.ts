@@ -1,7 +1,7 @@
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import type { RestoredCardDraft } from "@/components/card/card-draft-storage";
 import { validateDraftCard } from "@/domain/cards/validate-card-draft";
-import { pocSeason1Ruleset } from "@/rulesets/poc-season-1";
+import { resolveSeasonCardRules, type CardRules } from "@/rulesets/card-rules";
 
 // Only the authenticated owner's card and published markets cross this boundary.
 // Never add opponent draft/readiness data to this client-side progress contract.
@@ -13,10 +13,13 @@ export type OwnerCardContext = Pick<
   leagueSlug: string;
   mode: Stage1StateDto["league"]["mode"];
   simulatedNow: string | null;
+  rules: CardRules | null;
 };
 
 export function ownerCardContext(state: Stage1StateDto): OwnerCardContext {
+  const resolved = resolveSeasonCardRules(state.season?.rulesetSnapshot, state.league.mode);
   return {
+    rules: resolved.supported ? resolved.rules : null,
     leagueId: state.league.id,
     leagueSlug: state.league.slug,
     mode: state.league.mode,
@@ -50,6 +53,7 @@ export function ownerDraftState(
   if (cardIsSealed(context)) return "Sealed";
   if (context.ownerCard?.compliance === "INCOMPLETE") return "Incomplete";
   if (!drafts.length) return "Not started";
+  if (!context.rules) return "Draft";
   const validation = validateDraftCard({
     acceptedPositions: context.ownerCard?.positions ?? [],
     draftPositions: drafts,
@@ -58,7 +62,7 @@ export function ownerDraftState(
         .filter((market) => market.qualityStatus === "HEALTHY")
         .map((market) => ({ ...market, eventId: event.id })),
     ),
-    ruleset: pocSeason1Ruleset,
+    ruleset: context.rules,
   });
   return validation.accepted ? "Ready to review" : "Draft";
 }

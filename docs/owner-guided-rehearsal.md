@@ -13,12 +13,11 @@ postseason, champion, Week 18, history, and archive commands used by the real
 application. Rehearsal orchestration does not insert results, standings,
 winners, champions, or archives directly.
 
-## Proposed governing decision entry
+## Recorded governing amendment
 
-The repository does not contain the governing Decision Register supplied for
-this work, and its next identifier is therefore ambiguous. The pull request
-proposes this exact entry for the owner to place through the governing-source
-workflow without changing D-001 through D-007:
+The [current governing addendum](governance/2026-09-11-governing-addendum.md)
+records this already owner-approved, implemented decision without assigning an
+unevidenced numeric identifier or changing D-001 through D-007:
 
 > **Identifier:** Assign the next valid Decision Register identifier at
 > governing-source acceptance.

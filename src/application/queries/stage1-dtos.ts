@@ -69,6 +69,8 @@ export const stage1StateSchema = z.object({
     rosterLockedAt: z.string().nullable(),
     simulatedNow: z.string().nullable(),
     rulesetSnapshotId: z.uuid(),
+    // Missing context disables writes; historical receipt reads still work.
+    rulesetSnapshot: z.unknown().optional(),
   }),
   viewer: z.object({
     userId: z.uuid(),

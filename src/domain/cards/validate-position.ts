@@ -3,7 +3,8 @@ import {
   type CompletionOpportunity,
 } from "@/domain/cards/completion";
 import { formatCredits } from "@/domain/odds/american";
-import type { MarketType, SeasonRuleset } from "@/rulesets/schema";
+import type { MarketType } from "@/rulesets/schema";
+import type { CardRules } from "@/rulesets/card-rules";
 
 export type AcceptedCardPosition = {
   eventId: string;
@@ -22,6 +23,7 @@ export type EligibleCardOpportunity = Omit<
 };
 
 export type PositionValidationCode =
+  | "INELIGIBLE_MARKET"
   | "INVALID_STAKE"
   | "BELOW_MINIMUM"
   | "ABOVE_POSITION_CAP"
@@ -47,7 +49,7 @@ export type PositionValidation =
 
 export function maximumStakeForOdds(
   americanOdds: number,
-  ruleset: Pick<SeasonRuleset, "concentration">,
+  ruleset: Pick<CardRules, "concentration">,
 ): number {
   return americanOdds < ruleset.concentration.heavyFavoriteThresholdAmerican
     ? ruleset.concentration.heavyFavoriteSinglePositionCapCredits
@@ -64,7 +66,7 @@ export function validateProposedPosition(params: {
   acceptedPositions: readonly AcceptedCardPosition[];
   proposedPosition: ProposedCardPosition;
   eligibleOpportunities: readonly EligibleCardOpportunity[];
-  ruleset: SeasonRuleset;
+  ruleset: CardRules;
 }): PositionValidation {
   const { acceptedPositions, proposedPosition, ruleset } = params;
   const { weeklyAllocationCredits, minimumStakeCredits, maximumPositions } =
@@ -74,8 +76,11 @@ export function validateProposedPosition(params: {
     0,
   );
 
+  if (!ruleset.markets.eligible.includes(proposedPosition.marketType)) {
+    return { accepted: false, code: "INELIGIBLE_MARKET", message: "This market is not eligible under these season rules." };
+  }
   if (
-    !Number.isInteger(proposedPosition.stakeCredits) ||
+    !Number.isSafeInteger(proposedPosition.stakeCredits) ||
     proposedPosition.stakeCredits <= 0
   ) {
     return {
@@ -176,7 +181,7 @@ export function validateProposedPosition(params: {
 
 export function cardCompliance(
   positions: readonly AcceptedCardPosition[],
-  ruleset: SeasonRuleset,
+  ruleset: CardRules,
 ): "COMPLIANT" | "INCOMPLETE" {
   const acceptedCredits = positions.reduce(
     (total, position) => total + position.stakeCredits,
