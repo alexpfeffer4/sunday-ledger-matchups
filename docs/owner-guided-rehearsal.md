@@ -19,8 +19,7 @@ The [current governing addendum](governance/2026-09-11-governing-addendum.md)
 records this already owner-approved, implemented decision without assigning an
 unevidenced numeric identifier or changing D-001 through D-007:
 
-> **Identifier:** Assign the next valid Decision Register identifier at
-> governing-source acceptance.
+> **Identifier:** Named amendment; no later numeric identifier is evidenced.
 >
 > **Status:** Decided — owner-approved, narrowly scoped.
 >
@@ -73,7 +72,11 @@ Every mutation has a stable operation identity and a command receipt. The
 expected checkpoint is checked under lock. A repeated or response-lost command
 returns the original outcome and cannot run the checkpoint twice.
 
-## Post-merge activation plan
+## Recorded activation procedure
+
+The owner rehearsal has since been approved, implemented and exercised. The
+procedure below is retained for any separately approved future entitlement;
+it is not a pending activation request. No Stage 6 entitlement change is needed.
 
 Do not activate this from browser code and do not use a hard-coded account
 identifier. After separate owner approval:

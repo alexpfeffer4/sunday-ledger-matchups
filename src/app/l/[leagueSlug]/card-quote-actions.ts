@@ -34,13 +34,26 @@ export async function reviewLiveCardQuotes(
       state.ownerCard.remainingCredits === 0
     )
       throw new Error("Card not available");
-    const resolved = resolveSeasonCardRules(state.season.rulesetSnapshot, state.league.mode);
-    if (!resolved.supported) return { status: "error", message: resolved.message };
+    const resolved = resolveSeasonCardRules(
+      state.season.rulesetSnapshot,
+      state.league.mode,
+    );
+    if (!resolved.supported)
+      return { status: "error", message: resolved.message };
     const { card } = resolved.rules;
-    if (input.data.positions.length < card.minimumPositions || input.data.positions.length > card.maximumPositions ||
-        input.data.positions.some(p => p.stakeCredits < card.minimumStakeCredits) ||
-        input.data.positions.reduce((sum, p) => sum + p.stakeCredits, 0) !== card.weeklyAllocationCredits)
-      return { status: "error", message: "Review a complete card under these season rules first." };
+    if (
+      input.data.positions.length < card.minimumPositions ||
+      input.data.positions.length > card.maximumPositions ||
+      input.data.positions.some(
+        (p) => p.stakeCredits < card.minimumStakeCredits,
+      ) ||
+      input.data.positions.reduce((sum, p) => sum + p.stakeCredits, 0) !==
+        card.weeklyAllocationCredits
+    )
+      return {
+        status: "error",
+        message: "Review a complete card under these season rules first.",
+      };
     const refreshed = await refreshCardQuotes(state.league.id);
     if (refreshed === "DISABLED") return { status: "disabled" };
     const user = await createSupabaseServerClient();

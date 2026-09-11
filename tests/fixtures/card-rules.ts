@@ -4,7 +4,9 @@ import type { PersistedSeasonRuleset } from "@/rulesets/schema";
 
 export function frozenCardRulesFixture(
   mode: "LIVE" | "SIMULATION" = "LIVE",
-  canonical: PersistedSeasonRuleset = mode === "LIVE" ? pocSeason1Ruleset : simulationSeason1Ruleset,
+  canonical: PersistedSeasonRuleset = mode === "LIVE"
+    ? pocSeason1Ruleset
+    : simulationSeason1Ruleset,
 ) {
   return {
     rulesetId: canonical.id,

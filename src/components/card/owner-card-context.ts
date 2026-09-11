@@ -17,7 +17,10 @@ export type OwnerCardContext = Pick<
 };
 
 export function ownerCardContext(state: Stage1StateDto): OwnerCardContext {
-  const resolved = resolveSeasonCardRules(state.season?.rulesetSnapshot, state.league.mode);
+  const resolved = resolveSeasonCardRules(
+    state.season?.rulesetSnapshot,
+    state.league.mode,
+  );
   return {
     rules: resolved.supported ? resolved.rules : null,
     leagueId: state.league.id,

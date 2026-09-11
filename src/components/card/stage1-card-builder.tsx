@@ -137,13 +137,19 @@ export function Stage1CardBuilder({
   state: Stage1StateDto;
   initialReview?: boolean;
 }) {
-  const resolved = resolveSeasonCardRules(state.season?.rulesetSnapshot, state.league.mode);
-  if (!resolved.supported) return (
-    <div role="alert" className="border-border rounded-lg border p-5">
-      <p>{resolved.message}</p>
-      <Link href={`/l/${state.league.slug}/card`} className="underline">View your card</Link>
-    </div>
+  const resolved = resolveSeasonCardRules(
+    state.season?.rulesetSnapshot,
+    state.league.mode,
   );
+  if (!resolved.supported)
+    return (
+      <div role="alert" className="border-border rounded-lg border p-5">
+        <p>{resolved.message}</p>
+        <Link href={`/l/${state.league.slug}/card`} className="underline">
+          View your card
+        </Link>
+      </div>
+    );
   return (
     <Stage1CardBuilderEditor
       key={cardBuilderContextKey(state)}
@@ -278,18 +284,14 @@ function Stage1CardBuilderEditor({
     0,
   );
   const totalCredits = ownerCard.allocatedCredits + draftCredits;
-  const remainingCredits =
-    rules.card.weeklyAllocationCredits - totalCredits;
+  const remainingCredits = rules.card.weeklyAllocationCredits - totalCredits;
 
   function openEditor(
     event: SlateEvent,
     market: SlateMarket,
     existing: DraftSelection | undefined,
   ) {
-    const maximumStakeCredits = maximumStakeForOdds(
-      market.americanOdds,
-      rules,
-    );
+    const maximumStakeCredits = maximumStakeForOdds(market.americanOdds, rules);
     setQuoteReview(null);
     setEditor({
       eventId: event.id,
@@ -495,10 +497,7 @@ function Stage1CardBuilderEditor({
   function selectEditorOutcome(marketSnapshotId: string) {
     const market = snapshots.get(marketSnapshotId)?.market;
     if (!market || market.qualityStatus !== "HEALTHY") return;
-    const maximumStakeCredits = maximumStakeForOdds(
-      market.americanOdds,
-      rules,
-    );
+    const maximumStakeCredits = maximumStakeForOdds(market.americanOdds, rules);
     setEditor((current) => {
       if (!current) return current;
       const currentStake = Number(current.stakeCredits);

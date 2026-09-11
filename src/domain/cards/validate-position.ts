@@ -77,7 +77,11 @@ export function validateProposedPosition(params: {
   );
 
   if (!ruleset.markets.eligible.includes(proposedPosition.marketType)) {
-    return { accepted: false, code: "INELIGIBLE_MARKET", message: "This market is not eligible under these season rules." };
+    return {
+      accepted: false,
+      code: "INELIGIBLE_MARKET",
+      message: "This market is not eligible under these season rules.",
+    };
   }
   if (
     !Number.isSafeInteger(proposedPosition.stakeCredits) ||

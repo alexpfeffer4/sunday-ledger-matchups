@@ -17,6 +17,7 @@ import {
   cardDraftStorageKey,
   ownerCardContext,
 } from "@/components/card/owner-card-context";
+import { frozenCardRulesFixture } from "../fixtures/card-rules";
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
 import { reviewLiveCardQuotes } from "@/app/l/[leagueSlug]/card-quote-actions";
 import { PairedMatchupView } from "@/components/matchup/paired-matchup-view";
@@ -226,6 +227,7 @@ describe("weekly card journey", () => {
   it("does not call the provider when navigating directly to review and requires an explicit fresh check", () => {
     const { state } = store();
     state.league.mode = "LIVE";
+    state.season.rulesetSnapshot = frozenCardRulesFixture("LIVE");
     render(<Stage1CardBuilder state={state} initialReview />);
     expect(reviewLiveCardQuotes).not.toHaveBeenCalled();
     expect(

@@ -493,11 +493,26 @@ describe("authenticated card editor", () => {
 it("blocks unsupported season rules without consuming a saved draft", () => {
   const key = `sunday-ledger:card-draft:v1:${leagueId}:${weekId}:${cardId}`;
   localStorage.setItem(key, "saved-draft-sentinel");
-  render(<Stage1CardBuilder state={{ ...state, season: {
-    ...state.season, rulesetSnapshot: { ...frozenCardRulesFixture(), rulesetVersion: "9.0" },
-  } }} />);
-  expect(screen.getByRole("alert")).toHaveTextContent("season rules are unavailable or unsupported");
-  expect(screen.queryByRole("button", { name: /seal card/i })).not.toBeInTheDocument();
+  render(
+    <Stage1CardBuilder
+      state={{
+        ...state,
+        season: {
+          ...state.season,
+          rulesetSnapshot: {
+            ...frozenCardRulesFixture(),
+            rulesetVersion: "9.0",
+          },
+        },
+      }}
+    />,
+  );
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "season rules are unavailable or unsupported",
+  );
+  expect(
+    screen.queryByRole("button", { name: /seal card/i }),
+  ).not.toBeInTheDocument();
   expect(localStorage.getItem(key)).toBe("saved-draft-sentinel");
   expect(reviewLiveCardQuotes).not.toHaveBeenCalled();
 });

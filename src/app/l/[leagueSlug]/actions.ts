@@ -1649,8 +1649,12 @@ export async function acceptStage1CardAction(
     return mutationError("This week’s card is not open.");
   }
 
-  const resolvedRules = resolveSeasonCardRules(state.season.rulesetSnapshot, state.league.mode);
-  if (!resolvedRules.supported) return { status: "error", message: resolvedRules.message };
+  const resolvedRules = resolveSeasonCardRules(
+    state.season.rulesetSnapshot,
+    state.league.mode,
+  );
+  if (!resolvedRules.supported)
+    return { status: "error", message: resolvedRules.message };
   const rules = resolvedRules.rules;
   const rehearsal = await getOwnerRehearsalForLeague(context.data.leagueSlug);
   if (rehearsal?.quoteReviewPending) {
