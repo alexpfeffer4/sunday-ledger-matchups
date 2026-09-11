@@ -16,7 +16,10 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["iPhone 13"] } },
   ],
   webServer: {
-    command: "npm run dev -- --hostname 127.0.0.1",
+    command:
+      process.env.PLAYWRIGHT_PRODUCTION === "1"
+        ? "npm run start -- --hostname 127.0.0.1"
+        : "npm run dev -- --hostname 127.0.0.1",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     url: "http://127.0.0.1:3000",

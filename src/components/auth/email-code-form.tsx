@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   initialEmailCodeState,
   type EmailCodeAction,
 } from "@/app/(auth)/auth/state";
+import { emailCodeRequestError } from "@/components/auth/email-code-request-error";
 
 export function EmailCodeForm({
   email,
@@ -13,8 +14,22 @@ export function EmailCodeForm({
   email: string;
   verifyCodeAction: EmailCodeAction;
 }) {
+  const [code, setCode] = useState("");
   const [state, action, pending] = useActionState(
-    verifyCodeAction,
+    async (previous: typeof initialEmailCodeState, data: FormData) => {
+      // Safari autofill can update the input before an onChange event. Keep
+      // the submitted code in memory if the request fails and React resets
+      // the form. Never automatically replay a one-time credential.
+      const submitted = data.get("token");
+      if (typeof submitted === "string") setCode(submitted);
+      try {
+        return await verifyCodeAction(previous, data);
+      } catch (error) {
+        // A transport/action failure occurs outside the server's own catch.
+        // Return an inline error instead of destroying the requesting form.
+        return emailCodeRequestError(error);
+      }
+    },
     initialEmailCodeState,
   );
   return (
@@ -34,6 +49,8 @@ export function EmailCodeForm({
         <input
           id="email-code"
           name="token"
+          value={code}
+          onChange={(event) => setCode(event.target.value)}
           type="text"
           inputMode="numeric"
           autoComplete="one-time-code"
@@ -66,6 +83,15 @@ export function EmailCodeForm({
         >
           {state.message}
         </p>
+      ) : null}
+      {state.requestFailed ? (
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="text-registry min-h-11 rounded-lg px-3 text-sm font-semibold underline"
+        >
+          Reload to request a new email
+        </button>
       ) : null}
     </form>
   );
