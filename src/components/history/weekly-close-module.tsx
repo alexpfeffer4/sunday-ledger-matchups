@@ -1,3 +1,4 @@
+import { easternTime } from "@/application/queries/score-freshness";
 import Link from "next/link";
 import type {
   CorrectionFact,
@@ -11,14 +12,6 @@ import { StatusBadge } from "@/components/ui/status-badge";
 
 function score(value: number): string {
   return formatCenticredits(BigInt(value), true);
-}
-
-function timeLabel(value: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "America/New_York",
-  }).format(new Date(value));
 }
 
 function CorrectionDetails({
@@ -45,13 +38,13 @@ function CorrectionDetails({
         <p>
           Event result: {correction.beforeEvent} → {correction.afterEvent}. Your
           matchup score:{" "}
-          {beforeSelf === null ? "not stored" : score(beforeSelf)} →{" "}
+          {beforeSelf === null ? "unavailable" : score(beforeSelf)} →{" "}
           {score(afterSelf)}.
         </p>
         <p>
           {correction.actorName} recorded this correction on{" "}
           <time dateTime={correction.correctedAt}>
-            {timeLabel(correction.correctedAt)} ET
+            {easternTime(correction.correctedAt)}
           </time>
           . Reason: {correction.reason}
         </p>
@@ -64,10 +57,12 @@ export function WeeklyCloseModule({
   bridge,
   cutline,
   leagueSlug,
+  presentation = "standalone",
 }: {
   bridge: RecordBridgeFact;
   cutline: PlayoffCutlineFact | null;
   leagueSlug: string;
+  presentation?: "standalone" | "supporting";
 }) {
   const { matchup } = bridge;
   const resultLabel = matchup.corrected
@@ -80,7 +75,7 @@ export function WeeklyCloseModule({
   const resultTone = matchup.corrected
     ? "corrected"
     : matchup.status === "FINAL"
-      ? "positive"
+      ? "sealed"
       : "pending";
   const stateSentence =
     matchup.self.participation === "EXHIBITION_MISS"
@@ -94,73 +89,71 @@ export function WeeklyCloseModule({
   return (
     <section
       aria-labelledby="weekly-close-heading"
-      className="border-boundary bg-subtle rounded-xl border p-5 sm:p-6"
+      className={
+        presentation === "supporting"
+          ? "border-boundary border-b pb-5"
+          : "border-boundary bg-subtle rounded-xl border p-5 sm:p-6"
+      }
       data-testid="weekly-close-module"
     >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-            Weekly close · {matchupScopeLabel(matchup)}
-          </p>
-          <h2 className="mt-1 text-xl font-bold" id="weekly-close-heading">
-            Week {matchup.nflWeek} result
-          </h2>
-          <p className="text-graphite mt-2 text-sm leading-6">
-            {stateSentence}
-          </p>
-        </div>
-        <StatusBadge tone={resultTone}>{resultLabel}</StatusBadge>
-      </div>
+      {presentation === "standalone" ? (
+        <>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
+                Weekly close · {matchupScopeLabel(matchup)}
+              </p>
+              <h2 className="mt-1 text-xl font-bold" id="weekly-close-heading">
+                Week {matchup.nflWeek} result
+              </h2>
+              <p className="text-graphite mt-2 text-sm leading-6">
+                {stateSentence}
+              </p>
+            </div>
+            <StatusBadge tone={resultTone}>{resultLabel}</StatusBadge>
+          </div>
 
-      <div
-        aria-label={`${matchup.self.name} ${score(matchup.self.scoreCenticredits)} credits, ${matchup.opponent.name} ${score(matchup.opponent.scoreCenticredits)} credits`}
-        className="border-boundary bg-surface mt-5 grid gap-3 rounded-xl border p-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center"
-      >
-        <div>
-          <p className="font-bold">{matchup.self.name}</p>
-          <p className="mt-1 font-mono text-2xl font-bold">
-            {score(matchup.self.scoreCenticredits)}
-          </p>
-        </div>
-        <span aria-hidden="true" className="text-muted hidden sm:block">
-          —
-        </span>
-        <div className="sm:text-right">
-          <p className="font-bold">{matchup.opponent.name}</p>
-          <p className="mt-1 font-mono text-2xl font-bold">
-            {score(matchup.opponent.scoreCenticredits)}
-          </p>
-        </div>
-      </div>
+          <div
+            aria-label={`${matchup.self.name} ${score(matchup.self.scoreCenticredits)} credits, ${matchup.opponent.name} ${score(matchup.opponent.scoreCenticredits)} credits`}
+            className="border-boundary bg-surface mt-5 grid gap-3 rounded-xl border p-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center"
+          >
+            <div>
+              <p className="font-bold break-words">{matchup.self.name}</p>
+              <p className="mt-1 font-mono text-2xl font-bold">
+                {score(matchup.self.scoreCenticredits)}
+              </p>
+            </div>
+            <span aria-hidden="true" className="text-muted hidden sm:block">
+              —
+            </span>
+            <div className="sm:text-right">
+              <p className="font-bold break-words">{matchup.opponent.name}</p>
+              <p className="mt-1 font-mono text-2xl font-bold">
+                {score(matchup.opponent.scoreCenticredits)}
+              </p>
+            </div>
+          </div>
+        </>
+      ) : (
+        <h2 id="weekly-close-heading" className="sr-only">
+          Week {matchup.nflWeek} result details
+        </h2>
+      )}
 
-      <p className="text-graphite mt-3 text-xs leading-5">
+      <RecordBridge bridge={bridge} cutline={cutline} />
+
+      <p className="text-graphite mt-3 text-sm leading-6">
         {matchup.status === "PROVISIONAL"
           ? bridge.correctionWindowClosesAt
-            ? `Correction window closes ${timeLabel(bridge.correctionWindowClosesAt)} ET.`
-            : "This result remains provisional; no correction deadline is stored."
+            ? `Correction window closes ${easternTime(bridge.correctionWindowClosesAt)}.`
+            : "This result remains provisional; the correction deadline is unavailable."
           : bridge.correctionWindowClosesAt
-            ? `Correction window closed ${timeLabel(bridge.correctionWindowClosesAt)} ET.`
+            ? `Correction window closed ${easternTime(bridge.correctionWindowClosesAt)}.`
             : "This matchup result is final."}
         {matchup.nflWeek === 17 && matchup.scope === "PLAYOFF"
-          ? " This receipt does not by itself assert champion or archive finality."
+          ? " Champion confirmation and the complete season archive are separate steps."
           : ""}
       </p>
-
-      {matchup.corrections.length > 0 ? (
-        <div className="mt-4 space-y-3">
-          {matchup.corrections.map((correction) => (
-            <CorrectionDetails
-              bridge={bridge}
-              correction={correction}
-              key={correction.id}
-            />
-          ))}
-        </div>
-      ) : null}
-
-      <div className="mt-6">
-        <RecordBridge bridge={bridge} cutline={cutline} />
-      </div>
 
       <div className="border-boundary mt-6 border-t pt-5">
         {bridge.nextOpponent ? (
@@ -173,7 +166,7 @@ export function WeeklyCloseModule({
           </Link>
         ) : (
           <span className="text-muted inline-flex min-h-11 items-center text-sm">
-            Your next matchup will appear here after it is published.
+            No later matchup has been published yet.
           </span>
         )}
         <nav
@@ -194,6 +187,17 @@ export function WeeklyCloseModule({
           </Link>
         </nav>
       </div>
+      {matchup.corrections.length > 0 ? (
+        <div className="mt-4 space-y-3">
+          {matchup.corrections.map((correction) => (
+            <CorrectionDetails
+              bridge={bridge}
+              correction={correction}
+              key={correction.id}
+            />
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }

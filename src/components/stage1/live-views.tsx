@@ -1,3 +1,5 @@
+import { competitionLabel } from "@/application/presentation/competition-label";
+import { MatchupStateRefresh } from "@/components/matchup/matchup-state-refresh";
 import { ownerCardContext } from "@/components/card/owner-card-context";
 import { OwnerCardProgress } from "@/components/card/owner-card-progress";
 import { PickReturn, ReturnExplanation } from "@/components/card/pick-return";
@@ -60,31 +62,6 @@ function formatScore(value: number): string {
   return formatCenticredits(BigInt(value), true);
 }
 
-function competitionLabel({
-  lifecycle,
-  postseasonRole,
-  scope,
-  week,
-}: {
-  lifecycle: Stage1StateDto["league"]["lifecycle"];
-  postseasonRole?:
-    "CHAMPIONSHIP" | "THIRD_PLACE" | "PLACEMENT" | "EXHIBITION" | null;
-  scope: "REGULAR" | "PLAYOFF" | "PLACEMENT" | "EXHIBITION";
-  week: number;
-}): string {
-  if (week === 18 || scope === "EXHIBITION") return "Week 18 exhibition";
-  if (postseasonRole === "CHAMPIONSHIP") {
-    return lifecycle === "CHAMPION_FINAL"
-      ? "Championship · champion final"
-      : "Championship";
-  }
-  if (postseasonRole === "THIRD_PLACE") return "Third place";
-  if (postseasonRole === "PLACEMENT" || scope === "PLACEMENT") {
-    return "Placement";
-  }
-  return scope === "PLAYOFF" ? "Playoff" : "Regular season";
-}
-
 function weekStatus(state: Stage1StateDto): string {
   if (!state.week) return "Formation";
   if (state.slate.some((event) => event.state === "CORRECTED")) {
@@ -127,7 +104,7 @@ function liveStatus(state: Stage1StateDto): ReactNode {
   if (state.week.state === "PLANNED")
     return <StatusBadge tone="sealed">Slate published</StatusBadge>;
   if (state.week.state === "FINAL")
-    return <StatusBadge tone="positive">Final</StatusBadge>;
+    return <StatusBadge tone="sealed">Final</StatusBadge>;
   if (state.week.state === "PROVISIONAL")
     return <StatusBadge tone="pending">Provisional</StatusBadge>;
   if (state.week.state === "OPEN")
@@ -167,23 +144,24 @@ function FormationPanel({ state }: { state: Stage1StateDto }) {
 
 export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
   if (
-    state.week &&
-    state.league.lifecycle === "PLAYOFFS" &&
-    (!state.matchup || !state.ownerCard)
+    !["DRAFT", "ROSTER_LOCKED"].includes(state.league.lifecycle) &&
+    (!state.week || !state.matchup || !state.ownerCard)
   ) {
     return (
       <PageFrame
-        eyebrow={`${state.league.name} · Week ${state.week.nflWeek} ${state.week.scope.toLowerCase()}`}
-        title="No matchup card this round"
-        description="You are not scheduled to play this round. You may have a bye or be out of the championship bracket."
+        eyebrow={`${state.league.name} · ${state.week ? `Week ${state.week.nflWeek}` : "Season in progress"}`}
+        title="Your matchup is unavailable"
+        description="We could not load your expected matchup or card. This does not mean you have a bye or are out of the playoffs."
         aside={liveStatus(state)}
       >
         <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">
-          <h2 className="text-lg font-bold">The round still runs normally</h2>
+          <h2 className="text-lg font-bold">Check your matchup again</h2>
           <p className="text-graphite mt-2 max-w-2xl text-sm leading-6">
-            You do not need to build a card this round. Follow the bracket for
-            current matchups and advancement.
+            Refresh to try again. If your matchup is still unavailable, ask your
+            commissioner to check the published round. Your accepted picks and
+            receipts are unchanged.
           </p>
+          <MatchupStateRefresh />
           <Link
             className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
             href={`/l/${state.league.slug}/playoffs`}
@@ -440,7 +418,7 @@ export function Stage1SlateView({
                     {event.awayTeam} at {event.homeTeam}
                   </h2>
                 </div>
-                <StatusBadge tone="positive">6 outcomes stored</StatusBadge>
+                <StatusBadge tone="positive">6 available picks</StatusBadge>
               </div>
               <ul className="border-boundary mt-4 grid gap-2 border-t pt-4 sm:grid-cols-2 lg:grid-cols-3">
                 {event.markets.map((market) => (
@@ -464,14 +442,13 @@ export function Stage1SlateView({
     );
   }
   if (
-    state.week &&
-    state.league.lifecycle === "PLAYOFFS" &&
+    !["DRAFT", "ROSTER_LOCKED"].includes(state.league.lifecycle) &&
     state.slate.length > 0 &&
     !state.ownerCard
   ) {
     return (
       <PageFrame
-        eyebrow={`${state.league.name} · Week ${state.week.nflWeek} ${state.week.scope.toLowerCase()}`}
+        eyebrow={`${state.league.name} · ${state.week ? `Week ${state.week.nflWeek}` : "Season in progress"}`}
         title="Make picks"
         description={`You do not have a card this round, but you can still view the selected games and card-lock time.`}
         aside={liveStatus(state)}
@@ -524,7 +501,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
   if (state.week && state.league.lifecycle === "PLAYOFFS" && !state.ownerCard) {
     return (
       <PageFrame
-        eyebrow={`${state.league.name} · Week ${state.week.nflWeek} ${state.week.scope.toLowerCase()}`}
+        eyebrow={`${state.league.name} · ${state.week ? `Week ${state.week.nflWeek}` : "Season in progress"}`}
         title="No card assigned this round"
         description="Only members scheduled to play this round receive a card."
         aside={liveStatus(state)}
@@ -933,7 +910,7 @@ export function Stage1CommissionerView({
               <dt className="text-muted">Week</dt>
               <dd className="font-semibold sm:mt-1">
                 {state.week
-                  ? `${state.week.nflWeek} · ${state.week.state}`
+                  ? `${state.week.nflWeek} · ${weekStatus(state)}`
                   : "Formation"}
               </dd>
             </div>

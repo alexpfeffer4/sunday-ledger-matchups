@@ -29,13 +29,15 @@ function MemberScore({
   member,
   opponent = false,
   pregame = false,
+  completed = false,
 }: {
   member: PairedMatchupDto["self"];
   opponent?: boolean;
   pregame?: boolean;
+  completed?: boolean;
 }) {
   return (
-    <div className={opponent ? "text-right" : "text-left"}>
+    <div className={`matchup-member ${opponent ? "text-right" : "text-left"}`}>
       <p
         className={`text-xs font-bold tracking-[0.08em] uppercase ${opponent ? "text-copper" : "text-registry"}`}
       >
@@ -47,7 +49,7 @@ function MemberScore({
       <p className="text-muted mt-1 text-xs sm:text-sm">
         {member.record}
         {member.seed
-          ? ` · No. ${member.seed} ${member.seedKind === "PLAYOFF" ? "playoff seed" : "seed"}`
+          ? ` · No. ${member.seed} ${member.seedKind === "PLAYOFF" ? "playoff seed" : "in standings"}`
           : ""}
       </p>
       {!pregame ? (
@@ -58,9 +60,8 @@ function MemberScore({
           {formatScore(member.scoreCenticredits)}
         </p>
       ) : null}
-      {!pregame ? (
+      {!pregame && !completed ? (
         <p className="text-muted mt-2 text-xs font-semibold">
-          {member.decision ? `${member.decision} · ` : ""}
           {member.cardStatus}
         </p>
       ) : null}
@@ -77,28 +78,40 @@ export function PairedMatchupHeader({
   refreshControl: ReactNode;
   cardProgress?: ReactNode;
 }) {
+  const completed =
+    matchup.resultStatus === "FINAL" || matchup.phase === "FINAL";
   return (
     <section
       aria-labelledby="paired-matchup-heading"
-      className="border-boundary bg-surface rounded-xl border p-4 shadow-[var(--shadow-card)] sm:p-6"
+      className="paired-matchup-card border-boundary bg-surface rounded-xl border p-4 shadow-[var(--shadow-card)] sm:p-6"
     >
       <div className="border-boundary flex flex-wrap items-center justify-between gap-3 border-b pb-4">
         <div>
           <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
-            Week {matchup.week.nflWeek} · {matchup.week.scope.toLowerCase()}
+            Week {matchup.week.nflWeek} ·{" "}
+            {matchup.week.competition ??
+              (matchup.week.scope === "REGULAR"
+                ? "Regular season"
+                : matchup.week.scope.toLowerCase())}
           </p>
           <h2 className="sr-only" id="paired-matchup-heading">
             {matchup.self.displayName} versus {matchup.opponent.displayName}
           </h2>
         </div>
         <StatusBadge tone={phaseTones[matchup.phase]}>
-          {matchup.phaseLabel}
+          {matchup.phase === "CORRECTED" && matchup.resultStatus
+            ? completed
+              ? "Corrected final"
+              : "Corrected provisional"
+            : matchup.phaseLabel}
         </StatusBadge>
       </div>
 
       {matchup.self.decision ? (
         <div className="mt-5">
-          <h3 className="text-2xl font-bold">
+          <h3
+            className={`text-2xl font-bold ${matchup.self.decision === "WIN" ? "text-positive" : matchup.self.decision === "LOSS" ? "text-negative" : "text-graphite"}`}
+          >
             {matchup.resultStatus === "PROVISIONAL" ? "Provisional: " : ""}
             {matchup.self.decision === "WIN"
               ? "You won"
@@ -117,14 +130,15 @@ export function PairedMatchupHeader({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 py-5 sm:gap-8 sm:py-7">
+      <div className="paired-scores grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 py-5 sm:gap-8 sm:py-7">
         <MemberScore
           member={matchup.self}
           pregame={matchup.phase === "PREGAME"}
+          completed={completed}
         />
         <p
           aria-hidden="true"
-          className="text-muted pt-14 text-xs font-bold tracking-[0.12em] uppercase"
+          className="paired-vs text-muted pt-14 text-xs font-bold tracking-[0.12em] uppercase"
         >
           vs
         </p>
@@ -132,12 +146,13 @@ export function PairedMatchupHeader({
           member={matchup.opponent}
           opponent
           pregame={matchup.phase === "PREGAME"}
+          completed={completed}
         />
       </div>
 
       {matchup.phase === "PREGAME" ? (
         cardProgress
-      ) : (
+      ) : !completed ? (
         <div className="border-boundary flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold">
@@ -170,7 +185,7 @@ export function PairedMatchupHeader({
           </span>
           {refreshControl}
         </div>
-      )}
+      ) : null}
     </section>
   );
 }

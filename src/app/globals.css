@@ -179,6 +179,104 @@ a {
   color-scheme: dark;
 }
 
+/* Reflow depends on usable text width, including the reader's text size. */
+.paired-matchup-card,
+.standings-mobile,
+.record-bridge,
+.league-scoreboard,
+.position-ledger-item {
+  container-type: inline-size;
+}
+
+@container (max-width: 16em) {
+  .paired-scores {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+  .paired-scores .matchup-member {
+    text-align: left;
+  }
+  .paired-scores [aria-label] {
+    font-size: clamp(1rem, 10cqw, 2.5rem);
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .paired-vs {
+    padding-top: 0;
+  }
+  .standings-mobile-head {
+    display: none;
+  }
+  .standings-mobile-row {
+    grid-template-columns: 2ch minmax(0, 1fr);
+  }
+  .standings-member {
+    grid-column: 2;
+  }
+  .standings-metric {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.25rem 0.5rem;
+    margin-top: 0.5rem;
+    text-align: left;
+  }
+  .standings-metric-label {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    clip-path: none;
+    white-space: normal;
+    font-family: var(--font-geist-sans), sans-serif;
+    color: var(--ink-muted);
+  }
+  .standings-value {
+    white-space: nowrap;
+  }
+  .standings-eligibility {
+    grid-column: 2;
+  }
+  .record-bridge-facts > div,
+  .record-bridge-facts dd {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .record-bridge-facts dd > span:not([aria-hidden]) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .record-bridge-facts [aria-hidden] {
+    display: none;
+  }
+  .position-ledger-top {
+    flex-direction: column;
+  }
+  .position-ledger-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .position-ledger-facts > div {
+    text-align: left;
+  }
+  .scoreboard-facts > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  .scoreboard-facts dt {
+    flex-basis: 100%;
+  }
+  .scoreboard-facts dd {
+    white-space: nowrap;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

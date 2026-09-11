@@ -3,7 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useTransition } from "react";
 
-export function MatchupStateRefresh({ active = false }: { active?: boolean }) {
+export function MatchupStateRefresh({
+  active = false,
+  label = "Refresh matchup",
+}: {
+  active?: boolean;
+  label?: string;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -25,7 +31,7 @@ export function MatchupStateRefresh({ active = false }: { active?: boolean }) {
       }}
       type="button"
     >
-      {isPending ? "Checking updates…" : "Refresh matchup"}
+      {isPending ? "Checking for updates…" : label}
     </button>
   );
 }
