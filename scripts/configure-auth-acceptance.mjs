@@ -26,6 +26,7 @@ replaceSetting(
   '["http://127.0.0.1:3000/**", "http://localhost:3000/**"]',
 );
 replaceSetting("auth.email", "enable_confirmations", "true");
+replaceSetting("auth.email", "max_frequency", '"1m"');
 for (const name of ["confirmation", "magic_link", "recovery"]) {
   // supabase init may contain commented template examples, but no active ones.
   if (new RegExp(`^\\[auth\\.email\\.template\\.${name}\\]`, "m").test(config))

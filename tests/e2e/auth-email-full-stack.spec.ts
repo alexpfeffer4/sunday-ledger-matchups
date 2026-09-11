@@ -114,6 +114,17 @@ async function confirm(page: Page, link: URL) {
   ).toBeVisible();
   await page.getByRole("button", { name: "Confirm and continue" }).click();
 }
+// A failed navigation assertion must not print an email credential URL.
+async function expectLocation(page: Page, pattern: RegExp) {
+  await expect
+    .poll(() => {
+      const location = new URL(page.url());
+      for (const key of ["token_hash", "code", "sb_flow_id"])
+        location.searchParams.delete(key);
+      return `${location.pathname}${location.search}`;
+    })
+    .toMatch(pattern);
+}
 async function setup(page: Page, username: string, password: string) {
   await page.getByLabel("Username", { exact: true }).fill(username);
   await page.getByLabel("Password", { exact: true }).fill(password);
@@ -191,6 +202,11 @@ test("captured signup email preserves invite, session, profile retry and interru
   await requestSignup(page, email, next);
   const link = await capturedLink(request, email, "confirmation");
   expect(link.searchParams.get("next")).toBe(next);
+  const throttled = await client(key!).auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true },
+  });
+  expect(throttled.error?.code).toBe("over_email_send_rate_limit");
   // Plain scanner traffic sees a confirmation page, never consumes the hash.
   expect((await request.get(link.toString())).status()).toBe(200);
   expect((await request.head(link.toString())).status()).toBe(200);
@@ -199,7 +215,7 @@ test("captured signup email preserves invite, session, profile retry and interru
     JSON.stringify({ endpoint: "ensure_profile", remaining: 2 }),
   );
   await confirm(page, link);
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "Your email is confirmed and you are signed in",
   );
   expect(
@@ -212,23 +228,23 @@ test("captured signup email preserves invite, session, profile retry and interru
   await expect(page.getByLabel("Username", { exact: true })).toBeVisible();
   // Leave and resume setup without consuming another email.
   await page.goto(`/auth/create-account?next=${encodeURIComponent(next)}`);
-  await expect(page).toHaveURL(/\/account\/setup/);
+  await expectLocation(page, /\/account\/setup/);
   await page.reload();
   writeFileSync(
     failureFile!,
     JSON.stringify({ endpoint: "update_profile_display_name", remaining: 1 }),
   );
   await setup(page, "ChosenMember", "Disposable-Member-48!");
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "username could not be saved",
   );
   await expect(page.getByLabel("Username", { exact: true })).toHaveValue(
     "ChosenMember",
   );
   await setup(page, "ChosenMember", "Disposable-Member-48!");
-  await expect(page).toHaveURL(new RegExp(`/join/${fixture.token}$`));
+  await expectLocation(page, new RegExp(`/join/${fixture.token}$`));
   await page.getByRole("button", { name: /Join/ }).click();
-  await expect(page).toHaveURL(new RegExp(`/l/${fixture.slug}/matchup$`));
+  await expectLocation(page, new RegExp(`/l/${fixture.slug}/matchup$`));
   const member = client(key!);
   expect(
     (
@@ -244,16 +260,18 @@ test("captured signup email preserves invite, session, profile retry and interru
   const replayContext = await browser.newContext();
   const replay = await replayContext.newPage();
   await confirm(replay, link);
-  await expect(replay.getByRole("alert")).toContainText(
+  await expect(replay.getByRole("main").getByRole("alert")).toContainText(
     "expired or already been used",
   );
   expect(new URL(replay.url()).searchParams.get("next")).toBe(next);
   await replayContext.close();
   // Same-browser repeat keeps the successful session and a usable setup path.
   await confirm(page, link);
-  await expect(page).toHaveURL(/\/account\/setup/);
+  await expectLocation(page, new RegExp(`/join/${fixture.token}$`));
+  // A manual retry of an already-saved setup may keep the same password.
+  await page.goto(`/account/setup?next=${encodeURIComponent(next)}`);
   await setup(page, "ChosenMember", "Disposable-Member-48!");
-  await expect(page).toHaveURL(new RegExp(`/join/${fixture.token}$`));
+  await expectLocation(page, new RegExp(`/join/${fixture.token}$`));
 });
 
 test("captured token-hash emails work in another browser and existing-account re-entry", async ({
@@ -268,9 +286,12 @@ test("captured token-hash emails work in another browser and existing-account re
   const other = await browser.newContext();
   const otherPage = await other.newPage();
   await confirm(otherPage, link);
-  await expect(otherPage).toHaveURL(/\/account\/setup/);
+  await expectLocation(otherPage, /\/account\/setup/);
   await setup(otherPage, "CrossBrowser", "Disposable-CrossBrowser-48!");
-  await expect(otherPage).toHaveURL(/\/leagues\?from=email$/);
+  await expectLocation(otherPage, /\/leagues\?from=email$/);
+  // The practice CTA must not force a completed account through setup again.
+  await otherPage.goto(`/auth/create-account?next=${encodeURIComponent(next)}`);
+  await expectLocation(otherPage, /\/leagues\?from=email$/);
   await other.close();
   // A returning email link must skip setup and never create another identity.
   await page.goto(`/auth/sign-in?next=${encodeURIComponent(next)}`);
@@ -284,7 +305,7 @@ test("captured token-hash emails work in another browser and existing-account re
   await expect(page.getByRole("status")).toContainText("Check your email");
   const returning = await capturedLink(request, email, "magic_link");
   await confirm(page, returning);
-  await expect(page).toHaveURL(/\/leagues\?from=email$/);
+  await expectLocation(page, /\/leagues\?from=email$/);
 });
 
 test("legacy PKCE distinguishes a missing browser verifier and still works in requesting browser", async ({
@@ -297,7 +318,7 @@ test("legacy PKCE distinguishes a missing browser verifier and still works in re
   const link = await capturedLink(request, email, "confirmation");
   const provider = new URL("/auth/v1/verify", url);
   provider.searchParams.set("token", link.searchParams.get("token_hash")!);
-  provider.searchParams.set("type", "email");
+  provider.searchParams.set("type", "signup");
   const redirectTo = new URL(link);
   redirectTo.searchParams.delete("token_hash");
   redirectTo.searchParams.delete("type");
@@ -311,11 +332,13 @@ test("legacy PKCE distinguishes a missing browser verifier and still works in re
   const other = await browser.newContext();
   const otherPage = await other.newPage();
   await confirm(otherPage, callbackURL);
-  await expect(otherPage).toHaveURL(/error=browser_mismatch/);
-  await expect(otherPage.getByRole("alert")).toContainText("browser session");
+  await expectLocation(otherPage, /error=browser_mismatch/);
+  await expect(otherPage.getByRole("main").getByRole("alert")).toContainText(
+    "browser session",
+  );
   await other.close();
   await confirm(page, callbackURL);
-  await expect(page).toHaveURL(/\/account\/setup/);
+  await expectLocation(page, /\/account\/setup/);
 });
 
 test("expired email fails validation and recovery email retains its destination", async ({
@@ -330,8 +353,8 @@ test("expired email fails validation and recovery email retains its destination"
     `update auth.users set confirmation_sent_at=now()-interval '2 days' where email='${email}';`,
   );
   await confirm(page, link);
-  await expect(page).toHaveURL(/\/auth\/create-account\?error=invalid_link/);
-  await expect(page.getByRole("alert")).toContainText(
+  await expectLocation(page, /\/auth\/create-account\?error=invalid_link/);
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "expired or already been used",
   );
   expect(new URL(page.url()).searchParams.get("next")).toBe(next);
@@ -352,13 +375,13 @@ test("expired email fails validation and recovery email retains its destination"
   await page.getByLabel("Email address").fill(recoveryEmail);
   await page.getByRole("button", { name: "Email recovery link" }).click();
   await expect(page.getByRole("status")).toContainText("newest recovery link");
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: /Resend available in/ }),
   ).toBeDisabled();
   const recoveryLink = await capturedLink(request, recoveryEmail, "recovery");
   await confirm(page, recoveryLink);
-  await expect(page).toHaveURL(/\/account\/recover-password/);
+  await expectLocation(page, /\/account\/recover-password/);
   await page
     .getByLabel("New password", { exact: true })
     .fill("Disposable-New-48!");
@@ -368,7 +391,7 @@ test("expired email fails validation and recovery email retains its destination"
   await page
     .getByRole("button", { name: "Save password and continue" })
     .click();
-  await expect(page).toHaveURL(new RegExp(`${next}$`));
+  await expectLocation(page, new RegExp(`${next}$`));
   expect(
     (
       await client(key!).auth.signInWithPassword({

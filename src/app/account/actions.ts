@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
+import { pendingAccountSetupCookie } from "@/adapters/supabase/account-setup";
 import type {
   AccountSetupState,
   UsernameActionState,
@@ -94,6 +96,7 @@ export async function completeAccountSetup(
         },
       };
     }
+    (await cookies()).delete(pendingAccountSetupCookie);
   } catch {
     return {
       status: "error",

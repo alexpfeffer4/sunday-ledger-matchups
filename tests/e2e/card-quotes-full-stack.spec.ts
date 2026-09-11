@@ -265,11 +265,14 @@ test("members refresh, review, seal, and recover through real Auth and database"
   await setupPage
     .getByRole("button", { name: "Lock 4-member roster & start season" })
     .click();
-  await expect(
-    setupPage.getByRole("button", {
-      name: "Lock 4-member roster & start season",
-    }),
-  ).toHaveCount(0);
+  await expect
+    .poll(async () => {
+      const current = await rpc(members[0]!, "get_stage1_state", {
+        p_league_slug: slug,
+      });
+      return current.week.state;
+    })
+    .toBe("OPEN");
   const opened = await rpc(members[0]!, "get_stage1_state", {
     p_league_slug: slug,
   });

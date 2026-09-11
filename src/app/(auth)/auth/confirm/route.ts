@@ -2,6 +2,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
+import { pendingAccountSetupCookie } from "@/adapters/supabase/account-setup";
 
 const allowedOtpTypes = new Set<EmailOtpType>([
   "email",
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest) {
   const creatingAccount = flow === "create-account" || typeValue === "signup";
   const recoveringPassword = flow === "recovery" || typeValue === "recovery";
   let emailVerified = false;
+  let verifiedUserId: string | undefined;
   const applyCookieWrites: Array<(response: NextResponse) => void> = [];
   const authResponseHeaders: Record<string, string> = {};
 
@@ -92,6 +94,15 @@ export async function POST(request: NextRequest) {
     Object.entries(authResponseHeaders).forEach(([key, value]) =>
       response.headers.set(key, value),
     );
+    if (creatingAccount && emailVerified && verifiedUserId) {
+      response.cookies.set(pendingAccountSetupCookie, verifiedUserId, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: origin.startsWith("https://"),
+        path: "/",
+        maxAge: 7 * 24 * 60 * 60,
+      });
+    }
     response.headers.set("Cache-Control", "private, no-store");
     response.headers.set("Referrer-Policy", "no-referrer");
     return response;
@@ -120,12 +131,14 @@ export async function POST(request: NextRequest) {
         type: typeValue as EmailOtpType,
       });
       error = result.error;
+      verifiedUserId = result.data?.user?.id;
     } else if (code) {
       const result = await supabase.auth.exchangeCodeForSession(
         code,
         flowId ? { flowId } : undefined,
       );
       error = result.error;
+      verifiedUserId = result.data?.user?.id;
     } else {
       error = new Error("No confirmation credential was provided.");
     }

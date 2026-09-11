@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import CreateAccountPage from "@/app/(auth)/auth/create-account/page";
+import { pendingAccountSetupCookie } from "@/adapters/supabase/account-setup";
 import {
   sendCreateAccountLink,
   sendSignInLink,
@@ -18,9 +20,15 @@ const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   redirect: vi.fn(),
   revalidatePath: vi.fn(),
+  cookieDelete: vi.fn(),
+  cookieGet: vi.fn(),
 }));
 
 vi.mock("next/headers", () => ({
+  cookies: vi.fn(async () => ({
+    delete: mocks.cookieDelete,
+    get: mocks.cookieGet,
+  })),
   headers: vi.fn(
     async () => new Headers({ origin: "https://sunday-ledger.example" }),
   ),
@@ -32,6 +40,10 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("next/cache", () => ({
   revalidatePath: mocks.revalidatePath,
+}));
+
+vi.mock("@/adapters/supabase/config", () => ({
+  isSupabaseConfigured: () => true,
 }));
 
 vi.mock("@/adapters/supabase/server", () => ({
@@ -58,9 +70,62 @@ function confirmEmailLink(request: NextRequest) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.cookieGet.mockReset();
 });
 
 describe("Phase 1 auth and join actions", () => {
+  it.each([undefined, "another-user", "current-user"])(
+    "resumes only the matching verified setup hint (%s)",
+    async (pendingUser) => {
+      mocks.createClient.mockResolvedValue({
+        auth: {
+          getClaims: async () => ({
+            data: { claims: { sub: "current-user" } },
+          }),
+        },
+      });
+      mocks.cookieGet.mockReturnValue(
+        pendingUser ? { value: pendingUser } : undefined,
+      );
+      await CreateAccountPage({
+        searchParams: Promise.resolve({ next: "/join/private" }),
+      });
+      expect(mocks.redirect).toHaveBeenCalledWith(
+        pendingUser === "current-user"
+          ? "/account/setup?next=%2Fjoin%2Fprivate"
+          : "/join/private",
+      );
+    },
+  );
+  it("retains the user-bound setup hint through a verified profile failure", async () => {
+    mocks.createClient.mockResolvedValue({
+      auth: {
+        verifyOtp: async () => ({
+          data: { user: { id: "verified-user" } },
+          error: null,
+        }),
+      },
+      schema: () => ({
+        rpc: async () => ({ error: { code: "temporary_failure" } }),
+      }),
+    });
+    const response = await confirmEmailLink(
+      new NextRequest(
+        "https://sunday-ledger.example/auth/confirm?token_hash=private&type=email&flow=create-account&next=%2Fjoin%2Fprivate",
+      ),
+    );
+    expect(response.cookies.get(pendingAccountSetupCookie)).toMatchObject({
+      value: "verified-user",
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+    });
+    expect(response.headers.get("location")).toContain(
+      "/account/setup?next=%2Fjoin%2Fprivate",
+    );
+  });
+
   it("does not consume credentials on email GET or HEAD prefetch", async () => {
     for (const method of ["GET", "HEAD"]) {
       const response = await previewEmailLink(
@@ -267,6 +332,7 @@ describe("Phase 1 auth and join actions", () => {
       p_display_name: "Alex",
     });
     expect(updateUser).toHaveBeenCalledWith({ password: "correct-horse" });
+    expect(mocks.cookieDelete).toHaveBeenCalledWith(pendingAccountSetupCookie);
     expect(mocks.redirect).toHaveBeenCalledWith("/join/private-invite-token");
   });
 

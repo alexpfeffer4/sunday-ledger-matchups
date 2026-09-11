@@ -1,10 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { renderToStaticMarkup } from "react-dom/server";
-import {
-  InvitePreviewCard,
-  SignedOutInviteActions,
-} from "@/components/league/invite-public-preview";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const safeNext = "/join/private-invite-token?source=email";
 
@@ -79,7 +76,7 @@ test("invalid invitation and invalid email-link states are focused and usable", 
   await page.goto(
     `/auth/sign-in?error=invalid_link&next=${encodeURIComponent(safeNext)}`,
   );
-  const alert = page.getByRole("alert");
+  const alert = page.getByRole("main").getByRole("alert");
   await expect(alert).toBeFocused();
   await expect(
     page.getByRole("button", { name: /Email link/ }),
@@ -91,23 +88,13 @@ test("signed-out valid invitation preview reflows and exposes keyboard focus", a
 }) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.route(/\/_next\/static\/chunks\/.*\.js(?:\?.*)?$/, (route) =>
+    route.abort(),
+  );
   await page.goto("/");
-  const previewMarkup = renderToStaticMarkup(
-    <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">
-      <div className="mx-auto max-w-xl">
-        <InvitePreviewCard
-          actions={<SignedOutInviteActions token="private-invite-token" />}
-          preview={{
-            commissioner_name: "Alex",
-            expires_at: "2026-09-01T17:00:00.000Z",
-            league_name: "Sunday Friends",
-            member_count: 3,
-            mode: "LIVE",
-            nfl_year: 2026,
-          }}
-        />
-      </div>
-    </main>,
+  const previewMarkup = readFileSync(
+    resolve("tests/e2e/generated/phase1-invitation.html"),
+    "utf8",
   );
   await page.evaluate((markup) => {
     document.body.innerHTML = markup;

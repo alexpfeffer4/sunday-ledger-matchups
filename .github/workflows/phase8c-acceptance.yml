@@ -134,7 +134,7 @@ jobs:
           tests/e2e/owner-rehearsal-full-stack.spec.ts
           tests/e2e/card-quotes-full-stack.spec.ts
           tests/e2e/auth-email-full-stack.spec.ts
-          --project=desktop --reporter=github
+          --project=desktop --workers=1 --reporter=github
 
       - name: Stop disposable local database
         if: always()
@@ -160,6 +160,7 @@ jobs:
       - name: Render deterministic shared-UI fixtures
         run: >-
           npx vitest run
+          tests/e2e/phase1-markup.test.tsx
           tests/e2e/phase8a-markup.test.tsx
           tests/e2e/phase8b-markup.test.tsx
           tests/e2e/phase8c-markup.test.tsx
