@@ -329,13 +329,19 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
       request.headers()["rsc"] === "1"
     );
   });
-  await page.getByRole("link", { name: "See partial reveal" }).click();
+  // Capture the actual browser payload as it arrives, before navigation can
+  // release its response body. Keep the HTML/RSC privacy assertions below.
+  const partialBody = partialRscResponse.then((response) => response.text());
+  await Promise.all([
+    partialBody,
+    page.getByRole("link", { name: "See partial reveal" }).click(),
+  ]);
   const partialRsc = await partialRscResponse;
   expectPrivateResponse(partialRsc);
   await expect(page.getByText("Future picks sealed")).toBeVisible();
   await expect(page.getByTestId("future-sealed-placeholder")).toHaveCount(1);
   const partialHtml = await page.content();
-  const partialPayload = `${partialHtml}\n${await partialRsc.text()}`;
+  const partialPayload = `${partialHtml}\n${await partialBody}`;
   expect(partialPayload).not.toMatch(
     /position_receipts|market_snapshot_id|owner_rehearsal_bots|payload_hash|receipt_hash/i,
   );

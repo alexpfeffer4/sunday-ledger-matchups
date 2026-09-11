@@ -281,9 +281,9 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
     expect(opened.schedule).toHaveLength(2);
     // Construct a historical fixture in disposable loopback CI before any card
     // is accepted. Never run this fixture operation against a hosted database.
-    expect(new URL(url!).hostname).toMatch(/^(127\\.0\\.0\\.1|localhost)$/);
+    expect(["127.0.0.1", "localhost"]).toContain(new URL(url!).hostname);
     if (frozenVersion === "1.1") {
-      sql(`begin; alter table private.season_ruleset_snapshots disable trigger user;
+      sql(`begin; alter table private.season_ruleset_snapshots disable trigger guard_frozen_ruleset_update;
       update private.season_ruleset_snapshots r set ruleset_version='1.1',
         product_bible_version='3.0',
         canonical_json=jsonb_set(jsonb_set(jsonb_set(r.canonical_json,'{version}','"1.1"'),'{productBibleVersion}','"3.0"'),
@@ -291,7 +291,7 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
       from private.seasons s where s.ruleset_snapshot_id=r.id and s.league_id='${leagueId}';
       update private.season_ruleset_snapshots r set sha256_hash=encode(extensions.digest(r.canonical_json::text,'sha256'),'hex')
       from private.seasons s where s.ruleset_snapshot_id=r.id and s.league_id='${leagueId}';
-      alter table private.season_ruleset_snapshots enable trigger user; commit;`);
+      alter table private.season_ruleset_snapshots enable trigger guard_frozen_ruleset_update; commit;`);
     }
     const ruleState = await rpc(members[0]!, "get_stage1_state", {
       p_league_slug: slug,
