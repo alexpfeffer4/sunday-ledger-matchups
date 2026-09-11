@@ -50,6 +50,8 @@ Measured text contrast for changed surfaces (relative luminance): muted on canva
 
 ## Remaining observations and next stage
 
+Pre-merge review follow-up: preserved legacy competitive rounds can legitimately omit top-seed byes, eliminated members, and nonqualifiers. These now show a neutral “No assigned matchup” state instead of recovery; missing whole rounds, duplicate contests, and missing Week 18 exhibition data still recover. The generic matchup/card fallback uses conditional recovery without inferring participation. Current-contest headings now follow the selected contest's role and published label, so an exhibition or placement game does not inherit a championship-round heading. The earlier screenshots show the initial hierarchy; their heading text predates this correction. Regression cases cover these distinctions without changing published data.
+
 - Physical iPhone Safari / Android Chrome text scaling, VoiceOver / TalkBack, actual touch and keyboard use remain owner checks. Browser fixtures and WebKit emulation do not substitute for them.
 - On a permitted test league, inspect a finalized week, open its correction disclosure, compare standings, then open current playoffs. Confirm member/opponent names, complete scores, a single cut line, and readable Eastern deadlines. Exercise real missing-data recovery only in disposable data; do not alter a live bracket for this check.
 - Prompt 5 owns invite/account/recovery/practice work. Inspect merged PR #28 and subsequent changes before touching that flow. Original hosted email failure and cross-device email behavior are still unproved; use local email capture and keep invite destinations intact.

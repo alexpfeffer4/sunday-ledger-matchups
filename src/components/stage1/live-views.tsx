@@ -151,15 +151,15 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
       <PageFrame
         eyebrow={`${state.league.name} · ${state.week ? `Week ${state.week.nflWeek}` : "Season in progress"}`}
         title="Your matchup is unavailable"
-        description="We could not load your expected matchup or card. This does not mean you have a bye or are out of the playoffs."
+        description="No matchup or card is available to show for this round."
         aside={liveStatus(state)}
       >
         <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">
           <h2 className="text-lg font-bold">Check your matchup again</h2>
           <p className="text-graphite mt-2 max-w-2xl text-sm leading-6">
-            Refresh to try again. If your matchup is still unavailable, ask your
-            commissioner to check the published round. Your accepted picks and
-            receipts are unchanged.
+            If you expected to play this round, refresh to try again. If your
+            matchup is still unavailable, ask your commissioner to check the
+            published round. Your accepted picks and receipts are unchanged.
           </p>
           <MatchupStateRefresh />
           <Link

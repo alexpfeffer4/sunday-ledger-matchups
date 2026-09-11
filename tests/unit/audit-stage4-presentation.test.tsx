@@ -14,7 +14,10 @@ import { PairedMatchupView } from "@/components/matchup/paired-matchup-view";
 import { WeeklyCloseModule } from "@/components/history/weekly-close-module";
 import { PlayoffPendingView } from "@/components/playoffs/playoff-pending-view";
 import { LivePlayoffView } from "@/components/playoffs/live-playoff-view";
-import { currentPlayoffRound } from "@/components/playoffs/current-playoff-contest";
+import {
+  CurrentPlayoffContest,
+  currentPlayoffRound,
+} from "@/components/playoffs/current-playoff-contest";
 import {
   Stage1MatchupView,
   Stage1ScheduleView,
@@ -172,7 +175,7 @@ describe("Stage 4 result and playoff presentation", () => {
       />,
     );
     const primary = screen.getByRole("region", {
-      name: /Week 15 · Opening round/,
+      name: /Week 15 · Bye exhibition/,
     });
     expect(primary).toHaveTextContent("No. 1 · Ledger Member 1");
     expect(primary).toHaveTextContent(
@@ -250,6 +253,158 @@ describe("Stage 4 result and playoff presentation", () => {
       screen.queryByText(/Reinstated to complete/),
     ).not.toBeInTheDocument();
   });
+
+  it.each([
+    [15, "LARGE_SIX", 0],
+    [16, "LARGE_SIX", 0],
+    [17, "SMALL_FOUR", 0],
+    [17, "LARGE_SIX", 8],
+  ] as const)(
+    "preserves a valid legacy Week %i absence in %s for member %i",
+    (week, format, member) => {
+      const state = structuredClone(phase8aPlayoffState);
+      const viewer = state.publication.standings[member].entryId;
+      state.publication.legacy = true;
+      state.publication.bracket = {
+        format,
+        stages: [],
+        tieRule: state.publication.tieRule,
+      };
+      state.rounds[0].week = week;
+      state.rounds[0].scope = "PLAYOFF";
+      state.rounds[0].matchups = state.rounds[0].matchups.filter(
+        (matchup) =>
+          ![matchup.sideA.entryId, matchup.sideB.entryId].includes(viewer),
+      );
+      const original = structuredClone(state);
+      render(
+        <CurrentPlayoffContest
+          state={state}
+          viewerEntryId={viewer}
+          activeWeek={week}
+        />,
+      );
+      expect(
+        screen.getByRole("heading", {
+          name: `Week ${week} · No assigned matchup`,
+        }),
+      ).toBeVisible();
+      expect(
+        screen.getByText(
+          /Earlier playoff formats did not schedule every member/,
+        ),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole("button", { name: "Refresh playoffs" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/Championship path/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/does not mean you have a bye/),
+      ).not.toBeInTheDocument();
+      expect(state).toEqual(original);
+    },
+  );
+
+  it.each(["round", "duplicate", "week18"] as const)(
+    "still recovers genuinely missing or ambiguous legacy %s data",
+    (missing) => {
+      const state = structuredClone(phase8aPlayoffState);
+      state.publication.legacy = true;
+      state.publication.bracket = {
+        format: "LARGE_SIX",
+        stages: [],
+        tieRule: state.publication.tieRule,
+      };
+      if (missing === "round") state.rounds = [];
+      else if (missing === "duplicate")
+        state.rounds[0].matchups.push({
+          ...state.rounds[0].matchups[0],
+          id: "duplicate",
+        });
+      else {
+        state.rounds[0].week = 18;
+        state.rounds[0].matchups.shift();
+      }
+      render(
+        <CurrentPlayoffContest
+          state={state}
+          viewerEntryId={viewerEntryId}
+          activeWeek={missing === "week18" ? 18 : 15}
+        />,
+      );
+      expect(
+        screen.getByRole("heading", {
+          name: "Your playoff matchup is unavailable",
+        }),
+      ).toBeVisible();
+      expect(
+        screen.getByRole("button", { name: "Refresh playoffs" }),
+      ).toBeVisible();
+    },
+  );
+
+  it.each([
+    [15, "EXHIBITION", "EXHIBITION", true, "Bye exhibition"],
+    [15, "PLACEMENT", "PLACEMENT", false, "Placement"],
+    [16, "EXHIBITION", "EXHIBITION", false, "Exhibition"],
+    [17, "THIRD_PLACE", "PLAYOFF", false, "Third place"],
+    [17, "CHAMPIONSHIP", "PLAYOFF", false, "Championship"],
+    [17, null, "PLAYOFF", false, "Third place"],
+  ] as const)(
+    "labels Week %i %s as the member's actual contest",
+    (week, role, scope, bye, label) => {
+      const state = structuredClone(phase8aPlayoffState);
+      state.rounds[0].week = week;
+      const contest = state.rounds[0].matchups[0];
+      contest.role = role;
+      contest.scope = scope;
+      contest.byeExhibition = bye;
+      contest.label = label;
+      render(
+        <CurrentPlayoffContest
+          state={state}
+          viewerEntryId={viewerEntryId}
+          activeWeek={week}
+        />,
+      );
+      expect(
+        screen.getByRole("heading", { name: `Week ${week} · ${label}` }),
+      ).toBeVisible();
+      if (role === null) {
+        expect(
+          screen.getByText(
+            /See the published bracket below for this contest's effect/,
+          ),
+        ).toBeVisible();
+        expect(
+          screen.queryByText(/championship becomes official/),
+        ).not.toBeInTheDocument();
+      }
+    },
+  );
+
+  it.each([15, 17])(
+    "keeps unclassified Week %i no-card participation neutral",
+    (week) => {
+      const { state } = makePhase6State("PREGAME");
+      state.league.lifecycle = "PLAYOFFS";
+      state.week!.nflWeek = week;
+      state.matchup = null;
+      state.ownerCard = null;
+      render(<Stage1MatchupView state={state} />);
+      expect(
+        screen.getByText(/If you expected to play this round/),
+      ).toBeVisible();
+      expect(
+        screen.queryByText(
+          /expected matchup or card|does not mean you have a bye|are out of the playoffs/,
+        ),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Refresh matchup" }),
+      ).toBeVisible();
+    },
+  );
 
   it("uses an unavailable state for missing active card data without granting a week off", () => {
     const { state } = makePhase6State("PREGAME");

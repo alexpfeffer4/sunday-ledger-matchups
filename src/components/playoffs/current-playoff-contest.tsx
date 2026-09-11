@@ -19,13 +19,23 @@ export function currentPlayoffRound(
   );
 }
 
-export function playoffRoundLabel(week: number, format: string) {
-  if (week === 18) return "Week 18 exhibition";
-  if (week === 17) return "Week 17 · Championship & third place";
-  if (week === 16) return "Week 16 · Semifinals";
-  return format === "FOUR_SLOT" || format === "SMALL_FOUR"
-    ? "Week 15 · Bye exhibitions"
-    : "Week 15 · Opening round";
+export function playoffRoundLabel(
+  week: number,
+  contest: LivePlayoffState["rounds"][number]["matchups"][number],
+) {
+  const exhibition =
+    contest.role === "EXHIBITION" || contest.scope === "EXHIBITION";
+  if (week === 18 && exhibition) return "Week 18 exhibition";
+  const label = contest.byeExhibition
+    ? "Bye exhibition"
+    : exhibition
+      ? "Exhibition"
+      : contest.role === "PLACEMENT" || contest.scope === "PLACEMENT"
+        ? "Placement"
+        : contest.role === "THIRD_PLACE"
+          ? "Third place"
+          : contest.label;
+  return `Week ${week} · ${label}`;
 }
 
 export function CurrentPlayoffContest({
@@ -59,12 +69,16 @@ export function CurrentPlayoffContest({
           (entry) => entry.entry.entryId === viewerEntryId,
         )
       : null;
+  // Earlier competitive rounds scheduled only their participants, not every member.
+  const legacyAbsence =
+    state.publication.legacy &&
+    round?.scope === "PLAYOFF" &&
+    round.week < 18 &&
+    contests.length === 0;
   const expectedMissing =
     (activeWeek !== undefined && activeWeek >= 15 && !round) ||
-    (round !== null && !contest);
-  const championship =
-    contest?.role === "CHAMPIONSHIP" ||
-    (contest?.scope === "PLAYOFF" && !contest.role);
+    (round !== null && !contest && !legacyAbsence);
+  const championship = contest?.role === "CHAMPIONSHIP";
   const result = contest?.result;
   const selfA = contest?.sideA.entryId === viewerEntryId;
   const decision = selfA ? result?.sideADecision : result?.sideBDecision;
@@ -83,7 +97,9 @@ export function CurrentPlayoffContest({
         {expectedMissing
           ? "Your playoff matchup is unavailable"
           : round
-            ? playoffRoundLabel(round.week, state.publication.bracket.format)
+            ? contest
+              ? playoffRoundLabel(round.week, contest)
+              : `Week ${round.week} · No assigned matchup`
             : "Week 15 awaits publication"}
       </h2>
       {expectedMissing ? (
@@ -97,6 +113,12 @@ export function CurrentPlayoffContest({
             <MatchupStateRefresh label="Refresh playoffs" />
           </div>
         </>
+      ) : legacyAbsence ? (
+        <p className="text-graphite mt-3 text-sm leading-6">
+          This published round has no matchup assigned to you. Earlier playoff
+          formats did not schedule every member each round. Check the published
+          bracket below for byes and advancement.
+        </p>
       ) : contest && self && opponent ? (
         <>
           <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -172,17 +194,19 @@ export function CurrentPlayoffContest({
               ? "This exhibition cannot change the champion, standings, or playoff eligibility. The season archive completes after Week 18 is final."
               : state.publication.championFinality
                 ? "The champion is confirmed. Week 18 exhibitions cannot change this championship result; the complete archive follows after Week 18 is final."
-                : championship
-                  ? result?.advancingEntryId
-                    ? `${result.advancingEntryId === viewerEntryId ? "You" : opponent.displayName} ${isFinal ? "advance" + (result.advancingEntryId === viewerEntryId ? "" : "s") : "would advance"}${round?.week === 17 ? " to champion confirmation" : " to the next championship round"}.${decision === "TIE" ? " The higher qualification seed advances an exact tie." : ""}`
-                    : round?.week === 17
-                      ? "The championship becomes official after the Week 17 correction window and champion confirmation."
-                      : "Win to reach the next championship round. An exact tie advances the higher qualification seed."
-                  : contest.byeExhibition && automatic
-                    ? "Your championship bye advances you to Week 16. This separate exhibition cannot change that advancement."
-                    : contest.role === "THIRD_PLACE"
-                      ? "Play for third place. This result does not advance the championship bracket."
-                      : "This matchup does not advance the championship bracket or change regular-season standings."}
+                : !contest.role && contest.scope === "PLAYOFF"
+                  ? "See the published bracket below for this contest's effect on championship advancement."
+                  : championship
+                    ? result?.advancingEntryId
+                      ? `${result.advancingEntryId === viewerEntryId ? "You" : opponent.displayName} ${isFinal ? "advance" + (result.advancingEntryId === viewerEntryId ? "" : "s") : "would advance"}${round?.week === 17 ? " to champion confirmation" : " to the next championship round"}.${decision === "TIE" ? " The higher qualification seed advances an exact tie." : ""}`
+                      : round?.week === 17
+                        ? "The championship becomes official after the Week 17 correction window and champion confirmation."
+                        : "Win to reach the next championship round. An exact tie advances the higher qualification seed."
+                    : contest.byeExhibition && automatic
+                      ? "Your championship bye advances you to Week 16. This separate exhibition cannot change that advancement."
+                      : contest.role === "THIRD_PLACE"
+                        ? "Play for third place. This result does not advance the championship bracket."
+                        : "This matchup does not advance the championship bracket or change regular-season standings."}
           </p>
           <Link
             className="bg-registry text-canvas mt-4 inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-semibold"
@@ -197,7 +221,10 @@ export function CurrentPlayoffContest({
           first round; your matchup will appear here.
         </p>
       )}
-      {!state.publication.championFinality && qualifier && !expectedMissing ? (
+      {!state.publication.championFinality &&
+      qualifier &&
+      !expectedMissing &&
+      !legacyAbsence ? (
         <p className="text-muted border-boundary mt-4 border-t pt-3 text-sm leading-6">
           Championship path · No. {qualifier.qualificationSeed} qualification
           seed.{" "}
