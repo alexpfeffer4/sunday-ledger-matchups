@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { verifyEmailCode } from "@/app/(auth)/auth/verify-code";
+import { createEmailCodeVerifier } from "@/app/(auth)/auth/verify-code";
 import { updatePassword } from "@/app/(auth)/auth/actions";
 import {
   initialEmailCodeState,
   initialPasswordActionState,
+  type EmailCodeState,
 } from "@/app/(auth)/auth/state";
 import { invitationToken } from "@/domain/leagues/invitation-token";
 
@@ -40,6 +41,14 @@ function data(flow = "sign-in", next = "/join/private-invite-token") {
     next,
   }).forEach(([key, value]) => form.set(key, value));
   return form;
+}
+// Existing cases construct the request context that the server protects.
+function verifyEmailCode(state: EmailCodeState, form: FormData) {
+  return createEmailCodeVerifier({
+    email: String(form.get("email")),
+    flow: form.get("flow") as "sign-in",
+    next: String(form.get("next")),
+  })(state, form);
 }
 beforeEach(() => {
   vi.resetAllMocks();
@@ -96,6 +105,25 @@ describe("first-password recovery", () => {
 });
 
 describe("same-browser email verification", () => {
+  it("ignores tampered email, signup flow and destination fields", async () => {
+    const verify = createEmailCodeVerifier({
+      email: "member@example.test",
+      flow: "create-account",
+      next: "/join/private-invite-token",
+    });
+    const form = data("sign-in", "//external.example");
+    form.set("email", "another@example.test");
+    await verify(initialEmailCodeState, form);
+    expect(mocks.verify).toHaveBeenCalledWith({
+      email: "member@example.test",
+      token: "012345",
+      type: "email",
+    });
+    expect(mocks.cookie).toHaveBeenCalled();
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      "/account/setup?next=%2Fjoin%2Fprivate-invite-token",
+    );
+  });
   it("uses provider-verified identity and normalized email for signup", async () => {
     await verifyEmailCode(initialEmailCodeState, data("create-account"));
     expect(mocks.verify).toHaveBeenCalledWith({

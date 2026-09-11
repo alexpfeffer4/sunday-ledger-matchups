@@ -460,6 +460,22 @@ test("email code completes signup in the requesting browser and cannot be reused
     "invalid",
   );
   await page.getByLabel("Email verification code").fill(code);
+  // Inject attacker-controlled fields. The server-issued encrypted action
+  // context must keep this signup on its original email/setup/destination.
+  await page.getByLabel("Email verification code").evaluate((input) => {
+    const form = input.closest("form")!;
+    for (const [name, value] of Object.entries({
+      flow: "sign-in",
+      email: "someone-else@acceptance.test",
+      next: "//external.example",
+    })) {
+      const field = document.createElement("input");
+      field.type = "hidden";
+      field.name = name;
+      field.value = value;
+      form.appendChild(field);
+    }
+  });
   await page.getByRole("button", { name: "Verify code and continue" }).click();
   await expectLocation(page, /\/account\/setup/);
   await setup(page, "CodeSignup", "Disposable-CodeSignup-48!");

@@ -1,20 +1,20 @@
 "use client";
 
 import { useActionState } from "react";
-import { verifyEmailCode } from "@/app/(auth)/auth/verify-code";
-import { initialEmailCodeState } from "@/app/(auth)/auth/state";
+import {
+  initialEmailCodeState,
+  type EmailCodeAction,
+} from "@/app/(auth)/auth/state";
 
 export function EmailCodeForm({
   email,
-  flow,
-  next,
+  verifyCodeAction,
 }: {
   email: string;
-  flow: "create-account" | "sign-in" | "recovery";
-  next: string;
+  verifyCodeAction: EmailCodeAction;
 }) {
   const [state, action, pending] = useActionState(
-    verifyEmailCode,
+    verifyCodeAction,
     initialEmailCodeState,
   );
   return (
@@ -22,9 +22,6 @@ export function EmailCodeForm({
       action={action}
       className="border-boundary mt-6 space-y-4 border-t pt-5"
     >
-      <input type="hidden" name="email" value={email} />
-      <input type="hidden" name="flow" value={flow} />
-      <input type="hidden" name="next" value={next} />
       <div>
         <label htmlFor="email-code" className="text-sm font-bold">
           Email verification code

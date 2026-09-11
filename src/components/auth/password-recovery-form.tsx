@@ -2,7 +2,10 @@
 
 import { useActionState, useState } from "react";
 import { requestPasswordReset } from "@/app/(auth)/auth/actions";
-import { initialPasswordActionState } from "@/app/(auth)/auth/state";
+import {
+  initialPasswordActionState,
+  type EmailCodeAction,
+} from "@/app/(auth)/auth/state";
 
 import { EmailCodeForm } from "@/components/auth/email-code-form";
 import { LinkErrorNotice } from "@/components/auth/link-error-notice";
@@ -18,6 +21,7 @@ export function PasswordRecoveryForm({
   const [email, setEmail] = useState("");
   const [challenge, setChallenge] = useState<{
     email: string;
+    verifyCodeAction: EmailCodeAction;
     revision: number;
   } | null>(null);
   const { secondsRemaining, start } = useResendCooldown();
@@ -25,10 +29,12 @@ export function PasswordRecoveryForm({
     async (previous: typeof initialPasswordActionState, data: FormData) => {
       const result = await requestPasswordReset(previous, data);
       start(result.retryAfterSeconds);
-      if (result.email) {
+      if (result.email && result.verifyCode) {
         const requestedEmail = result.email;
+        const verifyCodeAction = result.verifyCode;
         setChallenge((previous) => ({
           email: requestedEmail,
+          verifyCodeAction,
           revision: (previous?.revision ?? 0) + 1,
         }));
       }
@@ -97,8 +103,7 @@ export function PasswordRecoveryForm({
         <EmailCodeForm
           key={challenge.revision}
           email={challenge.email}
-          flow="recovery"
-          next={next}
+          verifyCodeAction={challenge.verifyCodeAction}
         />
       ) : null}
     </>

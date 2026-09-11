@@ -23,7 +23,7 @@ import {
   sendSignInLink,
   requestPasswordReset,
 } from "@/app/(auth)/auth/actions";
-import { verifyEmailCode } from "@/app/(auth)/auth/verify-code";
+const verifyEmailCode = vi.fn();
 
 vi.mock("@/app/(auth)/auth/actions", () => ({
   finishPasswordRecovery: vi.fn(),
@@ -33,8 +33,6 @@ vi.mock("@/app/(auth)/auth/actions", () => ({
   signInWithPassword: vi.fn(),
   updatePassword: vi.fn(),
 }));
-
-vi.mock("@/app/(auth)/auth/verify-code", () => ({ verifyEmailCode: vi.fn() }));
 
 vi.mock("@/app/account/actions", () => ({
   completeAccountSetup: vi.fn(),
@@ -48,6 +46,7 @@ describe("password authentication options", () => {
     vi.mocked(sendSignInLink).mockResolvedValue({
       status: "sent",
       email: "member@example.test",
+      verifyCode: verifyEmailCode,
       message: "Check your email.",
     });
     vi.mocked(verifyEmailCode).mockResolvedValue({
@@ -69,9 +68,9 @@ describe("password authentication options", () => {
     const codeForm = screen
       .getByRole("button", { name: "Verify code and continue" })
       .closest("form")!;
-    expect(
-      within(codeForm).getByDisplayValue("/join/original-invite"),
-    ).toHaveAttribute("name", "next");
+    expect(vi.mocked(sendSignInLink).mock.calls.at(-1)?.[1].get("next")).toBe(
+      "/join/original-invite",
+    );
     await act(async () => {
       fireEvent.submit(codeForm);
     });
@@ -84,14 +83,9 @@ describe("password authentication options", () => {
       );
     });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    const freshCodeForm = screen
-      .getByRole("button", { name: "Verify code and continue" })
-      .closest("form")!;
-    expect(
-      within(freshCodeForm).getByDisplayValue(
-        "/account/set-password?next=%2Fjoin%2Foriginal-invite",
-      ),
-    ).toHaveAttribute("name", "next");
+    expect(vi.mocked(sendSignInLink).mock.calls.at(-1)?.[1].get("next")).toBe(
+      "/account/set-password?next=%2Fjoin%2Foriginal-invite",
+    );
   });
 
   it("does not nest password setup when it is already the requested destination", () => {

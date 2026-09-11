@@ -5,7 +5,10 @@ import {
   sendCreateAccountLink,
   sendSignInLink,
 } from "@/app/(auth)/auth/actions";
-import { initialMagicLinkState } from "@/app/(auth)/auth/state";
+import {
+  initialMagicLinkState,
+  type EmailCodeAction,
+} from "@/app/(auth)/auth/state";
 import { useResendCooldown } from "@/components/auth/use-resend-cooldown";
 import { EmailCodeForm } from "@/components/auth/email-code-form";
 import { LinkErrorNotice } from "@/components/auth/link-error-notice";
@@ -22,7 +25,7 @@ export function MagicLinkForm({
   const [email, setEmail] = useState("");
   const [challenge, setChallenge] = useState<{
     email: string;
-    next: string;
+    verifyCodeAction: EmailCodeAction;
     revision: number;
   } | null>(null);
   const [setPassword, setSetPassword] = useState(false);
@@ -38,11 +41,12 @@ export function MagicLinkForm({
         intent === "create-account" ? sendCreateAccountLink : sendSignInLink;
       const result = await send(previousState, formData);
       start(result.retryAfterSeconds);
-      if (result.email) {
+      if (result.email && result.verifyCode) {
         const requestedEmail = result.email;
+        const verifyCodeAction = result.verifyCode;
         setChallenge((previous) => ({
           email: requestedEmail,
-          next: String(formData.get("next") ?? next),
+          verifyCodeAction,
           revision: (previous?.revision ?? 0) + 1,
         }));
       }
@@ -136,8 +140,7 @@ export function MagicLinkForm({
         <EmailCodeForm
           key={challenge.revision}
           email={challenge.email}
-          flow={intent}
-          next={challenge.next}
+          verifyCodeAction={challenge.verifyCodeAction}
         />
       ) : null}
     </>

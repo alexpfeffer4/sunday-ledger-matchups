@@ -1,12 +1,28 @@
-"use server";
-
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { pendingAccountSetupCookie } from "@/adapters/supabase/account-setup";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
-import type { EmailCodeState } from "@/app/(auth)/auth/state";
+import type { EmailCodeAction, EmailCodeState } from "@/app/(auth)/auth/state";
+
+type EmailCodeRequest = {
+  email: string;
+  flow: "create-account" | "sign-in" | "recovery";
+  next: string;
+};
+
+// Next encrypts this closure's request context when sending the Server Action
+// reference to the client. Only the numeric credential comes from the form.
+// This factory is called on the server after issuing the requested email.
+export function createEmailCodeVerifier(
+  request: EmailCodeRequest,
+): EmailCodeAction {
+  return async function verifyRequestedEmailCode(_state, formData) {
+    "use server";
+    return verifyEmailCode(request, formData);
+  };
+}
 
 const codeSchema = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email()),
@@ -20,11 +36,14 @@ const codeSchema = z.object({
 
 // A code entered here establishes the session in this browser. It does not
 // depend on an email app opening a link in the original PKCE browser context.
-export async function verifyEmailCode(
-  _state: EmailCodeState,
+async function verifyEmailCode(
+  request: EmailCodeRequest,
   formData: FormData,
 ): Promise<EmailCodeState> {
-  const parsed = codeSchema.safeParse(Object.fromEntries(formData));
+  const parsed = codeSchema.safeParse({
+    ...request,
+    token: formData.get("token"),
+  });
   if (!parsed.success) {
     return {
       status: "error",

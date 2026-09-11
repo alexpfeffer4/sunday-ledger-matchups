@@ -4,6 +4,7 @@ export type MagicLinkState = {
   field?: "email";
   retryAfterSeconds?: number;
   email?: string;
+  verifyCode?: EmailCodeAction;
 };
 
 export const initialMagicLinkState: MagicLinkState = {
@@ -13,6 +14,7 @@ export const initialMagicLinkState: MagicLinkState = {
 
 export type PasswordActionState = {
   email?: string;
+  verifyCode?: EmailCodeAction;
   status: "idle" | "error" | "success";
   message: string;
   field?: "email" | "password" | "confirmPassword";
@@ -25,6 +27,10 @@ export const initialPasswordActionState: PasswordActionState = {
 };
 
 export type EmailCodeState = { status: "idle" | "error"; message: string };
+export type EmailCodeAction = (
+  state: EmailCodeState,
+  data: FormData,
+) => Promise<EmailCodeState>;
 export const initialEmailCodeState: EmailCodeState = {
   status: "idle",
   message: "",

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
+import { createEmailCodeVerifier } from "@/app/(auth)/auth/verify-code";
 import type {
   MagicLinkState,
   PasswordActionState,
@@ -134,6 +135,11 @@ async function sendEmailLink(
     return {
       status: "sent",
       email: parsed.data.email,
+      verifyCode: createEmailCodeVerifier({
+        email: parsed.data.email,
+        flow: intent,
+        next,
+      }),
       retryAfterSeconds: 60,
       message:
         intent === "create-account"
@@ -217,6 +223,11 @@ export async function requestPasswordReset(
     return {
       status: "success",
       email: parsed.data.email,
+      verifyCode: createEmailCodeVerifier({
+        email: parsed.data.email,
+        flow: "recovery",
+        next: safeInternalPath(parsed.data.next),
+      }),
       retryAfterSeconds: 60,
       message:
         "If an account exists for this email, check for the newest recovery link. Open it in this same browser to save a new password, then return where you left off.",

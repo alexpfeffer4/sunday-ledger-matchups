@@ -18,6 +18,8 @@ Email links remain available. Until hosted templates are activated, the UI expli
 
 ## Hosted email activation proposal
 
+The email request returns a Next.js Server Action whose encrypted closure binds the normalized email, requested flow and safe destination. The verification form submits only the numeric code. Injected or modified hidden fields cannot switch a signup to sign-in or change its email/destination; both unit and real browser regressions exercise that attack. Supabase still independently verifies the actual credential. These action references are scoped to a deployment, so a page left open across a deployment may need a refresh and a newly requested email, as with other Server Actions.
+
 The hosted dashboard remains on its sign-in screen. Current template bodies, SMTP, rate limits and expiration settings were not accessible; no hosted setting was changed and no real-person email was sent. This proposal updates only the three email bodies, using the checked-in files as exact reviewable content:
 
 | Auth email     | Body file                              | Verification type |
