@@ -38,6 +38,10 @@ export function MagicLinkForm({
   const { secondsRemaining, start } = useResendCooldown();
   const [state, formAction, pending] = useActionState(
     async (previousState: typeof initialMagicLinkState, formData: FormData) => {
+      // Autofill or typing before hydration can populate the DOM before React
+      // receives onChange. Preserve the submitted value across action resets.
+      const submittedEmail = formData.get("email");
+      if (typeof submittedEmail === "string") setEmail(submittedEmail);
       const result = await sendEmailAction(previousState, formData);
       start(result.retryAfterSeconds);
       if (result.email && result.verifyCode) {

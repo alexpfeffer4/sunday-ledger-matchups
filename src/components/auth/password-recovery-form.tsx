@@ -31,6 +31,8 @@ export function PasswordRecoveryForm({
   const { secondsRemaining, start } = useResendCooldown();
   const [state, action, pending] = useActionState(
     async (previous: typeof initialPasswordActionState, data: FormData) => {
+      const submittedEmail = data.get("email");
+      if (typeof submittedEmail === "string") setEmail(submittedEmail);
       const result = await requestEmailAction(previous, data);
       start(result.retryAfterSeconds);
       if (result.email && result.verifyCode) {

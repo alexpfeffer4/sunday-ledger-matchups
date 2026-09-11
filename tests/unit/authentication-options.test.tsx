@@ -44,6 +44,42 @@ vi.mock("@/app/account/actions", () => ({
 afterEach(cleanup);
 
 describe("password authentication options", () => {
+  it.each(["signup", "recovery"] as const)(
+    "retains %s email populated before React receives an input event",
+    async (flow) => {
+      vi.mocked(sendCreateAccountLink).mockResolvedValue({
+        status: "sent",
+        message: "Check your email.",
+      });
+      vi.mocked(requestPasswordReset).mockResolvedValue({
+        status: "success",
+        message: "Check your email.",
+      });
+      render(
+        flow === "signup" ? (
+          <MagicLinkForm
+            intent="create-account"
+            next="/leagues"
+            sendEmailAction={sendCreateAccountLink}
+          />
+        ) : (
+          <PasswordRecoveryForm
+            next="/leagues"
+            requestEmailAction={requestPasswordReset}
+          />
+        ),
+      );
+      const email = screen.getByLabelText("Email address") as HTMLInputElement;
+      // Simulate browser autofill/pre-hydration input, without an onChange.
+      email.value = "mobile@example.test";
+      await act(async () => {
+        fireEvent.submit(email.closest("form")!);
+      });
+      expect(screen.getByRole("status")).toHaveTextContent("Check your email");
+      expect(email).toHaveValue("mobile@example.test");
+    },
+  );
+
   it("keeps the email and destination from the request and clears code errors after resend", async () => {
     vi.mocked(sendSignInLink).mockResolvedValue({
       status: "sent",
