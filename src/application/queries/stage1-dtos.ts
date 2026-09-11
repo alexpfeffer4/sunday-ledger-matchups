@@ -185,6 +185,7 @@ export const stage1StateSchema = z.object({
         .nullable(),
     })
     .nullable(),
+  standingsThroughWeek: z.number().int().min(1).max(18).nullable().optional(),
   standings: z.array(
     z.object({
       seed: z.number().int().positive(),

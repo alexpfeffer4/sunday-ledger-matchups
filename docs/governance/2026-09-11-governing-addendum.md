@@ -1,8 +1,32 @@
 # Sunday Ledger — governing reconciliation addendum
 
-**Revision:** 1. **Prepared:** September 11, 2026. **Scope:** audit Stage 6, A11–A12.
-**Authority:** records already approved decisions and their evidenced implementation.
+**Revision:** 2. **Prepared:** September 11, 2026. **Scope:** audit Stage 6, A11–A12.
+**Authority:** existing approvals plus the owner’s September 11 prospective-update direction.
 **Read with:** all six bases in the [current-source index](current-source-index.md).
+
+## September 11 owner direction: future play within existing seasons
+
+The owner explicitly chose to keep development seasons updateable until the
+product reaches stable rules, and clarified: **only apply to future play within
+those seasons**. This supersedes the earlier season-long freeze policy for future
+play. It does not authorize recalculation of completed weeks or standings.
+
+- An opened week keeps one rules snapshot for all members, including members who
+  have not sealed yet. A rules release never changes an open or completed week.
+- The next week adopts the latest supported, approved release when it opens.
+  This implementation supports V1.0/V1.1 to V1.2. Unsupported packages and
+  downgrades require a reviewed release; no commissioner can edit rule JSON.
+- Cards, receipts, historical standings and published brackets retain their
+  original evidence. Future cumulative standings use that future week's rules
+  and unchanged prior results; published past standings are not rewritten.
+- Week 14's rules govern qualification; a later update cannot reseed an already
+  published bracket. Ordinary documented score corrections remain available
+  under the rules of the affected week.
+- Rules pages disclose current-week rules and the versions used by earlier weeks.
+  A full-season freeze can be introduced by a later owner decision when stable.
+
+The historical decisions below retain their original effective scope. Their
+blanket prohibition on upgrading existing seasons is superseded as stated above.
 
 This is a dated addendum, not a rewritten historical approval. Only the stated
 passages are superseded. No new Ruleset, numerical rule, access policy, broad
@@ -16,8 +40,8 @@ for All-play in V3 §§2, 7 and 14 item 12, and related format-policy commentary
 For V1.2, head-to-head record remains primary; Points For supplies scoring context.
 All-play is neither a current participant metric nor a current standings tiebreak.
 
-Frozen V1.1 seasons retain their original All-play computation, standings order,
-qualification, brackets, champion, history and hashes. Their Rules pages disclose
+V1.1 weeks retain their original All-play computation, standings order and
+hashes. Published qualification, brackets, champion and history remain intact. Their Rules pages disclose
 the original order; current general UI need not restore the removed All-play
 column. No old result is recalculated. Product Bible `3.1` is already the identity
 recorded by the approved V1.2 catalog; this addendum supplies its reconciled text.
@@ -44,12 +68,12 @@ Replace §13 and the corresponding §17 concise-rulebook ordering **only for V1.
 
 Every other approved card/scoring, attendance, ordinary and sparse qualification,
 reseeding, higher-seed exact-tie advancement, correction, exhibition and finality
-rule remains unchanged. Frozen V1.1 keeps its seven-part order including All-play;
-older frozen versions retain their attached historical meaning.
+rule remains unchanged. V1.1 weeks keep their seven-part order including All-play; earlier records
+retain their attached historical meaning.
 
-V1.2 applies to new Live seasons, new owner rehearsals, and exact matching
-unfrozen V1.1 drafts promoted by the approved migration. It never upgrades an
-existing frozen season. A stored version label cannot legitimize altered or
+The original V1.2 migration applied to new Live seasons, new owner rehearsals
+and matching unfrozen drafts. The September 11 direction additionally permits
+V1.2 for future weeks within existing seasons. A stored version label cannot legitimize altered or
 unimplemented card constraints.
 
 ## Decision Register 1.1 addendum
@@ -74,7 +98,8 @@ questions and interim wording under their original resolutions remain historical
 | D-023 commissioner controls                | Bounded implemented commands only. Stage 5 “Lock roster & start season” presents the existing atomic freeze/schedule/open authority; it creates no override or new policy.                                                                                                                                                               |
 | Stage 5 account/invite recovery            | Owner-authorized implementation and follow-ups #33–35; later explicit production template, URL/callback and ledgerleagues.com sender approval recorded in supplied updated handoff. No broader communication authorization.                                                                                                              |
 
-No unresolved item above blocks the narrow Stage 6 compatibility change. They
+The September 11 future-play decision above additionally resolves the Stage 6
+season-upgrade policy. No unresolved item above blocks this bounded change. They
 remain decisions for their responsible future scope rather than implied approvals.
 
 ## Architecture Revision 1.1 addendum
@@ -99,15 +124,16 @@ only with the approved bounded operating contracts:
 - **Simulation:** the approved private rehearsal orchestrates the existing
   authoritative engine. Example Season remains neutral/read-only, public Practice
   remains ephemeral and unsaved; no second scoring engine or public rehearsal.
-- **Card compatibility:** use the actual season snapshot referenced by the card.
+- **Card compatibility:** use the actual snapshot pinned to the card’s week.
   The finite V1.0/V1.1/V1.2 compatibility boundary accepts only the implemented
   historical/current card package. Unknown, missing, mismatched or unimplemented
   card context blocks new writes. The database remains authoritative, independently
-  deriving limits from its stored snapshot. Read-only receipts/history remain
+  deriving limits from its stored week snapshot. Read-only receipts/history remain
   accessible under existing authorization.
 - **History:** do not edit applied migrations, frozen snapshots, accepted terms,
   historical standings or correction chains. Adding a future constraint requires
-  a new approved version and compatible UI/SQL implementation, not runtime editing.
+  an approved version, supported week-upgrade path and compatible UI/SQL
+  implementation. New versions may apply to later weeks in the same season.
 
 Other existing immutable receipt, privacy, idempotency, correction, schedule,
 qualification and finality guarantees remain controlling.
@@ -152,3 +178,7 @@ feature approval follows merely from completed code or rehearsal.
 | ---------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Historical bases | August 28–29, 2026 | Original six governing sources and D-001–D-006 resolutions retained                                                                                                                                          |
 | Addendum 1       | September 11, 2026 | Reconcile approved V1.2 / Product Bible 3.1, owner rehearsal, B+A identity, bounded quote/score operations, account delivery and audit-stage status; document finite card compatibility and unresolved items |
+
+Revision 2 — September 11, 2026: owner approved future-week updates within
+existing development seasons; completed play remains unchanged. Supersedes the
+season-long freeze requirement for future play, with explicit per-week provenance.

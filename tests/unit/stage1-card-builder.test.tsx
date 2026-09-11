@@ -508,7 +508,7 @@ it("blocks unsupported season rules without consuming a saved draft", () => {
     />,
   );
   expect(screen.getByRole("alert")).toHaveTextContent(
-    "season rules are unavailable or unsupported",
+    "week's rules are unavailable or unsupported",
   );
   expect(
     screen.queryByRole("button", { name: /seal card/i }),

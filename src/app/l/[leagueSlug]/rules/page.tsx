@@ -101,7 +101,7 @@ export default async function LeagueRulesPage({
     },
     {
       title: "Corrections and finality",
-      body: `Documented NFL score corrections remain visible for ${ruleset.settlement.correctionWindowHours} hours. Season rules do not change after the snapshot freezes at roster lock.`,
+      body: `Documented NFL score corrections remain visible for ${ruleset.settlement.correctionWindowHours} hours. During development, approved rule updates apply when the next week opens. An open week, its sealed cards, and earlier results keep their original rules.`,
     },
   ];
   const leagueLabel =
@@ -119,9 +119,9 @@ export default async function LeagueRulesPage({
       description={
         presentation.context === "EXAMPLE"
           ? "Illustrative Ruleset values for this read-only Example Season."
-          : presentation.frozenAt
-            ? "These season rules were frozen at roster lock."
-            : "These persisted season rules are published now and freeze at roster lock."
+          : presentation.throughWeek
+            ? `Rules for Week ${presentation.throughWeek}. Approved updates take effect in future weeks; earlier play keeps its rules.`
+            : "Starting rules for this season. During development, approved updates can take effect when a new week opens."
       }
       aside={
         <StatusBadge
@@ -136,7 +136,7 @@ export default async function LeagueRulesPage({
           {presentation.context === "EXAMPLE"
             ? "Example Season"
             : presentation.frozenAt
-              ? "Frozen"
+              ? "Recorded"
               : "Published"}
         </StatusBadge>
       }
@@ -155,6 +155,18 @@ export default async function LeagueRulesPage({
         </div>
 
         <aside className="space-y-5">
+          {presentation.weekRules && presentation.weekRules.length > 0 ? (
+            <section className="border-boundary border-t pt-5">
+              <h2 className="font-bold">Rules by week</h2>
+              <ul className="text-graphite mt-2 space-y-1 text-sm">
+                {presentation.weekRules.map((item) => (
+                  <li key={item.week}>
+                    Week {item.week} · Rules v{item.version}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
           <section className="border-boundary border-t pt-5">
             <h2 className="font-bold">Commissioner limits</h2>
             <p className="text-graphite mt-2 text-sm leading-6">

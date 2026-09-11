@@ -17,7 +17,7 @@ All-play is absent from Matchup, Standings, weekly summaries, RecordBridge,
 history, and archive presentation. The database does not compute it for a V1.2
 season.
 
-## Frozen-season compatibility
+## Original rollout compatibility (superseded for future weeks)
 
 This change is prospective. A season’s frozen Ruleset snapshot remains the
 authority for that season:
@@ -29,6 +29,15 @@ authority for that season:
 - new seasons snapshot V1.2 from the migration-owned allowlist.
 
 No old standing, playoff field, result, champion, or archive is recalculated.
+
+## September 11 prospective-week amendment
+
+The owner subsequently approved rule updates for future play within existing
+development seasons. An already-open or completed V1.1 week keeps its rules;
+the next week can adopt V1.2 when it opens. Past scores, receipts and published
+standings are not recalculated. Future cumulative standings use the rules of
+that future week. This supersedes the original season-long upgrade prohibition.
+See the [governing addendum](governance/2026-09-11-governing-addendum.md).
 
 ## Recorded governing amendment
 
@@ -81,5 +90,5 @@ needed and correct the issue prospectively through a later Ruleset version.
 
 The original V1.2 proposal did not itself authorize Production mutation.
 Its subsequent approved activation is recorded above. Stage 6 reconciles this
-history and proposes a separate card-compatibility migration; that new migration
+history and proposes a separate prospective-week and card-compatibility migration; that new migration
 has not been applied to Production.

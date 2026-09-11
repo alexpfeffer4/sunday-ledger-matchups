@@ -73,7 +73,7 @@ export type CardRules = Pick<
   "card" | "concentration" | "markets"
 >;
 export const unavailableCardRulesMessage =
-  "These season rules are unavailable or unsupported. Card changes are paused. Your draft and sealed receipts are unchanged.";
+  "This week's rules are unavailable or unsupported. Card changes are paused. Your draft and sealed receipts are unchanged.";
 
 export function resolveSeasonCardRules(
   snapshot: unknown,
