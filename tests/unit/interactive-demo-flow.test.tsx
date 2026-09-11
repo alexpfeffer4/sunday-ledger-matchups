@@ -109,9 +109,7 @@ describe("practice week flow", () => {
     expect(tray).toHaveTextContent("3 picks · 1,000 allocated");
     fireEvent.click(within(tray).getByRole("button", { name: "Review card" }));
 
-    expect(
-      screen.getByRole("heading", { name: "Review your complete card" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Review" })).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent(
       "One example quote changed",
     );
@@ -121,7 +119,7 @@ describe("practice week flow", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Your practice card is sealed" }),
+      screen.getByRole("heading", { name: "Card sealed" }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Practice receipt 01/)).toBeInTheDocument();
     expect(screen.getAllByText(/Not saved/).length).toBeGreaterThan(0);
@@ -134,11 +132,11 @@ describe("practice week flow", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Practice matchup final" }),
+      screen.getByRole("heading", { name: "Your result" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Opponent’s final card" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Matchup final")).toBeInTheDocument();
+    expect(screen.getByText("Final", { exact: true })).toBeInTheDocument();
   });
 });

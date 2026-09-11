@@ -9,6 +9,8 @@ on:
       - "package.json"
       - "package-lock.json"
       - "scripts/check-generated-supabase-types.mjs"
+      - "scripts/configure-auth-acceptance.mjs"
+      - "supabase/templates/**"
       - "src/**"
       - "supabase/migrations/**"
       - "supabase/operations/**"
@@ -50,7 +52,9 @@ jobs:
           version: 2.116.0
 
       - name: Initialize disposable local configuration
-        run: supabase init
+        run: |
+          supabase init
+          node scripts/configure-auth-acceptance.mjs
 
       - name: Start disposable Supabase stack and apply every migration
         run: supabase start
@@ -75,6 +79,8 @@ jobs:
           echo "TEST_SUPABASE_DB_URL=$DB_URL" >> "$GITHUB_ENV"
           echo "OWNER_REHEARSAL_TEST_EMAIL=owner-rehearsal@acceptance.test" >> "$GITHUB_ENV"
           echo "OWNER_REHEARSAL_TEST_PASSWORD=Owner-Rehearsal-Acceptance-48!" >> "$GITHUB_ENV"
+          echo "TEST_MAIL_URL=http://127.0.0.1:54324" >> "$GITHUB_ENV"
+          echo "AUTH_TEST_FAILURE_FILE=/tmp/sunday-ledger-auth-failure.json" >> "$GITHUB_ENV"
           echo "FULL_STACK_ACCEPTANCE=1" >> "$GITHUB_ENV"
           echo "SUPABASE_SECRET_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
           echo "SCORE_JOB_SECRET=disposable-score-job-secret-for-ci-only" >> "$GITHUB_ENV"
@@ -127,6 +133,7 @@ jobs:
           tests/e2e/controlled-league-full-stack.spec.ts
           tests/e2e/owner-rehearsal-full-stack.spec.ts
           tests/e2e/card-quotes-full-stack.spec.ts
+          tests/e2e/auth-email-full-stack.spec.ts
           --project=desktop --reporter=github
 
       - name: Stop disposable local database
@@ -172,6 +179,8 @@ jobs:
           tests/e2e/phase8-accessibility.spec.ts
           tests/e2e/phase10-navigation-records.spec.ts
           tests/e2e/phase11-identity.spec.ts
+          tests/e2e/phase1-public.spec.tsx
+          tests/e2e/phase3-practice-card.spec.ts
           tests/e2e/audit-stage4-presentation.spec.ts
           --project=desktop --reporter=github
 
@@ -184,5 +193,7 @@ jobs:
           tests/e2e/phase8-accessibility.spec.ts
           tests/e2e/phase10-navigation-records.spec.ts
           tests/e2e/phase11-identity.spec.ts
+          tests/e2e/phase1-public.spec.tsx
+          tests/e2e/phase3-practice-card.spec.ts
           tests/e2e/audit-stage4-presentation.spec.ts
           --project=webkit --reporter=github

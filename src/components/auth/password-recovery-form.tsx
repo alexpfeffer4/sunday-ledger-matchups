@@ -1,23 +1,43 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { requestPasswordReset } from "@/app/(auth)/auth/actions";
 import { initialPasswordActionState } from "@/app/(auth)/auth/state";
 
-export function PasswordRecoveryForm({ next }: { next: string }) {
+import { LinkErrorNotice } from "@/components/auth/link-error-notice";
+import { useResendCooldown } from "@/components/auth/use-resend-cooldown";
+
+export function PasswordRecoveryForm({
+  next,
+  linkError,
+}: {
+  next: string;
+  linkError?: string;
+}) {
+  const [email, setEmail] = useState("");
+  const { secondsRemaining, start } = useResendCooldown();
   const [state, action, pending] = useActionState(
-    requestPasswordReset,
+    async (previous: typeof initialPasswordActionState, data: FormData) => {
+      const result = await requestPasswordReset(previous, data);
+      start(result.retryAfterSeconds);
+      return result;
+    },
     initialPasswordActionState,
   );
 
   return (
     <form action={action} className="mt-7 space-y-5">
+      {linkError && state.status === "idle" ? (
+        <LinkErrorNotice reason={linkError} />
+      ) : null}
       <input name="next" type="hidden" value={next} />
       <div>
         <label className="text-sm font-bold" htmlFor="recovery-email">
           Email address
         </label>
         <input
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
           autoComplete="email"
           className="border-control bg-surface focus:border-action mt-2 min-h-12 w-full rounded-lg border px-3 text-base"
           id="recovery-email"
@@ -38,10 +58,14 @@ export function PasswordRecoveryForm({ next }: { next: string }) {
       </div>
       <button
         className="bg-registry hover:bg-registry-hover min-h-12 w-full rounded-lg px-5 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-70"
-        disabled={pending}
+        disabled={pending || secondsRemaining > 0}
         type="submit"
       >
-        {pending ? "Sending…" : "Email recovery link"}
+        {pending
+          ? "Sending…"
+          : secondsRemaining > 0
+            ? `Resend available in ${secondsRemaining}s`
+            : "Email recovery link"}
       </button>
       {state.status !== "idle" && state.field !== "email" ? (
         <p

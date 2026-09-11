@@ -113,8 +113,11 @@ function liveStatus(state: Stage1StateDto): ReactNode {
 }
 
 function FormationPanel({ state }: { state: Stage1StateDto }) {
-  const liveSlatePublished =
-    state.league.mode === "LIVE" && state.week?.state === "PLANNED";
+  const liveSlatePublished = state.week?.state === "PLANNED";
+  const validRoster =
+    state.league.memberCount >= 4 &&
+    state.league.memberCount <= 16 &&
+    state.league.memberCount % 2 === 0;
   return (
     <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">
       <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
@@ -132,10 +135,14 @@ function FormationPanel({ state }: { state: Stage1StateDto }) {
       </p>
       {state.commissioner.isCommissioner ? (
         <Link
-          className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
-          href={`/l/${state.league.slug}/commissioner`}
+          className="bg-registry hover:bg-registry-hover mt-4 inline-flex min-h-12 items-center rounded-lg px-5 font-semibold text-white"
+          href={`/l/${state.league.slug}/commissioner#${validRoster ? "season-start" : "league-invitations"}`}
         >
-          Open commissioner setup
+          {validRoster
+            ? liveSlatePublished
+              ? "Lock roster & start season"
+              : "Start season"
+            : "Invite members"}
         </Link>
       ) : null}
     </div>
@@ -731,7 +738,8 @@ export function Stage1LeagueView({ state }: { state: Stage1StateDto }) {
       }
       aside={liveStatus(state)}
     >
-      {!state.week ? (
+      {!state.week ||
+      (state.league.lifecycle === "DRAFT" && state.week.state === "PLANNED") ? (
         <FormationPanel state={state} />
       ) : (
         <div className="mt-6 grid gap-7 xl:grid-cols-[minmax(0,1fr)_340px]">

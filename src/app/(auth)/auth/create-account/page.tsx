@@ -30,7 +30,8 @@ export default async function CreateAccountPage({
       authenticated = Boolean(data?.claims?.sub);
     } catch {}
   }
-  if (authenticated) redirect(next);
+  if (authenticated)
+    redirect(`/account/setup?next=${encodeURIComponent(next)}`);
 
   return (
     <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { PasswordRecoveryForm } from "@/components/auth/password-recovery-form";
-import { LinkErrorNotice } from "@/components/auth/link-error-notice";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Recover password" };
@@ -38,12 +37,21 @@ export default async function RecoverPasswordPage({
             setup screen where you can save a new password of at least eight
             characters.
           </p>
-          {query.error ? (
-            <LinkErrorNotice
-              reason={Array.isArray(query.error) ? query.error[0] : query.error}
-            />
-          ) : null}
-          <PasswordRecoveryForm next={next} />
+          <PasswordRecoveryForm
+            next={next}
+            linkError={
+              Array.isArray(query.error) ? query.error[0] : query.error
+            }
+          />
+          <p className="text-muted mt-4 text-sm">
+            New here?{" "}
+            <Link
+              className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
+              href={`/auth/create-account?next=${encodeURIComponent(next)}`}
+            >
+              Create an account
+            </Link>
+          </p>
           <Link
             className="text-action mt-5 inline-flex min-h-11 items-center font-semibold hover:underline"
             href={`/auth/sign-in?next=${encodeURIComponent(next)}`}

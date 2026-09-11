@@ -23,9 +23,10 @@ export async function generateMetadata({
   const preview = await getInvitePreview(token).catch(() => null);
   const title = preview
     ? `Join ${preview.league_name}`
-    : "You're invited to a league";
-  const description =
-    "Join your friends on Sunday Ledger. Make your NFL picks, face a friend each week, and compete all season. Free to play with virtual credits.";
+    : "League invitation unavailable";
+  const description = preview
+    ? "Join your friends on Sunday Ledger. Make your NFL picks, face a friend each week, and compete all season. Free to play with virtual credits."
+    : "This invitation is unavailable. Ask the commissioner for a current private league link.";
   const images = [
     {
       url: invitePreviewImage.src,

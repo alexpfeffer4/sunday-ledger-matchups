@@ -76,17 +76,15 @@ export async function completeAccountSetup(
     if (usernameResult.error) {
       return {
         status: "error",
-        message: "The username could not be saved. Try another username.",
-        fieldErrors: {
-          username: "Choose another username and try again.",
-        },
+        message:
+          "Your email is confirmed, but the username could not be saved. Keep it and try again shortly.",
       };
     }
 
     const passwordResult = await supabase.auth.updateUser({
       password: parsed.data.password,
     });
-    if (passwordResult.error) {
+    if (passwordResult.error && passwordResult.error.code !== "same_password") {
       return {
         status: "error",
         message:

@@ -6,7 +6,10 @@ import {
 } from "@/app/(auth)/auth/actions";
 import { completeAccountSetup } from "@/app/account/actions";
 import { joinLeagueAction } from "@/app/leagues/actions";
-import { GET as confirmEmailLink } from "@/app/(auth)/auth/confirm/route";
+import {
+  GET as previewEmailLink,
+  POST as submitEmailLink,
+} from "@/app/(auth)/auth/confirm/route";
 import { initialMagicLinkState } from "@/app/(auth)/auth/state";
 import { initialAccountSetupState } from "@/app/account/state";
 import { initialAppActionState } from "@/application/actions/action-state";
@@ -35,11 +38,85 @@ vi.mock("@/adapters/supabase/server", () => ({
   createSupabaseServerClient: mocks.createClient,
 }));
 
+// Exercise the real POST with the same fields formerly supplied in email URLs.
+function confirmEmailLink(request: NextRequest) {
+  const origin = request.headers.get("host")
+    ? `${request.headers.get("x-forwarded-proto") ?? "http"}://${request.headers.get("host")}`
+    : request.nextUrl.origin;
+  return submitEmailLink(
+    new NextRequest(new URL("/auth/confirm", request.url), {
+      method: "POST",
+      headers: {
+        ...Object.fromEntries(request.headers),
+        origin,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: request.nextUrl.searchParams.toString(),
+    }),
+  );
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
 describe("Phase 1 auth and join actions", () => {
+  it("does not consume credentials on email GET or HEAD prefetch", async () => {
+    for (const method of ["GET", "HEAD"]) {
+      const response = await previewEmailLink(
+        new NextRequest(
+          "https://sunday-ledger.example/auth/confirm?token_hash=private&type=signup&next=%2Fjoin%2Fprivate-invite-token",
+          { method },
+        ),
+      );
+      expect(response.headers.get("location")).toContain("/auth/verify?");
+      expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+    }
+    expect(mocks.createClient).not.toHaveBeenCalled();
+  });
+  it("rejects cross-origin confirmation without contacting Auth", async () => {
+    const response = await submitEmailLink(
+      new NextRequest("https://sunday-ledger.example/auth/confirm", {
+        method: "POST",
+        headers: {
+          origin: "https://unrelated.example",
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        body: "token_hash=private&type=signup",
+      }),
+    );
+    expect(response.status).toBe(403);
+    expect(mocks.createClient).not.toHaveBeenCalled();
+  });
+  it("distinguishes Auth outages from expired links without leaking credentials", async () => {
+    mocks.createClient.mockResolvedValue({
+      auth: {
+        verifyOtp: vi.fn(async () => ({
+          error: { code: "unexpected_failure", status: 503 },
+        })),
+      },
+    });
+    const response = await confirmEmailLink(
+      new NextRequest(
+        "https://sunday-ledger.example/auth/confirm?token_hash=private&type=signup&next=%2Fjoin%2Fprivate-invite-token",
+      ),
+    );
+    expect(response.headers.get("location")).toBe(
+      "https://sunday-ledger.example/auth/create-account?error=temporarily_unavailable&next=%2Fjoin%2Fprivate-invite-token",
+    );
+  });
+  it("rejects an unsupported verification type", async () => {
+    const verifyOtp = vi.fn();
+    mocks.createClient.mockResolvedValue({ auth: { verifyOtp } });
+    const response = await confirmEmailLink(
+      new NextRequest(
+        "https://sunday-ledger.example/auth/confirm?token_hash=private&type=admin",
+      ),
+    );
+    expect(verifyOtp).not.toHaveBeenCalled();
+    expect(response.headers.get("location")).toContain("error=invalid_link");
+  });
+
   it("uses provider account creation only for explicit Create account intent", async () => {
     const signInWithOtp = vi.fn(
       async (request: {

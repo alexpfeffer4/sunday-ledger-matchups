@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { completeAccountSetup } from "@/app/account/actions";
 import { initialAccountSetupState } from "@/app/account/state";
 
@@ -14,6 +14,7 @@ export function AccountSetupForm({
   currentUsername: string;
   next: string;
 }) {
+  const [username, setUsername] = useState(currentUsername);
   const [state, action, pending] = useActionState(
     completeAccountSetup,
     initialAccountSetupState,
@@ -36,7 +37,8 @@ export function AccountSetupForm({
           aria-invalid={Boolean(errors.username)}
           autoComplete="nickname"
           className={inputClass}
-          defaultValue={currentUsername}
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
           id="setup-username"
           maxLength={30}
           minLength={2}

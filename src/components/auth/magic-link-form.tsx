@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import {
   sendCreateAccountLink,
   sendSignInLink,
 } from "@/app/(auth)/auth/actions";
 import { initialMagicLinkState } from "@/app/(auth)/auth/state";
+import { useResendCooldown } from "@/components/auth/use-resend-cooldown";
 import { LinkErrorNotice } from "@/components/auth/link-error-notice";
 
 export function MagicLinkForm({
@@ -18,29 +19,17 @@ export function MagicLinkForm({
   linkError?: string;
 }) {
   const [email, setEmail] = useState("");
-  const [cooldownUntil, setCooldownUntil] = useState(0);
-  const [now, setNow] = useState(0);
+  const { secondsRemaining, start } = useResendCooldown();
   const [state, formAction, pending] = useActionState(
     async (previousState: typeof initialMagicLinkState, formData: FormData) => {
       const send =
         intent === "create-account" ? sendCreateAccountLink : sendSignInLink;
       const result = await send(previousState, formData);
-      if (result.retryAfterSeconds) {
-        const requestedAt = Date.now();
-        setNow(requestedAt);
-        setCooldownUntil(requestedAt + result.retryAfterSeconds * 1000);
-      }
+      start(result.retryAfterSeconds);
       return result;
     },
     initialMagicLinkState,
   );
-  const secondsRemaining = Math.max(0, Math.ceil((cooldownUntil - now) / 1000));
-
-  useEffect(() => {
-    if (!secondsRemaining) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [secondsRemaining]);
   const emailError = state.status === "error" && state.field === "email";
 
   return (

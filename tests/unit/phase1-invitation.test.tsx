@@ -162,9 +162,66 @@ describe("Phase 1 invitation experience", () => {
       />,
     );
 
-    expect(screen.getByText("✓ Roster ready")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Start season" })).toHaveAttribute(
+      "href",
+      "#season-start",
+    );
     expect(
       screen.getByRole("button", { name: "Import NFL markets for review" }),
     ).toBeVisible();
+  });
+  it.each([4, 6, 8, 10, 12, 14, 16])(
+    "puts the %i-member roster lock at the next action",
+    (count) => {
+      const state = {
+        ...controlState(count),
+        week: {
+          nflWeek: 1,
+          scope: "REGULAR" as const,
+          state: "PLANNED" as const,
+          commonLockAt: "2026-09-13T16:55:00Z",
+          correctionWindowClosesAt: null,
+        },
+      };
+      render(
+        <Stage1CommissionerControls
+          invites={[]}
+          latestLiveImport={null}
+          liveWeekOperations={null}
+          providerConfigured
+          state={state}
+        />,
+      );
+      const button = screen.getByRole("button", {
+        name: `Lock ${count}-member roster & start season`,
+      });
+      expect(button).toBeEnabled();
+      expect(button.closest("section")).toHaveAttribute("id", "season-start");
+      expect(screen.getByRole("checkbox")).toBeRequired();
+    },
+  );
+  it.each([3, 5, 17])("cannot lock an invalid %i-member roster", (count) => {
+    const state = {
+      ...controlState(count),
+      week: {
+        nflWeek: 1,
+        scope: "REGULAR" as const,
+        state: "PLANNED" as const,
+        commonLockAt: "2026-09-13T16:55:00Z",
+        correctionWindowClosesAt: null,
+      },
+    };
+    render(
+      <Stage1CommissionerControls
+        invites={[]}
+        latestLiveImport={null}
+        liveWeekOperations={null}
+        providerConfigured
+        state={state}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /Waiting for even roster/ }),
+    ).toBeDisabled();
   });
 });
