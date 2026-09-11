@@ -12,6 +12,8 @@ import { PairedMatchupView } from "@/components/matchup/paired-matchup-view";
 import { SeasonArchiveHome } from "@/components/season/archive-views";
 import { Stage1MatchupView } from "@/components/stage1/live-views";
 import { projectSeasonMemory } from "@/domain/history/project-season-memory";
+import { ownerCardContext } from "@/components/card/owner-card-context";
+import { OwnerCardProgress } from "@/components/card/owner-card-progress";
 
 export const metadata: Metadata = { title: "Matchup" };
 
@@ -57,6 +59,7 @@ export default async function MatchupPage({
     return matchup ? (
       <PairedMatchupView
         matchup={matchup}
+        cardProgress={<OwnerCardProgress context={ownerCardContext(live)} />}
         refreshControl={
           <MatchupStateRefresh
             active={

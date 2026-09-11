@@ -9,10 +9,13 @@ export const metadata: Metadata = { title: "Make picks" };
 
 export default async function SlatePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ leagueSlug: string }>;
+  searchParams?: Promise<{ review?: string }>;
 }) {
   const { leagueSlug } = await params;
+  const initialReview = (await searchParams)?.review === "1";
   const [live, archive] = await Promise.all([
     getAuthoritativeLeagueState(leagueSlug),
     getSeasonArchive(leagueSlug),
@@ -20,6 +23,7 @@ export default async function SlatePage({
   if (archive) {
     return <SeasonArchiveMakePicks archive={archive} leagueSlug={leagueSlug} />;
   }
-  if (live) return <Stage1SlateView state={live} />;
+  if (live)
+    return <Stage1SlateView state={live} initialReview={initialReview} />;
   notFound();
 }

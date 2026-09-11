@@ -1,3 +1,6 @@
+import { ownerCardContext } from "@/components/card/owner-card-context";
+import { OwnerCardProgress } from "@/components/card/owner-card-progress";
+import { PickReturn, ReturnExplanation } from "@/components/card/pick-return";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
@@ -402,7 +405,13 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
   );
 }
 
-export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
+export function Stage1SlateView({
+  state,
+  initialReview = false,
+}: {
+  state: Stage1StateDto;
+  initialReview?: boolean;
+}) {
   if (
     state.league.mode === "LIVE" &&
     state.week?.state === "PLANNED" &&
@@ -506,7 +515,7 @@ export function Stage1SlateView({ state }: { state: Stage1StateDto }) {
       description={`Cards lock ${formatDate(state.week.commonLockAt)}. Build a private draft, review the current terms, then confirm all 1,000 credits at once.`}
       aside={liveStatus(state)}
     >
-      <Stage1CardBuilder state={state} />
+      <Stage1CardBuilder state={state} initialReview={initialReview} />
     </PageFrame>
   );
 }
@@ -551,21 +560,15 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
       eyebrow="Visible only to you"
       title={`My Week ${state.week.nflWeek} card`}
       description="You can always see your sealed picks. The commissioner cannot."
-      aside={
-        <StatusBadge
-          tone={
-            state.ownerCard.compliance === "COMPLIANT" ? "positive" : "sealed"
-          }
-        >
-          {state.ownerCard.compliance === "COMPLIANT" ? "Ready" : "Incomplete"}
-        </StatusBadge>
-      }
     >
-      <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mt-7">
+        <OwnerCardProgress context={ownerCardContext(state)} onCardPage />
+      </div>
+      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div>
           {state.ownerCard.positions.length === 0 ? (
             <p className="border-boundary bg-surface rounded-xl border p-6">
-              No sealed picks yet.
+              Your picks and receipts will appear here after you seal the card.
             </p>
           ) : (
             <ol className="border-boundary bg-surface divide-boundary divide-y overflow-hidden rounded-lg border">
@@ -598,7 +601,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
                       </dd>
                     </div>
                     <div className="sm:col-span-2">
-                      <dt className="text-muted">Accepted</dt>
+                      <dt className="text-muted">Sealed</dt>
                       <dd className="mt-1 font-semibold">
                         {formatDate(position.acceptedAt)}
                       </dd>
@@ -620,8 +623,17 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
                       </dd>
                     </div>
                   </dl>
+                  <p className="text-muted mt-3 text-sm">
+                    Kickoff {formatDate(position.scheduledStartAt)}
+                  </p>
+                  {!position.settlement ? (
+                    <PickReturn
+                      stakeCredits={position.stakeCredits}
+                      americanOdds={position.americanOdds}
+                    />
+                  ) : null}
                   <Link
-                    className="text-action mt-4 inline-flex text-sm font-semibold hover:underline"
+                    className="text-action mt-4 inline-flex min-h-11 items-center text-sm font-semibold hover:underline"
                     href={`/l/${state.league.slug}/receipt/${position.id}`}
                   >
                     View receipt
@@ -631,18 +643,11 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
             </ol>
           )}
         </div>
-        <aside className="border-boundary bg-surface h-fit rounded-xl border p-5">
-          <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-            Card total
-          </p>
-          <p className="mt-2 font-mono text-2xl font-bold">
-            {formatCredits(state.ownerCard.allocatedCredits)} / 1,000
-          </p>
-          <p className="text-muted mt-2 text-sm">
-            {formatCredits(state.ownerCard.remainingCredits)} left · sealed
-            picks cannot be changed.
-          </p>
-        </aside>
+        {state.ownerCard.positions.length > 0 ? (
+          <aside className="border-boundary bg-surface h-fit rounded-xl border p-5">
+            <ReturnExplanation />
+          </aside>
+        ) : null}
       </div>
     </PageFrame>
   );

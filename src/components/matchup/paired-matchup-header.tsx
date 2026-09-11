@@ -17,7 +17,7 @@ const phaseTones: Record<
   LIVE: "live",
   DELAYED: "pending",
   PROVISIONAL: "pending",
-  FINAL: "positive",
+  FINAL: "sealed",
   CORRECTED: "corrected",
 };
 
@@ -28,9 +28,11 @@ function formatScore(value: number): string {
 function MemberScore({
   member,
   opponent = false,
+  pregame = false,
 }: {
   member: PairedMatchupDto["self"];
   opponent?: boolean;
+  pregame?: boolean;
 }) {
   return (
     <div className={opponent ? "text-right" : "text-left"}>
@@ -48,16 +50,20 @@ function MemberScore({
           ? ` · No. ${member.seed} ${member.seedKind === "PLAYOFF" ? "playoff seed" : "seed"}`
           : ""}
       </p>
-      <p
-        aria-label={`${member.displayName} score ${formatScore(member.scoreCenticredits)} credits`}
-        className="mt-4 text-[2.125rem] leading-9 font-bold tracking-[-0.04em] tabular-nums sm:text-[2.5rem] sm:leading-10"
-      >
-        {formatScore(member.scoreCenticredits)}
-      </p>
-      <p className="text-muted mt-2 text-xs font-semibold">
-        {member.decision ? `${member.decision} · ` : ""}
-        {member.cardStatus}
-      </p>
+      {!pregame ? (
+        <p
+          aria-label={`${member.displayName} score ${formatScore(member.scoreCenticredits)} credits`}
+          className="mt-4 text-[2.125rem] leading-9 font-bold tracking-[-0.04em] tabular-nums sm:text-[2.5rem] sm:leading-10"
+        >
+          {formatScore(member.scoreCenticredits)}
+        </p>
+      ) : null}
+      {!pregame ? (
+        <p className="text-muted mt-2 text-xs font-semibold">
+          {member.decision ? `${member.decision} · ` : ""}
+          {member.cardStatus}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -65,9 +71,11 @@ function MemberScore({
 export function PairedMatchupHeader({
   matchup,
   refreshControl,
+  cardProgress,
 }: {
   matchup: PairedMatchupDto;
   refreshControl: ReactNode;
+  cardProgress?: ReactNode;
 }) {
   return (
     <section
@@ -88,49 +96,81 @@ export function PairedMatchupHeader({
         </StatusBadge>
       </div>
 
+      {matchup.self.decision ? (
+        <div className="mt-5">
+          <h3 className="text-2xl font-bold">
+            {matchup.resultStatus === "PROVISIONAL" ? "Provisional: " : ""}
+            {matchup.self.decision === "WIN"
+              ? "You won"
+              : matchup.self.decision === "LOSS"
+                ? "You lost"
+                : "You tied"}
+          </h3>
+          <p className="text-graphite mt-2 text-sm">
+            {matchup.week.scope === "REGULAR"
+              ? `Season record: ${matchup.self.record}.`
+              : "This result does not change the regular-season standings."}
+            {matchup.resultStatus === "PROVISIONAL"
+              ? " Scores can still change during the correction window."
+              : ""}
+          </p>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 py-5 sm:gap-8 sm:py-7">
-        <MemberScore member={matchup.self} />
+        <MemberScore
+          member={matchup.self}
+          pregame={matchup.phase === "PREGAME"}
+        />
         <p
           aria-hidden="true"
           className="text-muted pt-14 text-xs font-bold tracking-[0.12em] uppercase"
         >
           vs
         </p>
-        <MemberScore member={matchup.opponent} opponent />
+        <MemberScore
+          member={matchup.opponent}
+          opponent
+          pregame={matchup.phase === "PREGAME"}
+        />
       </div>
 
-      <div className="border-boundary flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold">
-            {matchup.freshness.updatedAt ? (
-              <>
-                Scores checked {matchup.freshness.ageLabel}
-                {" · "}
-                <time dateTime={matchup.freshness.updatedAt}>
-                  {easternTime(matchup.freshness.updatedAt)}
-                </time>
-              </>
+      {matchup.phase === "PREGAME" ? (
+        cardProgress
+      ) : (
+        <div className="border-boundary flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold">
+              {matchup.freshness.updatedAt ? (
+                <>
+                  Scores checked {matchup.freshness.ageLabel}
+                  {" · "}
+                  <time dateTime={matchup.freshness.updatedAt}>
+                    {easternTime(matchup.freshness.updatedAt)}
+                  </time>
+                </>
+              ) : (
+                "Scores not checked yet"
+              )}
+            </p>
+            {matchup.freshness.message ? (
+              <p className="text-pending mt-1 max-w-3xl text-sm leading-5">
+                {matchup.freshness.message}
+              </p>
             ) : (
-              "Scores not checked yet"
+              <p className="text-muted mt-1 text-xs">
+                Refresh shows the latest saved result.
+              </p>
             )}
-          </p>
-          {matchup.freshness.message ? (
-            <p className="text-pending mt-1 max-w-3xl text-sm leading-5">
-              {matchup.freshness.message}
-            </p>
-          ) : (
-            <p className="text-muted mt-1 text-xs">
-              Refresh shows the latest saved result.
-            </p>
-          )}
+          </div>
+          <span className="sr-only" role="status" aria-atomic="true">
+            {matchup.phaseLabel}. Your score{" "}
+            {formatScore(matchup.self.scoreCenticredits)}. Opponent score{" "}
+            {formatScore(matchup.opponent.scoreCenticredits)}.
+          </span>
+          {refreshControl}
         </div>
-        <span className="sr-only" role="status" aria-atomic="true">
-          {matchup.phaseLabel}. Your score{" "}
-          {formatScore(matchup.self.scoreCenticredits)}. Opponent score{" "}
-          {formatScore(matchup.opponent.scoreCenticredits)}.
-        </span>
-        {refreshControl}
-      </div>
+      )}
     </section>
   );
 }

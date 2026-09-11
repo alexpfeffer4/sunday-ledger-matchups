@@ -6,8 +6,10 @@ import {
   type OutcomeSelectorOption,
 } from "@/components/card/outcome-selector";
 import { formatCredits } from "@/domain/odds/american";
+import { PickReturn, ReturnExplanation } from "@/components/card/pick-return";
 
 export function PositionEditorSheet({
+  americanOdds = null,
   confirmLabel,
   context,
   error,
@@ -25,6 +27,7 @@ export function PositionEditorSheet({
   stakeCredits,
   title,
 }: {
+  americanOdds?: number | null;
   confirmLabel: string;
   context: string;
   error: string | null;
@@ -161,6 +164,17 @@ export function PositionEditorSheet({
             <p className="text-graphite mt-2 text-sm" id={`${inputId}-copy`}>
               {helper}
             </p>
+            {americanOdds !== null && selectedOutcomeId ? (
+              <div className="mt-4">
+                <PickReturn
+                  stakeCredits={Number(stakeCredits)}
+                  americanOdds={americanOdds}
+                />
+                <div className="mt-3">
+                  <ReturnExplanation />
+                </div>
+              </div>
+            ) : null}
             {error ? (
               <p
                 className="border-negative text-negative mt-3 border-l-2 pl-3 text-sm font-semibold"

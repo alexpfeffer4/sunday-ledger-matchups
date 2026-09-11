@@ -78,6 +78,7 @@ export type PairedMatchupDto = {
   };
   phase: PairedMatchupPhase;
   phaseLabel: string;
+  resultStatus: "PROVISIONAL" | "FINAL" | null;
   broadcast: boolean;
   self: MatchupMember;
   opponent: MatchupMember;
@@ -165,7 +166,7 @@ function cardStatus(
 ): string {
   if (card.compliance === "COMPLIANT") return "Sealed";
   if (card.compliance === "INCOMPLETE") return "Incomplete";
-  if (weekState === "OPEN") return "Draft";
+  if (weekState === "OPEN") return "Not started";
   return "Pending";
 }
 
@@ -251,6 +252,9 @@ export function projectPairedMatchup(
   qualificationSeeds: ReadonlyMap<string, number> = new Map(),
 ): PairedMatchupDto | null {
   if (!state.week || !state.matchup || !state.ownerCard) return null;
+  if (state.league.mode === "SIMULATION" && state.season.simulatedNow) {
+    now = new Date(state.season.simulatedNow);
+  }
 
   const eventById = new Map(state.slate.map((event) => [event.id, event]));
   const operationByEventId = new Map(
@@ -414,7 +418,11 @@ export function projectPairedMatchup(
   else if (delayed) phase = "DELAYED";
   else if (hasLiveEvent) phase = "LIVE";
   else if (hasRevealedEvent) phase = "PARTIAL_REVEAL";
-  else if (state.week.state === "LOCKED") phase = "LOCKED";
+  else if (
+    state.week.state === "LOCKED" ||
+    now.getTime() >= new Date(state.week.commonLockAt).getTime()
+  )
+    phase = "LOCKED";
   else phase = "PREGAME";
 
   const phaseLabels: Record<PairedMatchupPhase, string> = {
@@ -523,6 +531,7 @@ export function projectPairedMatchup(
     },
     phase,
     phaseLabel: phaseLabels[phase],
+    resultStatus: state.matchup.result?.status ?? null,
     broadcast: hasLiveEvent,
     self,
     opponent,

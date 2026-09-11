@@ -3,26 +3,30 @@
 import Link from "next/link";
 import { reviewLiveCardQuotes } from "@/app/l/[leagueSlug]/card-quote-actions";
 import type { CardQuoteReviewResult } from "@/application/providers/card-quote-review";
-import {
-  useActionState,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { acceptStage1CardAction } from "@/app/l/[leagueSlug]/actions";
 import { initialAppActionState } from "@/application/actions/action-state";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import {
   restoreCardDrafts,
   type RestoredCardDraft,
-  type StoredCardDraft,
 } from "@/components/card/card-draft-storage";
 import {
   formatAmericanOdds,
   formatMarketProposition,
   marketOptionCopy,
 } from "@/components/card/market-option-copy";
+import {
+  cardDraftStorageKey,
+  ownerCardContext,
+} from "@/components/card/owner-card-context";
+import {
+  useCardDeadline,
+  useCardDraft,
+} from "@/components/card/use-card-draft";
+import { OwnerCardProgress } from "@/components/card/owner-card-progress";
+import { PickReturn, ReturnExplanation } from "@/components/card/pick-return";
+import { easternTime } from "@/application/queries/score-freshness";
 import { CardTray } from "@/components/card/card-tray";
 import {
   OutcomeSelector,
@@ -70,15 +74,7 @@ const kickoffFilterLabels: Record<KickoffFilter, string> = {
   SUN_NIGHT: "Sun night",
 };
 
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  }).format(new Date(value));
-}
+const formatDate = easternTime;
 
 function formatObservedAt(value: string): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -113,10 +109,6 @@ function selectionKey(
   return `${selection.eventId}:${selection.marketType}`;
 }
 
-function subscribeToHydration() {
-  return () => undefined;
-}
-
 function cardBuilderContextKey(state: Stage1StateDto): string {
   const slateRevision = state.slate.flatMap((event) =>
     event.markets.map((market) => [
@@ -130,17 +122,36 @@ function cardBuilderContextKey(state: Stage1StateDto): string {
     state.league.id,
     state.week?.id ?? null,
     state.ownerCard?.id ?? null,
+    state.ownerCard?.compliance,
+    state.ownerCard?.allocatedCredits,
+    state.week?.state,
     slateRevision,
   ]);
 }
 
-export function Stage1CardBuilder({ state }: { state: Stage1StateDto }) {
+export function Stage1CardBuilder({
+  state,
+  initialReview = false,
+}: {
+  state: Stage1StateDto;
+  initialReview?: boolean;
+}) {
   return (
-    <Stage1CardBuilderEditor key={cardBuilderContextKey(state)} state={state} />
+    <Stage1CardBuilderEditor
+      key={cardBuilderContextKey(state)}
+      state={state}
+      initialReview={initialReview}
+    />
   );
 }
 
-function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
+function Stage1CardBuilderEditor({
+  state,
+  initialReview,
+}: {
+  state: Stage1StateDto;
+  initialReview: boolean;
+}) {
   const ownerCard = state.ownerCard;
   const [slate, setSlate] = useState(state.slate);
   const [checkingQuotes, setCheckingQuotes] = useState(false);
@@ -148,26 +159,25 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
     Extract<CardQuoteReviewResult, { status: "ready" }>["review"] | null
   >(null);
   const [reviewExpired, setReviewExpired] = useState(false);
-  const [requiresLiveReview, setRequiresLiveReview] = useState(false);
-  const draftStorageKey =
-    ownerCard && state.week
-      ? `sunday-ledger:card-draft:v1:${state.league.id}:${state.week.id}:${ownerCard.id}`
-      : null;
-  const hydrated = useSyncExternalStore(
-    subscribeToHydration,
-    () => true,
-    () => false,
+  const [requiresLiveReview, setRequiresLiveReview] = useState(
+    initialReview && state.league.mode === "LIVE",
   );
-  const [drafts, setDrafts] = useState<DraftSelection[]>(() => {
-    if (typeof window === "undefined" || !draftStorageKey) return [];
-    try {
-      return restoreCardDrafts(localStorage.getItem(draftStorageKey), slate);
-    } catch {
-      return [];
-    }
-  });
+  const context = { ...ownerCardContext(state), slate };
+  const { drafts, setDrafts, hydrated, saved, sealed, status, clearDrafts } =
+    useCardDraft(context);
+  const closed = useCardDeadline(context);
   const [kickoffFilter, setKickoffFilter] = useState<KickoffFilter>("ALL");
-  const [reviewing, setReviewing] = useState(false);
+  const [reviewing, setReviewing] = useState(initialReview);
+  const storageKey = cardDraftStorageKey(context);
+  useEffect(() => {
+    const changedInAnotherTab = (event: StorageEvent) => {
+      if (event.key !== null && event.key !== storageKey) return;
+      setReviewing(false);
+      setQuoteReview(null);
+    };
+    window.addEventListener("storage", changedInAnotherTab);
+    return () => window.removeEventListener("storage", changedInAnotherTab);
+  }, [storageKey]);
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [editorError, setEditorError] = useState<string | null>(null);
   const [cardFeedback, setCardFeedback] = useState<string | null>(null);
@@ -186,40 +196,12 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
     return () => window.clearTimeout(timer);
   }, [quoteReview]);
   useEffect(() => {
-    if (!draftStorageKey || !hydrated) return;
-    try {
-      if (
-        ownerCard?.remainingCredits === 0 ||
-        actionState.status === "success" ||
-        drafts.length === 0
-      ) {
-        localStorage.removeItem(draftStorageKey);
-        return;
-      }
-
-      const stored: StoredCardDraft = {
-        version: 1,
-        drafts: drafts.map((draft) => ({
-          eventId: draft.eventId,
-          marketType: draft.marketType,
-          outcomeKey: draft.outcomeKey,
-          reviewedAmericanOdds: draft.reviewedAmericanOdds,
-          reviewedPayloadHash: draft.reviewedPayloadHash,
-          reviewedProposition: draft.reviewedProposition,
-          stakeCredits: draft.stakeCredits,
-        })),
-      };
-      localStorage.setItem(draftStorageKey, JSON.stringify(stored));
-    } catch {
-      // Card entry remains usable when browser storage is unavailable.
-    }
-  }, [
-    actionState.status,
-    draftStorageKey,
-    drafts,
-    hydrated,
-    ownerCard?.remainingCredits,
-  ]);
+    if (actionState.status === "success") clearDrafts();
+  }, [actionState.status, clearDrafts]);
+  const reviewHeadingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (reviewing && hydrated) reviewHeadingRef.current?.focus();
+  }, [reviewing, hydrated]);
 
   if (!ownerCard || !state.week) return null;
 
@@ -340,7 +322,7 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
   }
 
   async function reviewCard() {
-    if (pending) return;
+    if (pending || closed || sealed) return;
     if (!draftValidation.accepted) {
       setCardFeedback(draftValidation.message);
       requestAnimationFrame(() => cardFeedbackRef.current?.focus());
@@ -583,7 +565,7 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
     );
   }
 
-  if (ownerCard.remainingCredits === 0) {
+  if (sealed || actionState.status === "success") {
     return (
       <section className="border-positive/30 bg-positive/5 mt-7 rounded-xl border p-6">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
@@ -595,34 +577,46 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
               All 1,000 credits are sealed
             </h2>
             <p className="text-graphite mt-2 text-sm">
-              Your card is ready. Open My Card to review the accepted terms and
-              receipt for every pick.
+              Your card is sealed and every pick has a receipt. Open My Card to
+              see your saved picks.
             </p>
             <Link
               className="text-action mt-3 inline-flex min-h-11 items-center text-sm font-semibold hover:underline"
               href={`/l/${state.league.slug}/card`}
             >
-              Open accepted card and receipts
+              View card
             </Link>
           </div>
-          <StatusBadge tone="sealed">Ready</StatusBadge>
+          <StatusBadge tone="sealed">Sealed</StatusBadge>
         </div>
       </section>
     );
   }
 
-  if (reviewing) {
+  if (closed)
     return (
-      <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="border-registry bg-surface rounded-xl border p-6 shadow-[var(--shadow-card)]">
+      <div className="mt-7">
+        <OwnerCardProgress context={context} />
+      </div>
+    );
+
+  if (reviewing && drafts.length > 0) {
+    return (
+      <div className="mt-7 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="border-registry bg-surface min-w-0 rounded-xl border p-4 wrap-break-word shadow-[var(--shadow-card)] sm:p-6">
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
             Final review
           </p>
-          <h2 className="mt-2 text-2xl font-bold">Review your complete card</h2>
+          <h2
+            className="mt-2 text-2xl font-bold outline-none"
+            ref={reviewHeadingRef}
+            tabIndex={-1}
+          >
+            Review your complete card
+          </h2>
           <p className="text-graphite mt-3 leading-7">
-            These picks are still editable. One successful confirmation accepts
-            every pick together, seals the complete card, and creates its
-            receipts.
+            Check each game, selection, odds, stake, and total return. Your
+            picks stay editable until you confirm.
           </p>
           {quoteReviewCount > 0 ? (
             <p
@@ -639,23 +633,27 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
               if (!selected) return null;
               return (
                 <article
+                  aria-label={`Pick ${index + 1}: ${selected.event.awayTeam} at ${selected.event.homeTeam}`}
                   className="py-4 first:pt-0 last:pb-0"
                   key={draft.marketSnapshotId}
                 >
-                  <p className="text-muted text-xs">
+                  <p className="text-graphite text-sm font-semibold">
                     Pick {String(index + 1).padStart(2, "0")} ·{" "}
                     {selected.event.awayTeam} at {selected.event.homeTeam} ·{" "}
                     {formatDate(selected.event.scheduledStartAt)}
                   </p>
-                  <div className="mt-1 flex justify-between gap-4 text-sm">
+                  <div className="mt-2 flex flex-wrap justify-between gap-2 text-sm">
                     <span className="font-semibold">
                       {formatMarketProposition(draft.reviewedProposition)}
                     </span>
                     <span className="shrink-0 font-mono">
-                      {formatCredits(draft.stakeCredits)} @{" "}
-                      {formatAmericanOdds(draft.reviewedAmericanOdds)}
+                      Odds {formatAmericanOdds(draft.reviewedAmericanOdds)}
                     </span>
                   </div>
+                  <PickReturn
+                    stakeCredits={draft.stakeCredits}
+                    americanOdds={draft.reviewedAmericanOdds}
+                  />
                   {draft.quoteReviewRequired ? (
                     <div className="border-pending/40 bg-pending/10 mt-3 rounded-lg border p-3 text-sm leading-5">
                       <p className="font-semibold">
@@ -670,6 +668,10 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
                         {formatMarketProposition(selected.market.proposition)}{" "}
                         {formatAmericanOdds(selected.market.americanOdds)}
                       </p>
+                      <PickReturn
+                        stakeCredits={draft.stakeCredits}
+                        americanOdds={selected.market.americanOdds}
+                      />
                       {selected.market.qualityStatus === "HEALTHY" ? (
                         <button
                           className="text-action mt-2 min-h-11 font-semibold hover:underline"
@@ -693,7 +695,7 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
             })}
           </div>
         </section>
-        <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
+        <aside className="min-w-0 space-y-5 wrap-break-word xl:sticky xl:top-6 xl:self-start">
           <section className="border-boundary bg-subtle rounded-xl border p-5">
             <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
               Card total
@@ -727,7 +729,9 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
                 >
                   {checkingQuotes
                     ? "Checking current odds…"
-                    : "Check current odds again"}
+                    : quoteReview
+                      ? "Check current odds again"
+                      : "Check current odds before sealing"}
                 </button>
               ) : null}
             </div>
@@ -742,7 +746,15 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
               {draftValidation.message} Return to editing to adjust your stake.
             </p>
           ) : null}
+          <ReturnExplanation />
+          <p className="text-sm font-semibold">
+            Seal by {formatDate(state.week.commonLockAt)}.
+          </p>
           <form action={action}>
+            <p className="mb-3 text-sm leading-6">
+              Sealing is final: all picks are saved together with a receipt for
+              each. You cannot edit or cancel them.
+            </p>
             <input name="leagueSlug" type="hidden" value={state.league.slug} />
             <input
               name="reviewId"
@@ -800,19 +812,26 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
 
   return (
     <>
-      <div className="mt-7 grid gap-6 pb-28 xl:grid-cols-[minmax(0,1fr)_360px] xl:pb-0">
+      <div className="mt-7 grid grid-cols-1 gap-6 pb-28 xl:grid-cols-[minmax(0,1fr)_360px] xl:pb-0">
         <div className="space-y-6">
           <section className="border-boundary bg-surface rounded-xl border p-5">
             <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-              Card progress
+              Your weekly card
             </p>
+            <div className="mt-2">
+              <StatusBadge tone="pending">{status}</StatusBadge>
+            </div>
             <p className="mt-2 font-mono text-2xl font-bold">
               {formatCredits(totalCredits)} /{" "}
               {formatCredits(pocSeason1Ruleset.card.weeklyAllocationCredits)}
             </p>
             <p className="text-graphite mt-2 text-sm leading-6">
-              Select one side per market. Your unfinished picks are saved on
-              this device until you confirm the complete card.
+              {drafts.length > 0
+                ? saved
+                  ? "Draft saved on this device."
+                  : "Draft not saved on this device. Keep this page open to avoid losing it."
+                : "Choose a side to start your card. Drafts stay on this device."}{" "}
+              Your picks stay editable until you seal the complete card.
             </p>
             <dl className="border-boundary mt-4 grid gap-3 border-t pt-4 text-sm sm:grid-cols-2">
               <div>
@@ -944,7 +963,7 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
           ))}
         </div>
 
-        <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
+        <aside className="min-w-0 space-y-5 wrap-break-word xl:sticky xl:top-6 xl:self-start">
           <section className="border-boundary bg-surface rounded-xl border p-5">
             <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
               Your picks
@@ -970,7 +989,12 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-muted text-xs">
-                            Pick {String(index + 1).padStart(2, "0")}
+                            Pick {String(index + 1).padStart(2, "0")} ·{" "}
+                            {selected.event.awayTeam} at{" "}
+                            {selected.event.homeTeam}
+                          </p>
+                          <p className="text-muted mt-1 text-xs">
+                            {formatDate(selected.event.scheduledStartAt)}
                           </p>
                           <p className="mt-1 text-sm font-semibold">
                             {formatMarketProposition(
@@ -1075,6 +1099,7 @@ function Stage1CardBuilderEditor({ state }: { state: Stage1StateDto }) {
         remainingCredits={remainingCredits}
       />
       <PositionEditorSheet
+        americanOdds={editorMarket?.americanOdds ?? null}
         confirmLabel={editor?.existing ? "Update pick" : "Add to card"}
         context={
           editorEvent

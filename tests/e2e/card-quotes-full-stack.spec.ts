@@ -47,21 +47,69 @@ async function buildCard(
   page: Page,
   slug: string,
   identity: { email: string; password: string },
+  verifyJourney = false,
 ) {
   await page.goto(
-    `/auth/sign-in?next=${encodeURIComponent(`/l/${slug}/slate`)}`,
+    `/auth/sign-in?next=${encodeURIComponent(`/l/${slug}/${verifyJourney ? "matchup" : "slate"}`)}`,
   );
   await page.getByLabel("Email address").fill(identity.email);
   await page.getByLabel("Password", { exact: true }).fill(identity.password);
   await page.getByRole("button", { name: "Sign in with password" }).click();
-  await page.waitForURL(`**/l/${slug}/slate`);
+  await page.waitForURL(`**/l/${slug}/${verifyJourney ? "matchup" : "slate"}`);
+  if (verifyJourney) {
+    await expect(
+      page
+        .getByRole("region", { name: "Your weekly card", exact: true })
+        .locator(".status-badge"),
+    ).toContainText("Not started");
+    await expect(page.getByText(/Seal by/)).toBeVisible();
+    await page
+      .getByRole("link", { name: "Make picks", exact: true })
+      .last()
+      .click();
+  }
   await page
     .locator(".outcome-selector-group")
     .first()
     .getByRole("button", { name: /New York Jets/ })
     .click();
-  await page.getByLabel("Stake in credits").fill("1000");
+  await page
+    .getByLabel("Stake in credits")
+    .fill(verifyJourney ? "500" : "1000");
+  await expect(page.getByRole("dialog")).toContainText("Total returned if won");
   await page.getByRole("button", { name: "Add to card" }).click();
+  if (verifyJourney) {
+    await page.goto(`/l/${slug}/matchup`);
+    await expect(
+      page.getByRole("link", { name: "Continue card" }),
+    ).toBeVisible();
+    await expect(page.getByText(/Draft saved on this device/)).toBeVisible();
+    await page.goto(`/l/${slug}/card`);
+    await expect(
+      page
+        .getByRole("region", { name: "Your weekly card", exact: true })
+        .locator(".status-badge"),
+    ).toContainText("Draft");
+    await expect(page.getByText(/500/).first()).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole("link", { name: "Continue card" }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Continue card" }).click();
+    await page.getByRole("button", { name: "Edit pick", exact: true }).click();
+    await page.getByLabel("Stake in credits").fill("1000");
+    await page.getByRole("button", { name: "Update pick" }).click();
+    await page.goto(`/l/${slug}/matchup`);
+    await expect(
+      page
+        .getByRole("region", { name: "Your weekly card", exact: true })
+        .locator(".status-badge"),
+    ).toContainText("Ready to review");
+    await page.screenshot({
+      path: "test-results/stage3-matchup-ready-mobile.png",
+      fullPage: true,
+    });
+  }
 }
 
 test("members refresh, review, seal, and recover through real Auth and database", async ({
@@ -272,8 +320,40 @@ test("members refresh, review, seal, and recover through real Auth and database"
   );
   writeFileSync(`${fixturePath}.calls`, "");
   await page.setViewportSize({ width: 390, height: 844 });
-  await buildCard(page, slug, identities[1]!);
-  await page.getByRole("button", { name: "Review 1 picks" }).first().click();
+  await buildCard(page, slug, identities[1]!, true);
+  // A second device sees authoritative acceptance, never another device's draft.
+  const otherDevice = await browser.newContext({
+    baseURL: "http://127.0.0.1:3000",
+  });
+  const otherPage = await otherDevice.newPage();
+  await otherPage.goto(
+    `/auth/sign-in?next=${encodeURIComponent(`/l/${slug}/card`)}`,
+  );
+  await otherPage.getByLabel("Email address").fill(identities[1]!.email);
+  await otherPage
+    .getByLabel("Password", { exact: true })
+    .fill(identities[1]!.password);
+  await otherPage
+    .getByRole("button", { name: "Sign in with password" })
+    .click();
+  await expect(
+    otherPage
+      .getByRole("region", { name: "Your weekly card", exact: true })
+      .locator(".status-badge"),
+  ).toContainText("Not started");
+  const deviceDraft = await page.evaluate(() =>
+    Object.entries(localStorage).filter(([key]) =>
+      key.startsWith("sunday-ledger:card-draft:"),
+    ),
+  );
+  await page.getByRole("link", { name: "Review card", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Confirm and seal card" }),
+  ).toBeDisabled();
+  expect(readFileSync(`${fixturePath}.calls`, "utf8")).toBe("");
+  await page
+    .getByRole("button", { name: "Check current odds before sealing" })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Review your complete card" }),
   ).toBeVisible();
@@ -284,6 +364,17 @@ test("members refresh, review, seal, and recover through real Auth and database"
   expect(
     readFileSync(`${fixturePath}.calls`, "utf8").trim().split("\n"),
   ).toHaveLength(1);
+  // Both devices review the same owner card before one of them seals it.
+  await otherPage.evaluate((drafts) => {
+    for (const [key, value] of drafts) localStorage.setItem(key, value);
+  }, deviceDraft);
+  await otherPage.goto(`/l/${slug}/slate?review=1`);
+  await otherPage
+    .getByRole("button", { name: "Check current odds before sealing" })
+    .click();
+  await expect(
+    otherPage.getByRole("button", { name: "Confirm and seal card" }),
+  ).toBeEnabled();
   await page.getByRole("button", { name: "Confirm and seal card" }).click();
   await expect(
     page.getByRole("heading", { name: "All 1,000 credits are sealed" }),
@@ -295,6 +386,49 @@ test("members refresh, review, seal, and recover through real Auth and database"
     new Date(original.ownerCard.positions[0].quoteObservedAt).getTime(),
   ).toBeLessThan(Date.now() - 120_000);
   const originalReceipt = original.ownerCard.positions;
+  await otherPage
+    .getByRole("button", { name: "Confirm and seal card" })
+    .click();
+  await expect(
+    otherPage.getByRole("heading", { name: "All 1,000 credits are sealed" }),
+  ).toBeVisible();
+  expect(
+    (await rpc(members[1]!, "get_stage1_state", { p_league_slug: slug }))
+      .ownerCard.positions,
+  ).toEqual(originalReceipt);
+  expect(
+    await page.evaluate(() =>
+      Object.keys(localStorage).filter((key) =>
+        key.startsWith("sunday-ledger:card-draft:"),
+      ),
+    ),
+  ).toEqual([]);
+  // Simulate an old local copy on the other device; server acceptance must win.
+  await otherPage.evaluate((drafts) => {
+    for (const [key, value] of drafts) localStorage.setItem(key, value);
+  }, deviceDraft);
+  await otherPage.goto(`/l/${slug}/card`);
+  await expect(
+    otherPage.getByRole("heading", { name: "Card sealed" }),
+  ).toBeVisible();
+  await expect(
+    otherPage.getByRole("link", { name: "View receipt", exact: true }),
+  ).toHaveCount(1);
+  expect(
+    await otherPage.evaluate(() =>
+      Object.keys(localStorage).filter((key) =>
+        key.startsWith("sunday-ledger:card-draft:"),
+      ),
+    ),
+  ).toEqual([]);
+  await otherDevice.close();
+  await page.goto(`/l/${slug}/matchup`);
+  await expect(
+    page.getByRole("heading", { name: "Card sealed" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "View card", exact: true }),
+  ).toBeVisible();
 
   const second = await browser.newContext({
     baseURL: "http://127.0.0.1:3000",
