@@ -564,6 +564,7 @@ test("passwordless member verifies a code, sets a password and pastes an invite 
   // Recovery also accepts a code in the browser that requested the email.
   await page.goto("/account");
   await page.getByRole("button", { name: "Sign out" }).click();
+  await expectLocation(page, /^\/$/);
   const next = `/l/${fixture.slug}/matchup`;
   await page.goto(`/auth/recover?next=${encodeURIComponent(next)}`);
   await page.getByLabel("Email address").fill(email);
@@ -596,6 +597,7 @@ test("passwordless member verifies a code, sets a password and pastes an invite 
   // the session on reload, and join without opening a second browser.
   await page.goto("/account");
   await page.getByRole("button", { name: "Sign out" }).click();
+  await expectLocation(page, /^\/$/);
   await page.goto(`/auth/sign-in?next=${encodeURIComponent(next)}`);
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(`${password}-New`);

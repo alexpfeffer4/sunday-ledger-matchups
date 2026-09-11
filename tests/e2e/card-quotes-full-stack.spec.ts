@@ -447,13 +447,15 @@ test("members refresh, review, seal, and recover through real Auth and database"
   await expect(
     otherPage.getByRole("link", { name: "View receipt", exact: true }),
   ).toHaveCount(1);
-  expect(
-    await otherPage.evaluate(() =>
-      Object.keys(localStorage).filter((key) =>
-        key.startsWith("sunday-ledger:card-draft:"),
+  await expect
+    .poll(() =>
+      otherPage.evaluate(() =>
+        Object.keys(localStorage).filter((key) =>
+          key.startsWith("sunday-ledger:card-draft:"),
+        ),
       ),
-    ),
-  ).toEqual([]);
+    )
+    .toEqual([]);
   await otherDevice.close();
   await page.goto(`/l/${slug}/matchup`);
   await expect(
