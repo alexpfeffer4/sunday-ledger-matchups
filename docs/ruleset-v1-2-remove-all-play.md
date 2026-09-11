@@ -2,7 +2,7 @@
 
 ## Outcome
 
-Ruleset V1.2 removes All-play from prospective Sunday Ledger seasons. New
+Ruleset V1.2 removes All-play from prospective Sunday Ledger play. New
 Live seasons and newly started Owner Guided Rehearsals use this standings order:
 
 1. matchup win percentage;
@@ -15,9 +15,9 @@ Live seasons and newly started Owner Guided Rehearsals use this standings order:
 
 All-play is absent from Matchup, Standings, weekly summaries, RecordBridge,
 history, and archive presentation. The database does not compute it for a V1.2
-season.
+week.
 
-## Frozen-season compatibility
+## Original rollout compatibility (superseded for future weeks)
 
 This change is prospective. A season’s frozen Ruleset snapshot remains the
 authority for that season:
@@ -30,15 +30,23 @@ authority for that season:
 
 No old standing, playoff field, result, champion, or archive is recalculated.
 
-## Proposed governing decision entry
+## September 11 prospective-week amendment
 
-The governing Project Sources supplied for this work are not stored in this
-repository, and the next Decision Register identifier is ambiguous. The owner
-explicitly approved this prospective change on September 4, 2026. This pull
-request proposes the following exact entry for the governing-source workflow:
+The owner subsequently approved rule updates for future play within existing
+development seasons. An already-open or completed V1.1 week keeps its rules;
+the next week can adopt V1.2 when it opens. Past scores, receipts and published
+standings are not recalculated. Future cumulative standings use the rules of
+that future week. This supersedes the original season-long upgrade prohibition.
+See the [governing addendum](governance/2026-09-11-governing-addendum.md).
 
-> **Identifier:** Assign the next valid Decision Register identifier at
-> governing-source acceptance.
+## Recorded governing amendment
+
+The owner explicitly approved the prospective change on September 4, 2026.
+The [current governing addendum](governance/2026-09-11-governing-addendum.md)
+records the amendment without inventing a Decision Register identifier. The
+original unnumbered decision text is retained below:
+
+> **Identifier:** Named amendment; no later numeric identifier is evidenced.
 >
 > **Status:** Decided — owner-approved, prospective.
 >
@@ -57,11 +65,9 @@ request proposes the following exact entry for the governing-source workflow:
 > playoff structure, higher-seed advancement on an exact playoff tie, Week 18
 > exhibition finality, Live/Simulation isolation, or D-001 through D-007.
 
-The corresponding governing-source amendment should remove All-play as
-secondary standings context and as a required product surface in the next
-valid Product Bible and Visual Bible revisions, publish the exact V1.2 order in
-the Ruleset, and record frozen-snapshot compatibility in the next Architecture
-revision. Unrelated open decisions must keep their existing status and scope.
+The September 11, 2026 addendum supplies these amendments across all six
+governing sources: prospective All-play removal, the exact V1.2 order, and
+frozen-snapshot compatibility. Unrelated open decisions retain their scope.
 
 ## Migration and rollback
 
@@ -70,11 +76,10 @@ exact migration-owned V1.1 catalog rows and exact matching unfrozen snapshots.
 It fails closed if the expected catalog baseline is absent. It does not mutate
 frozen snapshots.
 
-Before Production activation, verify the governing-source entry, review the
-migration, merge the application commit, let the normal Vercel deployment
-complete, then apply the reviewed migration through the established hosted
-migration procedure. Do not start a new season between application deployment
-and migration completion.
+Production activation is complete. PR #26 merged on September 10, 2026;
+PR #27 reconciled the applied timestamp without changing the SQL. Read-only
+verification on September 11 confirmed the applied identifier above. The old
+filename `20260904173852_ruleset_v1_2_remove_all_play.sql` is superseded.
 
 Rollback before any V1.2 roster lock is to restore the prior application and
 apply a separately reviewed forward migration that restores the V1.1 catalog.
@@ -83,6 +88,7 @@ needed and correct the issue prospectively through a later Ruleset version.
 
 ## Production mutation record
 
-This pull request does not merge, deploy, apply a hosted migration, modify a
-Production Ruleset catalog, reset an existing rehearsal, or create a new
-Production season. All database mutation proof is local or disposable CI data.
+The original V1.2 proposal did not itself authorize Production mutation.
+Its subsequent approved activation is recorded above. Stage 6 reconciles this
+history and proposes a separate prospective-week and card-compatibility migration; that new migration
+has not been applied to Production.

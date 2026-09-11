@@ -1,9 +1,11 @@
+import { frozenCardRulesFixture } from "./card-rules";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import { makePhase6State } from "./phase6-paired-matchup";
 
 export function makeStage3CardState(eventCount = 2): Stage1StateDto {
   const { state } = makePhase6State("PREGAME");
   state.league.mode = "SIMULATION";
+  state.season.rulesetSnapshot = frozenCardRulesFixture("SIMULATION");
   state.season.simulatedNow = "2026-09-13T16:30:00.000Z";
   state.ownerCard = {
     ...state.ownerCard!,

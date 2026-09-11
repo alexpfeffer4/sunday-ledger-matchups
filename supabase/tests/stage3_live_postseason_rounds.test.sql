@@ -86,8 +86,9 @@ insert into private.season_ruleset_snapshots (
   mode, canonical_json, sha256_hash, frozen_at
 ) values (
   'b3000000-0000-4000-8000-000000000001',
-  'live-season-1', '1.1', 'sunday-ledger-product-bible', '3.0',
-  'LIVE', jsonb_build_object(
+  'SUNDAY-LEDGER-POC-SEASON-RULESET-V1', '1.1', 'SUNDAY-LEDGER-PRODUCT-BIBLE-V3', '3.0',
+  -- Complete frozen card context; preserve the existing postseason fixture.
+  'LIVE', '{"id":"SUNDAY-LEDGER-POC-SEASON-RULESET-V1","version":"1.1","productBibleId":"SUNDAY-LEDGER-PRODUCT-BIBLE-V3","productBibleVersion":"3.0","mode":"LIVE","format":"SUNDAY_LEDGER_MATCHUPS","sport":"NFL","card":{"weeklyAllocationCredits":1000,"minimumStakeCredits":50,"minimumPositions":1,"maximumPositions":20,"stakePrecision":"WHOLE_CREDITS","carryoverCredits":false,"acceptanceUnit":"WHOLE_CARD_ATOMIC","irreversibleAction":"CONFIRM_AND_SEAL_CARD"},"concentration":{"heavyFavoriteThresholdAmerican":-200,"heavyFavoriteSinglePositionCapCredits":750,"standardSinglePositionCapCredits":1000,"eligibleOddsMinimum":null,"eligibleOddsMaximum":null,"aggregateFavoriteExposureCapCredits":null,"status":"SETTLED_FOR_POC_V1"},"markets":{"eligible":["MONEYLINE","SPREAD","TOTAL"],"referenceBook":"draftkings"}}'::jsonb || jsonb_build_object(
     'version', '1.1',
     'mode', 'LIVE',
     'attendance', jsonb_build_object('playoffIneligibilityAtMisses', 3),
@@ -120,6 +121,11 @@ insert into private.season_ruleset_snapshots (
     )
   ), repeat('a', 64), now() - interval '16 weeks'
 );
+-- Finish authoring this disposable fixture before exercising the real guards.
+alter table private.season_ruleset_snapshots disable trigger guard_frozen_ruleset_update;
+update private.season_ruleset_snapshots set sha256_hash=encode(extensions.digest(private.canonical_ruleset_json(canonical_json),'sha256'),'hex') where id='b3000000-0000-4000-8000-000000000001';
+alter table private.season_ruleset_snapshots enable trigger guard_frozen_ruleset_update;
+
 
 insert into private.seasons (
   id, league_id, ruleset_snapshot_id, mode, nfl_year, lifecycle,

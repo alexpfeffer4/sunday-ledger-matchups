@@ -140,8 +140,9 @@ export function SimulationCommissionerControls({
         <section className="border-boundary bg-surface rounded-xl border p-5">
           <h2 className="font-bold">Freeze roster and open cards</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            This shared command freezes the V1.1 ruleset and complete 14-week
-            schedule, then grants one 1,000-credit card per member.
+            This command locks the roster and complete 14-week schedule, then
+            opens cards under the rules for this week with 1,000 credits per
+            member.
           </p>
           <form action={rosterAction} className="mt-4">
             <ContextFields state={state} />

@@ -4,7 +4,7 @@ import { liveQuoteHeadsSchema } from "@/application/queries/stage1-dtos";
 export const cardQuotePositionSchema = z.object({
   marketSnapshotId: z.uuid(),
   payloadHash: z.string().regex(/^[0-9a-f]{64}$/),
-  stakeCredits: z.number().int().min(50).max(1_000),
+  stakeCredits: z.number().int().positive().max(2_147_483_647),
 });
 export const cardQuoteReviewSchema = z.object({
   reviewId: z.uuid(),

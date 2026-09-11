@@ -22,7 +22,7 @@ import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stag
 import { getOwnerRehearsalForLeague } from "@/application/queries/get-owner-rehearsal";
 import { validateDraftCard } from "@/domain/cards/validate-card-draft";
 import { maximumStakeForOdds } from "@/domain/cards/validate-position";
-import { simulationSeason1Ruleset } from "@/rulesets/simulation-season-1";
+import { resolveSeasonCardRules } from "@/rulesets/card-rules";
 
 const contextSchema = z.object({
   leagueId: z.uuid(),
@@ -1577,7 +1577,8 @@ const cardDraftPositionSchema = z.object({
   reviewId: z.uuid().optional(),
   marketSnapshotId: z.uuid(),
   payloadHash: z.string().regex(/^[0-9a-f]{64}$/),
-  stakeCredits: z.number().int().min(50).max(1_000),
+  // Transport bound; gameplay constraints come from the season below.
+  stakeCredits: z.number().int().positive().max(2_147_483_647),
 });
 
 export async function acceptStage1CardAction(
@@ -1587,7 +1588,7 @@ export async function acceptStage1CardAction(
   const context = z
     .object({
       leagueSlug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-      positions: z.array(cardDraftPositionSchema).min(1).max(20),
+      positions: z.array(cardDraftPositionSchema).min(1).max(100),
     })
     .safeParse({
       leagueSlug: formData.get("leagueSlug"),
@@ -1648,6 +1649,13 @@ export async function acceptStage1CardAction(
     return mutationError("This week’s card is not open.");
   }
 
+  const resolvedRules = resolveSeasonCardRules(
+    state.season.rulesetSnapshot,
+    state.league.mode,
+  );
+  if (!resolvedRules.supported)
+    return { status: "error", message: resolvedRules.message };
+  const rules = resolvedRules.rules;
   const rehearsal = await getOwnerRehearsalForLeague(context.data.leagueSlug);
   if (rehearsal?.quoteReviewPending) {
     const quoteReview = await supabase
@@ -1711,8 +1719,8 @@ export async function acceptStage1CardAction(
       const current = eligibleByMarket.get(key);
       if (
         !current ||
-        maximumStakeForOdds(market.americanOdds, simulationSeason1Ruleset) >
-          maximumStakeForOdds(current.americanOdds, simulationSeason1Ruleset)
+        maximumStakeForOdds(market.americanOdds, rules) >
+          maximumStakeForOdds(current.americanOdds, rules)
       ) {
         eligibleByMarket.set(key, {
           eventId: event.id,
@@ -1737,7 +1745,7 @@ export async function acceptStage1CardAction(
       americanOdds: market.americanOdds,
     })),
     eligibleOpportunities: [...eligibleByMarket.values()],
-    ruleset: simulationSeason1Ruleset,
+    ruleset: rules,
   });
   if (!validation.accepted) {
     return { status: "error", message: validation.message };

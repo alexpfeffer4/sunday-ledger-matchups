@@ -16,6 +16,8 @@ export type RulesetPresentation = {
   sha256Hash: string;
   publishedAt: string | null;
   frozenAt: string | null;
+  throughWeek?: number | null;
+  weekRules?: SeasonRulesetSnapshotDto["weekRules"];
 };
 
 const tiebreakLabels: Record<StandingsTiebreak, string> = {
@@ -42,7 +44,17 @@ function formatTimestamp(value: string): string {
 
 export function seasonRulesetPresentation(
   snapshot: SeasonRulesetSnapshotDto,
+  week?: number,
 ): RulesetPresentation {
+  if (week && snapshot.weekRules?.length) {
+    const pinned = snapshot.weekRules.find((item) => item.week === week);
+    const selected = [snapshot, ...(snapshot.priorRules ?? [])].find(
+      (item) => item.sha256Hash === pinned?.sha256Hash,
+    );
+    if (!selected)
+      throw new Error("The rules for these standings are unavailable.");
+    return { ...selected, context: "SEASON", throughWeek: week };
+  }
   return { ...snapshot, context: "SEASON" };
 }
 
@@ -80,8 +92,8 @@ export function RulesetAuditDetails({
     presentation.context === "EXAMPLE"
       ? "Illustrative only · not a season snapshot"
       : presentation.frozenAt
-        ? `Frozen ${formatTimestamp(presentation.frozenAt)}`
-        : "Published · freezes at roster lock";
+        ? `Recorded ${formatTimestamp(presentation.frozenAt)}`
+        : "Published starting rules";
 
   return (
     <AuditDetails context="This evidence identifies the published rules behind the human-readable league rules above.">
@@ -108,6 +120,14 @@ export function RulesetAuditDetails({
           <dt className="text-muted">Snapshot</dt>
           <dd className="mt-1 font-semibold">{snapshotState}</dd>
         </div>
+        {presentation.throughWeek ? (
+          <div>
+            <dt className="text-muted">Applies to</dt>
+            <dd className="mt-1 font-semibold">
+              Week {presentation.throughWeek}
+            </dd>
+          </div>
+        ) : null}
         <div>
           <dt className="text-muted">Product baseline</dt>
           <dd className="mt-1 font-semibold break-words">

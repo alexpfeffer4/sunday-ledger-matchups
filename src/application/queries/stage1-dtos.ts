@@ -69,6 +69,8 @@ export const stage1StateSchema = z.object({
     rosterLockedAt: z.string().nullable(),
     simulatedNow: z.string().nullable(),
     rulesetSnapshotId: z.uuid(),
+    // Missing context disables writes; historical receipt reads still work.
+    rulesetSnapshot: z.unknown().optional(),
   }),
   viewer: z.object({
     userId: z.uuid(),
@@ -183,6 +185,7 @@ export const stage1StateSchema = z.object({
         .nullable(),
     })
     .nullable(),
+  standingsThroughWeek: z.number().int().min(1).max(18).nullable().optional(),
   standings: z.array(
     z.object({
       seed: z.number().int().positive(),

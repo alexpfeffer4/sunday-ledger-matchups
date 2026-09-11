@@ -13,15 +13,13 @@ postseason, champion, Week 18, history, and archive commands used by the real
 application. Rehearsal orchestration does not insert results, standings,
 winners, champions, or archives directly.
 
-## Proposed governing decision entry
+## Recorded governing amendment
 
-The repository does not contain the governing Decision Register supplied for
-this work, and its next identifier is therefore ambiguous. The pull request
-proposes this exact entry for the owner to place through the governing-source
-workflow without changing D-001 through D-007:
+The [current governing addendum](governance/2026-09-11-governing-addendum.md)
+records this already owner-approved, implemented decision without assigning an
+unevidenced numeric identifier or changing D-001 through D-007:
 
-> **Identifier:** Assign the next valid Decision Register identifier at
-> governing-source acceptance.
+> **Identifier:** Named amendment; no later numeric identifier is evidenced.
 >
 > **Status:** Decided — owner-approved, narrowly scoped.
 >
@@ -74,7 +72,12 @@ Every mutation has a stable operation identity and a command receipt. The
 expected checkpoint is checked under lock. A repeated or response-lost command
 returns the original outcome and cannot run the checkpoint twice.
 
-## Post-merge activation plan
+## Recorded activation procedure
+
+The owner rehearsal has since been approved, implemented and exercised. The
+original activation procedure below is retained as history. Any future entitlement
+requires separate scoped approval using the deployed installation; do not reapply
+its migration. No Stage 6 entitlement change is needed.
 
 Do not activate this from browser code and do not use a hard-coded account
 identifier. After separate owner approval:
@@ -119,7 +122,7 @@ remain inert. Never delete or alter a Live league as part of this procedure.
 
 ## Production mutation record
 
-This pull request does not create or change any Production account,
-entitlement, rehearsal, bot, league, invitation, card, receipt, result,
-correction, archive, migration state, environment configuration, or deployment.
-All mutation proof is limited to local/disposable CI Supabase.
+The original implementation proposal did not itself authorize Production
+activation. The owner subsequently approved and exercised the private rehearsal;
+its current status is recorded in the governing index. Stage 6 changes no
+Production entitlement or rehearsal data. Its mutation proof is disposable CI.

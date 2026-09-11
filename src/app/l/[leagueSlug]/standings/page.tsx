@@ -30,7 +30,10 @@ export default async function StandingsPage({
       await hashRuleset(simulationSeason11Ruleset),
     );
   } else if (persistedSnapshot) {
-    presentation = seasonRulesetPresentation(persistedSnapshot);
+    presentation = seasonRulesetPresentation(
+      persistedSnapshot,
+      archive ? 14 : (live?.standingsThroughWeek ?? undefined),
+    );
   } else {
     throw new Error("The persisted season Ruleset is unavailable.");
   }

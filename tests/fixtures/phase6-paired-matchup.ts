@@ -1,3 +1,4 @@
+import { frozenCardRulesFixture } from "./card-rules";
 import type { LiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import {
   projectPairedMatchup,
@@ -177,6 +178,7 @@ export function makePhase6State(variant: FixtureVariant): {
       rosterLockedAt: "2026-09-01T14:00:00.000Z",
       simulatedNow: null,
       rulesetSnapshotId: ids.ruleset,
+      rulesetSnapshot: frozenCardRulesFixture(),
     },
     viewer: {
       userId: ids.selfUser,

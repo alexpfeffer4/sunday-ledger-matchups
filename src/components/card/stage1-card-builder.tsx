@@ -41,7 +41,7 @@ import {
   validateProposedPosition,
 } from "@/domain/cards/validate-position";
 import { formatCredits } from "@/domain/odds/american";
-import { pocSeason1Ruleset } from "@/rulesets/poc-season-1";
+import { resolveSeasonCardRules, type CardRules } from "@/rulesets/card-rules";
 
 type SlateEvent = Stage1StateDto["slate"][number];
 type SlateMarket = SlateEvent["markets"][number];
@@ -125,6 +125,7 @@ function cardBuilderContextKey(state: Stage1StateDto): string {
     state.ownerCard?.compliance,
     state.ownerCard?.allocatedCredits,
     state.week?.state,
+    state.season?.rulesetSnapshot,
     slateRevision,
   ]);
 }
@@ -136,10 +137,24 @@ export function Stage1CardBuilder({
   state: Stage1StateDto;
   initialReview?: boolean;
 }) {
+  const resolved = resolveSeasonCardRules(
+    state.season?.rulesetSnapshot,
+    state.league.mode,
+  );
+  if (!resolved.supported)
+    return (
+      <div role="alert" className="border-border rounded-lg border p-5">
+        <p>{resolved.message}</p>
+        <Link href={`/l/${state.league.slug}/card`} className="underline">
+          View your card
+        </Link>
+      </div>
+    );
   return (
     <Stage1CardBuilderEditor
       key={cardBuilderContextKey(state)}
       state={state}
+      rules={resolved.rules}
       initialReview={initialReview}
     />
   );
@@ -147,10 +162,12 @@ export function Stage1CardBuilder({
 
 function Stage1CardBuilderEditor({
   state,
+  rules,
   initialReview,
 }: {
   state: Stage1StateDto;
   initialReview: boolean;
+  rules: CardRules;
 }) {
   const ownerCard = state.ownerCard;
   const [slate, setSlate] = useState(state.slate);
@@ -225,8 +242,8 @@ function Stage1CardBuilderEditor({
       const current = eligibleByMarket.get(key);
       if (
         !current ||
-        maximumStakeForOdds(market.americanOdds, pocSeason1Ruleset) >
-          maximumStakeForOdds(current.americanOdds, pocSeason1Ruleset)
+        maximumStakeForOdds(market.americanOdds, rules) >
+          maximumStakeForOdds(current.americanOdds, rules)
       ) {
         eligibleByMarket.set(key, {
           eventId: event.id,
@@ -259,7 +276,7 @@ function Stage1CardBuilderEditor({
     })),
     draftPositions,
     eligibleOpportunities: [...eligibleByMarket.values()],
-    ruleset: pocSeason1Ruleset,
+    ruleset: rules,
   });
   const draftCredits = drafts.reduce(
     (total, draft) =>
@@ -267,18 +284,14 @@ function Stage1CardBuilderEditor({
     0,
   );
   const totalCredits = ownerCard.allocatedCredits + draftCredits;
-  const remainingCredits =
-    pocSeason1Ruleset.card.weeklyAllocationCredits - totalCredits;
+  const remainingCredits = rules.card.weeklyAllocationCredits - totalCredits;
 
   function openEditor(
     event: SlateEvent,
     market: SlateMarket,
     existing: DraftSelection | undefined,
   ) {
-    const maximumStakeCredits = maximumStakeForOdds(
-      market.americanOdds,
-      pocSeason1Ruleset,
-    );
+    const maximumStakeCredits = maximumStakeForOdds(market.americanOdds, rules);
     setQuoteReview(null);
     setEditor({
       eventId: event.id,
@@ -445,14 +458,14 @@ function Stage1CardBuilderEditor({
     }),
   ];
   const editorAvailableCredits =
-    pocSeason1Ruleset.card.weeklyAllocationCredits -
+    rules.card.weeklyAllocationCredits -
     editorAcceptedPositions.reduce(
       (total, position) => total + position.stakeCredits,
       0,
     );
   const editorMaximumStake =
     editorMarket?.qualityStatus === "HEALTHY"
-      ? maximumStakeForOdds(editorMarket.americanOdds, pocSeason1Ruleset)
+      ? maximumStakeForOdds(editorMarket.americanOdds, rules)
       : null;
   const editorOptions: OutcomeSelectorOption[] =
     editorEvent && editor
@@ -484,10 +497,7 @@ function Stage1CardBuilderEditor({
   function selectEditorOutcome(marketSnapshotId: string) {
     const market = snapshots.get(marketSnapshotId)?.market;
     if (!market || market.qualityStatus !== "HEALTHY") return;
-    const maximumStakeCredits = maximumStakeForOdds(
-      market.americanOdds,
-      pocSeason1Ruleset,
-    );
+    const maximumStakeCredits = maximumStakeForOdds(market.americanOdds, rules);
     setEditor((current) => {
       if (!current) return current;
       const currentStake = Number(current.stakeCredits);
@@ -520,7 +530,7 @@ function Stage1CardBuilderEditor({
         americanOdds: editorMarket.americanOdds,
       },
       eligibleOpportunities: [...eligibleByMarket.values()],
-      ruleset: pocSeason1Ruleset,
+      ruleset: rules,
     });
     if (!validation.accepted) {
       setEditorError(validation.message);
@@ -701,8 +711,8 @@ function Stage1CardBuilderEditor({
               Card total
             </p>
             <p className="mt-2 font-mono text-3xl font-bold">
-              {formatCredits(pocSeason1Ruleset.card.weeklyAllocationCredits)} /{" "}
-              {formatCredits(pocSeason1Ruleset.card.weeklyAllocationCredits)}
+              {formatCredits(rules.card.weeklyAllocationCredits)} /{" "}
+              {formatCredits(rules.card.weeklyAllocationCredits)}
             </p>
             <p className="text-graphite mt-2 text-sm">
               {ownerCard.positions.length + drafts.length} total picks
@@ -823,7 +833,7 @@ function Stage1CardBuilderEditor({
             </div>
             <p className="mt-2 font-mono text-2xl font-bold">
               {formatCredits(totalCredits)} /{" "}
-              {formatCredits(pocSeason1Ruleset.card.weeklyAllocationCredits)}
+              {formatCredits(rules.card.weeklyAllocationCredits)}
             </p>
             <p className="text-graphite mt-2 text-sm leading-6">
               {drafts.length > 0
@@ -1113,7 +1123,7 @@ function Stage1CardBuilderEditor({
             : `This pick may use up to ${formatCredits(editorMaximumStake)} credits under the current Ruleset.`
         }
         maximumStakeCredits={editorMaximumStake}
-        minimumStakeCredits={pocSeason1Ruleset.card.minimumStakeCredits}
+        minimumStakeCredits={rules.card.minimumStakeCredits}
         onClose={() => {
           setEditor(null);
           setEditorError(null);

@@ -4,6 +4,7 @@ import { cache } from "react";
 import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import { getOwnerRehearsalForLeague } from "@/application/queries/get-owner-rehearsal";
+import { withVerifiedRulesetHash } from "@/rulesets/verify-snapshot";
 import {
   liveQuoteHeadsSchema,
   stage1StateSchema,
@@ -30,6 +31,9 @@ export const getAuthoritativeLeagueState = cache(
     }
 
     const state = stage1StateSchema.parse(result.data);
+    state.season.rulesetSnapshot = await withVerifiedRulesetHash(
+      state.season.rulesetSnapshot,
+    );
     if (!state.week) return state;
     if (
       state.league.mode === "SIMULATION" &&

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { frozenCardRulesFixture } from "../fixtures/card-rules";
 
 import {
   cleanup,
@@ -77,6 +78,7 @@ const healthyMarketId = "10000000-0000-4000-8000-000000000006";
 const totalMarketId = "10000000-0000-4000-8000-000000000009";
 
 const state = {
+  season: { rulesetSnapshot: frozenCardRulesFixture() },
   league: {
     id: leagueId,
     name: "Test League",
@@ -486,4 +488,31 @@ describe("authenticated card editor", () => {
       screen.getByRole("button", { name: "Check current odds again" }),
     ).toBeEnabled();
   });
+});
+
+it("blocks unsupported season rules without consuming a saved draft", () => {
+  const key = `sunday-ledger:card-draft:v1:${leagueId}:${weekId}:${cardId}`;
+  localStorage.setItem(key, "saved-draft-sentinel");
+  render(
+    <Stage1CardBuilder
+      state={{
+        ...state,
+        season: {
+          ...state.season,
+          rulesetSnapshot: {
+            ...frozenCardRulesFixture(),
+            rulesetVersion: "9.0",
+          },
+        },
+      }}
+    />,
+  );
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "week's rules are unavailable or unsupported",
+  );
+  expect(
+    screen.queryByRole("button", { name: /seal card/i }),
+  ).not.toBeInTheDocument();
+  expect(localStorage.getItem(key)).toBe("saved-draft-sentinel");
+  expect(reviewLiveCardQuotes).not.toHaveBeenCalled();
 });
