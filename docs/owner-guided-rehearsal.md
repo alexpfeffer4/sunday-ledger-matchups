@@ -75,8 +75,9 @@ returns the original outcome and cannot run the checkpoint twice.
 ## Recorded activation procedure
 
 The owner rehearsal has since been approved, implemented and exercised. The
-procedure below is retained for any separately approved future entitlement;
-it is not a pending activation request. No Stage 6 entitlement change is needed.
+original activation procedure below is retained as history. Any future entitlement
+requires separate scoped approval using the deployed installation; do not reapply
+its migration. No Stage 6 entitlement change is needed.
 
 Do not activate this from browser code and do not use a hard-coded account
 identifier. After separate owner approval:
