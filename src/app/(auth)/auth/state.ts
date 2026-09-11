@@ -14,6 +14,7 @@ export type PasswordActionState = {
   status: "idle" | "error" | "success";
   message: string;
   field?: "email" | "password" | "confirmPassword";
+  retryAfterSeconds?: number;
 };
 
 export const initialPasswordActionState: PasswordActionState = {

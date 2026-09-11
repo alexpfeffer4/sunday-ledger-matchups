@@ -11,12 +11,20 @@ import type {
 } from "@/app/(auth)/auth/state";
 
 const emailLinkSchema = z.object({
-  email: z.email("Enter a valid email address.").trim().toLowerCase(),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .pipe(z.email("Enter a valid email address.")),
   next: z.string().optional(),
 });
 
 const passwordSignInSchema = z.object({
-  email: z.email("Enter a valid email address.").trim().toLowerCase(),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .pipe(z.email("Enter a valid email address.")),
   password: z.string().min(8, "Enter your password."),
   next: z.string().optional(),
 });
@@ -36,7 +44,11 @@ const passwordUpdateSchema = z
   });
 
 const passwordRecoverySchema = z.object({
-  email: z.email("Enter a valid email address.").trim().toLowerCase(),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .pipe(z.email("Enter a valid email address.")),
   next: z.string().optional(),
 });
 
@@ -99,7 +111,7 @@ async function sendEmailLink(
         return {
           status: "error",
           message:
-            "An email was just requested. Wait a minute before trying again, and use only the newest email. Open its link in the same browser where you requested it.",
+            "Email requests are temporarily limited. Wait a minute, then try again. If you received an email, use the newest one in the same browser.",
           retryAfterSeconds: 60,
         };
       }
@@ -131,7 +143,7 @@ async function sendEmailLink(
     return {
       status: "error",
       message:
-        "Email access is temporarily unavailable. No email was sent; try again shortly.",
+        "We could not confirm email delivery. Check your inbox before trying again shortly.",
     };
   }
 }
@@ -184,7 +196,8 @@ export async function requestPasswordReset(
         return {
           status: "error",
           message:
-            "A recovery email was just requested. Use the newest email or wait before requesting another.",
+            "Email requests are temporarily limited. Wait a minute, then try again. If you received an email, use the newest one in the same browser.",
+          retryAfterSeconds: 60,
         };
       }
       if (error.code === "email_address_not_authorized") {
@@ -202,8 +215,9 @@ export async function requestPasswordReset(
 
     return {
       status: "success",
+      retryAfterSeconds: 60,
       message:
-        "Check your email for a password-recovery link. It opens a secure password setup screen, then returns you where you left off.",
+        "If an account exists for this email, check for the newest recovery link. Open it in this same browser to save a new password, then return where you left off.",
     };
   } catch {
     return {

@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
+import { pendingAccountSetupCookie } from "@/adapters/supabase/account-setup";
 import type {
   AccountSetupState,
   UsernameActionState,
@@ -76,17 +78,15 @@ export async function completeAccountSetup(
     if (usernameResult.error) {
       return {
         status: "error",
-        message: "The username could not be saved. Try another username.",
-        fieldErrors: {
-          username: "Choose another username and try again.",
-        },
+        message:
+          "Your email is confirmed, but the username could not be saved. Keep it and try again shortly.",
       };
     }
 
     const passwordResult = await supabase.auth.updateUser({
       password: parsed.data.password,
     });
-    if (passwordResult.error) {
+    if (passwordResult.error && passwordResult.error.code !== "same_password") {
       return {
         status: "error",
         message:
@@ -96,6 +96,7 @@ export async function completeAccountSetup(
         },
       };
     }
+    (await cookies()).delete(pendingAccountSetupCookie);
   } catch {
     return {
       status: "error",

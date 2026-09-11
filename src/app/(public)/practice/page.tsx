@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { InteractiveWeekDemo } from "@/components/demo/interactive-week-demo";
-import { ButtonLink } from "@/components/ui/button-link";
 import { BrandLockup } from "@/components/ui/register-mark";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCredits } from "@/domain/odds/american";
@@ -48,27 +47,13 @@ export default function PracticePage() {
             Public practice week
           </p>
           <h1 className="mt-3 text-4xl font-bold tracking-[-0.04em] sm:text-5xl">
-            Build a practice card
+            Practice week
           </h1>
           <p className="text-graphite mt-4 max-w-3xl text-lg leading-7">
             Use all {allocation} virtual credits across neutral example
             matchups. This public practice is not saved and cannot affect a
             league.
           </p>
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <ButtonLink href="/auth/create-account?next=%2Fleagues">
-              Start a real league
-            </ButtonLink>
-            <ButtonLink
-              href="/auth/sign-in?next=%2Fleagues"
-              variant="secondary"
-            >
-              Sign in
-            </ButtonLink>
-            <ButtonLink href="/" variant="tertiary">
-              Return home
-            </ButtonLink>
-          </div>
         </header>
 
         <InteractiveWeekDemo />

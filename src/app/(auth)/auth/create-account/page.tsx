@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { pendingAccountSetupCookie } from "@/adapters/supabase/account-setup";
 import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
@@ -23,14 +25,22 @@ export default async function CreateAccountPage({
   );
 
   let authenticated = false;
+  let setupPending = false;
   if (isSupabaseConfigured()) {
     try {
       const supabase = await createSupabaseServerClient();
       const { data } = await supabase.auth.getClaims();
       authenticated = Boolean(data?.claims?.sub);
+      setupPending =
+        authenticated &&
+        (await cookies()).get(pendingAccountSetupCookie)?.value ===
+          data?.claims?.sub;
     } catch {}
   }
-  if (authenticated) redirect(next);
+  if (authenticated)
+    redirect(
+      setupPending ? `/account/setup?next=${encodeURIComponent(next)}` : next,
+    );
 
   return (
     <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">

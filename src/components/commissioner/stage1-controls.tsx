@@ -274,7 +274,10 @@ export function Stage1CommissionerControls({
 
   return (
     <div className="space-y-5">
-      <section className="border-registry bg-registry/5 rounded-xl border p-5 shadow-[var(--shadow-card)]">
+      <section
+        id={state.week?.state === "PLANNED" ? "season-start" : undefined}
+        className="border-registry bg-registry/5 scroll-mt-24 rounded-xl border p-5 shadow-[var(--shadow-card)]"
+      >
         <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
           Next action
         </p>
@@ -285,10 +288,63 @@ export function Stage1CommissionerControls({
         <p className="border-registry/20 text-registry mt-4 border-t pt-3 text-xs font-semibold">
           {nextStep.prerequisites}
         </p>
+        {state.league.mode === "LIVE" &&
+        state.league.lifecycle === "DRAFT" &&
+        state.week?.state === "PLANNED" ? (
+          <div>
+            <form action={liveRosterLockAction} className="mt-4">
+              <ContextFields state={state} />
+              <p className="text-negative text-xs leading-5 font-semibold">
+                Once confirmed, the roster, rules, and 14-week schedule cannot
+                be changed. Every Week 1 card opens with 1,000 credits.
+              </p>
+              <label className="mt-4 flex min-h-11 items-start gap-3 text-sm leading-6">
+                <input
+                  type="checkbox"
+                  required
+                  className="mt-1.5 size-4 shrink-0"
+                />
+                <span>
+                  I am ready to freeze this roster and the season schedule.
+                  Invitations will stop accepting new members.
+                </span>
+              </label>
+              <button
+                className="bg-registry hover:bg-registry-hover mt-3 min-h-12 w-full rounded-lg px-4 font-semibold text-white disabled:opacity-50"
+                disabled={
+                  !providerConfigured ||
+                  lockingLiveRoster ||
+                  state.league.lifecycle !== "DRAFT" ||
+                  state.league.memberCount < 4 ||
+                  state.league.memberCount > 16 ||
+                  state.league.memberCount % 2 !== 0
+                }
+                type="submit"
+              >
+                {lockingLiveRoster
+                  ? "Refreshing odds and locking…"
+                  : state.league.memberCount >= 4 &&
+                      state.league.memberCount <= 16 &&
+                      state.league.memberCount % 2 === 0
+                    ? `Lock ${state.league.memberCount}-member roster & start season`
+                    : `Waiting for even roster · ${state.league.memberCount}/4 minimum`}
+              </button>
+            </form>
+            <ActionFeedback state={liveRosterLockState} />
+          </div>
+        ) : !state.week && rosterIsValid ? (
+          <a
+            href="#season-start"
+            className="bg-registry hover:bg-registry-hover mt-4 inline-flex min-h-12 items-center rounded-lg px-5 font-semibold text-white"
+          >
+            Start season
+          </a>
+        ) : null}
       </section>
 
       <details
-        open={state.league.lifecycle === "DRAFT"}
+        id="league-invitations"
+        open={state.league.lifecycle === "DRAFT" && !rosterIsValid}
         className="border-boundary bg-surface rounded-xl border p-5"
       >
         <summary className="min-h-11 cursor-pointer content-center font-semibold">
@@ -459,19 +515,20 @@ export function Stage1CommissionerControls({
 
       {!state.week && state.league.mode === "LIVE" ? (
         <section
-          className={`${rosterIsValid ? "border-registry bg-surface" : "border-boundary bg-subtle"} rounded-xl border p-5`}
+          id="season-start"
+          className={`scroll-mt-24 ${rosterIsValid ? "border-registry bg-surface" : "border-boundary bg-subtle"} rounded-xl border p-5`}
         >
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-            Week 1 setup
+            Start season · Week 1 setup
           </p>
           <h2 className="mt-2 font-bold">
             {rosterIsValid
-              ? "Import current NFL markets"
+              ? "Choose the games, then lock your roster"
               : "Finish the roster before odds work"}
           </h2>
           <p className="text-graphite mt-2 text-sm leading-6">
             {rosterIsValid
-              ? "Import the current DraftKings winner, spread, and total lines for review. Members will not see them until you publish the slate."
+              ? "First import the NFL games below, then confirm the games for Week 1. The next screen lets you lock your roster and open everyone’s cards."
               : "Provider and market controls become available after an even roster of 4–16 members has joined."}
           </p>
           <form action={importAction} className="mt-4">
@@ -579,7 +636,9 @@ export function Stage1CommissionerControls({
           )}
         </section>
       ) : !state.week ? (
-        <SimulationCommissionerControls state={state} />
+        <div id="season-start" className="scroll-mt-24">
+          <SimulationCommissionerControls state={state} />
+        </div>
       ) : state.league.mode === "LIVE" && state.week.state === "PLANNED" ? (
         <section className="border-registry bg-surface rounded-xl border p-5">
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
@@ -655,34 +714,6 @@ export function Stage1CommissionerControls({
               Cards can open when the roster has an even 4–16 members.
             </p>
           </div>
-          <form action={liveRosterLockAction} className="mt-4">
-            <ContextFields state={state} />
-            <p className="text-negative text-xs leading-5 font-semibold">
-              Once confirmed, the roster, rules, and 14-week schedule cannot be
-              changed. Every Week 1 card opens with 1,000 credits.
-            </p>
-            <button
-              className={`${buttonClass} mt-3`}
-              disabled={
-                !providerConfigured ||
-                lockingLiveRoster ||
-                state.league.lifecycle !== "DRAFT" ||
-                state.league.memberCount < 4 ||
-                state.league.memberCount > 16 ||
-                state.league.memberCount % 2 !== 0
-              }
-              type="submit"
-            >
-              {lockingLiveRoster
-                ? "Refreshing odds and locking…"
-                : state.league.memberCount >= 4 &&
-                    state.league.memberCount <= 16 &&
-                    state.league.memberCount % 2 === 0
-                  ? `Lock ${state.league.memberCount}-member roster & open Week 1`
-                  : `Waiting for even roster · ${state.league.memberCount}/4 minimum`}
-            </button>
-          </form>
-          <ActionFeedback state={liveRosterLockState} />
         </section>
       ) : state.league.mode === "LIVE" ? (
         <LiveWeekCommissionerControls

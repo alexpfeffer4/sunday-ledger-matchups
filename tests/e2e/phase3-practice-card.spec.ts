@@ -22,6 +22,7 @@ async function addPick(page: Page, outcomeName: string, stake: string) {
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await dialog.getByLabel("Stake in credits").fill(stake);
+  await expect(dialog).toContainText("Total returned if won");
   await dialog.getByRole("button", { name: "Add to card" }).click();
   await expect(dialog).not.toBeVisible();
 }
@@ -42,19 +43,12 @@ test("public Practice is factual, unsaved, accessible, and usable at 320 px", as
   await expect(page).toHaveURL(/\/practice$/);
   await expect(page).toHaveTitle(/Practice Week/);
   await expect(
-    page.getByRole("heading", { level: 1, name: "Build a practice card" }),
+    page.getByRole("heading", { level: 1, name: "Practice week" }),
   ).toBeVisible();
   await expect(page.getByText("Practice · Unsaved")).toBeVisible();
   await expect(
     page.getByText(/not saved and cannot affect a league/i),
   ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Start a real league" }),
-  ).toHaveAttribute("href", "/auth/create-account?next=%2Fleagues");
-  await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute(
-    "href",
-    "/auth/sign-in?next=%2Fleagues",
-  );
   expect(competitiveRequests).toEqual([]);
 
   const compactColumns = await page
@@ -119,7 +113,13 @@ test("390 px Practice completes validation, review, reconciliation, and receipt 
   const stake = editor.getByLabel("Stake in credits");
   await stake.fill("1000");
   await editor.getByRole("button", { name: "Add to card" }).click();
-  await expect(editor.getByRole("alert")).toContainText("at most 750 credits");
+  await expect(stake).toHaveAttribute("max", "750");
+  expect(
+    await stake.evaluate(
+      (input: HTMLInputElement) => input.validity.rangeOverflow,
+    ),
+  ).toBe(true);
+  await expect(editor).toContainText("This pick may use up to 750 credits");
   await expect(stake).toBeFocused();
   await editor.getByRole("button", { name: "Close pick editor" }).click();
   await expect(favoriteTrigger).toBeFocused();
@@ -135,23 +135,32 @@ test("390 px Practice completes validation, review, reconciliation, and receipt 
   expect((trayBox?.y ?? 0) + (trayBox?.height ?? 0)).toBeLessThanOrEqual(844);
   await tray.getByRole("button", { name: "Review card" }).click();
 
-  await expect(
-    page.getByRole("heading", { name: "Review your complete card" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Review" })).toBeVisible();
   await expect(page.getByText("−185 → −190")).toBeVisible();
   await page.getByRole("button", { name: "Use updated odds" }).click();
   await page.getByRole("button", { name: "Confirm and seal card" }).click();
 
   await expect(
-    page.getByRole("heading", { name: "Your practice card is sealed" }),
+    page.getByRole("heading", { name: "Card sealed", exact: true }),
   ).toBeVisible();
   await expect(page.getByText(/Practice receipt 01/)).toBeVisible();
   await expect(
-    page.getByText(/Accepted together with the complete card/).first(),
+    page.getByText(/Sealed with your complete card/).first(),
   ).toBeVisible();
   await expect(page.getByText("Harbor Club −3.5")).toHaveCount(0);
-  await expect(page.getByText("Capital Club")).toHaveCount(0);
+  await expect(page.getByText("Capital Club", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Over 42.5")).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Reveal kickoff and see results" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Your result", exact: true }),
+  ).toBeFocused();
+  await expect(
+    page.getByRole("link", { name: "Start a real league" }),
+  ).toHaveCount(1);
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
   expect(pageErrors).toEqual([]);
 
   await page.reload();

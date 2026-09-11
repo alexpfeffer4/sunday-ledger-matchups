@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getInteractiveDemoCurrentOdds,
   getInteractiveDemoOpportunity,
@@ -14,6 +14,7 @@ import {
   type InteractiveDemoMarket,
   type InteractiveDemoPosition,
 } from "@/adapters/simulation/interactive-week";
+import { PickReturn, ReturnExplanation } from "@/components/card/pick-return";
 import { CardTray } from "@/components/card/card-tray";
 import {
   formatAmericanOdds,
@@ -122,7 +123,7 @@ function PracticeReceipts({
               <div>
                 <p className="text-muted text-xs">
                   Practice receipt {String(index + 1).padStart(2, "0")} ·{" "}
-                  {opportunity.marketType}
+                  {opportunity.eventLabel} · {opportunity.marketType}
                 </p>
                 <p className="mt-1 text-sm font-semibold">
                   {opportunity.displayLine}
@@ -134,8 +135,7 @@ function PracticeReceipts({
               </p>
             </div>
             <p className="text-muted mt-2 text-xs">
-              Accepted together with the complete card · Practice only · Not
-              saved
+              Sealed with your complete card · Practice only · Not saved
             </p>
           </article>
         );
@@ -206,6 +206,13 @@ export function InteractiveWeekDemo() {
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [reviewing, setReviewing] = useState(false);
   const [quotesRefreshed, setQuotesRefreshed] = useState(false);
+  const phaseHeading = useRef<HTMLHeadingElement>(null);
+  const previousPhase = useRef(`${phase}:${reviewing}`);
+  useEffect(() => {
+    const current = `${phase}:${reviewing}`;
+    if (previousPhase.current !== current) phaseHeading.current?.focus();
+    previousPhase.current = current;
+  }, [phase, reviewing]);
 
   const allocatedCredits = drafts.reduce(
     (total, item) => total + item.stakeCredits,
@@ -476,21 +483,30 @@ export function InteractiveWeekDemo() {
               <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
                 Practice Week · Unsaved · Final
               </p>
-              <h2 className="mt-2 text-2xl font-bold">
-                Practice matchup final
+              <h2
+                ref={phaseHeading}
+                tabIndex={-1}
+                className="mt-2 text-2xl font-bold outline-none"
+              >
+                Your result
               </h2>
             </div>
-            <StatusBadge tone="positive">Matchup final</StatusBadge>
+            <StatusBadge tone="sealed">Final</StatusBadge>
           </div>
-          <div className="mt-7 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-center sm:gap-6">
+          <div className="mt-7 grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] items-center gap-3 text-center sm:gap-6">
             <div>
               <p className="font-bold">You</p>
               <p className="mt-2 font-mono text-3xl font-bold">
                 {formatCenticredits(selfScore, true)}
               </p>
-              <p className="text-registry mt-2 font-bold">{selfDecision}</p>
+              <p className="text-registry mt-2 font-bold">
+                {selfDecision === "WIN"
+                  ? "You won"
+                  : selfDecision === "LOSS"
+                    ? "You lost"
+                    : "You tied"}
+              </p>
             </div>
-            <span className="text-muted text-xs font-bold">VS</span>
             <div>
               <p className="font-bold">Practice opponent</p>
               <p className="mt-2 font-mono text-3xl font-bold">
@@ -531,19 +547,19 @@ export function InteractiveWeekDemo() {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">
+          <Link
+            className="bg-registry hover:bg-registry-hover inline-flex min-h-12 items-center justify-center rounded-lg px-5 font-semibold text-white"
+            href="/auth/create-account?next=%2Fleagues"
+          >
+            Start a real league
+          </Link>
           <button
-            className="bg-registry hover:bg-registry-hover min-h-12 rounded-lg px-5 font-semibold text-white"
+            className="text-action min-h-12 rounded-lg px-5 font-semibold hover:underline"
             onClick={resetPractice}
             type="button"
           >
             Build another practice card
           </button>
-          <Link
-            className="border-registry text-registry hover:bg-subtle inline-flex min-h-12 items-center justify-center rounded-lg border px-5 font-semibold"
-            href="/auth/create-account?next=%2Fleagues"
-          >
-            Start a real league
-          </Link>
         </div>
       </div>
     );
@@ -558,12 +574,16 @@ export function InteractiveWeekDemo() {
               <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
                 Practice Week · Unsaved
               </p>
-              <h2 className="mt-2 text-xl font-bold">
-                Your practice card is sealed
+              <h2
+                ref={phaseHeading}
+                tabIndex={-1}
+                className="mt-2 text-xl font-bold outline-none"
+              >
+                Card sealed
               </h2>
               <p className="text-graphite mt-2 text-sm">
-                All receipts were created together in this browser tab. They are
-                not saved to a league.
+                Your complete practice card is sealed for this example. It stays
+                only in this tab and is not saved to a league.
               </p>
             </div>
             <StatusBadge tone="sealed">Sealed</StatusBadge>
@@ -606,7 +626,13 @@ export function InteractiveWeekDemo() {
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
             Practice Week · Unsaved · Final review
           </p>
-          <h2 className="mt-2 text-2xl font-bold">Review your complete card</h2>
+          <h2
+            ref={phaseHeading}
+            tabIndex={-1}
+            className="mt-2 text-2xl font-bold outline-none"
+          >
+            Review
+          </h2>
           <p className="text-graphite mt-3 leading-7">
             Nothing is sealed yet. Review current terms, then confirm the
             complete card once.
@@ -619,6 +645,9 @@ export function InteractiveWeekDemo() {
               One example quote changed. Review the update before confirming.
             </p>
           ) : null}
+          <div className="mt-4">
+            <ReturnExplanation />
+          </div>
           <div className="divide-boundary mt-6 divide-y">
             {drafts.map((item, index) => {
               const opportunity = getInteractiveDemoOpportunity(
@@ -647,6 +676,18 @@ export function InteractiveWeekDemo() {
                       {formatAmericanOdds(currentOdds)}
                     </p>
                   </div>
+                  <p className="text-muted mt-2 text-sm">
+                    {
+                      interactiveDemoEvents.find(
+                        (event) => event.id === opportunity.eventId,
+                      )?.kickoffLabel
+                    }{" "}
+                    · Example time
+                  </p>
+                  <PickReturn
+                    stakeCredits={item.stakeCredits}
+                    americanOdds={currentOdds}
+                  />
                   {updated ? (
                     <div className="border-pending/40 bg-pending/10 mt-3 rounded-lg border p-3 text-sm">
                       <p className="text-pending font-semibold">Updated</p>
@@ -664,7 +705,7 @@ export function InteractiveWeekDemo() {
                     </div>
                   ) : (
                     <p className="text-muted mt-2 text-xs">
-                      Price reviewed 12:42 PM ET
+                      Example price reviewed
                     </p>
                   )}
                 </article>
@@ -727,6 +768,13 @@ export function InteractiveWeekDemo() {
             id="practice-card-progress"
             tabIndex={-1}
           >
+            <h2
+              ref={phaseHeading}
+              tabIndex={-1}
+              className="mb-5 text-2xl font-bold outline-none"
+            >
+              Build
+            </h2>
             <AllocationMeter
               allocatedCredits={allocatedCredits}
               commonLockLabel="Practice Sunday · 12:55 PM ET"

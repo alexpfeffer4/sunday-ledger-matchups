@@ -27,7 +27,6 @@ export default async function AccountSetupPage({
   // This is idempotent, including when email verification succeeded but the
   // callback's profile request failed temporarily.
   const ensuredProfile = await supabase.schema("api").rpc("ensure_profile");
-  if (ensuredProfile.error) throw ensuredProfile.error;
 
   const email =
     typeof data.claims.email === "string" ? data.claims.email : "Your account";
@@ -36,7 +35,9 @@ export default async function AccountSetupPage({
     .from("my_profile")
     .select("display_name")
     .maybeSingle();
-  if (profileResult.error) throw profileResult.error;
+  const profileUnavailable = Boolean(
+    ensuredProfile.error || profileResult.error,
+  );
   const currentUsername =
     profileResult.data?.display_name ?? email.split("@")[0] ?? "Member";
 
@@ -58,7 +59,23 @@ export default async function AccountSetupPage({
             future sign-ins. Both are required before continuing.
           </p>
           <p className="text-muted mt-3 text-sm">Private email · {email}</p>
-          <AccountSetupForm currentUsername={currentUsername} next={next} />
+          {profileUnavailable ? (
+            <div className="mt-7">
+              <p className="text-graphite leading-6" role="alert">
+                Your email is confirmed and you are signed in. Account setup is
+                temporarily unavailable. Retry here; you do not need another
+                email link.
+              </p>
+              <a
+                className="bg-registry mt-5 inline-flex min-h-12 items-center rounded-lg px-5 font-semibold text-white"
+                href={`/account/setup?next=${encodeURIComponent(next)}`}
+              >
+                Retry account setup
+              </a>
+            </div>
+          ) : (
+            <AccountSetupForm currentUsername={currentUsername} next={next} />
+          )}
         </section>
         <div className="mt-5 flex justify-end">
           <SignOutForm className="text-muted hover:text-ink min-h-11 rounded-lg px-3 text-sm font-semibold" />

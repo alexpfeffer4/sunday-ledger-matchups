@@ -242,10 +242,43 @@ test("members refresh, review, seal, and recover through real Auth and database"
     p_import: { ...imported, fetchedAt: new Date().toISOString() },
     p_requests_remaining: 1497,
   });
-  await rpc(members[0]!, "lock_live_roster_and_open_week", {
-    p_league_id: leagueId,
-    p_idempotency_key: `quote-lock-${run}`,
+  // The commissioner's visible League entry now reaches the real lock action.
+  const setupContext = await browser.newContext();
+  const setupPage = await setupContext.newPage();
+  await setupPage.goto(
+    `/auth/sign-in?next=${encodeURIComponent(`/l/${slug}/league`)}`,
+  );
+  await setupPage.getByLabel("Email address").fill(identities[0]!.email);
+  await setupPage
+    .getByLabel("Password", { exact: true })
+    .fill(identities[0]!.password);
+  await setupPage
+    .getByRole("button", { name: "Sign in with password" })
+    .click();
+  await setupPage
+    .getByRole("link", { name: "Lock roster & start season" })
+    .click();
+  await expect(setupPage.locator("#season-start")).toBeVisible();
+  await setupPage
+    .getByRole("checkbox", { name: /I am ready to freeze/ })
+    .check();
+  await setupPage
+    .getByRole("button", { name: "Lock 4-member roster & start season" })
+    .click();
+  await expect
+    .poll(async () => {
+      const current = await rpc(members[0]!, "get_stage1_state", {
+        p_league_slug: slug,
+      });
+      return current.week.state;
+    })
+    .toBe("OPEN");
+  const opened = await rpc(members[0]!, "get_stage1_state", {
+    p_league_slug: slug,
   });
+  expect(opened.week.state).toBe("OPEN");
+  expect(opened.schedule).toHaveLength(2);
+  await setupContext.close();
   expireRefresh(leagueId);
 
   // Independent authenticated HTTP requests contend on the actual database lease.

@@ -16,8 +16,12 @@ import { AccountSetupForm } from "@/components/auth/account-setup-form";
 import { MagicLinkForm } from "@/components/auth/magic-link-form";
 import { RecoveryPasswordForm } from "@/components/auth/recovery-password-form";
 import { SignInMethods } from "@/components/auth/sign-in-methods";
+import { completeAccountSetup } from "@/app/account/actions";
 import { UsernameForm } from "@/components/auth/username-form";
-import { sendCreateAccountLink } from "@/app/(auth)/auth/actions";
+import {
+  sendCreateAccountLink,
+  requestPasswordReset,
+} from "@/app/(auth)/auth/actions";
 
 vi.mock("@/app/(auth)/auth/actions", () => ({
   finishPasswordRecovery: vi.fn(),
@@ -137,6 +141,57 @@ describe("password authentication options", () => {
     expect(
       screen.getByRole("button", { name: /Resend available in/ }),
     ).toBeDisabled();
+  });
+
+  it("keeps recovery email and replaces old link errors with a real cooldown", async () => {
+    vi.mocked(requestPasswordReset).mockResolvedValue({
+      status: "success",
+      message: "Check the newest recovery email.",
+      retryAfterSeconds: 60,
+    });
+    render(
+      <PasswordRecoveryForm next="/join/private" linkError="invalid_link" />,
+    );
+    fireEvent.change(screen.getByLabelText("Email address"), {
+      target: { value: "member@example.test" },
+    });
+    await act(async () =>
+      fireEvent.submit(
+        screen
+          .getByRole("button", { name: "Email recovery link" })
+          .closest("form")!,
+      ),
+    );
+    expect(screen.getByLabelText("Email address")).toHaveValue(
+      "member@example.test",
+    );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "newest recovery email",
+    );
+    expect(
+      screen.getByRole("button", { name: /Resend available in/ }),
+    ).toBeDisabled();
+  });
+
+  it("preserves the chosen username through a failed setup save", async () => {
+    vi.mocked(completeAccountSetup).mockResolvedValue({
+      status: "error",
+      message: "Try again shortly.",
+    });
+    render(<AccountSetupForm currentUsername="Default" next="/join/private" />);
+    fireEvent.change(screen.getByLabelText("Username"), {
+      target: { value: "ChosenName" },
+    });
+    await act(async () =>
+      fireEvent.submit(
+        screen
+          .getByRole("button", { name: "Save account and continue" })
+          .closest("form")!,
+      ),
+    );
+    expect(screen.getByLabelText("Username")).toHaveValue("ChosenName");
+    expect(screen.getByRole("alert")).toHaveTextContent("Try again shortly");
   });
 
   it("shows one sign-in method at a time", () => {

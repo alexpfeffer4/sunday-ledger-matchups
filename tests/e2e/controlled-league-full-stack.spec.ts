@@ -251,10 +251,13 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   confirmationUrl.searchParams.set("type", verificationType!);
   confirmationUrl.searchParams.set("flow", "create-account");
   confirmationUrl.searchParams.set("next", invitePath);
-  const confirmationResponsePromise = page.waitForResponse(
-    (response) => response.url() === confirmationUrl.toString(),
-  );
   await page.goto(confirmationUrl.toString());
+  const confirmationResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url() === `${baseURL}/auth/confirm` &&
+      response.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: "Confirm and continue" }).click();
   const confirmationResponse = await confirmationResponsePromise;
   await page.waitForURL(/\/account\/setup/);
   const confirmationSetCookie =

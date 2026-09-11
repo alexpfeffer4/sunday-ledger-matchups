@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import CreateAccountPage from "@/app/(auth)/auth/create-account/page";
+import { pendingAccountSetupCookie } from "@/adapters/supabase/account-setup";
 import {
   sendCreateAccountLink,
   sendSignInLink,
 } from "@/app/(auth)/auth/actions";
 import { completeAccountSetup } from "@/app/account/actions";
 import { joinLeagueAction } from "@/app/leagues/actions";
-import { GET as confirmEmailLink } from "@/app/(auth)/auth/confirm/route";
+import {
+  GET as previewEmailLink,
+  POST as submitEmailLink,
+} from "@/app/(auth)/auth/confirm/route";
 import { initialMagicLinkState } from "@/app/(auth)/auth/state";
 import { initialAccountSetupState } from "@/app/account/state";
 import { initialAppActionState } from "@/application/actions/action-state";
@@ -15,9 +20,15 @@ const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   redirect: vi.fn(),
   revalidatePath: vi.fn(),
+  cookieDelete: vi.fn(),
+  cookieGet: vi.fn(),
 }));
 
 vi.mock("next/headers", () => ({
+  cookies: vi.fn(async () => ({
+    delete: mocks.cookieDelete,
+    get: mocks.cookieGet,
+  })),
   headers: vi.fn(
     async () => new Headers({ origin: "https://sunday-ledger.example" }),
   ),
@@ -31,15 +42,146 @@ vi.mock("next/cache", () => ({
   revalidatePath: mocks.revalidatePath,
 }));
 
+vi.mock("@/adapters/supabase/config", () => ({
+  isSupabaseConfigured: () => true,
+}));
+
 vi.mock("@/adapters/supabase/server", () => ({
   createSupabaseServerClient: mocks.createClient,
 }));
 
+// Exercise the real POST with the same fields formerly supplied in email URLs.
+function confirmEmailLink(request: NextRequest) {
+  const origin = request.headers.get("host")
+    ? `${request.headers.get("x-forwarded-proto") ?? "http"}://${request.headers.get("host")}`
+    : request.nextUrl.origin;
+  return submitEmailLink(
+    new NextRequest(new URL("/auth/confirm", request.url), {
+      method: "POST",
+      headers: {
+        ...Object.fromEntries(request.headers),
+        origin,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: request.nextUrl.searchParams.toString(),
+    }),
+  );
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.cookieGet.mockReset();
 });
 
 describe("Phase 1 auth and join actions", () => {
+  it.each([undefined, "another-user", "current-user"])(
+    "resumes only the matching verified setup hint (%s)",
+    async (pendingUser) => {
+      mocks.createClient.mockResolvedValue({
+        auth: {
+          getClaims: async () => ({
+            data: { claims: { sub: "current-user" } },
+          }),
+        },
+      });
+      mocks.cookieGet.mockReturnValue(
+        pendingUser ? { value: pendingUser } : undefined,
+      );
+      await CreateAccountPage({
+        searchParams: Promise.resolve({ next: "/join/private" }),
+      });
+      expect(mocks.redirect).toHaveBeenCalledWith(
+        pendingUser === "current-user"
+          ? "/account/setup?next=%2Fjoin%2Fprivate"
+          : "/join/private",
+      );
+    },
+  );
+  it("retains the user-bound setup hint through a verified profile failure", async () => {
+    mocks.createClient.mockResolvedValue({
+      auth: {
+        verifyOtp: async () => ({
+          data: { user: { id: "verified-user" } },
+          error: null,
+        }),
+      },
+      schema: () => ({
+        rpc: async () => ({ error: { code: "temporary_failure" } }),
+      }),
+    });
+    const response = await confirmEmailLink(
+      new NextRequest(
+        "https://sunday-ledger.example/auth/confirm?token_hash=private&type=email&flow=create-account&next=%2Fjoin%2Fprivate",
+      ),
+    );
+    expect(response.cookies.get(pendingAccountSetupCookie)).toMatchObject({
+      value: "verified-user",
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+    });
+    expect(response.headers.get("location")).toContain(
+      "/account/setup?next=%2Fjoin%2Fprivate",
+    );
+  });
+
+  it("does not consume credentials on email GET or HEAD prefetch", async () => {
+    for (const method of ["GET", "HEAD"]) {
+      const response = await previewEmailLink(
+        new NextRequest(
+          "https://sunday-ledger.example/auth/confirm?token_hash=private&type=signup&next=%2Fjoin%2Fprivate-invite-token",
+          { method },
+        ),
+      );
+      expect(response.headers.get("location")).toContain("/auth/verify?");
+      expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+    }
+    expect(mocks.createClient).not.toHaveBeenCalled();
+  });
+  it("rejects cross-origin confirmation without contacting Auth", async () => {
+    const response = await submitEmailLink(
+      new NextRequest("https://sunday-ledger.example/auth/confirm", {
+        method: "POST",
+        headers: {
+          origin: "https://unrelated.example",
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        body: "token_hash=private&type=signup",
+      }),
+    );
+    expect(response.status).toBe(403);
+    expect(mocks.createClient).not.toHaveBeenCalled();
+  });
+  it("distinguishes Auth outages from expired links without leaking credentials", async () => {
+    mocks.createClient.mockResolvedValue({
+      auth: {
+        verifyOtp: vi.fn(async () => ({
+          error: { code: "unexpected_failure", status: 503 },
+        })),
+      },
+    });
+    const response = await confirmEmailLink(
+      new NextRequest(
+        "https://sunday-ledger.example/auth/confirm?token_hash=private&type=signup&next=%2Fjoin%2Fprivate-invite-token",
+      ),
+    );
+    expect(response.headers.get("location")).toBe(
+      "https://sunday-ledger.example/auth/create-account?error=temporarily_unavailable&next=%2Fjoin%2Fprivate-invite-token",
+    );
+  });
+  it("rejects an unsupported verification type", async () => {
+    const verifyOtp = vi.fn();
+    mocks.createClient.mockResolvedValue({ auth: { verifyOtp } });
+    const response = await confirmEmailLink(
+      new NextRequest(
+        "https://sunday-ledger.example/auth/confirm?token_hash=private&type=admin",
+      ),
+    );
+    expect(verifyOtp).not.toHaveBeenCalled();
+    expect(response.headers.get("location")).toContain("error=invalid_link");
+  });
+
   it("uses provider account creation only for explicit Create account intent", async () => {
     const signInWithOtp = vi.fn(
       async (request: {
@@ -190,6 +332,7 @@ describe("Phase 1 auth and join actions", () => {
       p_display_name: "Alex",
     });
     expect(updateUser).toHaveBeenCalledWith({ password: "correct-horse" });
+    expect(mocks.cookieDelete).toHaveBeenCalledWith(pendingAccountSetupCookie);
     expect(mocks.redirect).toHaveBeenCalledWith("/join/private-invite-token");
   });
 
