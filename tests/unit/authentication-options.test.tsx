@@ -20,14 +20,18 @@ import { completeAccountSetup } from "@/app/account/actions";
 import { UsernameForm } from "@/components/auth/username-form";
 import {
   sendCreateAccountLink,
+  sendSignInLink,
   requestPasswordReset,
-} from "@/app/(auth)/auth/actions";
+} from "@/app/(auth)/auth/email-actions";
+const verifyEmailCode = vi.fn();
 
-vi.mock("@/app/(auth)/auth/actions", () => ({
-  finishPasswordRecovery: vi.fn(),
+vi.mock("@/app/(auth)/auth/email-actions", () => ({
   requestPasswordReset: vi.fn(),
   sendCreateAccountLink: vi.fn(),
   sendSignInLink: vi.fn(),
+}));
+vi.mock("@/app/(auth)/auth/actions", () => ({
+  finishPasswordRecovery: vi.fn(),
   signInWithPassword: vi.fn(),
   updatePassword: vi.fn(),
 }));
@@ -40,6 +44,107 @@ vi.mock("@/app/account/actions", () => ({
 afterEach(cleanup);
 
 describe("password authentication options", () => {
+  it.each(["signup", "recovery"] as const)(
+    "retains %s email populated before React receives an input event",
+    async (flow) => {
+      vi.mocked(sendCreateAccountLink).mockResolvedValue({
+        status: "sent",
+        message: "Check your email.",
+      });
+      vi.mocked(requestPasswordReset).mockResolvedValue({
+        status: "success",
+        message: "Check your email.",
+      });
+      render(
+        flow === "signup" ? (
+          <MagicLinkForm
+            intent="create-account"
+            next="/leagues"
+            sendEmailAction={sendCreateAccountLink}
+          />
+        ) : (
+          <PasswordRecoveryForm
+            next="/leagues"
+            requestEmailAction={requestPasswordReset}
+          />
+        ),
+      );
+      const email = screen.getByLabelText("Email address") as HTMLInputElement;
+      // Simulate browser autofill/pre-hydration input, without an onChange.
+      email.value = "mobile@example.test";
+      await act(async () => {
+        fireEvent.submit(email.closest("form")!);
+      });
+      expect(screen.getByRole("status")).toHaveTextContent("Check your email");
+      expect(email).toHaveValue("mobile@example.test");
+    },
+  );
+
+  it("keeps the email and destination from the request and clears code errors after resend", async () => {
+    vi.mocked(sendSignInLink).mockResolvedValue({
+      status: "sent",
+      email: "member@example.test",
+      verifyCode: verifyEmailCode,
+      message: "Check your email.",
+    });
+    vi.mocked(verifyEmailCode).mockResolvedValue({
+      status: "error",
+      message: "That code is expired.",
+    });
+    render(
+      <MagicLinkForm
+        sendEmailAction={sendSignInLink}
+        next="/join/original-invite"
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Email address"), {
+      target: { value: "member@example.test" },
+    });
+    await act(async () => {
+      fireEvent.submit(
+        screen
+          .getByRole("button", { name: "Send sign-in link" })
+          .closest("form")!,
+      );
+    });
+    fireEvent.click(screen.getByLabelText("Set a password after signing in"));
+    const codeForm = screen
+      .getByRole("button", { name: "Verify code and continue" })
+      .closest("form")!;
+    expect(vi.mocked(sendSignInLink).mock.calls.at(-1)?.[1].get("next")).toBe(
+      "/join/original-invite",
+    );
+    await act(async () => {
+      fireEvent.submit(codeForm);
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("expired");
+    await act(async () => {
+      fireEvent.submit(
+        screen
+          .getByRole("button", { name: "Resend email link" })
+          .closest("form")!,
+      );
+    });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(vi.mocked(sendSignInLink).mock.calls.at(-1)?.[1].get("next")).toBe(
+      "/account/set-password?next=%2Fjoin%2Foriginal-invite",
+    );
+  });
+
+  it("does not nest password setup when it is already the requested destination", () => {
+    render(
+      <MagicLinkForm
+        sendEmailAction={sendSignInLink}
+        next="/account/set-password?next=%2Fleagues"
+      />,
+    );
+    expect(
+      screen.queryByLabelText("Set a password after signing in"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("/account/set-password?next=%2Fleagues"),
+    ).toHaveAttribute("name", "next");
+  });
   it("offers password sign-in without replacing the email identity", () => {
     render(<PasswordSignInForm next="/leagues" />);
 
@@ -60,7 +165,12 @@ describe("password authentication options", () => {
   });
 
   it("offers email recovery for an existing password", () => {
-    const recovery = render(<PasswordRecoveryForm next="/join/invite-token" />);
+    const recovery = render(
+      <PasswordRecoveryForm
+        requestEmailAction={requestPasswordReset}
+        next="/join/invite-token"
+      />,
+    );
     const form = within(recovery.container);
 
     expect(form.getByLabelText("Email address")).toHaveAttribute(
@@ -90,7 +200,7 @@ describe("password authentication options", () => {
   });
 
   it("keeps returning-user email sign-in separate from account creation", () => {
-    render(<MagicLinkForm next="/leagues" />);
+    render(<MagicLinkForm sendEmailAction={sendSignInLink} next="/leagues" />);
 
     expect(screen.getByText(/existing accounts/i)).toBeVisible();
     expect(
@@ -99,7 +209,13 @@ describe("password authentication options", () => {
   });
 
   it("explains the completion gate during account creation", () => {
-    render(<MagicLinkForm intent="create-account" next="/join/invite-token" />);
+    render(
+      <MagicLinkForm
+        sendEmailAction={sendCreateAccountLink}
+        intent="create-account"
+        next="/join/invite-token"
+      />,
+    );
 
     expect(
       screen.getByText(/required username and password setup/i),
@@ -117,6 +233,7 @@ describe("password authentication options", () => {
     });
     render(
       <MagicLinkForm
+        sendEmailAction={sendCreateAccountLink}
         intent="create-account"
         next="/join/invite-token"
         linkError="browser_mismatch"
@@ -150,7 +267,11 @@ describe("password authentication options", () => {
       retryAfterSeconds: 60,
     });
     render(
-      <PasswordRecoveryForm next="/join/private" linkError="invalid_link" />,
+      <PasswordRecoveryForm
+        requestEmailAction={requestPasswordReset}
+        next="/join/private"
+        linkError="invalid_link"
+      />,
     );
     fireEvent.change(screen.getByLabelText("Email address"), {
       target: { value: "member@example.test" },
@@ -174,28 +295,40 @@ describe("password authentication options", () => {
     ).toBeDisabled();
   });
 
-  it("preserves the chosen username through a failed setup save", async () => {
-    vi.mocked(completeAccountSetup).mockResolvedValue({
-      status: "error",
-      message: "Try again shortly.",
-    });
-    render(<AccountSetupForm currentUsername="Default" next="/join/private" />);
-    fireEvent.change(screen.getByLabelText("Username"), {
-      target: { value: "ChosenName" },
-    });
-    await act(async () =>
-      fireEvent.submit(
-        screen
-          .getByRole("button", { name: "Save account and continue" })
-          .closest("form")!,
-      ),
-    );
-    expect(screen.getByLabelText("Username")).toHaveValue("ChosenName");
-    expect(screen.getByRole("alert")).toHaveTextContent("Try again shortly");
-  });
+  it.each(["change event", "before hydration"])(
+    "preserves the chosen username through a failed setup save after %s",
+    async (inputMode) => {
+      vi.mocked(completeAccountSetup).mockResolvedValue({
+        status: "error",
+        message: "Try again shortly.",
+      });
+      render(
+        <AccountSetupForm currentUsername="Default" next="/join/private" />,
+      );
+      if (inputMode === "change event") {
+        fireEvent.change(screen.getByLabelText("Username"), {
+          target: { value: "ChosenName" },
+        });
+      } else {
+        (screen.getByLabelText("Username") as HTMLInputElement).value =
+          "ChosenName";
+      }
+      await act(async () =>
+        fireEvent.submit(
+          screen
+            .getByRole("button", { name: "Save account and continue" })
+            .closest("form")!,
+        ),
+      );
+      expect(screen.getByLabelText("Username")).toHaveValue("ChosenName");
+      expect(screen.getByRole("alert")).toHaveTextContent("Try again shortly");
+    },
+  );
 
   it("shows one sign-in method at a time", () => {
-    const switcher = render(<SignInMethods next="/leagues" />);
+    const switcher = render(
+      <SignInMethods sendEmailAction={sendSignInLink} next="/leagues" />,
+    );
     const form = within(switcher.container);
 
     expect(

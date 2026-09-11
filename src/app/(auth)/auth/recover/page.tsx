@@ -1,3 +1,4 @@
+import { requestPasswordReset } from "@/app/(auth)/auth/email-actions";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
@@ -38,6 +39,7 @@ export default async function RecoverPasswordPage({
             characters.
           </p>
           <PasswordRecoveryForm
+            requestEmailAction={requestPasswordReset}
             next={next}
             linkError={
               Array.isArray(query.error) ? query.error[0] : query.error

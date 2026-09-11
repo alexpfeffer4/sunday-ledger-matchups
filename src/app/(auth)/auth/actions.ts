@@ -1,23 +1,10 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
-import type {
-  MagicLinkState,
-  PasswordActionState,
-} from "@/app/(auth)/auth/state";
-
-const emailLinkSchema = z.object({
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .pipe(z.email("Enter a valid email address.")),
-  next: z.string().optional(),
-});
+import type { PasswordActionState } from "@/app/(auth)/auth/state";
 
 const passwordSignInSchema = z.object({
   email: z
@@ -42,190 +29,6 @@ const passwordUpdateSchema = z
     message: "The passwords do not match.",
     path: ["confirmPassword"],
   });
-
-const passwordRecoverySchema = z.object({
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .pipe(z.email("Enter a valid email address.")),
-  next: z.string().optional(),
-});
-
-async function requestOrigin(): Promise<string> {
-  const requestHeaders = await headers();
-  const origin = requestHeaders.get("origin");
-  if (origin) {
-    const parsed = new URL(origin);
-    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
-      return parsed.origin;
-    }
-  }
-
-  const host =
-    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
-  const protocol = requestHeaders.get("x-forwarded-proto") ?? "http";
-  if (!host || (protocol !== "http" && protocol !== "https")) {
-    throw new Error("The request origin could not be verified.");
-  }
-  return `${protocol}://${host}`;
-}
-
-async function sendEmailLink(
-  formData: FormData,
-  intent: "create-account" | "sign-in",
-  shouldCreateUser: boolean,
-): Promise<MagicLinkState> {
-  const parsed = emailLinkSchema.safeParse({
-    email: formData.get("email"),
-    next: formData.get("next") ?? undefined,
-  });
-
-  if (!parsed.success) {
-    return {
-      status: "error",
-      message: parsed.error.issues[0]?.message ?? "Check the email address.",
-      field: "email",
-    };
-  }
-
-  try {
-    const [supabase, origin] = await Promise.all([
-      createSupabaseServerClient(),
-      requestOrigin(),
-    ]);
-    const next = safeInternalPath(parsed.data.next);
-    const confirmUrl = new URL("/auth/confirm", origin);
-    confirmUrl.searchParams.set("flow", intent);
-    confirmUrl.searchParams.set("next", next);
-    const { error } = await supabase.auth.signInWithOtp({
-      email: parsed.data.email,
-      options: {
-        emailRedirectTo: confirmUrl.toString(),
-        shouldCreateUser,
-      },
-    });
-
-    if (error) {
-      if (error.code === "over_email_send_rate_limit" || error.status === 429) {
-        return {
-          status: "error",
-          message:
-            "Email requests are temporarily limited. Wait a minute, then try again. If you received an email, use the newest one in the same browser.",
-          retryAfterSeconds: 60,
-        };
-      }
-      if (error.code === "email_address_not_authorized") {
-        return {
-          status: "error",
-          message:
-            "Email delivery is not available for that address yet. Ask the commissioner for help.",
-        };
-      }
-      return {
-        status: "error",
-        message:
-          intent === "create-account"
-            ? "The account email could not be sent. Try again shortly."
-            : "The sign-in email could not be sent. Check that the account already exists, then try again.",
-      };
-    }
-
-    return {
-      status: "sent",
-      retryAfterSeconds: 60,
-      message:
-        intent === "create-account"
-          ? "Check your email for a one-time account link. Open it in this same browser to continue to username and password setup. Use only the newest email."
-          : "Check your email for a one-time sign-in link. Open it in this same browser to return to where you left off. Use only the newest email.",
-    };
-  } catch {
-    return {
-      status: "error",
-      message:
-        "We could not confirm email delivery. Check your inbox before trying again shortly.",
-    };
-  }
-}
-
-export async function sendCreateAccountLink(
-  _state: MagicLinkState,
-  formData: FormData,
-): Promise<MagicLinkState> {
-  return sendEmailLink(formData, "create-account", true);
-}
-
-export async function sendSignInLink(
-  _state: MagicLinkState,
-  formData: FormData,
-): Promise<MagicLinkState> {
-  return sendEmailLink(formData, "sign-in", false);
-}
-
-export async function requestPasswordReset(
-  _state: PasswordActionState,
-  formData: FormData,
-): Promise<PasswordActionState> {
-  const parsed = passwordRecoverySchema.safeParse({
-    email: formData.get("email"),
-    next: formData.get("next") ?? undefined,
-  });
-  if (!parsed.success) {
-    return {
-      status: "error",
-      message: parsed.error.issues[0]?.message ?? "Check the email address.",
-      field: "email",
-    };
-  }
-
-  try {
-    const [supabase, origin] = await Promise.all([
-      createSupabaseServerClient(),
-      requestOrigin(),
-    ]);
-    const confirmUrl = new URL("/auth/confirm", origin);
-    confirmUrl.searchParams.set("flow", "recovery");
-    confirmUrl.searchParams.set("next", safeInternalPath(parsed.data.next));
-    const { error } = await supabase.auth.resetPasswordForEmail(
-      parsed.data.email,
-      { redirectTo: confirmUrl.toString() },
-    );
-
-    if (error) {
-      if (error.code === "over_email_send_rate_limit" || error.status === 429) {
-        return {
-          status: "error",
-          message:
-            "Email requests are temporarily limited. Wait a minute, then try again. If you received an email, use the newest one in the same browser.",
-          retryAfterSeconds: 60,
-        };
-      }
-      if (error.code === "email_address_not_authorized") {
-        return {
-          status: "error",
-          message:
-            "Email delivery is not available for that address yet. Ask the commissioner for help.",
-        };
-      }
-      return {
-        status: "error",
-        message: "The recovery email could not be sent. Try again shortly.",
-      };
-    }
-
-    return {
-      status: "success",
-      retryAfterSeconds: 60,
-      message:
-        "If an account exists for this email, check for the newest recovery link. Open it in this same browser to save a new password, then return where you left off.",
-    };
-  } catch {
-    return {
-      status: "error",
-      message: "Password recovery is temporarily unavailable.",
-    };
-  }
-}
 
 export async function signInWithPassword(
   _state: PasswordActionState,
@@ -276,6 +79,7 @@ export async function updatePassword(
   const parsed = passwordUpdateSchema.safeParse({
     password: formData.get("password"),
     confirmPassword: formData.get("confirmPassword"),
+    next: formData.get("next") ?? undefined,
   });
 
   if (!parsed.success) {
@@ -301,7 +105,7 @@ export async function updatePassword(
     const { error } = await supabase.auth.updateUser({
       password: parsed.data.password,
     });
-    if (error) {
+    if (error && error.code !== "same_password") {
       return {
         status: "error",
         message: "The password could not be updated. Try again shortly.",
@@ -313,6 +117,8 @@ export async function updatePassword(
       message: "The password could not be updated. Try again shortly.",
     };
   }
+
+  if (parsed.data.next) redirect(safeInternalPath(parsed.data.next));
 
   return {
     status: "success",

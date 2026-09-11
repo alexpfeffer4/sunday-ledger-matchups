@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { updatePassword } from "@/app/(auth)/auth/actions";
 import { initialPasswordActionState } from "@/app/(auth)/auth/state";
 
-export function SetPasswordForm() {
+export function SetPasswordForm({ next }: { next?: string }) {
   const [state, formAction, pending] = useActionState(
     updatePassword,
     initialPasswordActionState,
@@ -12,6 +12,7 @@ export function SetPasswordForm() {
 
   return (
     <form action={formAction} className="mt-7 space-y-5">
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       <div>
         <label htmlFor="new-password" className="text-sm font-bold">
           New password
@@ -55,7 +56,11 @@ export function SetPasswordForm() {
         disabled={pending}
         className="border-registry bg-registry hover:border-registry-hover hover:bg-registry-hover min-h-12 w-full rounded-lg border px-5 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-70"
       >
-        {pending ? "Saving…" : "Save password"}
+        {pending
+          ? "Saving…"
+          : next
+            ? "Save password and continue"
+            : "Save password"}
       </button>
       {state.status !== "idle" ? (
         <p

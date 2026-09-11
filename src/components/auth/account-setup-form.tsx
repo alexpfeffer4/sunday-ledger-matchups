@@ -16,7 +16,11 @@ export function AccountSetupForm({
 }) {
   const [username, setUsername] = useState(currentUsername);
   const [state, action, pending] = useActionState(
-    completeAccountSetup,
+    async (previous: typeof initialAccountSetupState, formData: FormData) => {
+      const submittedUsername = formData.get("username");
+      if (typeof submittedUsername === "string") setUsername(submittedUsername);
+      return completeAccountSetup(previous, formData);
+    },
     initialAccountSetupState,
   );
   const errors = state.fieldErrors ?? {};

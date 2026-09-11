@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import type { AppActionState } from "@/application/actions/action-state";
 import { createLeagueSlug } from "@/domain/leagues/league-slug";
+import { invitationToken } from "@/domain/leagues/invitation-token";
 
 const createLeagueSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -134,9 +135,14 @@ export async function joinLeagueAction(
   _state: AppActionState,
   formData: FormData,
 ): Promise<AppActionState> {
-  const parsed = joinLeagueSchema.safeParse({ token: formData.get("token") });
+  const parsed = joinLeagueSchema.safeParse({
+    token: invitationToken(formData.get("token")),
+  });
   if (!parsed.success) {
-    return { status: "error", message: "Enter the complete invitation code." };
+    return {
+      status: "error",
+      message: "Paste the complete invitation link or code.",
+    };
   }
 
   let leagueSlug: string;

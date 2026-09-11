@@ -27,7 +27,7 @@ export function LeagueSetupForms() {
         <div>
           <h2 className="text-xl font-bold">Add a league</h2>
           <p className="text-graphite mt-1 text-sm leading-6">
-            Start a private NFL league or enter an invitation code.
+            Start a private NFL league or join with an invitation link or code.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -51,7 +51,7 @@ export function LeagueSetupForms() {
             }
             type="button"
           >
-            Enter invite code
+            Join a league
           </button>
         </div>
       </div>
@@ -130,24 +130,27 @@ export function LeagueSetupForms() {
           className="border-boundary bg-surface mt-5 rounded-xl border p-5 sm:p-6"
           id="join-league-panel"
         >
-          <h3 className="text-lg font-bold">Enter an invitation code</h3>
+          <h3 className="text-lg font-bold">Paste your invitation</h3>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Most invitations open directly from the private link. Use this if
-            your commissioner sent only the code.
+            Paste the link or code your commissioner shared. You will join in
+            this browser, where you are already signed in.
           </p>
           <label
             className="mt-5 block text-sm font-semibold"
             htmlFor="invite-token"
           >
-            Invitation code
+            Invitation link or code
           </label>
           <input
             autoFocus
-            className="border-control bg-surface focus:border-registry mt-2 min-h-11 w-full rounded-lg border px-3 font-mono text-sm outline-none"
+            className="border-control bg-surface focus:border-registry mt-2 min-h-11 w-full rounded-lg border px-3 text-base outline-none"
             id="invite-token"
             name="token"
             required
             autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            maxLength={2048}
           />
           <button
             className="border-registry text-registry hover:bg-subtle mt-5 min-h-11 w-full rounded-lg border px-4 font-semibold disabled:opacity-60"

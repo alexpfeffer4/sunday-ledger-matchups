@@ -73,6 +73,12 @@ export function PasswordSignInForm({ next }: { next: string }) {
       >
         {pending ? "Signing in…" : "Sign in with password"}
       </button>
+      <Link
+        className="text-action inline-flex min-h-11 items-center text-sm font-semibold hover:underline"
+        href={`/auth/sign-in?method=email&next=${encodeURIComponent(`/account/set-password?next=${encodeURIComponent(next)}`)}`}
+      >
+        Never made a password? Set one by email
+      </Link>
       {state.status === "error" && !emailError && !passwordError ? (
         <p
           role="alert"

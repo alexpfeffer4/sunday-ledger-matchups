@@ -1,11 +1,12 @@
+import {
+  sendCreateAccountLink,
+  sendSignInLink,
+} from "@/app/(auth)/auth/email-actions";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import CreateAccountPage from "@/app/(auth)/auth/create-account/page";
 import { pendingAccountSetupCookie } from "@/adapters/supabase/account-setup";
-import {
-  sendCreateAccountLink,
-  sendSignInLink,
-} from "@/app/(auth)/auth/actions";
+import {} from "@/app/(auth)/auth/actions";
 import { completeAccountSetup } from "@/app/account/actions";
 import { joinLeagueAction } from "@/app/leagues/actions";
 import {

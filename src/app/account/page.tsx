@@ -84,11 +84,12 @@ export default async function AccountPage({
             Account security
           </p>
           <h2 className="mt-3 text-2xl font-bold tracking-[-0.03em]">
-            Change password
+            Set or change password
           </h2>
           <p className="text-graphite mt-3 leading-6">
             Your private sign-in email is {email}. Use a password of at least
-            eight characters for future sign-ins.
+            eight characters for future sign-ins, even if you originally joined
+            using an email link.
           </p>
           <SetPasswordForm />
         </section>

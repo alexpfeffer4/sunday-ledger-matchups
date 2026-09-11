@@ -1,3 +1,4 @@
+import { sendSignInLink } from "@/app/(auth)/auth/email-actions";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -15,6 +16,7 @@ export default async function SignInPage({
   searchParams: Promise<{
     next?: string | string[];
     error?: string | string[];
+    method?: string | string[];
   }>;
 }) {
   const query = await searchParams;
@@ -47,8 +49,12 @@ export default async function SignInPage({
             account.
           </p>
           <SignInMethods
+            sendEmailAction={sendSignInLink}
+            key={`${next}:${query.method ?? ""}:${hasLinkError}`}
             next={next}
-            defaultMethod={hasLinkError ? "email" : "password"}
+            defaultMethod={
+              hasLinkError || query.method === "email" ? "email" : "password"
+            }
             linkError={
               Array.isArray(query.error) ? query.error[0] : query.error
             }
