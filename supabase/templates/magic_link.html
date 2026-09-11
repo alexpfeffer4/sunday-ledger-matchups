@@ -9,6 +9,17 @@
     <h2>Your Sunday Ledger sign-in link</h2>
     <p>Sign in and return to your invitation or leagues.</p>
     <p>
+      Return to the browser where you requested this email and enter this
+      one-time code:
+    </p>
+    <p
+      style="font-size: 28px; font-weight: bold; letter-spacing: 4px"
+      data-email-code
+    >
+      {{ .Token }}
+    </p>
+    <p>Or continue with the link in that same browser:</p>
+    <p>
       <a
         href="{{ if .RedirectTo }}{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=email{{ else }}{{ .SiteURL }}/auth/confirm?flow=sign-in&amp;token_hash={{ .TokenHash }}&amp;type=email{{ end }}"
         >Continue to Sunday Ledger</a

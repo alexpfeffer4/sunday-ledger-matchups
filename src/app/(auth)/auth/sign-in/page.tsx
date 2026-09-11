@@ -15,6 +15,7 @@ export default async function SignInPage({
   searchParams: Promise<{
     next?: string | string[];
     error?: string | string[];
+    method?: string | string[];
   }>;
 }) {
   const query = await searchParams;
@@ -47,8 +48,11 @@ export default async function SignInPage({
             account.
           </p>
           <SignInMethods
+            key={`${next}:${query.method ?? ""}:${hasLinkError}`}
             next={next}
-            defaultMethod={hasLinkError ? "email" : "password"}
+            defaultMethod={
+              hasLinkError || query.method === "email" ? "email" : "password"
+            }
             linkError={
               Array.isArray(query.error) ? query.error[0] : query.error
             }

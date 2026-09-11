@@ -3,6 +3,7 @@ export type MagicLinkState = {
   message: string;
   field?: "email";
   retryAfterSeconds?: number;
+  email?: string;
 };
 
 export const initialMagicLinkState: MagicLinkState = {
@@ -11,6 +12,7 @@ export const initialMagicLinkState: MagicLinkState = {
 };
 
 export type PasswordActionState = {
+  email?: string;
   status: "idle" | "error" | "success";
   message: string;
   field?: "email" | "password" | "confirmPassword";
@@ -18,6 +20,12 @@ export type PasswordActionState = {
 };
 
 export const initialPasswordActionState: PasswordActionState = {
+  status: "idle",
+  message: "",
+};
+
+export type EmailCodeState = { status: "idle" | "error"; message: string };
+export const initialEmailCodeState: EmailCodeState = {
   status: "idle",
   message: "",
 };

@@ -133,11 +133,12 @@ async function sendEmailLink(
 
     return {
       status: "sent",
+      email: parsed.data.email,
       retryAfterSeconds: 60,
       message:
         intent === "create-account"
-          ? "Check your email for a one-time account link. Open it in this same browser to continue to username and password setup. Use only the newest email."
-          : "Check your email for a one-time sign-in link. Open it in this same browser to return to where you left off. Use only the newest email.",
+          ? "Check your email. Enter its verification code here, if included, or open the newest link in this same browser to continue to username and password setup."
+          : "Check your email. Enter its verification code here, if included, or open the newest link in this same browser to continue.",
     };
   } catch {
     return {
@@ -215,6 +216,7 @@ export async function requestPasswordReset(
 
     return {
       status: "success",
+      email: parsed.data.email,
       retryAfterSeconds: 60,
       message:
         "If an account exists for this email, check for the newest recovery link. Open it in this same browser to save a new password, then return where you left off.",
@@ -276,6 +278,7 @@ export async function updatePassword(
   const parsed = passwordUpdateSchema.safeParse({
     password: formData.get("password"),
     confirmPassword: formData.get("confirmPassword"),
+    next: formData.get("next") ?? undefined,
   });
 
   if (!parsed.success) {
@@ -301,7 +304,7 @@ export async function updatePassword(
     const { error } = await supabase.auth.updateUser({
       password: parsed.data.password,
     });
-    if (error) {
+    if (error && error.code !== "same_password") {
       return {
         status: "error",
         message: "The password could not be updated. Try again shortly.",
@@ -313,6 +316,8 @@ export async function updatePassword(
       message: "The password could not be updated. Try again shortly.",
     };
   }
+
+  if (parsed.data.next) redirect(safeInternalPath(parsed.data.next));
 
   return {
     status: "success",

@@ -20,8 +20,10 @@ import { completeAccountSetup } from "@/app/account/actions";
 import { UsernameForm } from "@/components/auth/username-form";
 import {
   sendCreateAccountLink,
+  sendSignInLink,
   requestPasswordReset,
 } from "@/app/(auth)/auth/actions";
+import { verifyEmailCode } from "@/app/(auth)/auth/verify-code";
 
 vi.mock("@/app/(auth)/auth/actions", () => ({
   finishPasswordRecovery: vi.fn(),
@@ -32,6 +34,8 @@ vi.mock("@/app/(auth)/auth/actions", () => ({
   updatePassword: vi.fn(),
 }));
 
+vi.mock("@/app/(auth)/auth/verify-code", () => ({ verifyEmailCode: vi.fn() }));
+
 vi.mock("@/app/account/actions", () => ({
   completeAccountSetup: vi.fn(),
   updateUsername: vi.fn(),
@@ -40,6 +44,65 @@ vi.mock("@/app/account/actions", () => ({
 afterEach(cleanup);
 
 describe("password authentication options", () => {
+  it("keeps the email and destination from the request and clears code errors after resend", async () => {
+    vi.mocked(sendSignInLink).mockResolvedValue({
+      status: "sent",
+      email: "member@example.test",
+      message: "Check your email.",
+    });
+    vi.mocked(verifyEmailCode).mockResolvedValue({
+      status: "error",
+      message: "That code is expired.",
+    });
+    render(<MagicLinkForm next="/join/original-invite" />);
+    fireEvent.change(screen.getByLabelText("Email address"), {
+      target: { value: "member@example.test" },
+    });
+    await act(async () => {
+      fireEvent.submit(
+        screen
+          .getByRole("button", { name: "Send sign-in link" })
+          .closest("form")!,
+      );
+    });
+    fireEvent.click(screen.getByLabelText("Set a password after signing in"));
+    const codeForm = screen
+      .getByRole("button", { name: "Verify code and continue" })
+      .closest("form")!;
+    expect(
+      within(codeForm).getByDisplayValue("/join/original-invite"),
+    ).toHaveAttribute("name", "next");
+    await act(async () => {
+      fireEvent.submit(codeForm);
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("expired");
+    await act(async () => {
+      fireEvent.submit(
+        screen
+          .getByRole("button", { name: "Resend email link" })
+          .closest("form")!,
+      );
+    });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    const freshCodeForm = screen
+      .getByRole("button", { name: "Verify code and continue" })
+      .closest("form")!;
+    expect(
+      within(freshCodeForm).getByDisplayValue(
+        "/account/set-password?next=%2Fjoin%2Foriginal-invite",
+      ),
+    ).toHaveAttribute("name", "next");
+  });
+
+  it("does not nest password setup when it is already the requested destination", () => {
+    render(<MagicLinkForm next="/account/set-password?next=%2Fleagues" />);
+    expect(
+      screen.queryByLabelText("Set a password after signing in"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("/account/set-password?next=%2Fleagues"),
+    ).toHaveAttribute("name", "next");
+  });
   it("offers password sign-in without replacing the email identity", () => {
     render(<PasswordSignInForm next="/leagues" />);
 

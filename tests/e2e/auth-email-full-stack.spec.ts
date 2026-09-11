@@ -59,7 +59,7 @@ function sql(statement: string) {
 function freshEmail(label: string) {
   return `auth-${label}-${Date.now().toString(36)}@acceptance.test`;
 }
-async function capturedLink(
+async function capturedEmail(
   request: APIRequestContext,
   email: string,
   subject: string,
@@ -95,7 +95,18 @@ async function capturedLink(
   expect(link.origin).toBe(baseURL);
   expect(link.pathname).toBe("/auth/confirm");
   expect(Boolean(link.searchParams.get("token_hash"))).toBeTruthy();
-  return link;
+  const code = String(message.HTML).match(
+    /data-email-code[^>]*>\s*(\d{6,10})\s*</,
+  )?.[1];
+  if (!code) throw new Error("Local email is missing its verification code");
+  return { link, code };
+}
+async function capturedLink(
+  request: APIRequestContext,
+  email: string,
+  subject: string,
+) {
+  return (await capturedEmail(request, email, subject)).link;
 }
 async function requestSignup(page: Page, email: string, next: string) {
   await page.goto(`/auth/create-account?next=${encodeURIComponent(next)}`);
@@ -432,4 +443,182 @@ test("revoked and expired invitations have generic initial metadata and no priva
     expect(html).not.toContain("Email Test Commissioner");
     expect(html).toContain("This league link is no longer active");
   }
+});
+
+test("email code completes signup in the requesting browser and cannot be reused", async ({
+  page,
+  request,
+  browser,
+}) => {
+  const email = freshEmail("code-signup");
+  const next = "/leagues?from=code";
+  await requestSignup(page, email, next);
+  const { code } = await capturedEmail(request, email, "confirmation");
+  await page.getByLabel("Email verification code").fill("1234567890");
+  await page.getByRole("button", { name: "Verify code and continue" }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "invalid",
+  );
+  await page.getByLabel("Email verification code").fill(code);
+  await page.getByRole("button", { name: "Verify code and continue" }).click();
+  await expectLocation(page, /\/account\/setup/);
+  await setup(page, "CodeSignup", "Disposable-CodeSignup-48!");
+  await expectLocation(page, /\/leagues\?from=code$/);
+  const other = await browser.newContext();
+  const otherPage = await other.newPage();
+  await otherPage.goto("/leagues");
+  await expectLocation(otherPage, /\/auth\/sign-in/);
+  const replay = await client(key!).auth.verifyOtp({
+    email,
+    token: code,
+    type: "email",
+  });
+  expect(Boolean(replay.error)).toBeTruthy();
+  expect(replay.data.session).toBeNull();
+  await other.close();
+});
+
+test("passwordless member verifies a code, sets a password and pastes an invite without leaving the browser", async ({
+  page,
+  request,
+}) => {
+  const fixture = await fixtureInvite();
+  const email = freshEmail("passwordless");
+  const password = "Disposable-FirstPassword-48!";
+  const created = await client(secret!).auth.admin.createUser({
+    email,
+    email_confirm: true,
+  });
+  expect(created.error).toBeNull();
+  // Exercise the discoverable password-first escape on the same sign-in route.
+  await page.goto("/auth/sign-in?next=/leagues");
+  await page
+    .getByRole("link", { name: "Never made a password? Set one by email" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Send sign-in link" }),
+  ).toBeVisible();
+  await page.getByLabel("Email address").fill(email);
+  await page.getByRole("button", { name: "Send sign-in link" }).click();
+  await expect(page.getByRole("status")).toContainText("Check your email");
+  const { code } = await capturedEmail(request, email, "magic_link");
+  await page.getByLabel("Email verification code").fill(code);
+  await page.getByRole("button", { name: "Verify code and continue" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Set a password", exact: true }),
+  ).toBeVisible();
+  await page.getByLabel("New password", { exact: true }).fill(password);
+  await page.getByLabel("Confirm password", { exact: true }).fill(password);
+  await page
+    .getByRole("button", { name: "Save password and continue" })
+    .click();
+  await expectLocation(page, /\/leagues$/);
+  await page
+    .getByRole("button", { name: "Join a league", exact: true })
+    .click();
+  await page
+    .getByLabel("Invitation link or code")
+    .fill(`${baseURL}/join/${fixture.token}`);
+  await page.getByRole("button", { name: "Join league", exact: true }).click();
+  await expectLocation(page, new RegExp(`/l/${fixture.slug}/matchup$`));
+  // Repeated acceptance by code returns to the same membership.
+  await page.goto("/leagues");
+  await page
+    .getByRole("button", { name: "Join a league", exact: true })
+    .click();
+  await page
+    .getByLabel("Invitation link or code")
+    .fill(fixture.token.toUpperCase());
+  await page.getByRole("button", { name: "Join league", exact: true }).click();
+  await expectLocation(page, new RegExp(`/l/${fixture.slug}/matchup$`));
+  const member = client(key!);
+  expect(
+    (await member.auth.signInWithPassword({ email, password })).error,
+  ).toBeNull();
+  expect(
+    (
+      await member
+        .schema("api")
+        .from("my_leagues")
+        .select("id")
+        .eq("id", fixture.leagueId)
+    ).data,
+  ).toHaveLength(1);
+
+  // Recovery also accepts a code in the browser that requested the email.
+  await page.goto("/account");
+  await page.getByRole("button", { name: "Sign out" }).click();
+  const next = `/l/${fixture.slug}/matchup`;
+  await page.goto(`/auth/recover?next=${encodeURIComponent(next)}`);
+  await page.getByLabel("Email address").fill(email);
+  await page.getByRole("button", { name: "Email recovery link" }).click();
+  await expect(page.getByRole("status")).toContainText("newest recovery link");
+  const recovery = await capturedEmail(request, email, "recovery");
+  await page.getByLabel("Email verification code").fill(recovery.code);
+  await page.getByRole("button", { name: "Verify code and continue" }).click();
+  await expectLocation(page, /\/account\/recover-password/);
+  await page
+    .getByLabel("New password", { exact: true })
+    .fill(`${password}-New`);
+  await page
+    .getByLabel("Confirm password", { exact: true })
+    .fill(`${password}-New`);
+  await page
+    .getByRole("button", { name: "Save password and continue" })
+    .click();
+  await expectLocation(page, new RegExp(`${next}$`));
+  expect(
+    (
+      await client(key!).auth.signInWithPassword({
+        email,
+        password: `${password}-New`,
+      })
+    ).error,
+  ).toBeNull();
+
+  // A later mobile visit can sign in with the newly saved password, retain
+  // the session on reload, and join without opening a second browser.
+  await page.goto("/account");
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await page.goto(`/auth/sign-in?next=${encodeURIComponent(next)}`);
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(`${password}-New`);
+  await page.getByRole("button", { name: "Sign in with password" }).click();
+  await expectLocation(page, new RegExp(`${next}$`));
+  await page.reload();
+  await expectLocation(page, new RegExp(`${next}$`));
+  await expect(page.getByRole("main")).toContainText("Private Email Journey");
+
+  // Pasting an expired invitation must still obey the authoritative join RPC.
+  const expired = await fixtureInvite();
+  expect(expired.leagueId).toMatch(/^[0-9a-f-]{36}$/);
+  sql(
+    `update private.league_invites set expires_at=now()-interval '1 minute' where league_id='${expired.leagueId}';`,
+  );
+  await page.goto("/leagues");
+  await page
+    .getByRole("button", { name: "Join a league", exact: true })
+    .click();
+  await page
+    .getByLabel("Invitation link or code")
+    .fill(`${baseURL}/join/${expired.token}`);
+  await page.getByRole("button", { name: "Join league", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "invalid, expired",
+  );
+  expect(
+    (
+      await member.auth.signInWithPassword({
+        email,
+        password: `${password}-New`,
+      })
+    ).error,
+  ).toBeNull();
+  const blockedMembership = await member
+    .schema("api")
+    .from("my_leagues")
+    .select("id")
+    .eq("id", expired.leagueId);
+  expect(blockedMembership.error).toBeNull();
+  expect(blockedMembership.data).toHaveLength(0);
 });
