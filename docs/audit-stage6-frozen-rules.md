@@ -1,9 +1,10 @@
 # Audit Stage 6 — governing reconciliation and future-week rules
 
-Prepared September 11, 2026. PR #36 is being revised after the owner clarified
+Prepared September 11, 2026. PR #36 was revised after the owner clarified
 that rule updates should apply to **future play within existing seasons**.
-The earlier season-long freeze proposal is superseded. No Production migration
-or merge has occurred at this documentation checkpoint.
+The earlier season-long freeze proposal is superseded. The reviewed Production
+migration is applied and verified. The [PR #36 release record](https://github.com/alexpfeffer4/sunday-ledger-matchups/pull/36)
+records final-head checks, merge and Production deployment status.
 
 ## Result and governing authority
 
@@ -26,8 +27,10 @@ Missing or unsupported card context pauses writes while retaining local drafts
 and authorized receipt/history reads. The shared engine retains all existing
 membership, quote freshness, event-start, replay and rehearsal protections.
 
-The authoritative server query independently recomputes each snapshot's SHA-256
-with the existing application canonicalizer before validation/serialization.
+The authoritative card query and official Rules/Standings query independently
+recompute snapshot SHA-256 with the existing application canonicalizer before
+validation/serialization, including every historical `priorRules` entry. The
+read query hashes original JSON so schema parsing cannot hide altered fields.
 SQL independently recomputes canonical JSON and the digest before accepting a
 card. A well-formed but incorrect digest fails closed. Both current compiled
 catalog digests are regression vectors, and all eight hosted snapshots were
@@ -55,13 +58,16 @@ reject repinning/reopening; verify stable publication retries; and exercise
 member/outsider RLS for both old and new snapshots. UI coverage checks that
 historical standings use the matching rules instead of the latest package.
 
-Local verification after the digest review fix passed formatting, lint, strict
-types, identity, all 431 unit/property tests and production build. Final CI after
-the review fix is pending at this checkpoint. The previous head
-`7286608c113da8a85d289cdde01fb8b4ab38ddae` passed 429 unit/property tests, 889 pgTAP
-assertions, 12 desktop full-stack tests, 8 mobile WebKit auth tests and all five
-acceptance workflows. Those results describe the earlier implementation and do
-not certify this revision. Final results will be recorded in the PR and this note.
+Local verification after both digest review fixes passed formatting, lint, strict
+types, identity, all 435 unit/property tests and production build. Head `9ad0b217`
+passed all five acceptance workflows, 931 pgTAP assertions and the 18-function
+generated API check. Chromium/WebKit interface checks and all 8 mobile auth tests
+passed. Of 12 desktop full-stack tests, 11 passed first try and the owner rehearsal
+passed on retry after its existing 30-second "Finalize through Week 14" timeout
+([run 34647534145](https://github.com/alexpfeffer4/sunday-ledger-matchups/actions/runs/34647534145)).
+This is retained as a known intermittent limitation, not diagnosed by the retry.
+The subsequent historical-read fix adds four unit regressions. Final CI for that
+fix and the ledger-aligned filename is recorded in the PR release record.
 
 The original Stage 6 browser changes retain real Auth, RSC, quote review, sealing,
 replay and receipt checks. The global provider scheduler scenario runs once under
@@ -70,11 +76,23 @@ RSC capture forwards the actual response unchanged and retains privacy assertion
 
 ## Migration and rollout
 
-New migration: `20260911203723_prospective_week_rules.sql`, created through the
-Supabase CLI. It supersedes the unapplied proposed `20260911190616` file. No
+Applied migration: `20260911211958_prospective_week_rules.sql`. The Supabase CLI
+originally generated `20260911203723`; the repository filename now matches the
+actual hosted ledger identity, with SQL unchanged from tested head `9ad0b217`.
+It supersedes the unapplied proposed `20260911190616` file. No
 previously applied migration is changed. The migration adds the week binding,
 protected publication trigger, member-scoped snapshot reads and guarded changes
 to existing functions. Public function signatures remain unchanged.
+
+The hosted ledger now has 45 migrations. Post-migration verification confirmed
+all 22 existing weeks are bound, all 201 receipts match their weeks, all eight
+snapshot fingerprints match and all three frozen snapshots pass compatibility.
+Before/after digests of existing snapshots, receipts, scores, standings, playoff
+publications and week fields (excluding the added binding) are identical. The
+trigger and member-read policy are active; none of the three new private helpers
+is executable by anonymous/authenticated clients. Security advisors introduced
+no new findings; existing private-table notices and deferred password protection
+remain unchanged.
 
 1. Check the final PR head, required CI, Production SHA and hosted ledger.
 2. Apply the reviewed migration **before** the application release. Confirm the
@@ -102,7 +120,7 @@ frozen V1.1 Simulation snapshots. The already-applied V1.2 catalog migration is
 
 ## Stage 7 handoff
 
-Stage 7 covers A13–A15: security decisions, measured performance, accessibility/device evidence and demonstrated maintenance issues. Begin with the final reviewed Stage 6 head and recheck whether rollout has actually occurred; this document does not assert a merge or deployment.
+Stage 7 covers A13–A15: security decisions, measured performance, accessibility/device evidence and demonstrated maintenance issues. Begin with the final reviewed Stage 6 head and verify the merge/deployment in the PR release record.
 
 Carry forward:
 

@@ -3,6 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
+import { hashRuleset } from "@/rulesets/canonicalize";
 import {
   seasonRulesetSnapshotSchema,
   type SeasonRulesetSnapshotDto,
@@ -26,6 +27,24 @@ export const getSeasonRuleset = cache(
       throw new Error("The season rules could not be loaded.");
     }
     if (result.data === null) return null;
-    return seasonRulesetSnapshotSchema.parse(result.data);
+    const snapshot = seasonRulesetSnapshotSchema.parse(result.data);
+    // Hash the original JSON: parsing must not hide an altered or extra field.
+    const source = result.data as {
+      canonicalJson: unknown;
+      priorRules?: { canonicalJson: unknown }[];
+    };
+    const hashes = await Promise.all(
+      [source, ...(source.priorRules ?? [])].map((entry) =>
+        hashRuleset(entry.canonicalJson),
+      ),
+    );
+    if (
+      [snapshot, ...(snapshot.priorRules ?? [])].some(
+        (entry, index) => entry.sha256Hash !== hashes[index],
+      )
+    ) {
+      throw new Error("The season rules failed their integrity check.");
+    }
+    return snapshot;
   },
 );
