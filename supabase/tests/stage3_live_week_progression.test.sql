@@ -127,8 +127,8 @@ insert into private.season_ruleset_snapshots (
   mode, canonical_json, sha256_hash, frozen_at
 ) values (
   '93000000-0000-4000-8000-000000000001',
-  'live-season-1', '1.0', 'sunday-ledger-product-bible', '3.0',
-  'LIVE', '{"mode":"LIVE"}', repeat('a', 64), now() - interval '8 days'
+  'SUNDAY-LEDGER-POC-SEASON-RULESET-V1', '1.0', 'SUNDAY-LEDGER-PRODUCT-BIBLE-V3', '3.0',
+  'LIVE', '{"id":"SUNDAY-LEDGER-POC-SEASON-RULESET-V1","version":"1.0","productBibleId":"SUNDAY-LEDGER-PRODUCT-BIBLE-V3","productBibleVersion":"3.0","mode":"LIVE","format":"SUNDAY_LEDGER_MATCHUPS","sport":"NFL","card":{"weeklyAllocationCredits":1000,"minimumStakeCredits":50,"minimumPositions":1,"maximumPositions":20,"stakePrecision":"WHOLE_CREDITS"},"concentration":{"heavyFavoriteThresholdAmerican":-200,"heavyFavoriteSinglePositionCapCredits":750,"standardSinglePositionCapCredits":1000,"eligibleOddsMinimum":null,"eligibleOddsMaximum":null,"aggregateFavoriteExposureCapCredits":null},"markets":{"eligible":["MONEYLINE","SPREAD","TOTAL"],"referenceBook":"draftkings"}}'::jsonb, repeat('a', 64), now() - interval '8 days'
 );
 
 insert into private.seasons (

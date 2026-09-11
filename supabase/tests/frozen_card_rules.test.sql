@@ -31,15 +31,18 @@ begin
     v_json:=jsonb_set(v_json,'{concentration}',(v_json->'concentration')-'status');
   end if;
   -- Establish historical/malformed fixture bytes before testing the actual
-  -- writer guards; replication mode is restored before every assertion.
-  perform set_config('session_replication_role','replica',true);
+  -- writer guards; user triggers are re-enabled before every assertion; FK/RLS stay enabled.
+  alter table private.season_ruleset_snapshots disable trigger user;
+  alter table private.market_snapshots disable trigger user;
   update private.season_ruleset_snapshots set canonical_json=v_json,
-    ruleset_version=p_version,product_bible_version=v_json->>'productBibleVersion'
+    ruleset_version=p_version,product_bible_version=v_json->>'productBibleVersion',
+    sha256_hash=encode(extensions.digest(v_json::text,'sha256'),'hex')
     where id=v_snapshot;
   update private.market_snapshots m set american_odds=-200
     from private.season_weeks w join private.seasons s on s.id=w.season_id
     where m.week_id=w.id and s.ruleset_snapshot_id=v_snapshot;
-  perform set_config('session_replication_role','origin',true);
+  alter table private.season_ruleset_snapshots enable trigger user;
+  alter table private.market_snapshots enable trigger user;
   return v_slug;
 end;
 $$;
@@ -52,12 +55,14 @@ declare v_positions jsonb; v_out jsonb; v_state jsonb; v_snapshot uuid;
 begin
   v_state:=api.get_stage1_state(p_slug);
   v_snapshot:=(v_state#>>'{season,rulesetSnapshotId}')::uuid;
-  perform set_config('session_replication_role','replica',true);
+  alter table private.season_ruleset_snapshots disable trigger user;
+  alter table private.market_snapshots disable trigger user;
   update private.market_snapshots set american_odds=p_odds
     where id=(select m.id from private.market_snapshots m join private.slate_items si on si.market_snapshot_id=m.id
       where si.week_id=(v_state#>>'{week,id}')::uuid and private.is_effective_slate_item(si.id)
       order by m.event_id,m.market_type,m.id limit 1);
-  perform set_config('session_replication_role','origin',true);
+  alter table private.season_ruleset_snapshots enable trigger user;
+  alter table private.market_snapshots enable trigger user;
   select jsonb_agg(jsonb_build_object('marketSnapshotId',m.id,'payloadHash',m.payload_hash,'stakeCredits',stake.value) order by stake.ordinality)
     into v_positions from (
       select row_number() over(order by event_id,market_type,id) rn,* from (
@@ -113,20 +118,26 @@ begin
     jsonb_set(v_original,'{concentration,heavyFavoriteThresholdAmerican}','-201'),
     jsonb_set(v_original,'{markets,eligible}','["TOTAL","TOTAL","TOTAL"]')
   )) loop
-    perform set_config('session_replication_role','replica',true);
+    alter table private.season_ruleset_snapshots disable trigger user;
+  alter table private.market_snapshots disable trigger user;
     update private.season_ruleset_snapshots set canonical_json=v_change where id=v_snapshot;
-    perform set_config('session_replication_role','origin',true);
+    alter table private.season_ruleset_snapshots enable trigger user;
+  alter table private.market_snapshots enable trigger user;
     return next is(pg_temp.try_card(v_slug,'[1000]')->>'error','UNSUPPORTED_SEASON_CARD_RULES','malformed/changed V'||p_version||' rules block acceptance');
     return next is(api.get_stage1_state(v_slug)#>'{ownerCard,positions}','[]'::jsonb,'unsupported rules retain authorized card reads');
   end loop;
-  perform set_config('session_replication_role','replica',true);
+  alter table private.season_ruleset_snapshots disable trigger user;
+  alter table private.market_snapshots disable trigger user;
   update private.season_ruleset_snapshots set ruleset_version='9.0',
     canonical_json=jsonb_set(v_original,'{version}','"9.0"') where id=v_snapshot;
-  perform set_config('session_replication_role','origin',true);
+  alter table private.season_ruleset_snapshots enable trigger user;
+  alter table private.market_snapshots enable trigger user;
   return next is(pg_temp.try_card(v_slug,'[1000]')->>'error','UNSUPPORTED_SEASON_CARD_RULES','unknown version never defaults to current rules');
-  perform set_config('session_replication_role','replica',true);
+  alter table private.season_ruleset_snapshots disable trigger user;
+  alter table private.market_snapshots disable trigger user;
   update private.season_ruleset_snapshots set ruleset_version=p_version,canonical_json=v_original where id=v_snapshot;
-  perform set_config('session_replication_role','origin',true);
+  alter table private.season_ruleset_snapshots enable trigger user;
+  alter table private.market_snapshots enable trigger user;
   return next throws_ok(format('select private.season_card_rules(%L::uuid,%L)',v_snapshot,'LIVE'),'22023','UNSUPPORTED_SEASON_CARD_RULES','mode mismatch fails closed');
   return next throws_ok(format('update private.season_ruleset_snapshots set canonical_json=%L::jsonb where id=%L::uuid',
     jsonb_set(v_original,'{card,weeklyAllocationCredits}','2000'),v_snapshot),null,null,'normal callers cannot rewrite a frozen snapshot');

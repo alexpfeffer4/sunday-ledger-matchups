@@ -121,7 +121,7 @@ remain inert. Never delete or alter a Live league as part of this procedure.
 
 ## Production mutation record
 
-This pull request does not create or change any Production account,
-entitlement, rehearsal, bot, league, invitation, card, receipt, result,
-correction, archive, migration state, environment configuration, or deployment.
-All mutation proof is limited to local/disposable CI Supabase.
+The original implementation proposal did not itself authorize Production
+activation. The owner subsequently approved and exercised the private rehearsal;
+its current status is recorded in the governing index. Stage 6 changes no
+Production entitlement or rehearsal data. Its mutation proof is disposable CI.

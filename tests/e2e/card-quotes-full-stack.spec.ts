@@ -283,12 +283,15 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
     // is accepted. Never run this fixture operation against a hosted database.
     expect(new URL(url!).hostname).toMatch(/^(127\\.0\\.0\\.1|localhost)$/);
     if (frozenVersion === "1.1") {
-      sql(`begin; set local session_replication_role=replica;
+      sql(`begin; alter table private.season_ruleset_snapshots disable trigger user;
       update private.season_ruleset_snapshots r set ruleset_version='1.1',
         product_bible_version='3.0',
         canonical_json=jsonb_set(jsonb_set(jsonb_set(r.canonical_json,'{version}','"1.1"'),'{productBibleVersion}','"3.0"'),
           '{standings,tiebreakOrder}','["MATCHUP_WIN_PERCENTAGE","POINTS_FOR","ALL_PLAY_PERCENTAGE","BALANCED_HEAD_TO_HEAD","FEWER_ATTENDANCE_MISSES","HIGHEST_SINGLE_WEEK_SCORE","STORED_DETERMINISTIC_RANDOM"]')
-      from private.seasons s where s.ruleset_snapshot_id=r.id and s.league_id='${leagueId}'; commit;`);
+      from private.seasons s where s.ruleset_snapshot_id=r.id and s.league_id='${leagueId}';
+      update private.season_ruleset_snapshots r set sha256_hash=encode(extensions.digest(r.canonical_json::text,'sha256'),'hex')
+      from private.seasons s where s.ruleset_snapshot_id=r.id and s.league_id='${leagueId}';
+      alter table private.season_ruleset_snapshots enable trigger user; commit;`);
     }
     const ruleState = await rpc(members[0]!, "get_stage1_state", {
       p_league_slug: slug,
@@ -632,7 +635,7 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
     expect(unauthorized.status()).toBe(401);
     const invoke = () =>
       page.request.post("/api/operations/scores", {
-        headers: { authorization: `*** },
+        headers: { authorization: `Bearer ${jobSecret}` },
       });
     const overlappingChecks = await Promise.all([invoke(), invoke()]);
     expect(overlappingChecks.map((response) => response.status())).toEqual([
