@@ -183,9 +183,9 @@ begin
   -- with application and SQL support; changing a label cannot enable new rules.
   perform private.season_card_rules(v_previous.id,v_season.mode);
   if v_previous.ruleset_version not in ('1.0','1.1') or v_catalog.ruleset_version<>'1.2'
-    or v_catalog.sha256_hash<>case v_season.mode
+    or v_catalog.sha256_hash<>(case v_season.mode
       when 'LIVE' then '6d9c85a0763b8c140296bda409ed3eecbe0ac4b91466b3504dd23ff4489e4ac7'
-      else 'd7b74cb761ca652fad2ffff32f6e20a16326434d7e0f19d86a7e32b6a818ef8b' end
+      else 'd7b74cb761ca652fad2ffff32f6e20a16326434d7e0f19d86a7e32b6a818ef8b' end)
   then raise exception using errcode='22023',message='UNSUPPORTED_WEEK_RULE_UPGRADE'; end if;
   insert into private.season_ruleset_snapshots(
     ruleset_id,ruleset_version,product_bible_id,product_bible_version,mode,

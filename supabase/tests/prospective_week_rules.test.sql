@@ -42,7 +42,7 @@ select lives_ok($$select api.advance_owner_rehearsal('WEEK_1_PROVISIONAL','futur
 create temporary table previous_rule_evidence as select
   (select to_jsonb(r) from private.season_ruleset_snapshots r where r.id=c.old_snapshot) snapshot,
   (select jsonb_agg(to_jsonb(r) order by r.id) from private.position_receipts r where r.week_id=c.week1) receipts,
-  (select jsonb_agg(to_jsonb(r) order by r.id) from private.card_score_versions r where r.week_id=c.week1) scores,
+  (select jsonb_agg(to_jsonb(r) order by r.id) from private.weekly_score_versions r where r.week_id=c.week1) scores,
   (select jsonb_agg(to_jsonb(r) order by r.id) from private.standings_snapshots r where r.week_id=c.week1) standings,
   private.build_regular_standings(c.week1) recalculation
 from rule_upgrade_context c;
@@ -58,7 +58,7 @@ select is(api.get_stage1_state(slug)->>'standingsThroughWeek','1','the standings
 select is((select ruleset_snapshot_id from private.seasons where id=c.season_id),old_snapshot,'the original season identity remains unchanged') from rule_upgrade_context c;
 select is((select to_jsonb(r) from private.season_ruleset_snapshots r where r.id=c.old_snapshot),e.snapshot,'activation does not rewrite original snapshot bytes') from rule_upgrade_context c cross join previous_rule_evidence e;
 select is((select jsonb_agg(to_jsonb(r) order by r.id) from private.position_receipts r where r.week_id=c.week1),e.receipts,'activation does not rewrite any accepted terms or receipt hashes') from rule_upgrade_context c cross join previous_rule_evidence e;
-select is((select jsonb_agg(to_jsonb(r) order by r.id) from private.card_score_versions r where r.week_id=c.week1),e.scores,'activation does not recalculate old scores') from rule_upgrade_context c cross join previous_rule_evidence e;
+select is((select jsonb_agg(to_jsonb(r) order by r.id) from private.weekly_score_versions r where r.week_id=c.week1),e.scores,'activation does not recalculate old scores') from rule_upgrade_context c cross join previous_rule_evidence e;
 select is((select jsonb_agg(to_jsonb(r) order by r.id) from private.standings_snapshots r where r.week_id=c.week1),e.standings,'activation does not rewrite old standings') from rule_upgrade_context c cross join previous_rule_evidence e;
 select is(private.build_regular_standings(c.week1),e.recalculation,'a subsequent historical recomputation still uses Week 1 rules') from rule_upgrade_context c cross join previous_rule_evidence e;
 select ok(exists(select 1 from jsonb_array_elements(private.build_regular_standings(week1)) r where (r->>'allPlayComparisonCount')::int>0),'the historical standings builder actually computes All-play') from rule_upgrade_context;

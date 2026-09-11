@@ -2,7 +2,7 @@
 
 ## Outcome
 
-Ruleset V1.2 removes All-play from prospective Sunday Ledger seasons. New
+Ruleset V1.2 removes All-play from prospective Sunday Ledger play. New
 Live seasons and newly started Owner Guided Rehearsals use this standings order:
 
 1. matchup win percentage;
@@ -15,7 +15,7 @@ Live seasons and newly started Owner Guided Rehearsals use this standings order:
 
 All-play is absent from Matchup, Standings, weekly summaries, RecordBridge,
 history, and archive presentation. The database does not compute it for a V1.2
-season.
+week.
 
 ## Original rollout compatibility (superseded for future weeks)
 
