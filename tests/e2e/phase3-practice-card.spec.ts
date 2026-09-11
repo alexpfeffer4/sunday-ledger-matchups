@@ -141,7 +141,7 @@ test("390 px Practice completes validation, review, reconciliation, and receipt 
   await page.getByRole("button", { name: "Confirm and seal card" }).click();
 
   await expect(
-    page.getByRole("heading", { name: "Card sealed" }),
+    page.getByRole("heading", { name: "Card sealed", exact: true }),
   ).toBeVisible();
   await expect(page.getByText(/Practice receipt 01/)).toBeVisible();
   await expect(
