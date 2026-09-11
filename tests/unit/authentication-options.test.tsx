@@ -22,14 +22,16 @@ import {
   sendCreateAccountLink,
   sendSignInLink,
   requestPasswordReset,
-} from "@/app/(auth)/auth/actions";
+} from "@/app/(auth)/auth/email-actions";
 const verifyEmailCode = vi.fn();
 
-vi.mock("@/app/(auth)/auth/actions", () => ({
-  finishPasswordRecovery: vi.fn(),
+vi.mock("@/app/(auth)/auth/email-actions", () => ({
   requestPasswordReset: vi.fn(),
   sendCreateAccountLink: vi.fn(),
   sendSignInLink: vi.fn(),
+}));
+vi.mock("@/app/(auth)/auth/actions", () => ({
+  finishPasswordRecovery: vi.fn(),
   signInWithPassword: vi.fn(),
   updatePassword: vi.fn(),
 }));
@@ -53,7 +55,12 @@ describe("password authentication options", () => {
       status: "error",
       message: "That code is expired.",
     });
-    render(<MagicLinkForm next="/join/original-invite" />);
+    render(
+      <MagicLinkForm
+        sendEmailAction={sendSignInLink}
+        next="/join/original-invite"
+      />,
+    );
     fireEvent.change(screen.getByLabelText("Email address"), {
       target: { value: "member@example.test" },
     });
@@ -89,7 +96,12 @@ describe("password authentication options", () => {
   });
 
   it("does not nest password setup when it is already the requested destination", () => {
-    render(<MagicLinkForm next="/account/set-password?next=%2Fleagues" />);
+    render(
+      <MagicLinkForm
+        sendEmailAction={sendSignInLink}
+        next="/account/set-password?next=%2Fleagues"
+      />,
+    );
     expect(
       screen.queryByLabelText("Set a password after signing in"),
     ).not.toBeInTheDocument();
@@ -117,7 +129,12 @@ describe("password authentication options", () => {
   });
 
   it("offers email recovery for an existing password", () => {
-    const recovery = render(<PasswordRecoveryForm next="/join/invite-token" />);
+    const recovery = render(
+      <PasswordRecoveryForm
+        requestEmailAction={requestPasswordReset}
+        next="/join/invite-token"
+      />,
+    );
     const form = within(recovery.container);
 
     expect(form.getByLabelText("Email address")).toHaveAttribute(
@@ -147,7 +164,7 @@ describe("password authentication options", () => {
   });
 
   it("keeps returning-user email sign-in separate from account creation", () => {
-    render(<MagicLinkForm next="/leagues" />);
+    render(<MagicLinkForm sendEmailAction={sendSignInLink} next="/leagues" />);
 
     expect(screen.getByText(/existing accounts/i)).toBeVisible();
     expect(
@@ -156,7 +173,13 @@ describe("password authentication options", () => {
   });
 
   it("explains the completion gate during account creation", () => {
-    render(<MagicLinkForm intent="create-account" next="/join/invite-token" />);
+    render(
+      <MagicLinkForm
+        sendEmailAction={sendCreateAccountLink}
+        intent="create-account"
+        next="/join/invite-token"
+      />,
+    );
 
     expect(
       screen.getByText(/required username and password setup/i),
@@ -174,6 +197,7 @@ describe("password authentication options", () => {
     });
     render(
       <MagicLinkForm
+        sendEmailAction={sendCreateAccountLink}
         intent="create-account"
         next="/join/invite-token"
         linkError="browser_mismatch"
@@ -207,7 +231,11 @@ describe("password authentication options", () => {
       retryAfterSeconds: 60,
     });
     render(
-      <PasswordRecoveryForm next="/join/private" linkError="invalid_link" />,
+      <PasswordRecoveryForm
+        requestEmailAction={requestPasswordReset}
+        next="/join/private"
+        linkError="invalid_link"
+      />,
     );
     fireEvent.change(screen.getByLabelText("Email address"), {
       target: { value: "member@example.test" },
@@ -252,7 +280,9 @@ describe("password authentication options", () => {
   });
 
   it("shows one sign-in method at a time", () => {
-    const switcher = render(<SignInMethods next="/leagues" />);
+    const switcher = render(
+      <SignInMethods sendEmailAction={sendSignInLink} next="/leagues" />,
+    );
     const form = within(switcher.container);
 
     expect(

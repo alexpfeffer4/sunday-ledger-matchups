@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { MagicLinkForm } from "@/components/auth/magic-link-form";
 import { PasswordSignInForm } from "@/components/auth/password-sign-in-form";
 
@@ -10,7 +10,9 @@ export function SignInMethods({
   next,
   defaultMethod = "password",
   linkError,
+  sendEmailAction,
 }: {
+  sendEmailAction: ComponentProps<typeof MagicLinkForm>["sendEmailAction"];
   next: string;
   defaultMethod?: SignInMethod;
   linkError?: string;
@@ -54,7 +56,11 @@ export function SignInMethods({
         {method === "password" ? (
           <PasswordSignInForm next={next} />
         ) : (
-          <MagicLinkForm next={next} linkError={linkError} />
+          <MagicLinkForm
+            sendEmailAction={sendEmailAction}
+            next={next}
+            linkError={linkError}
+          />
         )}
       </div>
     </div>

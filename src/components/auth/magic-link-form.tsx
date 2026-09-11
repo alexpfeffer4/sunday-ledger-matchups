@@ -2,10 +2,6 @@
 
 import { useActionState, useState } from "react";
 import {
-  sendCreateAccountLink,
-  sendSignInLink,
-} from "@/app/(auth)/auth/actions";
-import {
   initialMagicLinkState,
   type EmailCodeAction,
 } from "@/app/(auth)/auth/state";
@@ -17,8 +13,13 @@ export function MagicLinkForm({
   intent = "sign-in",
   next,
   linkError,
+  sendEmailAction,
 }: {
   intent?: "create-account" | "sign-in";
+  sendEmailAction: (
+    state: typeof initialMagicLinkState,
+    formData: FormData,
+  ) => Promise<typeof initialMagicLinkState>;
   next: string;
   linkError?: string;
 }) {
@@ -37,9 +38,7 @@ export function MagicLinkForm({
   const { secondsRemaining, start } = useResendCooldown();
   const [state, formAction, pending] = useActionState(
     async (previousState: typeof initialMagicLinkState, formData: FormData) => {
-      const send =
-        intent === "create-account" ? sendCreateAccountLink : sendSignInLink;
-      const result = await send(previousState, formData);
+      const result = await sendEmailAction(previousState, formData);
       start(result.retryAfterSeconds);
       if (result.email && result.verifyCode) {
         const requestedEmail = result.email;

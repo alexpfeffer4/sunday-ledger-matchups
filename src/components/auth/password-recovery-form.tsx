@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { requestPasswordReset } from "@/app/(auth)/auth/actions";
 import {
   initialPasswordActionState,
   type EmailCodeAction,
@@ -14,7 +13,12 @@ import { useResendCooldown } from "@/components/auth/use-resend-cooldown";
 export function PasswordRecoveryForm({
   next,
   linkError,
+  requestEmailAction,
 }: {
+  requestEmailAction: (
+    state: typeof initialPasswordActionState,
+    formData: FormData,
+  ) => Promise<typeof initialPasswordActionState>;
   next: string;
   linkError?: string;
 }) {
@@ -27,7 +31,7 @@ export function PasswordRecoveryForm({
   const { secondsRemaining, start } = useResendCooldown();
   const [state, action, pending] = useActionState(
     async (previous: typeof initialPasswordActionState, data: FormData) => {
-      const result = await requestPasswordReset(previous, data);
+      const result = await requestEmailAction(previous, data);
       start(result.retryAfterSeconds);
       if (result.email && result.verifyCode) {
         const requestedEmail = result.email;

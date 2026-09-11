@@ -1,3 +1,4 @@
+import { sendSignInLink } from "@/app/(auth)/auth/email-actions";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -48,6 +49,7 @@ export default async function SignInPage({
             account.
           </p>
           <SignInMethods
+            sendEmailAction={sendSignInLink}
             key={`${next}:${query.method ?? ""}:${hasLinkError}`}
             next={next}
             defaultMethod={

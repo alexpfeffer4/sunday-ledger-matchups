@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createEmailCodeVerifier } from "@/app/(auth)/auth/verify-code";
+import {
+  requestPasswordReset,
+  sendCreateAccountLink,
+  sendSignInLink,
+} from "@/app/(auth)/auth/email-actions";
 import { updatePassword } from "@/app/(auth)/auth/actions";
 import {
   initialEmailCodeState,
+  initialMagicLinkState,
   initialPasswordActionState,
   type EmailCodeState,
 } from "@/app/(auth)/auth/state";
@@ -15,6 +20,8 @@ const mocks = vi.hoisted(() => ({
   redirect: vi.fn(),
   claims: vi.fn(),
   update: vi.fn(),
+  send: vi.fn(),
+  recover: vi.fn(),
 }));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ set: mocks.cookie }),
@@ -25,6 +32,8 @@ vi.mock("@/adapters/supabase/server", () => ({
   createSupabaseServerClient: async () => ({
     auth: {
       verifyOtp: mocks.verify,
+      signInWithOtp: mocks.send,
+      resetPasswordForEmail: mocks.recover,
       getClaims: mocks.claims,
       updateUser: mocks.update,
     },
@@ -42,16 +51,25 @@ function data(flow = "sign-in", next = "/join/private-invite-token") {
   }).forEach(([key, value]) => form.set(key, value));
   return form;
 }
-// Existing cases construct the request context that the server protects.
-function verifyEmailCode(state: EmailCodeState, form: FormData) {
-  return createEmailCodeVerifier({
-    email: String(form.get("email")),
-    flow: form.get("flow") as "sign-in",
-    next: String(form.get("next")),
-  })(state, form);
+// Exercise the actual email request that issues the protected verifier.
+async function createVerifier(flow: string, form: FormData) {
+  const request =
+    flow === "recovery"
+      ? await requestPasswordReset(initialPasswordActionState, form)
+      : await (
+          flow === "create-account" ? sendCreateAccountLink : sendSignInLink
+        )(initialMagicLinkState, form);
+  expect(request.verifyCode).toBeTypeOf("function");
+  return request.verifyCode!;
+}
+async function verifyEmailCode(state: EmailCodeState, form: FormData) {
+  const verify = await createVerifier(String(form.get("flow")), form);
+  return verify(state, form);
 }
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.send.mockResolvedValue({ error: null });
+  mocks.recover.mockResolvedValue({ error: null });
   mocks.verify.mockResolvedValue({
     data: { user: { id: "verified-user" }, session: {} },
     error: null,
@@ -106,11 +124,10 @@ describe("first-password recovery", () => {
 
 describe("same-browser email verification", () => {
   it("ignores tampered email, signup flow and destination fields", async () => {
-    const verify = createEmailCodeVerifier({
-      email: "member@example.test",
-      flow: "create-account",
-      next: "/join/private-invite-token",
-    });
+    const verify = await createVerifier(
+      "create-account",
+      data("create-account"),
+    );
     const form = data("sign-in", "//external.example");
     form.set("email", "another@example.test");
     await verify(initialEmailCodeState, form);
@@ -156,8 +173,7 @@ describe("same-browser email verification", () => {
       "/account/setup?next=%2Fjoin%2Fprivate-invite-token",
     );
   });
-  it("does not accept arbitrary flows or nonnumeric tokens", async () => {
-    await verifyEmailCode(initialEmailCodeState, data("admin"));
+  it("rejects nonnumeric tokens before calling the provider", async () => {
     const form = data();
     form.set("token", "letters");
     await verifyEmailCode(initialEmailCodeState, form);

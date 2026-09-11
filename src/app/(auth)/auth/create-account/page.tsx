@@ -1,3 +1,4 @@
+import { sendCreateAccountLink } from "@/app/(auth)/auth/email-actions";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -61,6 +62,7 @@ export default async function CreateAccountPage({
             future sign-ins.
           </p>
           <MagicLinkForm
+            sendEmailAction={sendCreateAccountLink}
             intent="create-account"
             next={next}
             linkError={
