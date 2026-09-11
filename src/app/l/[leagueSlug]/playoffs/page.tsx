@@ -5,7 +5,7 @@ import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stag
 import { getSeasonArchive } from "@/application/queries/get-season-archive";
 import { LivePlayoffView } from "@/components/playoffs/live-playoff-view";
 import { SeasonArchivePlayoffs } from "@/components/season/archive-views";
-import { Stage1DeferredView } from "@/components/stage1/live-views";
+import { PlayoffPendingView } from "@/components/playoffs/playoff-pending-view";
 
 export const metadata: Metadata = { title: "Playoff race" };
 
@@ -21,25 +21,14 @@ export default async function PlayoffsPage({
     getSeasonArchive(leagueSlug),
   ]);
   if (archive) return <SeasonArchivePlayoffs archive={archive} />;
-  if (livePlayoffs) return <LivePlayoffView state={livePlayoffs} />;
-  if (live) {
-    const week14Final =
-      live.week?.nflWeek === 14 && live.week.state === "FINAL";
+  if (livePlayoffs)
     return (
-      <Stage1DeferredView
-        state={live}
-        title={
-          week14Final
-            ? "The final field awaits publication"
-            : "The playoff race has not opened"
-        }
-        description={
-          week14Final
-            ? "Week 14 is final. The commissioner must confirm the playoff field before Week 15 opens."
-            : `This ${live.league.memberCount}-member league qualifies its playoff field after Week 14 is final.`
-        }
+      <LivePlayoffView
+        state={livePlayoffs}
+        viewerEntryId={live?.viewer.entryId}
+        activeWeek={live?.week?.nflWeek}
       />
     );
-  }
+  if (live) return <PlayoffPendingView state={live} />;
   notFound();
 }

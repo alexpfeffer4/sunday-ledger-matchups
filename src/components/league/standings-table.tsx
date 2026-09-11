@@ -25,7 +25,7 @@ function record(row: StandingsRecord): string {
 
 function YouLabel() {
   return (
-    <span className="border-registry/30 bg-registry/10 text-registry ml-2 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-[0.04em] uppercase">
+    <span className="border-registry/30 bg-registry/10 text-registry ml-2 inline-flex rounded-full border px-2 py-0.5 text-xs font-bold tracking-[0.04em] uppercase">
       You
     </span>
   );
@@ -33,7 +33,7 @@ function YouLabel() {
 
 function IneligibleLabel() {
   return (
-    <span className="border-negative/30 bg-negative/10 text-negative ml-2 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-[0.04em] uppercase">
+    <span className="border-negative/30 bg-negative/10 text-negative ml-2 inline-flex rounded-full border px-2 py-0.5 text-xs font-bold tracking-[0.04em] uppercase">
       Ineligible
     </span>
   );
@@ -57,54 +57,72 @@ export function StandingsTable({
     index > 0 && index === lastPlayoffFieldIndex + 1;
   return (
     <>
-      <div className="mt-6 space-y-2 md:hidden">
-        {rows.map((row, index) => (
-          <div key={row.entryId}>
-            {hasPlayoffLineBefore(index) ? (
-              <p className="text-pending border-pending/40 mb-2 border-t pt-2 text-xs font-bold tracking-[0.06em] uppercase">
-                {playoffLineLabel}
-              </p>
-            ) : null}
-            <article
-              aria-label={`Rank ${row.rank}, ${row.memberName}${row.current ? ", You" : ""}, ${record(row)}, ${score(row.pointsForCenticredits)} Points For, ${row.attendanceMisses} incomplete weeks${row.playoffEligible ? "" : ", playoff ineligible"}`}
-              className={`border-boundary bg-surface rounded-lg border px-4 py-3 ${
-                row.current ? "border-l-registry bg-registry/5 border-l-4" : ""
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <span className="text-registry w-7 shrink-0 font-mono text-lg font-bold">
+      <section
+        aria-label={caption}
+        className="standings-mobile border-boundary mt-5 md:hidden"
+      >
+        <div
+          aria-hidden="true"
+          className="standings-mobile-head text-muted grid grid-cols-[minmax(0,0.35fr)_minmax(0,1.8fr)_minmax(0,1fr)_minmax(0,1.4fr)] items-end gap-2 border-b pb-2 text-xs"
+        >
+          <span>#</span>
+          <span>Member</span>
+          <span className="text-right">Record</span>
+          <span className="text-right">Points For</span>
+        </div>
+        <ol className="divide-boundary divide-y">
+          {rows.map((row, index) => (
+            <li key={row.entryId}>
+              {hasPlayoffLineBefore(index) ? (
+                <p className="text-pending border-pending border-t-2 py-2 text-xs font-semibold">
+                  {playoffLineLabel}
+                </p>
+              ) : null}
+              <div
+                className={`standings-mobile-row grid grid-cols-[minmax(0,0.35fr)_minmax(0,1.8fr)_minmax(0,1fr)_minmax(0,1.4fr)] items-baseline gap-x-2 border-l-[3px] py-3 pr-1 ${row.current ? "border-l-registry bg-registry/5" : "border-l-transparent"}`}
+              >
+                <span className="text-registry text-right font-mono text-sm font-semibold tabular-nums">
+                  <span className="sr-only">Rank </span>
                   {row.rank}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-bold break-words">
-                    {row.memberName}
-                    {row.current ? <YouLabel /> : null}
-                    {!row.playoffEligible ? <IneligibleLabel /> : null}
-                  </p>
-                  <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                    <div>
-                      <dt className="text-muted text-xs">Record</dt>
-                      <dd className="mt-0.5 font-semibold">{record(row)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted text-xs">Points For</dt>
-                      <dd className="mt-0.5 font-mono font-semibold">
-                        {score(row.pointsForCenticredits)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted text-xs">Incomplete weeks</dt>
-                      <dd className="mt-0.5 font-semibold">
-                        {row.attendanceMisses}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
+                <span className="standings-member min-w-0 text-sm font-semibold break-words">
+                  {row.memberName}
+                  {row.current ? (
+                    <span className="text-registry mt-1 block text-xs">
+                      You
+                    </span>
+                  ) : null}
+                </span>
+                <span className="standings-metric text-right text-sm tabular-nums">
+                  <span className="standings-metric-label sr-only">
+                    Record{" "}
+                  </span>
+                  <span className="standings-value">{record(row)}</span>
+                </span>
+                <span className="standings-metric text-right font-mono text-sm tabular-nums">
+                  <span className="standings-metric-label sr-only">
+                    Points For{" "}
+                  </span>
+                  <span className="standings-value">
+                    {score(row.pointsForCenticredits)}
+                  </span>
+                </span>
+                {row.attendanceMisses > 0 || !row.playoffEligible ? (
+                  <span
+                    className={`standings-eligibility col-span-3 col-start-2 mt-1 text-xs ${row.playoffEligible ? "text-muted" : "text-negative"}`}
+                  >
+                    {row.attendanceMisses} incomplete week
+                    {row.attendanceMisses === 1 ? "" : "s"}
+                    {row.playoffEligible ? "" : " · Playoff ineligible"}
+                  </span>
+                ) : (
+                  <span className="sr-only">0 incomplete weeks</span>
+                )}
               </div>
-            </article>
-          </div>
-        ))}
-      </div>
+            </li>
+          ))}
+        </ol>
+      </section>
 
       <div
         aria-label="Scrollable standings table"
@@ -116,19 +134,19 @@ export function StandingsTable({
           <caption className="sr-only">{caption}</caption>
           <thead className="bg-subtle text-muted text-xs tracking-[0.06em] uppercase">
             <tr>
-              <th className="px-4 py-3" scope="col">
+              <th className="px-4 py-3 text-right" scope="col">
                 Rank
               </th>
               <th className="px-4 py-3" scope="col">
                 Member
               </th>
-              <th className="px-4 py-3" scope="col">
+              <th className="px-4 py-3 text-right" scope="col">
                 Record
               </th>
-              <th className="px-4 py-3" scope="col">
+              <th className="px-4 py-3 text-right" scope="col">
                 Points For
               </th>
-              <th className="px-4 py-3" scope="col">
+              <th className="px-4 py-3 text-right" scope="col">
                 Incomplete weeks
               </th>
             </tr>
@@ -147,7 +165,7 @@ export function StandingsTable({
                   </tr>
                 ) : null}
                 <tr className={row.current ? "bg-registry/5" : ""}>
-                  <td className="px-4 py-3 font-mono font-semibold">
+                  <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums">
                     {row.rank}
                   </td>
                   <th className="px-4 py-3" scope="row">
@@ -155,21 +173,25 @@ export function StandingsTable({
                     {row.current ? <YouLabel /> : null}
                     {!row.playoffEligible ? <IneligibleLabel /> : null}
                   </th>
-                  <td className="px-4 py-3">{record(row)}</td>
-                  <td className="px-4 py-3 font-mono">
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {record(row)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono tabular-nums">
                     {score(row.pointsForCenticredits)}
                   </td>
-                  <td className="px-4 py-3">{row.attendanceMisses}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {row.attendanceMisses}
+                  </td>
                 </tr>
               </Fragment>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="text-muted mt-3 text-xs leading-5">
-        <strong className="text-graphite">Incomplete weeks</strong> count cards
-        that were not fully sealed. {playoffIneligibilityAtMisses} makes a
-        member playoff-ineligible.
+      <p className="text-muted mt-3 text-sm leading-6">
+        <strong className="text-graphite">Incomplete weeks</strong> count
+        regular-season cards that were not fully sealed before the deadline.{" "}
+        {playoffIneligibilityAtMisses} makes a member playoff-ineligible.
       </p>
     </>
   );

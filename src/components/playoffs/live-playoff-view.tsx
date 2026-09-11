@@ -1,3 +1,8 @@
+import {
+  CurrentPlayoffContest,
+  currentPlayoffRound,
+} from "@/components/playoffs/current-playoff-contest";
+import { easternTime } from "@/application/queries/score-freshness";
 import type { LivePlayoffState } from "@/application/queries/live-playoff-dtos";
 import { PageFrame } from "@/components/league/page-frame";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -14,13 +19,16 @@ const roleLabels = {
   EXHIBITION: "Exhibition",
 } as const;
 
-const roundTimeFormatter = new Intl.DateTimeFormat("en-US", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "America/New_York",
-});
-
-export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
+export function LivePlayoffView({
+  state,
+  viewerEntryId,
+  activeWeek,
+}: {
+  state: LivePlayoffState;
+  viewerEntryId?: string;
+  activeWeek?: number;
+}) {
+  const currentRound = currentPlayoffRound(state, activeWeek);
   const { publication } = state;
   const champion = publication.championFinality
     ? publication.standings.find(
@@ -50,19 +58,19 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
       title={
         publication.championFinality
           ? `${champion?.displayName ?? "Champion"} is champion`
-          : "The playoff field is set"
+          : "Playoffs"
       }
       description={
         state.league.lifecycle === "CHAMPION_FINAL"
           ? "The champion and final bracket are fixed. The complete season archive remains open until every Week 18 exhibition is final."
           : state.league.lifecycle === "WEEK_18_EXHIBITION"
-            ? "The champion remains fixed while every member plays one final-placement exhibition with the normal card, receipt, reveal, and settlement experience."
+            ? "The champion remains fixed while every member plays a Week 18 exhibition. The complete season archive follows after those results are final."
             : publication.championFinality
               ? "The champion, final bracket, and complete Weeks 1–18 archive are final."
-              : "Eligibility is applied first. When fewer than four members are eligible, the highest remaining Week 14 finishers are reinstated only until the championship field reaches four."
+              : "Your current contest and the path to the championship. Qualification seeds stay fixed throughout the playoffs."
       }
       aside={
-        <StatusBadge tone="positive">
+        <StatusBadge tone="sealed">
           {publication.championFinality
             ? state.league.lifecycle === "CHAMPION_FINAL"
               ? "Champion final · Week 18 next"
@@ -85,52 +93,24 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
         </section>
       ) : null}
 
-      <section aria-labelledby="published-rounds-title" className="mt-7">
-        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-          <div>
-            <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-              Playoff schedule
-            </p>
-            <h2 id="published-rounds-title" className="mt-2 text-xl font-bold">
-              Every member · one matchup each week
-            </h2>
-          </div>
-          <StatusBadge tone={state.rounds.length ? "positive" : "pending"}>
-            {state.rounds.length
-              ? `${state.rounds.length} week${state.rounds.length === 1 ? "" : "s"} published`
-              : "Week 15 pending"}
-          </StatusBadge>
-        </div>
-        <p className="text-graphite mt-2 max-w-3xl text-sm leading-6">
-          Weeks 15–17 include every member exactly once. Week 18 pairs every
-          member adjacently from final postseason placement and remains an
-          exhibition with no effect on champion, standings, or eligibility.
-        </p>
-        {state.rounds.length ? (
-          <div className="mt-4 grid gap-4 lg:grid-cols-3">
-            {state.rounds.map((round) => (
-              <PublishedRoundCard key={round.id} round={round} />
-            ))}
-          </div>
-        ) : (
-          <div className="border-boundary bg-surface mt-4 rounded-xl border p-5">
-            <p className="text-graphite text-sm leading-6">
-              Qualification is final for this version. The commissioner can
-              publish Week 15 from the stored bracket facts.
-            </p>
-          </div>
-        )}
-      </section>
+      {viewerEntryId ? (
+        <CurrentPlayoffContest
+          state={state}
+          viewerEntryId={viewerEntryId}
+          activeWeek={activeWeek}
+        />
+      ) : null}
 
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section aria-labelledby="bracket-title">
-          <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
+          <p className="text-registry text-sm font-bold tracking-[0.09em] uppercase">
             Championship bracket
           </p>
           <h2 id="bracket-title" className="mt-2 text-xl font-bold">
-            {phase8Bracket?.format === "SIX_SLOT"
-              ? "Six-slot championship path"
-              : "Four-slot championship path"}
+            {publication.bracket.format === "SIX_SLOT" ||
+            publication.bracket.format === "LARGE_SIX"
+              ? "Six-slot championship field"
+              : "Four-slot championship field"}
           </h2>
 
           {phase8Bracket ? (
@@ -140,7 +120,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
                   className="border-boundary bg-surface rounded-xl border p-4"
                   key={slot.slot}
                 >
-                  <p className="text-muted text-xs font-bold uppercase">
+                  <p className="text-muted text-sm font-bold uppercase">
                     Slot {slot.slot}
                   </p>
                   {slot.entry ? (
@@ -149,7 +129,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
                         No. {slot.entry.qualificationSeed} ·{" "}
                         {slot.entry.displayName}
                       </p>
-                      <p className="text-muted mt-1 text-xs">
+                      <p className="text-muted mt-1 text-sm">
                         Regular-season No. {slot.entry.regularSeasonSeed}
                       </p>
                     </div>
@@ -161,10 +141,21 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
             </div>
           ) : (
             <p className="border-boundary bg-subtle mt-4 rounded-xl border p-5 text-sm">
-              This preserved bracket was published under the earlier Stage 3
-              format and remains readable without alteration.
+              This season uses an earlier frozen playoff format. Its published
+              qualification and round results remain unchanged.
             </p>
           )}
+
+          {publication.qualifiers.some(
+            (entry) =>
+              entry.selectionReason === "MINIMUM_FOUR_CHAMPIONSHIP_FIELD",
+          ) ? (
+            <p className="text-graphite mt-4 text-sm leading-6">
+              Fewer than four members were eligible. The highest remaining Week
+              14 finishers were reinstated only until the championship field
+              reached four.
+            </p>
+          ) : null}
 
           {phase8Bracket?.automaticWeek15Advancements.length ? (
             <section
@@ -203,7 +194,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
 
         <aside className="space-y-5">
           <section className="border-boundary bg-surface rounded-xl border p-5">
-            <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
+            <p className="text-registry text-sm font-bold tracking-[0.09em] uppercase">
               Playoff field
             </p>
             <h2 className="mt-2 font-bold">Official selection</h2>
@@ -224,14 +215,14 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
                       <span className="block text-sm font-semibold break-words">
                         {qualifier.displayName}
                       </span>
-                      <span className="text-muted block text-xs">
+                      <span className="text-muted block text-sm">
                         Regular-season No. {qualifier.regularSeasonSeed} ·{" "}
                         {qualifier.attendanceMissesUsedByQualification ??
                           qualifier.attendanceMisses}{" "}
-                        attendance misses
+                        incomplete regular-season weeks
                       </span>
                       <span
-                        className={`mt-1 block text-xs font-semibold ${reinstated ? "text-copper" : "text-positive"}`}
+                        className={`mt-1 block text-sm font-semibold ${reinstated ? "text-copper" : "text-positive"}`}
                       >
                         {reinstated
                           ? "Reinstated to complete the four-member championship field"
@@ -288,7 +279,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
               </div>
               <div>
                 <dt className="text-muted">Correction evidence</dt>
-                <dd className="mt-1 text-xs">
+                <dd className="mt-1 text-sm">
                   {publication.correctionEvidence.priorVersionCount
                     ? `Supersedes ${publication.correctionEvidence.priorVersionCount} prior version${publication.correctionEvidence.priorVersionCount === 1 ? "" : "s"}.`
                     : "Original published version."}
@@ -296,7 +287,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
               </div>
               <div>
                 <dt className="text-muted">Qualification hash</dt>
-                <dd className="mt-1 font-mono text-xs break-all">
+                <dd className="mt-1 font-mono text-sm break-all">
                   {publication.inputHash}
                 </dd>
               </div>
@@ -310,7 +301,7 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
                           standing.entryId === version.championEntryId,
                       );
                       return (
-                        <span className="block text-xs" key={version.id}>
+                        <span className="block text-sm" key={version.id}>
                           Version {version.version} ·{" "}
                           {versionChampion?.displayName ?? "Recorded champion"}
                           {version.effective
@@ -326,16 +317,77 @@ export function LivePlayoffView({ state }: { state: LivePlayoffState }) {
           </AuditDetails>
         </aside>
       </div>
+      <section aria-labelledby="published-rounds-title" className="mt-7">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+          <div>
+            <p className="text-registry text-sm font-bold tracking-[0.09em] uppercase">
+              Playoff schedule
+            </p>
+            <h2 id="published-rounds-title" className="mt-2 text-xl font-bold">
+              Other matchups and rounds
+            </h2>
+          </div>
+          <StatusBadge tone={state.rounds.length ? "positive" : "pending"}>
+            {state.rounds.length
+              ? `${state.rounds.length} week${state.rounds.length === 1 ? "" : "s"} published`
+              : "Week 15 pending"}
+          </StatusBadge>
+        </div>
+        <p className="text-graphite mt-2 max-w-3xl text-sm leading-6">
+          Weeks 15–17 include every member exactly once. Week 18 pairs every
+          member adjacently from final postseason placement and remains an
+          exhibition with no effect on champion, standings, or eligibility.
+        </p>
+        {state.rounds.length ? (
+          <div className="mt-4 space-y-4">
+            {state.rounds.map((round) =>
+              round.id === currentRound?.id ? (
+                <PublishedRoundCard
+                  key={round.id}
+                  round={round}
+                  omitEntryId={viewerEntryId}
+                />
+              ) : (
+                <details
+                  key={round.id}
+                  className="border-boundary rounded-xl border p-4"
+                >
+                  <summary className="min-h-11 cursor-pointer py-3 font-semibold">
+                    Week {round.week} ·{" "}
+                    {round.state === "FINAL"
+                      ? "Final results"
+                      : "Published round"}
+                  </summary>
+                  <PublishedRoundCard round={round} />
+                </details>
+              ),
+            )}
+          </div>
+        ) : (
+          <div className="border-boundary bg-surface mt-4 rounded-xl border p-5">
+            <p className="text-graphite text-sm leading-6">
+              Qualification is final for this version. The commissioner can
+              publish Week 15 from the stored bracket facts.
+            </p>
+          </div>
+        )}
+      </section>
     </PageFrame>
   );
 }
 
-function PublishedRoundCard({ round }: { round: PublishedRound }) {
+function PublishedRoundCard({
+  round,
+  omitEntryId,
+}: {
+  round: PublishedRound;
+  omitEntryId?: string;
+}) {
   return (
     <article className="border-registry bg-surface rounded-xl border p-5 break-words shadow-[var(--shadow-card)]">
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
         <div>
-          <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+          <p className="text-registry text-sm font-bold tracking-[0.08em] uppercase">
             Week {round.week}
           </p>
           <h3 className="mt-2 font-bold">All-member matchups</h3>
@@ -343,24 +395,36 @@ function PublishedRoundCard({ round }: { round: PublishedRound }) {
         <StatusBadge
           tone={
             round.state === "FINAL"
-              ? "positive"
+              ? "sealed"
               : round.state === "OPEN"
                 ? "live"
                 : "pending"
           }
         >
-          {round.state.toLowerCase()}
+          {round.state === "OPEN"
+            ? "Cards open"
+            : round.state === "PLANNED"
+              ? "Published"
+              : round.state === "LOCKED"
+                ? "Cards locked"
+                : round.state === "PROVISIONAL"
+                  ? "Provisional"
+                  : "Final"}
         </StatusBadge>
       </div>
-      <p className="text-muted mt-2 text-xs">
-        Cards lock {roundTimeFormatter.format(new Date(round.commonLockAt))} ET
+      <p className="text-muted mt-2 text-sm">
+        Cards{" "}
+        {round.state === "OPEN" || round.state === "PLANNED"
+          ? "lock"
+          : "locked"}{" "}
+        {easternTime(round.commonLockAt)}
       </p>
-      <p className="text-positive mt-1 text-xs font-semibold">
+      <p className="text-positive mt-1 text-sm font-semibold">
         {round.matchups.length} matchups · every member received one card
       </p>
       {round.week === 18 ? (
         <p
-          className={`mt-2 text-xs font-semibold ${round.pairingReplaceable ? "text-pending" : "text-positive"}`}
+          className={`mt-2 text-sm font-semibold ${round.pairingReplaceable ? "text-pending" : "text-positive"}`}
         >
           {round.pairingReplaceable
             ? "Pairing remains replaceable until the first card seals"
@@ -368,46 +432,54 @@ function PublishedRoundCard({ round }: { round: PublishedRound }) {
         </p>
       ) : null}
       <div className="mt-4 space-y-3">
-        {round.matchups.map((matchup) => {
-          const role =
-            matchup.role ??
-            (matchup.scope === "PLAYOFF" ? "CHAMPIONSHIP" : matchup.scope);
-          return (
-            <div
-              className="border-boundary bg-subtle rounded-lg border p-3"
-              key={matchup.id}
-            >
-              <p className="text-graphite text-xs font-semibold">
-                {matchup.label} · {roleLabels[role]}
-              </p>
-              {matchup.byeExhibition ? (
-                <p className="text-registry mt-1 text-xs">
-                  Bye exhibition · cannot affect advancement
+        {round.matchups
+          .filter(
+            (matchup) =>
+              !omitEntryId ||
+              ![matchup.sideA.entryId, matchup.sideB.entryId].includes(
+                omitEntryId,
+              ),
+          )
+          .map((matchup) => {
+            const role =
+              matchup.role ??
+              (matchup.scope === "PLAYOFF" ? "CHAMPIONSHIP" : matchup.scope);
+            return (
+              <div
+                className="border-boundary bg-subtle rounded-lg border p-3"
+                key={matchup.id}
+              >
+                <p className="text-graphite text-sm font-semibold">
+                  {matchup.label} · {roleLabels[role]}
                 </p>
-              ) : null}
-              <div className="mt-3 space-y-2">
-                <RoundEntryLine
-                  advances={
-                    matchup.result?.advancingEntryId === matchup.sideA.entryId
-                  }
-                  decision={matchup.result?.sideADecision ?? undefined}
-                  entry={matchup.sideA}
-                  participation={matchup.result?.sideAParticipation}
-                  score={matchup.result?.sideAScoreCenticredits}
-                />
-                <RoundEntryLine
-                  advances={
-                    matchup.result?.advancingEntryId === matchup.sideB.entryId
-                  }
-                  decision={matchup.result?.sideBDecision ?? undefined}
-                  entry={matchup.sideB}
-                  participation={matchup.result?.sideBParticipation}
-                  score={matchup.result?.sideBScoreCenticredits}
-                />
+                {matchup.byeExhibition ? (
+                  <p className="text-registry mt-1 text-sm">
+                    Bye exhibition · cannot affect advancement
+                  </p>
+                ) : null}
+                <div className="mt-3 space-y-2">
+                  <RoundEntryLine
+                    advances={
+                      matchup.result?.advancingEntryId === matchup.sideA.entryId
+                    }
+                    decision={matchup.result?.sideADecision ?? undefined}
+                    entry={matchup.sideA}
+                    participation={matchup.result?.sideAParticipation}
+                    score={matchup.result?.sideAScoreCenticredits}
+                  />
+                  <RoundEntryLine
+                    advances={
+                      matchup.result?.advancingEntryId === matchup.sideB.entryId
+                    }
+                    decision={matchup.result?.sideBDecision ?? undefined}
+                    entry={matchup.sideB}
+                    participation={matchup.result?.sideBParticipation}
+                    score={matchup.result?.sideBScoreCenticredits}
+                  />
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
       </div>
       <AuditDetails
         className="mt-4 border-b-0 pb-0"
@@ -453,7 +525,7 @@ function RoundEntryLine({
         {entry.displayName}
       </span>
       <span
-        className={`shrink-0 text-xs font-bold ${exhibitionMiss ? "text-copper" : "font-mono"}`}
+        className={`shrink-0 text-sm font-bold ${exhibitionMiss ? "text-copper" : "font-mono"}`}
       >
         {exhibitionMiss
           ? "Exhibition miss · 0"

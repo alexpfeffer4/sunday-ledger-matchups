@@ -13,10 +13,10 @@ export function ScorePath({ matchup }: { matchup: PairedMatchupDto }) {
     >
       <div>
         <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-          Score path
+          Current score
         </p>
         <h2 className="mt-1 text-lg font-bold" id="score-path-heading">
-          What has returned and what can remain
+          What can still be added
         </h2>
       </div>
 
@@ -34,14 +34,14 @@ export function ScorePath({ matchup }: { matchup: PairedMatchupDto }) {
           </dd>
         </div>
         <div>
-          <dt className="text-muted text-xs">Your remaining return ceiling</dt>
+          <dt className="text-muted text-xs">Your maximum additional return</dt>
           <dd className="mt-1 font-mono font-semibold">
             {credits(matchup.scorePath.selfRemainingMaximumCenticredits)}
           </dd>
         </div>
         <div>
           <dt className="text-muted text-xs">
-            Opponent remaining return ceiling
+            Opponent maximum additional return
           </dt>
           <dd className="mt-1 font-mono font-semibold">
             {matchup.scorePath.opponentRemainingMaximumCenticredits === null
@@ -50,6 +50,12 @@ export function ScorePath({ matchup }: { matchup: PairedMatchupDto }) {
           </dd>
         </div>
       </dl>
+
+      <p className="text-muted mt-3 text-sm leading-6">
+        Maximum additional return is what unsettled picks would return if they
+        all won, including their stakes. Opponent amounts stay sealed while any
+        of their games remain private.
+      </p>
 
       {matchup.scorePath.sentence ? (
         <p className="border-boundary mt-4 border-t pt-4 text-sm leading-6 font-semibold">

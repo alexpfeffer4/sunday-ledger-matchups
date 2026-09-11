@@ -28,7 +28,10 @@ export function LeagueScoreboard({
   week: number;
 }) {
   return (
-    <section aria-labelledby="league-scoreboard-heading" className="h-fit">
+    <section
+      aria-labelledby="league-scoreboard-heading"
+      className="league-scoreboard h-fit"
+    >
       <div className="flex items-end justify-between gap-3">
         <div>
           <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
@@ -54,7 +57,7 @@ export function LeagueScoreboard({
                 {game.state}
               </span>
             </div>
-            <dl className="mt-2 grid gap-2 text-sm">
+            <dl className="scoreboard-facts mt-2 grid gap-2 text-sm">
               <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
                 <dt className="min-w-0 font-semibold break-words">
                   {game.sideAName}

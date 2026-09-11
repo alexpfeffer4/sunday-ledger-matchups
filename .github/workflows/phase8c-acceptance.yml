@@ -158,6 +158,7 @@ jobs:
           tests/e2e/phase8c-markup.test.tsx
           tests/e2e/phase10-markup.test.tsx
           tests/e2e/phase11-markup.test.tsx
+          tests/e2e/audit-stage4-markup.test.tsx
 
       - name: Install bounded browser set
         run: npx playwright install --with-deps chromium webkit
@@ -171,6 +172,7 @@ jobs:
           tests/e2e/phase8-accessibility.spec.ts
           tests/e2e/phase10-navigation-records.spec.ts
           tests/e2e/phase11-identity.spec.ts
+          tests/e2e/audit-stage4-presentation.spec.ts
           --project=desktop --reporter=github
 
       - name: WebKit Phase 8 acceptance
@@ -182,4 +184,5 @@ jobs:
           tests/e2e/phase8-accessibility.spec.ts
           tests/e2e/phase10-navigation-records.spec.ts
           tests/e2e/phase11-identity.spec.ts
+          tests/e2e/audit-stage4-presentation.spec.ts
           --project=webkit --reporter=github

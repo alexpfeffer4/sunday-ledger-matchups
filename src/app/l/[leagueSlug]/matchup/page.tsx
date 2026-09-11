@@ -56,6 +56,7 @@ export default async function MatchupPage({
     const memory = weeklyCloseState
       ? projectSeasonMemory(weeklyCloseState)
       : null;
+    const currentClose = memory?.recordBridge?.matchup.id === live.matchup?.id;
     return matchup ? (
       <PairedMatchupView
         matchup={matchup}
@@ -71,11 +72,25 @@ export default async function MatchupPage({
         }
         weeklyClose={
           memory?.recordBridge ? (
-            <WeeklyCloseModule
-              bridge={memory.recordBridge}
-              cutline={memory.playoffCutline}
-              leagueSlug={leagueSlug}
-            />
+            currentClose ? (
+              <WeeklyCloseModule
+                bridge={memory.recordBridge}
+                cutline={memory.playoffCutline}
+                leagueSlug={leagueSlug}
+                presentation="supporting"
+              />
+            ) : (
+              <details className="border-boundary border-b pb-4">
+                <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">
+                  Previous result · Week {memory.recordBridge.matchup.nflWeek}
+                </summary>
+                <WeeklyCloseModule
+                  bridge={memory.recordBridge}
+                  cutline={memory.playoffCutline}
+                  leagueSlug={leagueSlug}
+                />
+              </details>
+            )
           ) : null
         }
       />

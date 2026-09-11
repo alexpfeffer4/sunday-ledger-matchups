@@ -103,9 +103,13 @@ test("secondary navigation, mobile rows, text scaling, and reduced motion remain
     sections.getByRole("link", { name: "Standings" }),
   ).toHaveAttribute("aria-current", "page");
   await expect(page.getByText("You").first()).toBeVisible();
-  await expect(page.getByText("Points For").first()).toBeVisible();
+  await expect(
+    page.getByText("Points For").filter({ visible: true }).first(),
+  ).toBeVisible();
   await expect(page.getByText("Vs. league")).toHaveCount(0);
-  await expect(page.getByText("Incomplete weeks").first()).toBeVisible();
+  await expect(
+    page.getByText("Incomplete weeks").filter({ visible: true }).first(),
+  ).toBeVisible();
   await expect(page.getByText("Playoff line").first()).toBeVisible();
   await expectNoPageOverflow(page);
 

@@ -102,12 +102,14 @@ describe("Phase 10 dense league records", () => {
     ).toBeVisible();
     expect(screen.getAllByText("You")).toHaveLength(2);
     expect(screen.getAllByText("Playoff line")).toHaveLength(2);
-    const current = screen.getByRole("article", {
-      name: /Rank 1, Alex Ledger.*You, 8–2–1, 1,234.56 Points For, 0 incomplete weeks/,
-    });
-    expect(within(current).getByText("Incomplete weeks")).toBeVisible();
-    expect(within(current).getByText("1,234.56")).toBeVisible();
-    expect(screen.getAllByText("Ineligible")).toHaveLength(2);
+    const mobile = screen.getByRole("region", { name: "Official standings" });
+    const current = within(mobile).getAllByRole("listitem")[0];
+    expect(current).toHaveTextContent("You");
+    expect(current).toHaveTextContent("0 incomplete weeks");
+    expect(current).toHaveTextContent("1,234.56");
+    expect(
+      within(mobile).getByText("3 incomplete weeks · Playoff ineligible"),
+    ).toBeVisible();
     expect(screen.queryByText("Vs. league")).not.toBeInTheDocument();
     expect(screen.queryByText("Playoff state")).not.toBeInTheDocument();
   });

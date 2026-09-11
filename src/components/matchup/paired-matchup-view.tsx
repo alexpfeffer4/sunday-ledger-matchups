@@ -67,7 +67,7 @@ export function PairedMatchupView({
           />
           {weeklyClose}
           {!pregame && !completed ? <ScorePath matchup={matchup} /> : null}
-          {!pregame ? cardProgress : null}
+          {!pregame && !completed ? cardProgress : null}
 
           {!pregame ? (
             <section
@@ -88,6 +88,12 @@ export function PairedMatchupView({
 
               {sections.map((section) => {
                 const rows = matchup.rows[section.id];
+                if (
+                  completed &&
+                  rows.length === 0 &&
+                  !(section.id === "REMAINING" && matchup.futureSealed)
+                )
+                  return null;
                 return (
                   <section
                     aria-labelledby={`ledger-${section.id}`}

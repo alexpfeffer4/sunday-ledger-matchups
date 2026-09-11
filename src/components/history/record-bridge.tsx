@@ -76,10 +76,7 @@ export function RecordBridge({
 }) {
   if (bridge.standingsEffect === "NONE") {
     return (
-      <section
-        aria-labelledby="record-bridge-heading"
-        className="border-boundary bg-surface rounded-xl border p-5"
-      >
+      <section aria-labelledby="record-bridge-heading" className="py-2">
         <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
           Standings impact
         </p>
@@ -89,7 +86,7 @@ export function RecordBridge({
         <p className="text-graphite mt-2 text-sm leading-6">
           This {bridge.matchup.scope.toLowerCase()} result remains in history,
           but it does not change the official regular-season record, Points For,
-          or seed.
+          or standings position.
         </p>
       </section>
     );
@@ -107,14 +104,14 @@ export function RecordBridge({
       after: bridge.after ? score(bridge.after.pointsForCenticredits) : "—",
     },
     {
-      label: "Seed",
+      label: "Standings position",
       before: seed(bridge.before),
       after: seed(bridge.after),
     },
   ];
 
   return (
-    <section aria-labelledby="record-bridge-heading">
+    <section aria-labelledby="record-bridge-heading" className="record-bridge">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
@@ -128,21 +125,21 @@ export function RecordBridge({
           {deltaLabel(bridge.before, bridge.after)}
         </p>
       </div>
-      <dl className="border-boundary bg-surface mt-3 grid overflow-hidden rounded-xl border sm:grid-cols-3">
+      <dl className="record-bridge-facts border-boundary mt-3 divide-y border-y">
         {facts.map((fact) => (
           <div
-            className="border-boundary border-b p-4 last:border-b-0 sm:border-b-0 sm:[&:not(:last-child)]:border-r"
+            className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] items-center gap-2 py-3"
             key={fact.label}
           >
             <dt className="text-muted text-xs font-bold tracking-[0.06em] uppercase">
               {fact.label}
             </dt>
-            <dd className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-3">
+            <dd className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-3">
               <span>
-                <span className="text-muted block text-[10px] font-bold tracking-[0.05em] uppercase">
+                <span className="text-muted block text-xs font-bold tracking-[0.05em] uppercase">
                   Before
                 </span>
-                <span className="text-muted mt-1 block font-mono text-sm font-semibold whitespace-nowrap">
+                <span className="text-muted mt-1 block font-mono text-sm font-semibold tabular-nums">
                   {fact.before}
                 </span>
               </span>
@@ -150,10 +147,10 @@ export function RecordBridge({
                 →
               </span>
               <span>
-                <span className="text-muted block text-[10px] font-bold tracking-[0.05em] uppercase">
+                <span className="text-muted block text-xs font-bold tracking-[0.05em] uppercase">
                   After
                 </span>
-                <span className="mt-1 block font-mono text-sm font-semibold whitespace-nowrap">
+                <span className="mt-1 block font-mono text-sm font-semibold tabular-nums">
                   {fact.after}
                 </span>
               </span>
