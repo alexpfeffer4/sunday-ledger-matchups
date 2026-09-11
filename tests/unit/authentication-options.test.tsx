@@ -295,25 +295,35 @@ describe("password authentication options", () => {
     ).toBeDisabled();
   });
 
-  it("preserves the chosen username through a failed setup save", async () => {
-    vi.mocked(completeAccountSetup).mockResolvedValue({
-      status: "error",
-      message: "Try again shortly.",
-    });
-    render(<AccountSetupForm currentUsername="Default" next="/join/private" />);
-    fireEvent.change(screen.getByLabelText("Username"), {
-      target: { value: "ChosenName" },
-    });
-    await act(async () =>
-      fireEvent.submit(
-        screen
-          .getByRole("button", { name: "Save account and continue" })
-          .closest("form")!,
-      ),
-    );
-    expect(screen.getByLabelText("Username")).toHaveValue("ChosenName");
-    expect(screen.getByRole("alert")).toHaveTextContent("Try again shortly");
-  });
+  it.each(["change event", "before hydration"])(
+    "preserves the chosen username through a failed setup save after %s",
+    async (inputMode) => {
+      vi.mocked(completeAccountSetup).mockResolvedValue({
+        status: "error",
+        message: "Try again shortly.",
+      });
+      render(
+        <AccountSetupForm currentUsername="Default" next="/join/private" />,
+      );
+      if (inputMode === "change event") {
+        fireEvent.change(screen.getByLabelText("Username"), {
+          target: { value: "ChosenName" },
+        });
+      } else {
+        (screen.getByLabelText("Username") as HTMLInputElement).value =
+          "ChosenName";
+      }
+      await act(async () =>
+        fireEvent.submit(
+          screen
+            .getByRole("button", { name: "Save account and continue" })
+            .closest("form")!,
+        ),
+      );
+      expect(screen.getByLabelText("Username")).toHaveValue("ChosenName");
+      expect(screen.getByRole("alert")).toHaveTextContent("Try again shortly");
+    },
+  );
 
   it("shows one sign-in method at a time", () => {
     const switcher = render(
