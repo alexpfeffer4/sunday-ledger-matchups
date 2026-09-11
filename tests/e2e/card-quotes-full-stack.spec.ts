@@ -592,6 +592,10 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
       thirdPage.getByRole("heading", { name: "All 1,000 credits are sealed" }),
     ).toBeVisible();
     await third.close();
+    // The added historical case proves review/seal/receipt compatibility.
+    // Run the existing global scheduler scenario once, under current V1.2,
+    // so independent fixtures do not contend for its shared provider lease.
+    if (frozenVersion === "1.1") return;
     // Stage 2: real scheduler endpoint -> provider adapter -> DB -> member RSC,
     // then the actual commissioner server action as outage fallback. Time changes
     // below affect this disposable fixture only, never a hosted league.

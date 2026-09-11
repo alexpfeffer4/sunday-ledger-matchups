@@ -322,6 +322,19 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
     page.getByRole("heading", { name: "Watch event-timed reveal" }),
   ).toBeVisible();
 
+  // Forward the real server response unchanged while retaining its body for
+  // privacy assertions; Chrome may release the body during RSC navigation.
+  const partialRoute = `**/l/${leagueSlug}/matchup*`;
+  let partialBody: string | null = null;
+  await page.route(partialRoute, async (route) => {
+    if (route.request().headers()["rsc"] !== "1") {
+      await route.continue();
+      return;
+    }
+    const response = await route.fetch();
+    partialBody = await response.text();
+    await route.fulfill({ response });
+  });
   const partialRscResponse = page.waitForResponse((response) => {
     const request = response.request();
     return (
@@ -329,19 +342,15 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
       request.headers()["rsc"] === "1"
     );
   });
-  // Capture the actual browser payload as it arrives, before navigation can
-  // release its response body. Keep the HTML/RSC privacy assertions below.
-  const partialBody = partialRscResponse.then((response) => response.text());
-  await Promise.all([
-    partialBody,
-    page.getByRole("link", { name: "See partial reveal" }).click(),
-  ]);
+  await page.getByRole("link", { name: "See partial reveal" }).click();
   const partialRsc = await partialRscResponse;
   expectPrivateResponse(partialRsc);
   await expect(page.getByText("Future picks sealed")).toBeVisible();
   await expect(page.getByTestId("future-sealed-placeholder")).toHaveCount(1);
+  await page.unroute(partialRoute);
+  expect(partialBody).not.toBeNull();
   const partialHtml = await page.content();
-  const partialPayload = `${partialHtml}\n${await partialBody}`;
+  const partialPayload = `${partialHtml}\n${partialBody}`;
   expect(partialPayload).not.toMatch(
     /position_receipts|market_snapshot_id|owner_rehearsal_bots|payload_hash|receipt_hash/i,
   );
