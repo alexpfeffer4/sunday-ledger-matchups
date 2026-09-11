@@ -10,6 +10,7 @@ const snapshotSchema = z.object({
   productBibleVersion: z.string(),
   mode: z.enum(["LIVE", "SIMULATION"]),
   sha256Hash: z.string().regex(/^[0-9a-f]{64}$/),
+  canonicalSha256Hash: z.string().regex(/^[0-9a-f]{64}$/),
   frozenAt: z.iso.datetime({ offset: true }),
   canonicalJson: z
     .object({
@@ -92,6 +93,7 @@ export function resolveSeasonCardRules(
       ? "SUNDAY-LEDGER-POC-SEASON-RULESET-V1"
       : "SUNDAY-LEDGER-SIMULATION-SEASON-RULESET-V1";
   if (
+    stored.sha256Hash !== stored.canonicalSha256Hash ||
     stored.rulesetId !== canonical.id ||
     stored.rulesetVersion !== canonical.version ||
     stored.productBibleId !== canonical.productBibleId ||

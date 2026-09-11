@@ -121,6 +121,11 @@ insert into private.season_ruleset_snapshots (
     )
   ), repeat('a', 64), now() - interval '16 weeks'
 );
+-- Finish authoring this disposable fixture before exercising the real guards.
+alter table private.season_ruleset_snapshots disable trigger guard_frozen_ruleset_update;
+update private.season_ruleset_snapshots set sha256_hash=encode(extensions.digest(private.canonical_ruleset_json(canonical_json),'sha256'),'hex') where id='b3000000-0000-4000-8000-000000000001';
+alter table private.season_ruleset_snapshots enable trigger guard_frozen_ruleset_update;
+
 
 insert into private.seasons (
   id, league_id, ruleset_snapshot_id, mode, nfl_year, lifecycle,

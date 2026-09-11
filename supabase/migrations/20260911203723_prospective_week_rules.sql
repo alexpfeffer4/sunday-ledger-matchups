@@ -1,3 +1,14 @@
+-- Canonical JSON for the supported Ruleset vocabulary: recursively sorted ASCII
+-- object keys, preserved array order and compact JSON (matching hashRuleset).
+create function private.canonical_ruleset_json(p_value jsonb)
+returns text language sql immutable strict parallel safe security invoker set search_path='' as $$
+  select case jsonb_typeof(p_value)
+    when 'object' then '{'||coalesce((select string_agg(to_jsonb(key)::text||':'||private.canonical_ruleset_json(value),',' order by key collate "C") from jsonb_each(p_value)),'')||'}'
+    when 'array' then '['||coalesce((select string_agg(private.canonical_ruleset_json(value),',' order by ordinality) from jsonb_array_elements(p_value) with ordinality),'')||']'
+    else p_value::text end;
+$$;
+revoke all on function private.canonical_ruleset_json(jsonb) from public,anon,authenticated;
+
 -- Audit A12: supported-version compatibility; no snapshot or history rewrite.
 -- Apply before the app release. Existing public signatures and grants are kept.
 create function private.season_card_rules(p_snapshot_id uuid, p_mode text)
@@ -23,7 +34,8 @@ begin
     and v_json->>'productBibleVersion'=v_snapshot.product_bible_version
     and v_snapshot.product_bible_version=case v_snapshot.ruleset_version when '1.2' then '3.1' else '3.0' end
     and v_json->>'format'='SUNDAY_LEDGER_MATCHUPS' and v_json->>'sport'='NFL'
-    and v_snapshot.sha256_hash ~ '^[0-9a-f]{64}$', false)
+    and v_snapshot.sha256_hash ~ '^[0-9a-f]{64}$'
+    and v_snapshot.sha256_hash=encode(extensions.digest(private.canonical_ruleset_json(v_json),'sha256'),'hex'), false)
   then raise exception using errcode='22023', message='UNSUPPORTED_SEASON_CARD_RULES'; end if;
   if v_snapshot.ruleset_version in ('1.1','1.2') then
     v_card := v_card || '{"carryoverCredits":false,"acceptanceUnit":"WHOLE_CARD_ATOMIC","irreversibleAction":"CONFIRM_AND_SEAL_CARD"}'::jsonb;

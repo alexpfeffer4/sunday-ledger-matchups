@@ -1,7 +1,40 @@
 import { describe, expect, it } from "vitest";
 import { resolveSeasonCardRules } from "@/rulesets/card-rules";
+import { hashRuleset } from "@/rulesets/canonicalize";
+import { withVerifiedRulesetHash } from "@/rulesets/verify-snapshot";
 import { validateDraftCard } from "@/domain/cards/validate-card-draft";
 import { frozenCardRulesFixture } from "../fixtures/card-rules";
+
+it("recomputes the digest and rejects changed rules or a corrupt recorded hash", async () => {
+  const snapshot = frozenCardRulesFixture();
+  snapshot.sha256Hash = await hashRuleset(snapshot.canonicalJson);
+  expect(
+    resolveSeasonCardRules(await withVerifiedRulesetHash(snapshot), "LIVE")
+      .supported,
+  ).toBe(true);
+  expect(
+    resolveSeasonCardRules(
+      await withVerifiedRulesetHash({
+        ...snapshot,
+        sha256Hash: "b".repeat(64),
+      }),
+      "LIVE",
+    ).supported,
+  ).toBe(false);
+  expect(
+    resolveSeasonCardRules(
+      await withVerifiedRulesetHash({
+        ...snapshot,
+        canonicalJson: {
+          ...snapshot.canonicalJson,
+          seasonLabel: "Changed after publication",
+        },
+        canonicalSha256Hash: snapshot.sha256Hash,
+      }),
+      "LIVE",
+    ).supported,
+  ).toBe(false);
+});
 
 function fixture(version: "1.0" | "1.1" | "1.2", mode: "LIVE" | "SIMULATION") {
   const snapshot = frozenCardRulesFixture(mode);

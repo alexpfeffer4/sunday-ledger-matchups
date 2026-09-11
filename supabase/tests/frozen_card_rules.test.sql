@@ -2,6 +2,9 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
 
+select is(encode(extensions.digest(private.canonical_ruleset_json(canonical_json),'sha256'),'hex'),sha256_hash,
+  mode||' database canonicalization matches the compiled Ruleset digest') from private.authoritative_season_rulesets;
+
 select function_privs_are('private','season_card_rules',array['uuid','text'],'anon',array[]::text[],'anonymous cannot read the private card rule helper');
 select function_privs_are('private','season_card_rules',array['uuid','text'],'authenticated',array[]::text[],'members cannot invoke the private helper');
 select function_privs_are('private','accept_authoritative_card_for_actor',array['uuid','text','jsonb','text'],'authenticated',array[]::text[],'actor-parameter acceptance remains private');
@@ -36,7 +39,7 @@ begin
   alter table private.market_snapshots disable trigger market_snapshots_append_only;
   update private.season_ruleset_snapshots set canonical_json=v_json,
     ruleset_version=p_version,product_bible_version=v_json->>'productBibleVersion',
-    sha256_hash=encode(extensions.digest(v_json::text,'sha256'),'hex')
+    sha256_hash=encode(extensions.digest(private.canonical_ruleset_json(v_json),'sha256'),'hex')
     where id=v_snapshot;
   update private.market_snapshots m set american_odds=-200
     from private.season_weeks w join private.seasons s on s.id=w.season_id
@@ -111,6 +114,14 @@ begin
   return next is(pg_temp.try_card(v_slug,'[1000]',10000)->>'accepted','true','V'||p_version||' has no blanket odds band');
   return next is((api.get_stage1_state(v_slug)#>'{ownerCard,positions}'),'[]'::jsonb,'trial writes are rolled back');
 
+  alter table private.season_ruleset_snapshots disable trigger guard_frozen_ruleset_update;
+  update private.season_ruleset_snapshots set sha256_hash=repeat('0',64) where id=v_snapshot;
+  alter table private.season_ruleset_snapshots enable trigger guard_frozen_ruleset_update;
+  return next is(pg_temp.try_card(v_slug,'[1000]')->>'error','UNSUPPORTED_SEASON_CARD_RULES','a valid-format but incorrect V'||p_version||' digest blocks acceptance');
+  alter table private.season_ruleset_snapshots disable trigger guard_frozen_ruleset_update;
+  update private.season_ruleset_snapshots set sha256_hash=encode(extensions.digest(private.canonical_ruleset_json(v_original),'sha256'),'hex') where id=v_snapshot;
+  alter table private.season_ruleset_snapshots enable trigger guard_frozen_ruleset_update;
+
   for v_change in select value from jsonb_array_elements(jsonb_build_array(
     jsonb_set(v_original,'{card,minimumStakeCredits}','"50"'),
     jsonb_set(v_original,'{card,weeklyAllocationCredits}','2000'),
@@ -120,7 +131,7 @@ begin
   )) loop
     alter table private.season_ruleset_snapshots disable trigger guard_frozen_ruleset_update;
   alter table private.market_snapshots disable trigger market_snapshots_append_only;
-    update private.season_ruleset_snapshots set canonical_json=v_change where id=v_snapshot;
+    update private.season_ruleset_snapshots set canonical_json=v_change, sha256_hash=encode(extensions.digest(private.canonical_ruleset_json(v_change),'sha256'),'hex') where id=v_snapshot;
     alter table private.season_ruleset_snapshots enable trigger guard_frozen_ruleset_update;
   alter table private.market_snapshots enable trigger market_snapshots_append_only;
     return next is(pg_temp.try_card(v_slug,'[1000]')->>'error','UNSUPPORTED_SEASON_CARD_RULES','malformed/changed V'||p_version||' rules block acceptance');
@@ -135,7 +146,7 @@ begin
   return next is(pg_temp.try_card(v_slug,'[1000]')->>'error','UNSUPPORTED_SEASON_CARD_RULES','unknown version never defaults to current rules');
   alter table private.season_ruleset_snapshots disable trigger guard_frozen_ruleset_update;
   alter table private.market_snapshots disable trigger market_snapshots_append_only;
-  update private.season_ruleset_snapshots set ruleset_version=p_version,canonical_json=v_original where id=v_snapshot;
+  update private.season_ruleset_snapshots set ruleset_version=p_version,canonical_json=v_original,sha256_hash=encode(extensions.digest(private.canonical_ruleset_json(v_original),'sha256'),'hex') where id=v_snapshot;
   alter table private.season_ruleset_snapshots enable trigger guard_frozen_ruleset_update;
   alter table private.market_snapshots enable trigger market_snapshots_append_only;
   return next throws_ok(format('select private.season_card_rules(%L::uuid,%L)',v_snapshot,'LIVE'),'22023','UNSUPPORTED_SEASON_CARD_RULES','mode mismatch fails closed');

@@ -26,6 +26,13 @@ Missing or unsupported card context pauses writes while retaining local drafts
 and authorized receipt/history reads. The shared engine retains all existing
 membership, quote freshness, event-start, replay and rehearsal protections.
 
+The authoritative server query independently recomputes each snapshot's SHA-256
+with the existing application canonicalizer before validation/serialization.
+SQL independently recomputes canonical JSON and the digest before accepting a
+card. A well-formed but incorrect digest fails closed. Both current compiled
+catalog digests are regression vectors, and all eight hosted snapshots were
+read-only verified against the application canonicalizer before rollout.
+
 Standings calculations use the rules of the week being evaluated. New standings
 can use a new tiebreak order with unchanged prior results; prior published
 standings are never rewritten by rule activation. Week 14 rules govern playoff
@@ -48,7 +55,9 @@ reject repinning/reopening; verify stable publication retries; and exercise
 member/outsider RLS for both old and new snapshots. UI coverage checks that
 historical standings use the matching rules instead of the latest package.
 
-Revised-head verification is pending at this checkpoint. The previous head
+Local verification after the digest review fix passed formatting, lint, strict
+types, identity, all 431 unit/property tests and production build. Final CI after
+the review fix is pending at this checkpoint. The previous head
 `7286608c113da8a85d289cdde01fb8b4ab38ddae` passed 429 unit/property tests, 889 pgTAP
 assertions, 12 desktop full-stack tests, 8 mobile WebKit auth tests and all five
 acceptance workflows. Those results describe the earlier implementation and do

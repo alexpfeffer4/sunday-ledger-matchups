@@ -26,7 +26,7 @@ begin
   -- Establish an already-open historical fixture, then restore its real guard.
   alter table private.season_ruleset_snapshots disable trigger guard_frozen_ruleset_update;
   update private.season_ruleset_snapshots set canonical_json=v_json,ruleset_version='1.1',product_bible_version='3.0',
-    sha256_hash=encode(extensions.digest(v_json::text,'sha256'),'hex') where id=v_snapshot;
+    sha256_hash=encode(extensions.digest(private.canonical_ruleset_json(v_json),'sha256'),'hex') where id=v_snapshot;
   alter table private.season_ruleset_snapshots enable trigger guard_frozen_ruleset_update;
   insert into rule_upgrade_context(owner_id,slug,season_id,old_snapshot,week1)
     select v_owner,v_slug,v_season,v_snapshot,id from private.season_weeks where season_id=v_season and nfl_week=1;
@@ -72,6 +72,33 @@ select lives_ok($$select api.prepare_owner_rehearsal_quote_review((select slug f
 select lives_ok($$select api.use_owner_rehearsal_sample_card('future-rules-card-2')$$,'the new week seals through authoritative acceptance');
 select ok(not exists(select 1 from private.position_receipts r where r.week_id=c.week2 and r.ruleset_snapshot_id<>c.new_snapshot),'new receipts bind the new week rules') from rule_upgrade_context c;
 select ok(not exists(select 1 from private.position_receipts r where r.week_id=c.week1 and r.ruleset_snapshot_id<>c.old_snapshot),'old receipts retain the original week rules') from rule_upgrade_context c;
+
+-- Exercise a planned-to-open transition and unsupported catalog release in a
+-- rolled-back subtransaction; neither trial materializes a third fixture week.
+create function pg_temp.try_planned_upgrade(p_unsupported boolean)
+returns text language plpgsql as $$
+declare v_week uuid; v_version text;
+begin
+  begin
+    if p_unsupported then
+      update private.authoritative_season_rulesets set ruleset_version='9.9',
+        canonical_json=jsonb_set(canonical_json,'{version}','"9.9"') where mode='SIMULATION';
+    end if;
+    insert into private.season_weeks(season_id,league_id,nfl_week,state,opens_at,common_lock_at)
+      select s.id,s.league_id,3,'PLANNED',now()+interval '1 day',now()+interval '2 days'
+      from private.seasons s join rule_upgrade_context c on c.season_id=s.id returning id into v_week;
+    update private.season_weeks set state='OPEN' where id=v_week;
+    select r.ruleset_version into v_version from private.season_weeks w
+      join private.season_ruleset_snapshots r on r.id=w.ruleset_snapshot_id where w.id=v_week;
+    raise exception using errcode='ZX001',message=v_version;
+  exception when sqlstate 'ZX001' then return sqlerrm;
+    when others then return sqlstate||':'||sqlerrm;
+  end;
+end;
+$$;
+select is(pg_temp.try_planned_upgrade(false),'1.2','a planned week adopts the approved current version when it opens');
+select is(pg_temp.try_planned_upgrade(true),'22023:UNSUPPORTED_WEEK_RULE_UPGRADE','unsupported future releases cannot silently replace week rules');
+select is((select count(*) from private.season_weeks w join rule_upgrade_context c on c.season_id=w.season_id),2::bigint,'failed/trial publication leaves no partial future week');
 
 set local role authenticated;
 select is(api.get_season_ruleset(slug)->>'rulesetVersion','1.2','member RLS allows the new week snapshot') from rule_upgrade_context;

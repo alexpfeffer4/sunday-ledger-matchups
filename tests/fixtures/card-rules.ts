@@ -16,6 +16,7 @@ export function frozenCardRulesFixture(
     mode,
     canonicalJson: structuredClone(canonical),
     sha256Hash: "a".repeat(64),
+    canonicalSha256Hash: "a".repeat(64),
     publishedAt: "2026-09-01T00:00:00.000Z",
     frozenAt: "2026-09-02T00:00:00.000Z",
   };

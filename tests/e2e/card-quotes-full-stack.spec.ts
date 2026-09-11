@@ -289,7 +289,7 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
         canonical_json=jsonb_set(jsonb_set(jsonb_set(r.canonical_json,'{version}','"1.1"'),'{productBibleVersion}','"3.0"'),
           '{standings,tiebreakOrder}','["MATCHUP_WIN_PERCENTAGE","POINTS_FOR","ALL_PLAY_PERCENTAGE","BALANCED_HEAD_TO_HEAD","FEWER_ATTENDANCE_MISSES","HIGHEST_SINGLE_WEEK_SCORE","STORED_DETERMINISTIC_RANDOM"]')
       from private.seasons s where s.ruleset_snapshot_id=r.id and s.league_id='${leagueId}';
-      update private.season_ruleset_snapshots r set sha256_hash=encode(extensions.digest(r.canonical_json::text,'sha256'),'hex')
+      update private.season_ruleset_snapshots r set sha256_hash=encode(extensions.digest(private.canonical_ruleset_json(r.canonical_json),'sha256'),'hex')
       from private.seasons s where s.ruleset_snapshot_id=r.id and s.league_id='${leagueId}';
       alter table private.season_ruleset_snapshots enable trigger guard_frozen_ruleset_update; commit;`);
     }
