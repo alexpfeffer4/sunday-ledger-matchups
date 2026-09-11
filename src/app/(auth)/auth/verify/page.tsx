@@ -5,7 +5,8 @@ import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = {
   title: "Confirm email link",
-  referrer: "no-referrer",
+  // Keep credentials out of Referer without suppressing the form's Origin.
+  referrer: "strict-origin",
   robots: { index: false, follow: false },
 };
 

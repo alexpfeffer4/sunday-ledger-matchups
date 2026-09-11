@@ -343,7 +343,7 @@ export function Stage1CommissionerControls({
       </section>
 
       <details
-        id={!state.week && !rosterIsValid ? "league-invitations" : undefined}
+        id="league-invitations"
         open={state.league.lifecycle === "DRAFT" && !rosterIsValid}
         className="border-boundary bg-surface rounded-xl border p-5"
       >

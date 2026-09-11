@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
       {
         source: "/auth/verify",
         headers: [
-          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "Referrer-Policy", value: "strict-origin" },
           { key: "X-Frame-Options", value: "DENY" },
         ],
       },

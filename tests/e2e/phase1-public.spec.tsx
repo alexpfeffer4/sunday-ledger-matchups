@@ -137,3 +137,28 @@ test("signed-out valid invitation preview reflows and exposes keyboard focus", a
   await expectNoHorizontalOverflow(page);
   await expectNoSeriousAccessibilityViolations(page);
 });
+
+test("email confirmation submits an origin-checked POST without leaking the credential in Referer", async ({
+  page,
+}) => {
+  await page.goto(
+    `/auth/confirm?token_hash=public-test-invalid&type=email&flow=create-account&next=${encodeURIComponent(safeNext)}`,
+  );
+  await expect(
+    page.getByRole("heading", { name: "Confirm your email link" }),
+  ).toBeVisible();
+  const submitted = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/auth/confirm") &&
+      response.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: "Confirm and continue" }).click();
+  const response = await submitted;
+  expect(response.status()).toBe(303);
+  expect(response.request().headers()["origin"]).toBe("http://127.0.0.1:3000");
+  expect(response.request().headers()["referer"]).toBe(
+    "http://127.0.0.1:3000/",
+  );
+  await expect(page).toHaveURL(/\/auth\/create-account\?error=invalid_link/);
+  expect(new URL(page.url()).searchParams.get("next")).toBe(safeNext);
+});
