@@ -144,7 +144,7 @@ jobs:
           tests/e2e/card-quotes-full-stack.spec.ts
           tests/e2e/auth-email-full-stack.spec.ts
           tests/e2e/release-readiness-full-stack.spec.ts
-          --project=desktop --workers=1 --reporter=github,json
+          --project=desktop --workers=1 --reporter=github,json --output=test-results/desktop
 
       - name: Require zero skipped desktop full-stack tests
         run: node scripts/check-full-stack-report.mjs acceptance-reports/desktop.json
@@ -155,7 +155,7 @@ jobs:
           NODE_OPTIONS: --import=${{ github.workspace }}/tests/fixtures/card-quotes-provider-preload.mjs
         run: >-
           npx playwright test tests/e2e/auth-email-full-stack.spec.ts
-          --project=mobile --workers=1 --reporter=github,json
+          --project=mobile --workers=1 --reporter=github,json --output=test-results/mobile-auth
 
       - name: Require zero skipped mobile Auth tests
         run: node scripts/check-full-stack-report.mjs acceptance-reports/mobile-auth.json
@@ -166,7 +166,7 @@ jobs:
           NODE_OPTIONS: --import=${{ github.workspace }}/tests/fixtures/card-quotes-provider-preload.mjs
         run: >-
           npx playwright test tests/e2e/release-readiness-full-stack.spec.ts
-          --project=mobile --workers=1 --reporter=github,json
+          --project=mobile --workers=1 --reporter=github,json --output=test-results/mobile-member
 
       - name: Require zero skipped mobile member tests
         run: node scripts/check-full-stack-report.mjs acceptance-reports/mobile-member.json
