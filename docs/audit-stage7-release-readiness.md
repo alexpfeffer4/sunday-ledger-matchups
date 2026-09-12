@@ -1,8 +1,10 @@
 # Sunday Ledger — Stage 7 release readiness and Stage 8 handoff
 
-Prepared September 12, 2026. Audit coverage: A13–A15. PRs #37 and #38 are in review;
-Stage 7 is not merged or deployed. Final CI results are recorded in the PR and
-the standalone handoff. This report does not certify security, accessibility,
+Prepared September 12, 2026. Audit coverage: A13–A15. Following separate owner
+approval, PR #38 is merged and its database repair is applied. PR #37 is retargeted
+to main for final release verification. Final merge, deployment and CI results are
+recorded in the PR release record and standalone handoff, which supersede this
+pre-merge status. This report does not certify security, accessibility,
 Production performance, or a completed invited pilot.
 
 ## Baseline and authority
@@ -10,13 +12,16 @@ Production performance, or a completed invited pilot.
 - Repository: `alexpfeffer4/sunday-ledger-matchups`; clean new branch
   `codex/audit-stage7-release-readiness` from main
   `d998312ca7e6dac1bf2456bbbe5987d74f3086ac`.
-- Production: `www.ledgerleagues.com`, deployment
+- Stage 7 starting Production: `www.ledgerleagues.com`, deployment
   `dpl_7FuaKuQDJZLSG6PEZd8m22iFcghU`, READY at that main commit; both canonical
   domains assigned without alias error, rechecked September 12.
-- Supabase `nxikkhtaercmbuyrlyio`: ACTIVE_HEALTHY; 45 applied migrations, ending
-  `20260911211958_prospective_week_rules`. PR #38 proposes a separate
-  `20260912054000_fix_draft_deletion_archive_guard` forward migration; it is
-  **not applied**. See [the migration note](audit-stage7-draft-deletion.md).
+- Supabase `nxikkhtaercmbuyrlyio`: 46 applied migrations, ending
+  `20260912162516_fix_draft_deletion_archive_guard`, applied with explicit approval
+  after PR #38 merged at `3e07162970666e01e2ccc162d67c9520edfcd74d`.
+  SQL is unchanged from the tested migration proposed as `20260912054000`;
+  the filename now matches the hosted ledger. All 27 checked tables retained
+  identical counts/hashes and private execution grants are unchanged.
+  See [the migration note](audit-stage7-draft-deletion.md).
 - Read the supplied audit, Prompt 7, six historical governing sources,
   [current source index](governance/current-source-index.md), revision-2
   [governing addendum](governance/2026-09-11-governing-addendum.md), and Stage 5/6
@@ -108,11 +113,11 @@ An upgrade alone is not evidence that a usable restore point exists.
   permissions, time limits and unconditional cleanup remain. Changes to the
   shared action trigger both callers. The full Auth stack in Phase 8C remains
   separate because it needs additional services and configuration.
-- **Implemented:** PR #37 is stacked on the focused deletion-guard PR #38.
+- **Implemented:** PR #37 was stacked on the focused deletion-guard PR #38.
   The three relevant workflows also accept that exact base branch so the stack
-  receives the same required checks. After #38 is separately approved and merged,
-  retarget #37 to `main` and recheck the resulting merge candidate. Neither PR
-  is merged by this implementation task; the migration requires separate approval.
+  receives the same required checks. After separate approval, #38 is merged and
+  its migration is applied. PR #37 is retargeted to `main` and incorporates that
+  merge plus the hosted migration filename alignment for final acceptance.
 - **Implemented:** retain disposable full-stack JSON reports, screenshots and
   failure traces, plus pgTAP output. Report checks require selected full-stack
   tests to execute with zero skips. A test passing on an existing retry is stated
@@ -367,6 +372,8 @@ standings consequence → voluntary return. Record member friction and operator
 minutes manually. Keep social features, broad analytics, reminders, new markets,
 paid services and gameplay changes outside scope. Rehearsal cannot certify this.
 
-No Stage 7 production mutation, security/visibility setting, plan purchase,
-provider request, participant message, hosted migration, merge or Production
-deployment was performed.
+Stage 7 implementation initially made no Production mutations. The subsequent
+owner-approved release merged #38 and applied the guard repair, with #37's final
+release results recorded in the PR and standalone handoff. No security/visibility
+setting, plan purchase, provider request or participant message is part of this
+release. Device, backup/restore and actual pilot observations remain pending.
