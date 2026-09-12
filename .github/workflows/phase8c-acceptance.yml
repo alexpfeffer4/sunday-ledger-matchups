@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - codex/audit-stage7-deletion-guard
     paths:
       - ".github/workflows/phase8c-acceptance.yml"
       - "package.json"

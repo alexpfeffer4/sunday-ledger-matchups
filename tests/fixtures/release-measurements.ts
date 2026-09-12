@@ -55,6 +55,7 @@ export async function inspectMemberSurface(
 ) {
   const dimensions = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,
+    viewportHeight: window.innerHeight,
     scroll: document.documentElement.scrollWidth,
     rootFontSize: getComputedStyle(document.documentElement).fontSize,
     overflow: [...document.querySelectorAll("main *")]
@@ -120,9 +121,5 @@ export async function inspectMemberSurface(
   expect(scan.violations, name).toEqual([]);
   await page.screenshot({
     path: info.outputPath(`${name}-viewport.png`),
-  });
-  await page.screenshot({
-    path: info.outputPath(`${name}.png`),
-    fullPage: true,
   });
 }

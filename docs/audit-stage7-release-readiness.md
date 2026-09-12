@@ -1,6 +1,6 @@
 # Sunday Ledger — Stage 7 release readiness and Stage 8 handoff
 
-Prepared September 12, 2026. Audit coverage: A13–A15. PR #37 is in review;
+Prepared September 12, 2026. Audit coverage: A13–A15. PRs #37 and #38 are in review;
 Stage 7 is not merged or deployed. Final CI results are recorded in the PR and
 the standalone handoff. This report does not certify security, accessibility,
 Production performance, or a completed invited pilot.
@@ -14,7 +14,9 @@ Production performance, or a completed invited pilot.
   `dpl_7FuaKuQDJZLSG6PEZd8m22iFcghU`, READY at that main commit; both canonical
   domains assigned without alias error, rechecked September 12.
 - Supabase `nxikkhtaercmbuyrlyio`: ACTIVE_HEALTHY; 45 applied migrations, ending
-  `20260911211958_prospective_week_rules`. No Stage 7 migration is needed.
+  `20260911211958_prospective_week_rules`. PR #38 proposes a separate
+  `20260912054000_fix_draft_deletion_archive_guard` forward migration; it is
+  **not applied**. See [the migration note](audit-stage7-draft-deletion.md).
 - Read the supplied audit, Prompt 7, six historical governing sources,
   [current source index](governance/current-source-index.md), revision-2
   [governing addendum](governance/2026-09-11-governing-addendum.md), and Stage 5/6
@@ -35,7 +37,7 @@ Production performance, or a completed invited pilot.
 | Advisor results            | Verified already complete / decision-dependent                               | Fifteen existing informational RLS-without-policy private tables remain compatible with the RPC-only boundary; leaked-password protection is the remaining warning. No new policy was introduced to suppress an advisor.                                                                                                                                                                                                                                                                                                                                                                             |
 | Invite revocation          | Implemented verification                                                     | Disposable real-Auth tests reject an unauthorized revocation, revoke through the commissioner RPC, remove anonymous preview and reject subsequent join, then join through a fresh invite. This is stronger than checking function existence/grants alone.                                                                                                                                                                                                                                                                                                                                            |
 | Account recovery           | Verified already complete in isolated tests; awaiting named real-world check | Retain desktop/mobile-WebKit local Auth and captured-mail cases: signup/invite destination, retry, expired/used links, interrupted profile/password setup, repeat verification and session persistence. Owner-reported physical-iPhone recovery-link success from Stage 5 is retained. Physical-iPhone **numeric-code recovery after #35** remains unverified. No real mail was sent in Stage 7.                                                                                                                                                                                                     |
-| League deletion            | Implemented verification                                                     | The signed-in commissioner cannot delete a started league; denial leaves all 20 owner receipts byte-for-byte unchanged in the disposable fixture. Existing API permits deletion only for an untouched, one-member draft with exact name confirmation. Archive is reversible and is not personal-data erasure.                                                                                                                                                                                                                                                                                        |
+| League deletion            | Implemented verification                                                     | The real-Auth check exposed a stale archive-table reference causing `42P01` in deletion eligibility and the commissioner league-list view. PR #38 repairs that reference with all existing guards preserved. Database checks execute untouched-draft deletion, outsider/name rejection and joined-draft preservation; the UI lane checks clean rejection after sealing and unchanged 20 receipts. Archive is reversible and is not personal-data erasure.                                                                                                                                            |
 | Personal account erasure   | Decision-dependent                                                           | There is no self-service account-erasure workflow or approved retention/anonymization policy. Profiles are referenced by immutable commands, corrections, results, schedule/playoff/archive publications and rehearsal ownership with NO ACTION foreign keys. Do not delete an Auth user or cascade around these references as an improvised erasure procedure.                                                                                                                                                                                                                                      |
 | Backup/restore             | Awaiting named real-world check                                              | Organization is on **Free**. No owner-controlled recent backup artifact or isolated restore result was available to verify. The procedure below is prepared; documenting it is not a successful backup or restore.                                                                                                                                                                                                                                                                                                                                                                                   |
 | Release controls           | Awaiting named owner/admin check                                             | Repository ruleset collection returned empty; classic branch-protection read returned 403 for the integration. Do not equate that permission limit with absence of branch protection. No release setting changed.                                                                                                                                                                                                                                                                                                                                                                                    |
@@ -106,6 +108,11 @@ An upgrade alone is not evidence that a usable restore point exists.
   permissions, time limits and unconditional cleanup remain. Changes to the
   shared action trigger both callers. The full Auth stack in Phase 8C remains
   separate because it needs additional services and configuration.
+- **Implemented:** PR #37 is stacked on the focused deletion-guard PR #38.
+  The three relevant workflows also accept that exact base branch so the stack
+  receives the same required checks. After #38 is separately approved and merged,
+  retarget #37 to `main` and recheck the resulting merge candidate. Neither PR
+  is merged by this implementation task; the migration requires separate approval.
 - **Implemented:** retain disposable full-stack JSON reports, screenshots and
   failure traces, plus pgTAP output. Report checks require selected full-stack
   tests to execute with zero skips. A test passing on an existing retry is stated
@@ -119,10 +126,17 @@ An upgrade alone is not evidence that a usable restore point exists.
   next-action projection (`commissioner-next-action.ts`). The new fix stays in
   their shared position editor. No general rewrite of the remaining large
   action/operations modules is justified by line count alone.
-- **Awaiting a named recurrence investigation:** the historical Week 14 timeout,
-  canceled database-run stall and rules-heading focus flake are not diagnosed
-  merely by a later green run. Preserve failure logs and trace if they recur;
-  do not weaken assertions or add arbitrary retries.
+- **Implemented:** run 34675531261 captured a Week 14 timeout recurrence. The
+  trace shows no confirmation-checkbox check after the streamed navigation, no
+  subsequent action POST, and native validation focusing the unchecked required
+  checkbox. The harness counted before the form arrived. It now waits for the
+  actual action to be visible before discovering/checking its confirmation. The
+  30-second completion assertion and existing retry policy are unchanged. This
+  identifies this captured recurrence; it does not independently establish the
+  cause of older runs without equivalent traces.
+- **Awaiting named recurrence evidence:** the previously canceled database stall
+  and historical rules-heading focus flake remain unobserved causes. Retain logs
+  and traces if either recurs; do not weaken assertions or add arbitrary retries.
 
 ## A15 — Accessibility and measured performance
 
@@ -267,7 +281,8 @@ does not close step 1. Do not contact participants on the owner's behalf.
 
 Proceed to the bounded two-week invited pilot only after the tested Stage 7 PR is
 separately approved/merged/deployed, the owner explicitly settles repository
-audience/password deferral, a usable backup/recovery owner is recorded, and the
+audience/password deferral, an operator and a usable backup/isolated-restore
+record are in place, and the
 primary physical-device/recovery and screen-reader spot checks are completed or
 their specific limits explicitly accepted for the invited group. No broad launch
 or accessibility certification follows from synthetic tests.
@@ -279,4 +294,5 @@ minutes manually. Keep social features, broad analytics, reminders, new markets,
 paid services and gameplay changes outside scope. Rehearsal cannot certify this.
 
 No Stage 7 production mutation, security/visibility setting, plan purchase,
-provider request, participant message, migration, merge or deployment was performed.
+provider request, participant message, hosted migration, merge or Production
+deployment was performed.

@@ -33,6 +33,7 @@ if (enabled) {
       );
 }
 test.skip(!enabled, "requires disposable full-stack acceptance");
+test.use({ actionTimeout: 15_000 });
 
 function client(apiKey: string) {
   return createClient(url!, apiKey, {
@@ -57,8 +58,15 @@ function sql(statement: string) {
 }
 
 test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measured reads", async ({
+  baseURL,
   page,
 }, info) => {
+  if (
+    !baseURL ||
+    !["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname)
+  ) {
+    throw new Error("Release acceptance refuses a hosted application.");
+  }
   test.setTimeout(240_000);
   const run = Date.now().toString(36);
   const admin = client(secret!);
