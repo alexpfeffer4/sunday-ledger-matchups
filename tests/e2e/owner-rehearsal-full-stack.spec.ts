@@ -86,6 +86,7 @@ function expectPrivateResponse(response: Response | null) {
 }
 
 async function advance(page: Page, name: string, timeout = 5_000) {
+  const started = performance.now();
   const guide = page.locator("[data-owner-rehearsal-guide]");
   const confirmation = guide.getByRole("checkbox");
   if (await confirmation.count()) await confirmation.check();
@@ -99,6 +100,9 @@ async function advance(page: Page, name: string, timeout = 5_000) {
     .toBe(0);
   await expect(guide.getByRole("status").last()).toContainText(
     /Checkpoint completed|Already completed/,
+  );
+  console.log(
+    `REHEARSAL_CHECKPOINT ${JSON.stringify({ name, ms: Math.round(performance.now() - started) })}`,
   );
 }
 

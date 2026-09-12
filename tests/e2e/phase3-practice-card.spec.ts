@@ -121,6 +121,8 @@ test("390 px Practice completes validation, review, reconciliation, and receipt 
   ).toBe(true);
   await expect(editor).toContainText("This pick may use up to 750 credits");
   await expect(stake).toBeFocused();
+  await expect(stake).toHaveAttribute("aria-invalid", "true");
+  await expect(editor.getByRole("alert")).toBeVisible();
   await editor.getByRole("button", { name: "Close pick editor" }).click();
   await expect(favoriteTrigger).toBeFocused();
 

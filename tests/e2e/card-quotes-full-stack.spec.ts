@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import { measure } from "../fixtures/release-measurements";
 
 const url = process.env.TEST_SUPABASE_URL;
 const key = process.env.TEST_SUPABASE_PUBLISHABLE_KEY;
@@ -116,7 +117,7 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
   test(`V${frozenVersion} members refresh, review, seal, and recover through real Auth and database`, async ({
     browser,
     page,
-  }) => {
+  }, info) => {
     test.setTimeout(240_000);
     const run = Date.now().toString(36);
     const admin = client(secret!);
@@ -672,6 +673,24 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
     expect(
       readFileSync(`${fixturePath}.calls`, "utf8").split("scores").length,
     ).toBe(firstCount);
+    // Exercise the actual five-minute timer without waiting five wall-clock
+    // minutes. The database and application stay real; no provider is fetched.
+    await page.clock.install();
+    await page.reload();
+    const automaticRefresh = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === `/l/${slug}/matchup` &&
+        response.request().headers()["rsc"] === "1",
+    );
+    await refreshButton.focus();
+    await page.clock.fastForward(5 * 60_000);
+    await automaticRefresh;
+    await expect(refreshButton).toHaveAttribute("aria-disabled", "false");
+    await expect(refreshButton).toBeFocused();
+    expect(
+      readFileSync(`${fixturePath}.calls`, "utf8").split("scores").length,
+    ).toBe(firstCount);
+    await page.clock.resume();
     // Age already-LIVE evidence and miss its checkpoint. Revealed data stays visible.
     sql(`update private.live_score_checks set fetched_at=clock_timestamp()-interval '1 hour',source_updated_at=clock_timestamp()-interval '1 hour',next_check_at=clock_timestamp()-interval '20 minutes' where event_id in (select id from private.sports_events where league_id='${leagueId}');
     update private.provider_requests set attempted_at=clock_timestamp()-interval '2 minutes' where kind='SCORES';
@@ -741,10 +760,12 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
         `select count(*) from private.event_result_versions where league_id='${leagueId}'`,
       ),
     ).toBe("1");
-    await page.reload();
-    await expect(
-      page.getByText("Provisional", { exact: true }).first(),
-    ).toBeVisible();
+    await measure(info, "stored-score-to-visible-provisional", async () => {
+      await page.reload();
+      await expect(
+        page.getByText("Provisional", { exact: true }).first(),
+      ).toBeVisible();
+    });
     await page.screenshot({
       path: "test-results/score-checkpoint-mobile.png",
       fullPage: true,

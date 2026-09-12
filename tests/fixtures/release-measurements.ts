@@ -52,9 +52,29 @@ export async function inspectMemberSurface(
   const scan = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
     .analyze();
+  const targets = await page
+    .locator("main button, main input")
+    .evaluateAll((elements) =>
+      elements
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          return {
+            name:
+              element.getAttribute("aria-label") ?? element.textContent?.trim(),
+            width: rect.width,
+            height: rect.height,
+          };
+        })
+        .filter((target) => target.width > 0 && target.height > 0),
+    );
   await info.attach(`${name}-accessibility`, {
     body: JSON.stringify(
-      { dimensions, violations: scan.violations, incomplete: scan.incomplete },
+      {
+        dimensions,
+        targets,
+        violations: scan.violations,
+        incomplete: scan.incomplete,
+      },
       null,
       2,
     ),

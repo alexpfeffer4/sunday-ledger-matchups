@@ -1,0 +1,18 @@
+name: Disposable database conformance
+description: Shared clean migration and complete pgTAP setup for the database-only acceptance jobs.
+runs:
+  using: composite
+  steps:
+    - name: Set up Supabase CLI
+      uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3
+      with:
+        version: 2.116.0
+    - name: Initialize disposable local configuration
+      shell: bash
+      run: supabase init
+    - name: Apply all migrations to a clean local database
+      shell: bash
+      run: supabase db start
+    - name: Run database policy and conformance tests
+      shell: bash
+      run: supabase test db

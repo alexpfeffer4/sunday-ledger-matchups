@@ -216,7 +216,7 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
   });
   await rpc(admin, "complete_live_quote_refresh", {
     p_lease_id: claim.leaseId,
-    p_import: imported,
+    p_import: { ...imported, fetchedAt: new Date().toISOString() },
     p_requests_remaining: 1497,
   });
   await rpc(members[0]!, "lock_live_roster_and_open_week", {
@@ -319,6 +319,13 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
       await page.getByRole("button", { name: "Add to card" }).click();
       await expect(page.getByLabel("Stake in credits")).toBeFocused();
       await expect(page.getByLabel("Stake in credits")).toHaveValue("49");
+      await expect(page.getByLabel("Stake in credits")).toHaveAttribute(
+        "aria-invalid",
+        "true",
+      );
+      await expect(dialog.getByRole("alert")).toBeVisible();
+      await page.getByRole("button", { name: "Add to card" }).click();
+      await expect(page.getByLabel("Stake in credits")).toBeFocused();
       await inspectMemberSurface(page, info, "pick-editor-320-200-percent");
       const close = await page
         .getByRole("button", { name: "Close pick editor" })

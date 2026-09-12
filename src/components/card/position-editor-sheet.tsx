@@ -94,9 +94,16 @@ export function PositionEditorSheet({
     >
       <form
         className="flex max-h-[inherit] min-h-0 flex-col"
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
           onSubmit();
+          // Both consumers validate with the shared rules before closing. Keep
+          // repeated invalid submissions on the field, even if the error text
+          // is unchanged and React does not rerun the error effect.
+          requestAnimationFrame(() => {
+            if (dialogRef.current?.open) inputRef.current?.focus();
+          });
         }}
       >
         <header className="border-boundary flex shrink-0 items-start justify-between gap-4 border-b px-4 py-4 sm:px-6">
