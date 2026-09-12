@@ -57,7 +57,32 @@ export async function inspectMemberSurface(
     client: document.documentElement.clientWidth,
     scroll: document.documentElement.scrollWidth,
     rootFontSize: getComputedStyle(document.documentElement).fontSize,
+    overflow: [...document.querySelectorAll("main *")]
+      .flatMap((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.width &&
+          rect.right > document.documentElement.clientWidth + 1
+          ? [
+              {
+                tag: element.tagName,
+                className: element.getAttribute("class"),
+                right: rect.right,
+              },
+            ]
+          : [];
+      })
+      .slice(-12),
   }));
+  await info.attach(`${name}-reflow`, {
+    body: JSON.stringify(dimensions, null, 2),
+    contentType: "application/json",
+  });
+  if (dimensions.scroll > dimensions.client + 1) {
+    console.log(`RELEASE_REFLOW ${JSON.stringify({ name, ...dimensions })}`);
+    await page.screenshot({
+      path: info.outputPath(`${name}-reflow-failure.png`),
+    });
+  }
   expect(dimensions.scroll, `${name} horizontal reflow`).toBeLessThanOrEqual(
     dimensions.client + 1,
   );

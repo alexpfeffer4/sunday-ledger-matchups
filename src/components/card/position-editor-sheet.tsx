@@ -106,8 +106,8 @@ export function PositionEditorSheet({
           });
         }}
       >
-        <header className="border-boundary flex shrink-0 items-start justify-between gap-4 border-b px-4 py-4 sm:px-6">
-          <div>
+        <header className="border-boundary flex shrink-0 items-start justify-between gap-3 border-b px-4 py-4 sm:px-6">
+          <div className="min-w-0 flex-1">
             <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
               Edit pick
             </p>
@@ -119,9 +119,6 @@ export function PositionEditorSheet({
             >
               {title}
             </h2>
-            <p className="text-graphite mt-1 text-sm" id={contextId}>
-              {context}
-            </p>
           </div>
           <button
             aria-label="Close pick editor"
@@ -134,6 +131,9 @@ export function PositionEditorSheet({
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+          <p className="text-graphite mb-5 text-sm" id={contextId}>
+            {context}
+          </p>
           <OutcomeSelector
             label={`${title} outcomes`}
             onSelect={onSelectOutcome}

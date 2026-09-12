@@ -65,6 +65,11 @@ Production performance, or a completed invited pilot.
    an already issued JWT; revoke sessions and verify authorization separately.
    [Supabase user management](https://supabase.com/docs/guides/auth/managing-user-data)
 
+The repository owner/admin must also inspect GitHub Settings → Rules / Branches
+for `main`, record the effective protection and required status checks, and verify
+that the authoritative Phase 8C lane is required before merging. The integration's
+403 cannot settle that check. No setting change is included in this PR.
+
 ### Backup and recovery procedure to approve and verify
 
 - Name the operator and an access-recovery backup. Naming a backup does not grant
@@ -136,6 +141,17 @@ its measured height with a cleaned-up ResizeObserver. Fixed builder padding is
 replaced by that measured space in the signed-in builder and public Practice.
 The regression retains a real unobstructed click on the covered review button;
 it does not force-click through the overlay or substitute another control.
+The populated card also exposed 398px of document width in a 320px viewport:
+each long pick summary shared a rigid row with Remove. Those rows now wrap based
+on their available space, preserving both the full description and the action.
+
+Reviewing the retained axe **incomplete** entries and viewport trace also found
+that long event text crowded the editor heading/close control beyond the viewport,
+and the return summary used a label on a generic div. The event description now
+scrolls with the editor body while heading/close remain visible; the summary is
+a named group. The journey verifies the close target's bounds, actual click and
+returned keyboard focus. Zero automated violations alone would not have closed
+these manual-review findings.
 
 The new disposable journey uses ten real local Auth identities, seven synthetic
 events with long names and a 20-pick, 1,000-credit card constructed through actual
@@ -156,6 +172,10 @@ region announces score/phase changes; the entire scoreboard is not a live region
 evidence, not physical-device evidence. Product targets are 44–48px;
 [WCAG 2.2 AA target size](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html)
 uses 24px with stated exceptions.
+The builder's kickoff filters also move from a 40px minimum to the product's
+44px target, with rendered dimensions checked at 390px before text enlargement.
+The 320px checks set the root font to 200% (32px); that is distinct from actual
+browser zoom and does not enlarge text declared in fixed pixel units.
 
 Representative token contrast calculations use sRGB relative luminance. They
 supplement rendered axe scans and do not certify every possible background.

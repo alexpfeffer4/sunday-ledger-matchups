@@ -300,6 +300,25 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     await expect(page.getByLabel("Stake in credits")).toBeEditable();
   });
   await page.keyboard.press("Escape");
+  const filterTargets = await page
+    .getByRole("navigation", { name: "Filter games by kickoff" })
+    .getByRole("button")
+    .evaluateAll((elements) =>
+      elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          name: element.textContent,
+          width: rect.width,
+          height: rect.height,
+        };
+      }),
+    );
+  await info.attach("slate-filter-targets-390", {
+    body: JSON.stringify(filterTargets),
+    contentType: "application/json",
+  });
+  for (const target of filterTargets)
+    expect(target.height).toBeGreaterThanOrEqual(44);
   await page.setViewportSize({ width: 320, height: 800 });
   await page.locator("html").evaluate((element) => {
     element.style.fontSize = "200%";
@@ -325,6 +344,9 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
         "true",
       );
       await expect(dialog.getByRole("alert")).toBeVisible();
+      await expect(
+        dialog.getByRole("group", { name: "Return if this pick wins" }),
+      ).toBeVisible();
       await page.getByRole("button", { name: "Add to card" }).click();
       await expect(page.getByLabel("Stake in credits")).toBeFocused();
       await inspectMemberSurface(page, info, "pick-editor-320-200-percent");
@@ -333,6 +355,16 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
         .boundingBox();
       expect(close?.width).toBeGreaterThanOrEqual(44);
       expect(close?.height).toBeGreaterThanOrEqual(44);
+      expect(close!.x).toBeGreaterThanOrEqual(0);
+      expect(close!.y).toBeGreaterThanOrEqual(0);
+      expect(close!.x + close!.width).toBeLessThanOrEqual(320);
+      expect(close!.y + close!.height).toBeLessThanOrEqual(800);
+      await page
+        .getByRole("button", { name: "Close pick editor" })
+        .click({ timeout: 10_000 });
+      await expect(outcome).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(dialog).toBeVisible();
     }
     await page.getByLabel("Stake in credits").fill("50");
     await page.getByRole("button", { name: "Add to card" }).click();

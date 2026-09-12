@@ -864,7 +864,7 @@ function Stage1CardBuilderEditor({
             {availableFilters.map((filter) => (
               <button
                 aria-pressed={kickoffFilter === filter}
-                className={`min-h-10 rounded-full border px-4 text-sm font-semibold transition-colors ${
+                className={`min-h-11 rounded-full border px-4 text-sm font-semibold transition-colors ${
                   kickoffFilter === filter
                     ? "border-registry bg-registry text-white"
                     : "border-control bg-surface hover:border-registry"
@@ -996,8 +996,8 @@ function Stage1CardBuilderEditor({
                   const key = selectionKey(draft);
                   return (
                     <article className="py-4 first:pt-0 last:pb-0" key={key}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1 basis-48">
                           <p className="text-muted text-xs">
                             Pick {String(index + 1).padStart(2, "0")} ·{" "}
                             {selected.event.awayTeam} at{" "}
