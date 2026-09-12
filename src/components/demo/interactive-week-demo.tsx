@@ -761,7 +761,7 @@ export function InteractiveWeekDemo() {
 
   return (
     <>
-      <div className="mt-7 grid gap-6 pb-32 xl:grid-cols-[minmax(0,1fr)_340px] xl:pb-0">
+      <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-7">
           <section
             className="border-boundary bg-surface rounded-xl border p-5 outline-none sm:p-6"

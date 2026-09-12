@@ -5,6 +5,14 @@ import { existsSync, readFileSync } from "node:fs";
 // Only endpoint names and timings from the disposable app process. Never tokens,
 // request bodies, query strings, member identities, or receipt content.
 type Query = { endpoint: string; ms: number; status: number };
+function providerCalls(): string[] {
+  const fixture = process.env.ODDS_TEST_FIXTURE;
+  const path = fixture && `${fixture}.calls`;
+  return path && existsSync(path)
+    ? readFileSync(path, "utf8").split("\n").filter(Boolean)
+    : [];
+}
+
 export function queries(): Query[] {
   const path = process.env.RELEASE_QUERY_LOG;
   return path && existsSync(path)
@@ -22,12 +30,15 @@ export async function measure(
   action: () => Promise<void>,
 ) {
   const before = queries().length;
+  const providerBefore = providerCalls().length;
   const start = performance.now();
   await action();
   const result = {
     name,
     ms: Math.round(performance.now() - start),
     queries: queries().slice(before),
+    providerCalls: providerCalls().slice(providerBefore),
+    providerCallsSinceFixtureReset: providerCalls().length,
   };
   await info.attach(name, {
     body: JSON.stringify(result, null, 2),
@@ -45,6 +56,7 @@ export async function inspectMemberSurface(
   const dimensions = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,
     scroll: document.documentElement.scrollWidth,
+    rootFontSize: getComputedStyle(document.documentElement).fontSize,
   }));
   expect(dimensions.scroll, `${name} horizontal reflow`).toBeLessThanOrEqual(
     dimensions.client + 1,
@@ -81,6 +93,9 @@ export async function inspectMemberSurface(
     contentType: "application/json",
   });
   expect(scan.violations, name).toEqual([]);
+  await page.screenshot({
+    path: info.outputPath(`${name}-viewport.png`),
+  });
   await page.screenshot({
     path: info.outputPath(`${name}.png`),
     fullPage: true,

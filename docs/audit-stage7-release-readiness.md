@@ -38,7 +38,7 @@ Production performance, or a completed invited pilot.
 | League deletion            | Implemented verification                                                     | The signed-in commissioner cannot delete a started league; denial leaves all 20 owner receipts byte-for-byte unchanged in the disposable fixture. Existing API permits deletion only for an untouched, one-member draft with exact name confirmation. Archive is reversible and is not personal-data erasure.                                                                                                                                                                                                                                                                                        |
 | Personal account erasure   | Decision-dependent                                                           | There is no self-service account-erasure workflow or approved retention/anonymization policy. Profiles are referenced by immutable commands, corrections, results, schedule/playoff/archive publications and rehearsal ownership with NO ACTION foreign keys. Do not delete an Auth user or cascade around these references as an improvised erasure procedure.                                                                                                                                                                                                                                      |
 | Backup/restore             | Awaiting named real-world check                                              | Organization is on **Free**. No owner-controlled recent backup artifact or isolated restore result was available to verify. The procedure below is prepared; documenting it is not a successful backup or restore.                                                                                                                                                                                                                                                                                                                                                                                   |
-| Release controls           | Partially verified; awaiting owner/admin check                               | Repository ruleset collection returned empty; classic branch-protection read returned 403 for the integration. Do not equate that permission limit with absence of branch protection. No release setting changed.                                                                                                                                                                                                                                                                                                                                                                                    |
+| Release controls           | Awaiting named owner/admin check                                             | Repository ruleset collection returned empty; classic branch-protection read returned 403 for the integration. Do not equate that permission limit with absence of branch protection. No release setting changed.                                                                                                                                                                                                                                                                                                                                                                                    |
 
 ### Concrete owner decisions
 
@@ -107,9 +107,13 @@ An upgrade alone is not evidence that a usable restore point exists.
   explicitly; it is not silently counted as a first-attempt pass.
 - **Implemented:** record each real rehearsal checkpoint's elapsed time,
   including the batched Week 14 step, without changing its 30-second assertion.
-- **Verified already complete:** earlier stages already separated card draft,
-  review, rules compatibility, result presentation and query boundaries. No
-  general rewrite of large modules is justified by line count alone.
+- **Verified already complete:** earlier stages already separated card persistence
+  (`card-draft-storage.ts` / `use-card-draft.ts`), quote review
+  (`application/providers/card-quote-review.ts`), result presentation
+  (`project-paired-matchup.ts` / `paired-matchup-header.tsx`) and commissioner
+  next-action projection (`commissioner-next-action.ts`). The new fix stays in
+  their shared position editor. No general rewrite of the remaining large
+  action/operations modules is justified by line count alone.
 - **Awaiting a named recurrence investigation:** the historical Week 14 timeout,
   canceled database-run stall and rules-heading focus flake are not diagnosed
   merely by a later green run. Preserve failure logs and trace if they recur;
@@ -124,6 +128,14 @@ validation active but `aria-invalid="false"`. Both shared-editor consumers alrea
 validate the full stake/rules contract. The form now uses that validation to show
 the linked error, mark the field invalid, keep its value and focus it even on a
 repeated failed submission. The database acceptance rules are unchanged.
+
+The new full-stack case also reproduced the mobile card tray collapsing its
+remaining-credit text into a vertical column at 320px/200% text, covering the
+20-pick review button. The shared tray now wraps its summary/action and reserves
+its measured height with a cleaned-up ResizeObserver. Fixed builder padding is
+replaced by that measured space in the signed-in builder and public Practice.
+The regression retains a real unobstructed click on the covered review button;
+it does not force-click through the overlay or substitute another control.
 
 The new disposable journey uses ten real local Auth identities, seven synthetic
 events with long names and a 20-pick, 1,000-credit card constructed through actual

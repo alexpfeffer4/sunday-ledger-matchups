@@ -278,11 +278,12 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     .fill(identities[1]!.password);
   await page.getByRole("button", { name: "Sign in with password" }).click();
   await page.waitForURL(`**/l/${slug}/matchup`);
+  const makePicks = page
+    .getByRole("link", { name: "Make picks", exact: true })
+    .last();
+  await expect(makePicks).toBeVisible();
   await measure(info, "mobile-navigation-to-usable-slate", async () => {
-    await page
-      .getByRole("link", { name: "Make picks", exact: true })
-      .last()
-      .click();
+    await makePicks.click();
     await expect(
       page
         .locator(".outcome-selector-group")
@@ -338,7 +339,12 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     await expect(dialog).not.toBeVisible();
   }
   expect(readFileSync(`${fixture}.calls`, "utf8")).toBe("");
-  await page.getByRole("button", { name: "Review 20 picks" }).first().click();
+  const reviewButton = page
+    .getByRole("button", { name: "Review 20 picks" })
+    .first();
+  await reviewButton.scrollIntoViewIfNeeded();
+  await inspectMemberSurface(page, info, "twenty-pick-builder-320-200-percent");
+  await reviewButton.click({ timeout: 10_000 });
   await expect(
     page.getByRole("heading", { name: "Review your complete card" }),
   ).toBeFocused();
@@ -376,15 +382,22 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     state.ownerCard.positions,
   );
   await page.goto(`/l/${slug}/card`);
+  await page.locator("html").evaluate((element) => {
+    element.style.fontSize = "200%";
+  });
   await expect(
     page.getByRole("link", { name: "View receipt", exact: true }),
   ).toHaveCount(20);
   await inspectMemberSurface(page, info, "twenty-receipts-320-200-percent");
   for (const destination of ["standings", "playoffs"]) {
     await page.goto(`/l/${slug}/${destination}`);
+    await page.locator("html").evaluate((element) => {
+      element.style.fontSize = "200%";
+    });
     await inspectMemberSurface(page, info, `${destination}-320-200-percent`);
   }
   // Query count is actual server PostgREST requests, not inferred from HTTP 200.
+  await page.setViewportSize({ width: 390, height: 844 });
   await measure(info, "ten-member-matchup-read", async () => {
     await page.goto(`/l/${slug}/matchup`);
     await expect(

@@ -822,7 +822,7 @@ function Stage1CardBuilderEditor({
 
   return (
     <>
-      <div className="mt-7 grid grid-cols-1 gap-6 pb-28 xl:grid-cols-[minmax(0,1fr)_360px] xl:pb-0">
+      <div className="mt-7 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
           <section className="border-boundary bg-surface rounded-xl border p-5">
             <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
