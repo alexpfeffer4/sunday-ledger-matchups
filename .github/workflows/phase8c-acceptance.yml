@@ -12,6 +12,7 @@ on:
       - "scripts/check-generated-supabase-types.mjs"
       - "scripts/configure-auth-acceptance.mjs"
       - "scripts/check-full-stack-report.mjs"
+      - "scripts/run-disposable-database-tests.sh"
       - "supabase/templates/**"
       - "src/**"
       - "supabase/migrations/**"
@@ -92,10 +93,7 @@ jobs:
           echo "ODDS_TEST_FIXTURE=/tmp/sunday-ledger-odds-fixture.json" >> "$GITHUB_ENV"
 
       - name: Run complete pgTAP and Phase 8C isolation suite
-        run: |
-          mkdir -p acceptance-reports
-          set -o pipefail
-          supabase test db 2>&1 | tee acceptance-reports/pgtap.log
+        run: bash scripts/run-disposable-database-tests.sh
 
       - name: Verify disabled scheduler configuration on disposable database
         run: |
