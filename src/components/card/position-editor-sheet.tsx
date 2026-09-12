@@ -142,7 +142,7 @@ export function PositionEditorSheet({
           />
 
           <div className="mt-6">
-            <div className="flex items-end justify-between gap-4">
+            <div className="flex flex-wrap items-end justify-between gap-4">
               <label className="text-sm font-semibold" htmlFor={inputId}>
                 Stake in credits
               </label>

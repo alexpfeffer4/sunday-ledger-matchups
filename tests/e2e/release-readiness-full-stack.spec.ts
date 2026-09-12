@@ -431,6 +431,12 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
   await inspectMemberSurface(page, info, "twenty-receipts-320-200-percent");
   for (const destination of ["standings", "playoffs"]) {
     await page.goto(`/l/${slug}/${destination}`);
+    await expect(
+      page.getByRole("heading", {
+        name: destination === "standings" ? "Standings" : "The playoff race",
+        exact: true,
+      }),
+    ).toBeVisible();
     await page.locator("html").evaluate((element) => {
       element.style.fontSize = "200%";
     });
