@@ -8,8 +8,9 @@ standings, schedules, seeds, or bracket winners.
 The [Stage 1 quote policy](audit-stage1-quote-reliability.md) is active as of
 September 10, 2026 (PR #29). Members explicitly review current quotes; commissioner
 refresh shares its lease and quota. [Stage 2 checkpoint score updates](audit-stage2-live-operations.md)
-are implemented for separate rollout approval. Check the console's automation status;
-a merge alone does not enable them. Publication, card lock, and finalization remain
+were activated in the approved Stage 2 rollout. A read-only Stage 7 check on
+September 12 confirmed quote and score policies enabled. Check the console's
+automation status for the current week; configuration can change. Publication, card lock, and finalization remain
 explicit commissioner actions.
 
 ## Before roster lock
@@ -33,7 +34,10 @@ published event set is intentionally immutable.
 1. Confirm the prior week is FINAL.
 2. Import the next NFL market set and review every selected event.
 3. Make the next week available. For Weeks 2–14, the frozen schedule supplies the
-   opponents; the NFL slate supplies only eligible events and markets.
+   opponents; the NFL slate supplies only eligible events and markets. Opening
+   the next week adopts the latest supported, approved rules package. An already
+   opened week retains its rules for every member; earlier receipts, results,
+   published standings and brackets are preserved.
 4. Refresh current odds before members build cards. The refresh must return the
    exact published event set.
 5. At common lock, lock the week. Database time enforces the deadline even if
@@ -109,7 +113,8 @@ conditions genuinely apply. Never fabricate a score or finalize an unresolved we
 
 1. Finalize Week 14.
 2. Confirm the immutable qualification snapshot. Eligibility, standings order,
-   and the top-four or top-six bracket come from the frozen rules.
+   and the top-four or top-six bracket come from Week 14's rules. A later
+   rules release cannot reseed the published bracket.
 3. Operate Weeks 15–17 with the same import, publish, lock, results, correction,
    and finalize sequence.
 4. Confirm Week 16 reseeding in a top-six league before publishing its slate.
@@ -149,8 +154,15 @@ retaining the prior Week 18 pairings and results.
 The original deterministic provider rehearsal covered a complete week plus a
 simulated network loss followed by a successful explicit retry. Stage 2 implements
 the owner's selected game checkpoints, partial score capture, shared budget,
-and existing authorized backup transfer. Its migration and scheduler activation
-remain separately owner-gated. The console must report whether automatic checks
-are enabled; while off, follow the manual cadence above. There is no second
+and existing authorized backup transfer. Its migrations and scheduler activation
+were approved in Stage 2; Stage 7 rechecked the enabled policies. The console
+must report whether automatic checks are enabled; while off, follow the manual cadence above. There is no second
 provider or unattended finalization. Real-world operator effort and ordinary
 Production result capture remain pilot evidence to collect.
+
+## Release security and device checks
+
+See the [Stage 7 release-readiness report](audit-stage7-release-readiness.md) for
+repository visibility, password-protection decisions, personal-data handling,
+backup/restore procedure, measured evidence and the exact physical-device script.
+A real two-week invited pilot is still required; synthetic tests do not replace it.

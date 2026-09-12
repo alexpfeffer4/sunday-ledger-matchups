@@ -64,7 +64,9 @@ export function PositionEditorSheet({
           ? document.activeElement
           : null;
       dialog.showModal();
-      requestAnimationFrame(() => headingRef.current?.focus());
+      // showModal is synchronous. Deferring focus can interrupt typing that
+      // starts immediately after the native dialog has already focused its heading.
+      headingRef.current?.focus();
     } else if (!open && dialog.open) {
       dialog.close();
     }
@@ -78,7 +80,7 @@ export function PositionEditorSheet({
     const returnTarget = returnFocusRef.current;
     if (dialogRef.current?.open) dialogRef.current.close();
     onClose();
-    requestAnimationFrame(() => returnTarget?.focus());
+    returnTarget?.focus();
   }
 
   return (
@@ -94,13 +96,18 @@ export function PositionEditorSheet({
     >
       <form
         className="flex max-h-[inherit] min-h-0 flex-col"
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
           onSubmit();
+          // Both consumers validate with the shared rules before closing. Keep
+          // repeated invalid submissions on the field, even if the error text
+          // is unchanged and React does not rerun the error effect.
+          if (dialogRef.current?.open) inputRef.current?.focus();
         }}
       >
-        <header className="border-boundary flex shrink-0 items-start justify-between gap-4 border-b px-4 py-4 sm:px-6">
-          <div>
+        <header className="border-boundary flex shrink-0 items-start justify-between gap-3 border-b px-4 py-4 sm:px-6">
+          <div className="min-w-0 flex-1">
             <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
               Edit pick
             </p>
@@ -112,9 +119,6 @@ export function PositionEditorSheet({
             >
               {title}
             </h2>
-            <p className="text-graphite mt-1 text-sm" id={contextId}>
-              {context}
-            </p>
           </div>
           <button
             aria-label="Close pick editor"
@@ -127,6 +131,9 @@ export function PositionEditorSheet({
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+          <p className="text-graphite mb-5 text-sm" id={contextId}>
+            {context}
+          </p>
           <OutcomeSelector
             label={`${title} outcomes`}
             onSelect={onSelectOutcome}
@@ -135,7 +142,7 @@ export function PositionEditorSheet({
           />
 
           <div className="mt-6">
-            <div className="flex items-end justify-between gap-4">
+            <div className="flex flex-wrap items-end justify-between gap-4">
               <label className="text-sm font-semibold" htmlFor={inputId}>
                 Stake in credits
               </label>

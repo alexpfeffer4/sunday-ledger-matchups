@@ -23,6 +23,7 @@ export function PickReturn({
     <div
       className="border-boundary bg-subtle mt-3 rounded-lg border p-3 text-sm"
       aria-label="Return if this pick wins"
+      role="group"
     >
       <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-3">
         <div>

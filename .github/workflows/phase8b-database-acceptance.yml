@@ -4,8 +4,10 @@ on:
   pull_request:
     branches:
       - main
+      - codex/audit-stage7-deletion-guard
     paths:
       - ".github/workflows/phase8b-database-acceptance.yml"
+      - ".github/actions/test-database/**"
       - "supabase/migrations/**"
       - "supabase/tests/**"
   workflow_dispatch:
@@ -26,19 +28,8 @@ jobs:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Supabase CLI
-        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3
-        with:
-          version: 2.116.0
-
-      - name: Initialize disposable local configuration
-        run: supabase init
-
-      - name: Apply all migrations to a clean local database
-        run: supabase db start
-
-      - name: Run database policy and conformance tests
-        run: supabase test db
+      - name: Apply migrations and run database conformance
+        uses: ./.github/actions/test-database
 
       - name: Stop disposable local database
         if: always()

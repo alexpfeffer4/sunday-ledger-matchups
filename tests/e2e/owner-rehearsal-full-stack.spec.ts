@@ -86,10 +86,14 @@ function expectPrivateResponse(response: Response | null) {
 }
 
 async function advance(page: Page, name: string, timeout = 5_000) {
+  const started = performance.now();
   const guide = page.locator("[data-owner-rehearsal-guide]");
+  const action = guide.getByRole("button", { name });
+  // A streamed navigation can finish loading before the guide arrives. Count
+  // only after its action is visible, or a required confirmation may be missed.
+  await expect(action).toBeVisible();
   const confirmation = guide.getByRole("checkbox");
   if (await confirmation.count()) await confirmation.check();
-  const action = guide.getByRole("button", { name });
   const pendingAction = guide.getByRole("button", { name: "Advancing…" });
   await action.click();
   await expect
@@ -99,6 +103,9 @@ async function advance(page: Page, name: string, timeout = 5_000) {
     .toBe(0);
   await expect(guide.getByRole("status").last()).toContainText(
     /Checkpoint completed|Already completed/,
+  );
+  console.log(
+    `REHEARSAL_CHECKPOINT ${JSON.stringify({ name, ms: Math.round(performance.now() - started) })}`,
   );
 }
 

@@ -39,8 +39,25 @@ if (
         );
       }
     }
-    if (url.hostname !== "api.the-odds-api.com")
-      return originalFetch(input, init);
+    if (url.hostname !== "api.the-odds-api.com") {
+      const started = performance.now();
+      const response = await originalFetch(input, init);
+      if (
+        process.env.RELEASE_QUERY_LOG &&
+        ["127.0.0.1", "localhost"].includes(url.hostname) &&
+        url.pathname.startsWith("/rest/v1/")
+      ) {
+        appendFileSync(
+          process.env.RELEASE_QUERY_LOG,
+          JSON.stringify({
+            endpoint: url.pathname,
+            ms: Math.round(performance.now() - started),
+            status: response.status,
+          }) + "\n",
+        );
+      }
+      return response;
+    }
     if (url.pathname.endsWith("/scores")) {
       const fixture = JSON.parse(
         readFileSync(`${process.env.ODDS_TEST_FIXTURE}.scores`, "utf8"),
