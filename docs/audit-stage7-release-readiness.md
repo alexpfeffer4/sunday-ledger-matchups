@@ -171,7 +171,8 @@ Reviewing the retained axe **incomplete** entries and viewport trace also found
 that long event text crowded the editor heading/close control beyond the viewport,
 and the return summary used a label on a generic div. The event description now
 scrolls with the editor body while heading/close remain visible; the summary is
-a named group. The journey verifies the close target's bounds, actual click and
+a named group. The stake label and available balance also wrap onto separate
+lines when needed instead of compressing the word “available”. The journey verifies the close target's bounds, actual click and
 returned keyboard focus. Zero automated violations alone would not have closed
 these manual-review findings.
 
@@ -179,9 +180,11 @@ The new disposable journey uses ten real local Auth identities, seven synthetic
 events with long names and a 20-pick, 1,000-credit card constructed through actual
 controls. It exercises 390px navigation, 320px/200% text entry and review, keyboard
 activation, modal focus/close, invalid stake recovery, sealing, all 20 receipts,
-standings and prequalification playoffs. Existing canonical rehearsal/markup
+the prepublication Standings page and prequalification Playoffs. Existing canonical rehearsal/markup
 lanes continue to cover actual playoff rounds, changed odds, dark/live,
-provisional/final/corrected and archive states. Markup-only checks are not
+provisional/final/corrected and archive states. The Stage 4 presentation suite
+retains long standings and playoff identity/numeric checks at 320px/200% text.
+Markup-only checks are not
 represented as signed-in full-stack checks.
 
 Actual timer refresh is exercised in the real Live fixture using a virtual browser
@@ -232,7 +235,70 @@ arguments, bodies, identities or receipt values are recorded in query diagnostic
 Provider counts come from the isolated adapter boundary. These measurements do
 not establish hosted provider latency, internet p95 or production load capacity.
 
-Final measured values and evidence-based budgets are to be recorded after CI.
+The completed desktop journey at head `52ce7709b413b657ae89e54aad5b28809b78d0db`
+([run 34677458531](https://github.com/alexpfeffer4/sunday-ledger-matchups/actions/runs/34677458531))
+provides this initial baseline. All 13 desktop and eight mobile Auth tests passed
+without retries in that run; its new mobile member test failed separately as
+explained below. Final-head results, including the complete mobile member
+measurements, are recorded in the PR release record and standalone handoff.
+
+| Action                                     | Observed Chromium latency | PostgREST requests | Added provider calls | Initial investigation budget |
+| ------------------------------------------ | ------------------------: | -----------------: | -------------------: | ---------------------------- |
+| Navigation to usable Slate, 390px          |                     465ms |                  3 |                    0 | 1,500ms; at most 4 requests  |
+| Twenty-pick seal to receipt                |                     358ms |                 13 |                    0 | 2,000ms; at most 14 requests |
+| Ten-member pregame Matchup read, 390px     |                     471ms |                  6 |                    0 | 1,500ms; at most 7 requests  |
+| Ten-member saved-state refresh after lock  |                     177ms |                  6 |                    0 | 1,500ms; at most 7 requests  |
+| Stored score to visible provisional result |                     499ms |                  6 |                    0 | 1,500ms; at most 7 requests  |
+
+The authoritative acceptance RPC took 39ms inside the 358ms seal journey.
+The 13-request seal measurement includes completion of the legitimate fresh
+quote check. The fixture starts with current stored quotes; zero added provider
+calls does not mean a season needs no imports or score requests. The separate
+score fixture had made seven synthetic provider calls since its reset before
+the measured saved-state read; that read added zero.
+
+These are explicit **investigation thresholds for this disposable CI fixture**,
+with headroom over observed sub-second actions, not statistically established
+p95 values, performance assertions with arbitrary retries, or hosted SLOs.
+Investigate repeated over-budget latency under the same conditions, any increase
+past the stated request budget, or any provider call on these saved-state reads.
+First compare endpoint timings and preceding work; do not remove authorization,
+quote review or freshness checks to reduce the count. No demonstrated latency
+bottleneck justifies a production caching or broad analytics change here.
+
+Run 34676898268 passed 945 database assertions and the 12 existing desktop
+full-stack cases on their first attempt, including the repaired rehearsal harness.
+The new journey reached sealing and receipt preservation, but its final refresh
+measurement incorrectly looked for a Live-only control while still pregame. The
+fixture now advances only its disposable event times and calls the real lock RPC
+before measuring saved-state refresh after lock. No captured live score is
+claimed for that ten-member fixture; the separate quote/score journey measures
+a stored score becoming visibly provisional. Reviewing axe's incomplete entries also showed
+that Standings/Playoffs scans had begun on “Opening the Ledger…”; they now await
+the actual page heading before scanning. Earlier transient-page scans are not
+counted as completed-surface accessibility evidence.
+
+Run 34677458531 then completed the corrected desktop journey. Its mobile WebKit
+trace showed a requested `50` fill leaving the default `250` in the field before
+one submission, eventually exhausting the allocation early. The editor deferred
+focus with animation frames even though native `showModal()` had already focused
+the heading. Focus is now applied synchronously on open, close and validation,
+removing pending focus work that could interrupt immediate entry. The regression
+checks the field value and exact accumulated allocation after every one of the
+20 picks; it does not retry the fill or relax the allocation rule. Final mobile
+confirmation is recorded with the final tested PR head.
+
+### Classification of remaining A15 evidence
+
+| Audit task                                                           | Classification                                            | Evidence or named next check                                                                                                                                                                  |
+| -------------------------------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Narrow member journey, long names, 20 picks and error/modal recovery | Implemented                                               | Real disposable Auth → server action → RSC → RPC journey on Chromium and mobile WebKit; exact final results below/in the PR record.                                                           |
+| Changed odds, event privacy, actual playoff rounds and result states | Verified already complete                                 | Retained quote/rehearsal full-stack cases and the separate shared UI acceptance suite. The new long-card case scans prequalification Playoffs; it does not itself create a published bracket. |
+| Labels, focus and refresh announcements                              | Implemented verification; awaiting named real-world check | Keyboard assertions and DOM/axe checks are automated; VoiceOver, TalkBack and NVDA behavior requires the owner script below.                                                                  |
+| Contrast and target sizes                                            | Implemented verification                                  | Token calculations and rendered scans/dimensions cover stated surfaces; no whole-product certification.                                                                                       |
+| Navigation, seal and Matchup measurement                             | Implemented                                               | Measured local baseline and investigation budgets; no production SLO claim.                                                                                                                   |
+| Physical device, software keyboard, actual zoom and recovery         | Awaiting named real-world check                           | Owner performs the six-step device script and records actual combinations/results.                                                                                                            |
+| Provider latency and competitive weekly operation                    | Awaiting named real-world check                           | Owner observes ordinary authorized play during the two-week Stage 8 pilot.                                                                                                                    |
 
 ### Ordinary live operations
 
@@ -287,8 +353,8 @@ does not close step 1. Do not contact participants on the owner's behalf.
 
 ## Pilot recommendation and release boundary
 
-Proceed to the bounded two-week invited pilot only after the tested Stage 7 PR is
-separately approved/merged/deployed, the owner explicitly settles repository
+Proceed to the bounded two-week invited pilot only after the tested Stage 7 PRs
+are separately approved/merged/deployed and the reviewed guard migration is applied, the owner explicitly settles repository
 audience/password deferral, an operator and a usable backup/isolated-restore
 record are in place, and the
 primary physical-device/recovery and screen-reader spot checks are completed or

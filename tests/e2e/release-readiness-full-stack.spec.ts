@@ -375,8 +375,12 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
       await expect(dialog).toBeVisible();
     }
     await page.getByLabel("Stake in credits").fill("50");
+    await expect(page.getByLabel("Stake in credits")).toHaveValue("50");
     await page.getByRole("button", { name: "Add to card" }).click();
     await expect(dialog).not.toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Working card" }),
+    ).toContainText(`${((index + 1) * 50).toLocaleString("en-US")} allocated`);
   }
   expect(readFileSync(`${fixture}.calls`, "utf8")).toBe("");
   const reviewButton = page

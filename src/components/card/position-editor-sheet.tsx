@@ -64,7 +64,9 @@ export function PositionEditorSheet({
           ? document.activeElement
           : null;
       dialog.showModal();
-      requestAnimationFrame(() => headingRef.current?.focus());
+      // showModal is synchronous. Deferring focus can interrupt typing that
+      // starts immediately after the native dialog has already focused its heading.
+      headingRef.current?.focus();
     } else if (!open && dialog.open) {
       dialog.close();
     }
@@ -78,7 +80,7 @@ export function PositionEditorSheet({
     const returnTarget = returnFocusRef.current;
     if (dialogRef.current?.open) dialogRef.current.close();
     onClose();
-    requestAnimationFrame(() => returnTarget?.focus());
+    returnTarget?.focus();
   }
 
   return (
@@ -101,9 +103,7 @@ export function PositionEditorSheet({
           // Both consumers validate with the shared rules before closing. Keep
           // repeated invalid submissions on the field, even if the error text
           // is unchanged and React does not rerun the error effect.
-          requestAnimationFrame(() => {
-            if (dialogRef.current?.open) inputRef.current?.focus();
-          });
+          if (dialogRef.current?.open) inputRef.current?.focus();
         }}
       >
         <header className="border-boundary flex shrink-0 items-start justify-between gap-3 border-b px-4 py-4 sm:px-6">
