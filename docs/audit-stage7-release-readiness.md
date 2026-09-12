@@ -138,9 +138,10 @@ An upgrade alone is not evidence that a usable restore point exists.
   and historical rules-heading focus flake remain unobserved causes. Retain logs
   and traces if either recurs; do not weaken assertions or add arbitrary retries.
 - **Implemented diagnostics, cause still unresolved:** the combined run
-  34676439755 again exceeded five minutes in database acceptance, despite both
-  independent database lanes and PR #38's full stack passing. Its record is
-  retained. The loopback-only runner now captures `pg_stat_activity` wait/blocking
+  34676439755 stopped producing suite output when the authoritative lifecycle
+  test began at 05:49:34 UTC and was canceled by the superseding commit at
+  05:57:56 UTC. Both independent database lanes and PR #38's full stack passed.
+  This canceled run is not a pass, and its cause remains unobserved. The loopback-only runner now captures `pg_stat_activity` wait/blocking
   information after 90 seconds and fails after five minutes, preserving the full
   selected suite and its exit status. This bounds future stalls and collects
   evidence; a later fast pass does not identify this stall's cause.

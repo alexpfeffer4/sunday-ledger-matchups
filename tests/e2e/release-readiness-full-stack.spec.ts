@@ -444,8 +444,19 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
       page.getByRole("heading", { name: "Card sealed" }),
     ).toBeVisible();
   });
+  // The saved-state refresh belongs to Live, not the pregame sealed view.
+  // Advance only this loopback fixture's event times, then use the real lock RPC.
+  expect(leagueId).toMatch(/^[0-9a-f-]{36}$/);
+  sql(`update private.season_weeks set opens_at=clock_timestamp()-interval '6 hours',common_lock_at=clock_timestamp()-interval '65 minutes' where league_id='${leagueId}';
+    update private.sports_events set scheduled_start_at=clock_timestamp()-interval '1 hour' where league_id='${leagueId}';`);
+  await rpc(members[0]!, "lock_stage1_week", {
+    p_league_id: leagueId,
+    p_idempotency_key: `release-lock-${run}`,
+  });
+  await page.reload();
   const callsBefore = readFileSync(`${fixture}.calls`, "utf8");
   const refresh = page.getByRole("button", { name: "Refresh matchup" });
+  await expect(refresh).toBeVisible();
   await measure(info, "ten-member-matchup-refresh", async () => {
     const response = page.waitForResponse(
       (response) =>
