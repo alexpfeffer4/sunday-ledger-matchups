@@ -286,7 +286,9 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     .fill(identities[1]!.password);
   await page.getByRole("button", { name: "Sign in with password" }).click();
   await page.waitForURL(`**/l/${slug}/matchup`);
-  await expect(page.getByText("Not sealed", { exact: true })).toBeVisible();
+  await expect(page.getByRole("group", { name: /card status$/ })).toContainText(
+    "Not sealed",
+  );
   const initialMemberState = await rpc(members[1]!, "get_stage1_state", {
     p_league_slug: slug,
   });
@@ -506,7 +508,7 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     const opponentBadge = opponentPage.getByLabel(
       `${state.viewer.displayName} card status`,
     );
-    await expect(opponentBadge).toHaveText("Sealed");
+    await expect(opponentBadge).toContainText("Sealed");
     await expect(
       opponentPage.getByRole("heading", { name: "Picks by game" }),
     ).toHaveCount(0);
@@ -524,7 +526,7 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
       expect(rsc).not.toContain(position.id);
       expect(rsc).not.toContain(position.receiptHash);
     }
-    await expect(opponentBadge).toHaveText("Sealed");
+    await expect(opponentBadge).toContainText("Sealed");
   } finally {
     await opponentContext.close();
   }

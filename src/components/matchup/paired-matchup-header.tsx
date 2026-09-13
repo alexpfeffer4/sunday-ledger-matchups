@@ -62,6 +62,7 @@ function MemberScore({
       ) : null}
       {!completed && (!pregame || opponent) ? (
         <div
+          role="group"
           aria-label={`${member.displayName} card status`}
           className="text-muted mt-2 text-xs font-semibold"
         >
