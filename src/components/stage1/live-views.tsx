@@ -738,8 +738,9 @@ export function Stage1LeagueView({
 }) {
   const week = state.week?.nflWeek ?? 1;
   const currentState = weekStatus(state);
+  const paired = projectPairedMatchup(state, operations);
   const games =
-    projectPairedMatchup(state, operations)?.scoreboard ??
+    paired?.scoreboard ??
     state.schedule.map((matchup) => ({
       id: matchup.id,
       sideAName: matchup.sideAName,
@@ -769,7 +770,7 @@ export function Stage1LeagueView({
           ? "Current playoff matchups and final scores."
           : "This week’s league matchups and scores."
       }
-      aside={liveStatus(state)}
+      aside={paired ? undefined : liveStatus(state)}
     >
       {!state.week ||
       (state.league.lifecycle === "DRAFT" && state.week.state === "PLANNED") ? (

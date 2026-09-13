@@ -28,3 +28,9 @@ The browser viewport simulation is not a physical iPhone keyboard test. After th
 ## Rollout
 
 Review and merge the combined PR through the normal deployment workflow. No separate staged implementation or configuration activation is needed. Roll back by reverting this PR; accepted receipts and existing device-local draft storage remain compatible.
+
+## Production verification correction
+
+PR #40 was squash-merged as `9041dcf12cef7d5087650b9f4c37ca393f8b25e5` and its matching production deployment reached Ready. The live check found that the large matchup header still rendered unavailable scores as zero, and a fully accepted owner card with pending compliance could be mislabeled Not started. The verification follow-up makes score availability explicit in the shared presentation projection, uses dashes and accessible unavailable labels until a confirmed event or official result, and recognizes the owner's full accepted allocation. Genuine zero scores after play starts, incomplete-card outcomes, score arithmetic, and opponent privacy remain unchanged. The redundant League Overview state badge is omitted when the shared paired scoreboard is available, avoiding a stale Cards open label after the deadline.
+
+Regression checks cover the main header as well as both small scoreboards, delayed updates after confirmed play, and pending/compliant/incomplete owner-card presentation. Physical iPhone Safari keyboard confirmation remains a device follow-up; automated viewport emulation is not a claim that it has been performed.
