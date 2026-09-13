@@ -314,6 +314,9 @@ from private.sports_events where id='88000000-0000-4000-8000-000000000001';
 insert into private.market_snapshots(id,event_id,week_id,league_id,market_type,outcome_key,proposition,line_milli,american_odds,quality_status,observed_at,payload_hash)
 select '89000000-0000-4000-8000-000000000002','88000000-0000-4000-8000-000000000003',week_id,league_id,market_type,outcome_key,'SECRET FUTURE PICK',line_milli,american_odds,quality_status,observed_at,repeat('8',64)
 from private.market_snapshots where id='89000000-0000-4000-8000-000000000001';
+insert into private.live_quote_heads(event_id,week_id,league_id,market_type,outcome_key,market_snapshot_id)
+select event_id,week_id,league_id,market_type,outcome_key,id
+from private.market_snapshots where id='89000000-0000-4000-8000-000000000002';
 insert into private.position_receipts(id,card_id,week_id,league_id,entry_id,owner_user_id,event_id,market_snapshot_id,market_type,outcome_key,proposition,line_milli,american_odds,stake_credits,quote_observed_at,accepted_at,ruleset_snapshot_id,idempotency_key,request_hash,receipt_hash)
 select '8b000000-0000-4000-8000-000000000002',card_id,week_id,league_id,entry_id,owner_user_id,'88000000-0000-4000-8000-000000000003','89000000-0000-4000-8000-000000000002',market_type,outcome_key,'SECRET FUTURE PICK',line_milli,american_odds,50,quote_observed_at,accepted_at,ruleset_snapshot_id,'future-read-test',repeat('7',64),repeat('8',64)
 from private.position_receipts where id='8b000000-0000-4000-8000-000000000001';

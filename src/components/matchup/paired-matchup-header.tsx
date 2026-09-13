@@ -128,7 +128,7 @@ export function PairedMatchupHeader({
       {matchup.self.decision ? (
         <div className="mt-5">
           <h3
-            className={`text-2xl font-bold ${matchup.spectator ? "text-graphite" : matchup.self.decision === "WIN" ? "text-positive" : matchup.self.decision === "LOSS" ? "text-negative" : "text-graphite"}`}
+            className={`text-2xl font-bold break-words ${matchup.spectator ? "text-graphite" : matchup.self.decision === "WIN" ? "text-positive" : matchup.self.decision === "LOSS" ? "text-negative" : "text-graphite"}`}
           >
             {matchup.resultStatus === "PROVISIONAL" ? "Provisional: " : ""}
             {matchup.spectator
@@ -141,7 +141,7 @@ export function PairedMatchupHeader({
                   ? "You lost"
                   : "You tied"}
           </h3>
-          <p className="text-graphite mt-2 text-sm">
+          <p className="text-graphite mt-2 text-sm break-words">
             {matchup.week.scope === "REGULAR"
               ? matchup.spectator
                 ? `${matchup.self.displayName}: ${matchup.self.record}. ${matchup.opponent.displayName}: ${matchup.opponent.record}.`
