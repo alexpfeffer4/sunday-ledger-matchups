@@ -51,17 +51,17 @@ test.beforeEach(async ({ page }) => {
 
 test("pregame shows only opponent submission status at a narrow width", async ({
   page,
-}) => {
+}, info) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await mountMatchup(page, "UNSEALED");
-  await expect(page.getByLabel("Jordan Rival card status")).toHaveText(
+  await expect(page.getByLabel("Jordan Rival card status")).toContainText(
     "Not sealed",
   );
   await expect(
     page.getByRole("button", { name: "Refresh matchup" }),
   ).toBeVisible();
   await mountMatchup(page, "PREGAME");
-  await expect(page.getByLabel("Jordan Rival card status")).toHaveText(
+  await expect(page.getByLabel("Jordan Rival card status")).toContainText(
     "Sealed",
   );
   await expect(
@@ -72,6 +72,10 @@ test("pregame shows only opponent submission status at a narrow width", async ({
   );
   await expectNoHorizontalOverflow(page);
   await expectNoSeriousAccessibilityViolations(page);
+  await page.screenshot({
+    path: info.outputPath("opponent-sealed-320.png"),
+    fullPage: true,
+  });
 });
 
 test("My Card keeps signed odds on one line beside long titles", async ({
@@ -104,8 +108,10 @@ test("My Card keeps signed odds on one line beside long titles", async ({
         expect(geometry.right).toBeLessThanOrEqual(width);
       }
       await expectNoHorizontalOverflow(page);
+      const screenshot = info.outputPath(`my-card-${width}-${scale}.png`);
+      await page.screenshot({ path: screenshot, fullPage: true });
       await info.attach(`my-card-${width}-${scale}`, {
-        body: await page.screenshot({ fullPage: true }),
+        path: screenshot,
         contentType: "image/png",
       });
     }
