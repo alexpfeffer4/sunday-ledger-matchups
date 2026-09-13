@@ -6,6 +6,7 @@ import { PairedMatchupView } from "@/components/matchup/paired-matchup-view";
 import {
   Stage1LeagueView,
   Stage1StandingsView,
+  Stage1CommissionerView,
 } from "@/components/stage1/live-views";
 import { makePhase6State } from "../fixtures/phase6-paired-matchup";
 import { frozenCardRulesFixture } from "../fixtures/card-rules";
@@ -17,6 +18,33 @@ afterEach(() => {
 });
 
 describe("score availability across member routes", () => {
+  it.each([
+    ["CHAMPION_FINAL", "Champion final"],
+    ["WEEK_18_EXHIBITION", "Week 18 exhibition"],
+    ["FINAL", "Season complete"],
+  ] as const)("names the %s season phase accurately", (phase, label) => {
+    const { state } = makePhase6State("FINAL");
+    state.league.lifecycle = phase;
+    state.commissioner.isCommissioner = true;
+    render(
+      <Stage1CommissionerView
+        state={state}
+        ownerRehearsal
+        invites={[]}
+        leagueManagement={null}
+        latestLiveImport={null}
+        liveWeekOperations={null}
+        providerConfigured={false}
+        week17CorrectionOperations={null}
+      />,
+    );
+    expect(
+      screen.getByText("Season phase").nextElementSibling,
+    ).toHaveTextContent(label);
+    expect(
+      screen.queryByText("Season in progress", { exact: true }),
+    ).toBeNull();
+  });
   it("does not claim published results for empty standings", () => {
     const { state } = makePhase6State("PREGAME");
     state.standings = [];

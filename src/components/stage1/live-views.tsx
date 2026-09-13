@@ -37,6 +37,17 @@ import { AuditDetails } from "@/components/ui/audit-details";
 import { ReceiptPanel } from "@/components/ui/receipt-panel";
 import { formatCenticredits, formatCredits } from "@/domain/odds/american";
 
+const seasonPhaseLabels: Record<Stage1StateDto["league"]["lifecycle"], string> =
+  {
+    DRAFT: "Formation",
+    ROSTER_LOCKED: "Roster set",
+    REGULAR: "Regular season",
+    PLAYOFFS: "Playoffs",
+    CHAMPION_FINAL: "Champion final",
+    WEEK_18_EXHIBITION: "Week 18 exhibition",
+    FINAL: "Season complete",
+  };
+
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
@@ -933,16 +944,7 @@ export function Stage1CommissionerView({
             <div className="flex justify-between gap-3 sm:block">
               <dt className="text-muted">Season phase</dt>
               <dd className="font-semibold sm:mt-1">
-                {(
-                  {
-                    DRAFT: "Formation",
-                    ROSTER_LOCKED: "Roster set",
-                    REGULAR: "Regular season",
-                    PLAYOFFS: "Playoffs",
-                    EXHIBITION: "Exhibition",
-                    ARCHIVED: "Archived",
-                  } as Record<string, string>
-                )[state.league.lifecycle] ?? "Season in progress"}
+                {seasonPhaseLabels[state.league.lifecycle]}
               </dd>
             </div>
             <div className="flex justify-between gap-3 sm:block">
