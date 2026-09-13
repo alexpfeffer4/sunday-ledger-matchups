@@ -337,7 +337,12 @@ select is(pg_temp.cards()#>>'{cards,0,scoreCenticredits}','0','latest correction
 select is(pg_temp.cards()#>>'{cards,0,positions,0,settlement,outcome}','LOSS','revealed pick shows the corrected outcome');
 update private.sports_events set state='VOID',actual_started_at=null where id='88000000-0000-4000-8000-000000000003';
 select is(jsonb_array_length(pg_temp.cards()#>'{cards,0,positions}'),2,'authoritatively voided event is public without kickoff');
-delete from private.league_memberships where league_id='82000000-0000-4000-8000-000000000001' and user_id='81000000-0000-4000-8000-000000000003';
-select throws_ok($$select pg_temp.cards()$$,'42501','League membership required.','removed member immediately loses access');
+-- Exercise the real API role. Active members cannot be deleted because their
+-- competition records reference the membership; test loss of authentication instead.
+set local role authenticated;
+select lives_ok($$select api.get_league_matchup_cards('stage3-live-result-test','85000000-0000-4000-8000-000000000001')$$,'the authenticated member role can call the protected read');
+select set_config('request.jwt.claims','{}',true);
+select throws_ok($$select api.get_league_matchup_cards('stage3-live-result-test','85000000-0000-4000-8000-000000000001')$$,'42501','League membership required.','loss of authenticated identity removes access after a successful read');
+reset role;
 select * from finish();
 rollback;
