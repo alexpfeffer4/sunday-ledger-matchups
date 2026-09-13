@@ -28,7 +28,7 @@ export function PageFrame({
       <div
         className={`mx-auto max-w-[1480px] min-w-0 px-4 [overflow-wrap:anywhere] sm:px-6 lg:px-8 ${compact ? "py-5 sm:py-6" : "py-7 sm:py-9"}`}
       >
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
             <p
               className={
@@ -42,7 +42,7 @@ export function PageFrame({
               tabIndex={-1}
               className={`text-ink font-bold tracking-[-0.025em] ${
                 compact
-                  ? "text-xl leading-7 sm:text-2xl sm:leading-8"
+                  ? "text-[1.75rem] leading-9"
                   : "mt-2 text-[1.75rem] leading-9 tracking-[-0.035em] sm:text-[2rem]"
               }`}
             >
@@ -54,7 +54,7 @@ export function PageFrame({
               </p>
             ) : null}
           </div>
-          {aside}
+          {aside ? <div className="shrink-0 self-start">{aside}</div> : null}
         </div>
         {children}
       </div>

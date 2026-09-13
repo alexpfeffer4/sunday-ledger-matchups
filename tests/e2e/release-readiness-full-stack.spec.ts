@@ -321,6 +321,18 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
         .getByRole("button")
         .first(),
     ).toBeEnabled();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const firstMarket = await page
+      .locator("main .outcome-selector-group")
+      .first()
+      .boundingBox();
+    const cardTray = await page
+      .getByRole("region", { name: "Working card" })
+      .boundingBox();
+    expect(
+      firstMarket!.y + firstMarket!.height,
+      "One complete market fits above the working-card tray on the first 390px view",
+    ).toBeLessThanOrEqual(cardTray!.y);
     await page
       .locator(".outcome-selector-group")
       .first()

@@ -53,7 +53,7 @@ describe("Phase 10 route consolidation boundaries", () => {
   it("keeps commissioner presentation lifecycle-based without new authority", () => {
     const presentation = source("src/components/stage1/live-views.tsx");
     const controls = source("src/components/commissioner/stage1-controls.tsx");
-    expect(presentation).toContain("Current league and season state");
+    expect(presentation).toContain("Current season");
     expect(presentation).toContain("Lifecycle and league settings");
     expect(controls).toContain("Next action");
     expect(controls).toContain("League formation");

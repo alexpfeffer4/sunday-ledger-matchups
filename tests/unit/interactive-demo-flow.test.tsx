@@ -61,13 +61,15 @@ describe("practice week flow", () => {
       name: /^River Club \+4.5 −110$/,
     });
     expect(within(riverSpread).getByText("River Club")).toBeVisible();
-    expect(within(riverSpread).getByText("+4.5 · −110")).toBeVisible();
+    expect(within(riverSpread).getByText("+4.5")).toBeVisible();
+    expect(within(riverSpread).getByText("−110")).toBeVisible();
 
     const underTotal = screen.getByRole("button", {
       name: /^Under 47.5 −112$/,
     });
     expect(within(underTotal).getByText("Under")).toBeVisible();
-    expect(within(underTotal).getByText("47.5 · −112")).toBeVisible();
+    expect(within(underTotal).getByText("47.5")).toBeVisible();
+    expect(within(underTotal).getByText("−112")).toBeVisible();
 
     const cappedDialog = openEditor(/^Capital Club −205$/);
     fireEvent.change(within(cappedDialog).getByLabelText("Stake in credits"), {

@@ -7,6 +7,7 @@ import {
 } from "@/components/card/outcome-selector";
 import { formatCredits } from "@/domain/odds/american";
 import { PickReturn, ReturnExplanation } from "@/components/card/pick-return";
+import { useEditorViewport } from "@/components/card/use-editor-viewport";
 
 export function PositionEditorSheet({
   americanOdds = null,
@@ -46,6 +47,7 @@ export function PositionEditorSheet({
   title: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
@@ -53,6 +55,7 @@ export function PositionEditorSheet({
   const contextId = useId();
   const inputId = useId();
   const errorId = useId();
+  useEditorViewport(open, dialogRef, bodyRef);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -87,7 +90,7 @@ export function PositionEditorSheet({
     <dialog
       aria-describedby={contextId}
       aria-labelledby={titleId}
-      className="practice-position-dialog m-0 max-h-none max-w-none p-0"
+      className="practice-position-dialog m-0 max-w-none p-0"
       onCancel={(event) => {
         event.preventDefault();
         closeEditor();
@@ -106,13 +109,10 @@ export function PositionEditorSheet({
           if (dialogRef.current?.open) inputRef.current?.focus();
         }}
       >
-        <header className="border-boundary flex shrink-0 items-start justify-between gap-3 border-b px-4 py-4 sm:px-6">
+        <header className="border-boundary flex shrink-0 items-center justify-between gap-3 border-b px-[16px] py-[8px] sm:px-6">
           <div className="min-w-0 flex-1">
-            <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-              Edit pick
-            </p>
             <h2
-              className="mt-1 text-xl font-bold outline-none"
+              className="text-xl font-bold outline-none"
               id={titleId}
               ref={headingRef}
               tabIndex={-1}
@@ -122,7 +122,7 @@ export function PositionEditorSheet({
           </div>
           <button
             aria-label="Close pick editor"
-            className="border-control bg-surface hover:bg-subtle flex size-11 shrink-0 items-center justify-center rounded-lg border text-xl"
+            className="border-control bg-surface hover:bg-subtle flex size-[44px] shrink-0 items-center justify-center rounded-lg border text-xl"
             onClick={closeEditor}
             type="button"
           >
@@ -130,8 +130,11 @@ export function PositionEditorSheet({
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-          <p className="text-graphite mb-5 text-sm" id={contextId}>
+        <div
+          ref={bodyRef}
+          className="practice-position-dialog-body min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6"
+        >
+          <p className="text-graphite mb-3 text-sm" id={contextId}>
             {context}
           </p>
           <OutcomeSelector
@@ -141,16 +144,16 @@ export function PositionEditorSheet({
             selectedId={selectedOutcomeId}
           />
 
-          <div className="mt-6">
-            <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="mt-4">
+            <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
               <label className="text-sm font-semibold" htmlFor={inputId}>
                 Stake in credits
               </label>
-              <span className="text-muted text-xs">
+              <span className="text-graphite text-sm">
                 {formatCredits(remainingCredits)} available
               </span>
             </div>
-            <div className="border-control bg-surface focus-within:border-registry mt-2 flex min-h-12 items-center rounded-lg border">
+            <div className="practice-stake-field border-control bg-surface focus-within:border-registry mt-2 flex min-h-12 items-center rounded-lg border">
               <input
                 aria-describedby={`${inputId}-copy${error ? ` ${errorId}` : ""}`}
                 aria-invalid={Boolean(error)}
@@ -171,17 +174,6 @@ export function PositionEditorSheet({
             <p className="text-graphite mt-2 text-sm" id={`${inputId}-copy`}>
               {helper}
             </p>
-            {americanOdds !== null && selectedOutcomeId ? (
-              <div className="mt-4">
-                <PickReturn
-                  stakeCredits={Number(stakeCredits)}
-                  americanOdds={americanOdds}
-                />
-                <div className="mt-3">
-                  <ReturnExplanation />
-                </div>
-              </div>
-            ) : null}
             {error ? (
               <p
                 className="border-negative text-negative mt-3 border-l-2 pl-3 text-sm font-semibold"
@@ -191,12 +183,34 @@ export function PositionEditorSheet({
                 {error}
               </p>
             ) : null}
+            <details className="border-boundary mt-3 border-t">
+              <summary className="text-action min-h-11 cursor-pointer py-3 text-sm font-semibold">
+                How returns work
+              </summary>
+              {americanOdds !== null && selectedOutcomeId ? (
+                <PickReturn
+                  stakeCredits={Number(stakeCredits)}
+                  americanOdds={americanOdds}
+                />
+              ) : null}
+              <div className="mt-3 pb-3">
+                <ReturnExplanation />
+              </div>
+            </details>
           </div>
         </div>
 
-        <footer className="practice-position-dialog-footer border-boundary bg-surface shrink-0 border-t px-4 pt-4 sm:px-6">
+        <footer className="practice-position-dialog-footer border-boundary bg-surface shrink-0 space-y-[8px] border-t px-[16px] pt-[8px] sm:px-6">
+          {americanOdds !== null && selectedOutcomeId ? (
+            <PickReturn
+              compact
+              showBreakdown={false}
+              stakeCredits={Number(stakeCredits)}
+              americanOdds={americanOdds}
+            />
+          ) : null}
           <button
-            className="bg-registry hover:bg-registry-hover min-h-12 w-full rounded-lg px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="bg-registry hover:bg-registry-hover min-h-[48px] w-full rounded-lg px-[20px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!selectedOutcomeId}
             type="submit"
           >

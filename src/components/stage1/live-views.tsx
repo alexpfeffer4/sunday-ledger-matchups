@@ -1,5 +1,8 @@
 import { competitionLabel } from "@/application/presentation/competition-label";
-import { opponentCardStatus } from "@/application/queries/project-paired-matchup";
+import {
+  opponentCardStatus,
+  projectPairedMatchup,
+} from "@/application/queries/project-paired-matchup";
 import { MatchupStateRefresh } from "@/components/matchup/matchup-state-refresh";
 import { ownerCardContext } from "@/components/card/owner-card-context";
 import { OwnerCardProgress } from "@/components/card/owner-card-progress";
@@ -491,12 +494,7 @@ export function Stage1SlateView({
     );
   }
   return (
-    <PageFrame
-      eyebrow="Current published odds"
-      title="Make picks"
-      description={`Cards lock ${formatDate(state.week.commonLockAt)}. Build a private draft, review the current terms, then confirm all 1,000 credits at once.`}
-      aside={liveStatus(state)}
-    >
+    <PageFrame eyebrow="Current published odds" title="Make picks">
       <Stage1CardBuilder state={state} initialReview={initialReview} />
     </PageFrame>
   );
@@ -541,9 +539,8 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
     <PageFrame
       eyebrow="Visible only to you"
       title={`My Week ${state.week.nflWeek} card`}
-      description="You can always see your sealed picks. The commissioner cannot."
     >
-      <div className="mt-7">
+      <div className="mt-4">
         <OwnerCardProgress context={ownerCardContext(state)} onCardPage />
       </div>
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -556,70 +553,87 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
             <ol className="border-boundary bg-surface divide-boundary divide-y overflow-hidden rounded-lg border">
               {state.ownerCard.positions.map((position) => (
                 <li className="p-4 sm:p-5" key={position.id}>
-                  <div className="flex justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
-                        {position.marketType} · {position.eventLabel}
-                      </p>
-                      <h2 className="mt-2 font-bold">
-                        {formatMarketProposition(position.proposition)}
-                      </h2>
-                    </div>
-                    <p className="shrink-0 font-mono font-semibold whitespace-nowrap">
+                  <p className="text-muted text-sm">{position.eventLabel}</p>
+                  <div className="mt-1 flex items-start justify-between gap-3">
+                    <h2 className="min-w-0 text-base font-bold">
+                      {formatMarketProposition(position.proposition)}
+                    </h2>
+                    <p className="shrink-0 font-mono text-[.9375rem] leading-5 font-semibold whitespace-nowrap">
                       {formatOdds(position.americanOdds)}
                     </p>
                   </div>
-                  <dl className="border-boundary mt-4 grid grid-cols-2 gap-4 border-t pt-4 text-sm sm:grid-cols-4">
-                    <div>
-                      <dt className="text-muted">Line</dt>
-                      <dd className="mt-1 font-mono font-semibold">
-                        {formatLine(position.lineMilli, position.marketType)}
-                      </dd>
-                    </div>
+                  <dl className="mt-3 flex flex-wrap justify-between gap-x-5 gap-y-2 text-sm">
                     <div>
                       <dt className="text-muted">Stake</dt>
-                      <dd className="mt-1 font-mono font-semibold">
+                      <dd className="font-mono font-semibold">
                         {formatCredits(position.stakeCredits)}
-                      </dd>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <dt className="text-muted">Sealed</dt>
-                      <dd className="mt-1 font-semibold">
-                        {formatDate(position.acceptedAt)}
                       </dd>
                     </div>
                     <div>
                       <dt className="text-muted">Result</dt>
-                      <dd className="mt-1 font-semibold">
-                        {position.settlement?.outcome ?? "Pending"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted">Returned</dt>
-                      <dd className="mt-1 font-mono font-semibold">
+                      <dd className="font-semibold">
                         {position.settlement
-                          ? formatScore(
-                              position.settlement.returnedCenticredits,
-                            )
-                          : "—"}
+                          ? {
+                              WIN: "Won",
+                              LOSS: "Lost",
+                              PUSH: "Push",
+                              VOID: "Void",
+                            }[position.settlement.outcome]
+                          : "Pending"}
                       </dd>
                     </div>
+                    {position.settlement ? (
+                      <div>
+                        <dt className="text-muted">Returned</dt>
+                        <dd className="font-mono font-semibold">
+                          {formatScore(
+                            position.settlement.returnedCenticredits,
+                          )}
+                        </dd>
+                      </div>
+                    ) : null}
                   </dl>
-                  <p className="text-muted mt-3 text-sm">
-                    Kickoff {formatDate(position.scheduledStartAt)}
-                  </p>
                   {!position.settlement ? (
-                    <PickReturn
-                      stakeCredits={position.stakeCredits}
-                      americanOdds={position.americanOdds}
-                    />
+                    <div className="mt-3">
+                      <PickReturn
+                        compact
+                        stakeCredits={position.stakeCredits}
+                        americanOdds={position.americanOdds}
+                      />
+                    </div>
                   ) : null}
-                  <Link
-                    className="text-action mt-4 inline-flex min-h-11 items-center text-sm font-semibold hover:underline"
-                    href={`/l/${state.league.slug}/receipt/${position.id}`}
-                  >
-                    View receipt
-                  </Link>
+                  <div className="mt-2 flex flex-wrap items-start justify-between gap-x-4">
+                    <details className="min-w-0 text-sm">
+                      <summary className="min-h-11 cursor-pointer py-3 font-semibold">
+                        Pick details
+                      </summary>
+                      <dl className="space-y-2 pb-3 text-sm">
+                        <div>
+                          <dt className="text-muted">Line</dt>
+                          <dd className="font-mono">
+                            {formatLine(
+                              position.lineMilli,
+                              position.marketType,
+                            )}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted">Kickoff</dt>
+                          <dd>{formatDate(position.scheduledStartAt)}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted">Sealed</dt>
+                          <dd>{formatDate(position.acceptedAt)}</dd>
+                        </div>
+                      </dl>
+                    </details>
+                    <Link
+                      className="text-action inline-flex min-h-11 items-center text-sm font-semibold hover:underline"
+                      href={`/l/${state.league.slug}/receipt/${position.id}`}
+                    >
+                      View receipt
+                    </Link>
+                  </div>
                 </li>
               ))}
             </ol>
@@ -627,7 +641,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
         </div>
         {state.ownerCard.positions.length > 0 ? (
           <aside className="border-boundary bg-surface h-fit rounded-xl border p-5">
-            <ReturnExplanation />
+            <ReturnExplanation disclosure />
           </aside>
         ) : null}
       </div>
@@ -704,31 +718,41 @@ export function Stage1LiveView({ state }: { state: Stage1StateDto }) {
   );
 }
 
-export function Stage1LeagueView({ state }: { state: Stage1StateDto }) {
+export function Stage1LeagueView({
+  state,
+  operations = null,
+}: {
+  state: Stage1StateDto;
+  operations?: LiveWeekOperations | null;
+}) {
   const week = state.week?.nflWeek ?? 1;
   const currentState = weekStatus(state);
-  const games = state.schedule.map((matchup) => ({
-    id: matchup.id,
-    sideAName: matchup.sideAName,
-    sideBName: matchup.sideBName,
-    sideAScoreCenticredits: matchup.result?.sideAPointsForCenticredits ?? null,
-    sideBScoreCenticredits: matchup.result?.sideBPointsForCenticredits ?? null,
-    state: matchup.result?.status === "FINAL" ? "Final" : currentState,
-    competition: competitionLabel({
-      lifecycle: state.league.lifecycle,
-      postseasonRole: matchup.postseasonRole,
-      scope: matchup.scope,
-      week,
-    }),
-    selected: [matchup.sideAEntryId, matchup.sideBEntryId].includes(
-      state.viewer.entryId,
-    ),
-  }));
+  const games =
+    projectPairedMatchup(state, operations)?.scoreboard ??
+    state.schedule.map((matchup) => ({
+      id: matchup.id,
+      sideAName: matchup.sideAName,
+      sideBName: matchup.sideBName,
+      sideAScoreCenticredits:
+        matchup.result?.sideAPointsForCenticredits ?? null,
+      sideBScoreCenticredits:
+        matchup.result?.sideBPointsForCenticredits ?? null,
+      state: matchup.result?.status === "FINAL" ? "Final" : currentState,
+      competition: competitionLabel({
+        lifecycle: state.league.lifecycle,
+        postseasonRole: matchup.postseasonRole,
+        scope: matchup.scope,
+        week,
+      }),
+      selected: [matchup.sideAEntryId, matchup.sideBEntryId].includes(
+        state.viewer.entryId,
+      ),
+    }));
 
   return (
     <PageFrame
       eyebrow={`${state.league.name} · Week ${state.week?.nflWeek ?? 1}${state.week ? ` ${state.week.scope.toLowerCase()}` : ""}`}
-      title="League Overview"
+      title="League overview"
       description={
         state.league.lifecycle === "PLAYOFFS"
           ? "Current playoff matchups and final scores."
@@ -748,13 +772,10 @@ export function Stage1LeagueView({ state }: { state: Stage1StateDto }) {
             week={week}
           />
           <section aria-labelledby="league-members-heading" className="h-fit">
-            <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
-              Member identity
-            </p>
             <h2 className="mt-1 text-lg font-bold" id="league-members-heading">
               League members
             </h2>
-            <ul className="border-boundary bg-surface mt-3 divide-y overflow-hidden rounded-lg border">
+            <ul className="border-boundary divide-boundary bg-surface mt-3 divide-y overflow-hidden rounded-lg border">
               {state.members.map((member) => (
                 <li
                   className="flex min-h-12 items-center justify-between gap-3 px-4 py-2 text-sm"
@@ -820,22 +841,32 @@ export function Stage1StandingsView({
       eyebrow={
         state.league.lifecycle === "PLAYOFFS"
           ? "Regular season final · Week 14"
-          : `Official through Week ${state.week?.nflWeek ?? 1}`
+          : rows.length
+            ? "Official standings"
+            : "No final results yet"
       }
       title="Standings"
       description={
-        state.league.lifecycle === "PLAYOFFS"
-          ? "The final regular-season table. Playoff results appear in the bracket."
-          : "Updated after the latest final matchup."
+        rows.length
+          ? state.league.lifecycle === "PLAYOFFS"
+            ? "The final regular-season table. Playoff results appear in the bracket."
+            : "Updated after the latest final matchup."
+          : undefined
       }
       aside={liveStatus(state)}
     >
       {state.standings.length === 0 ? (
         <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">
-          <p>
-            Standings publish after every Week {state.week?.nflWeek ?? 1}
-            matchup completes.
+          <h2 className="text-lg font-bold">No final results yet</h2>
+          <p className="text-graphite mt-2 text-sm leading-6">
+            Standings publish when all matchups in the week are final.
           </p>
+          <Link
+            className="text-action mt-3 inline-flex min-h-11 items-center font-semibold"
+            href={`/l/${state.league.slug}/league`}
+          >
+            View current matchups
+          </Link>
         </div>
       ) : (
         <StandingsTable
@@ -885,8 +916,7 @@ export function Stage1CommissionerView({
     <PageFrame
       eyebrow={`${state.league.name} · Commissioner`}
       title="Commissioner console"
-      description="Run the season one step at a time. Member picks stay private, and published results cannot be manually rewritten."
-      aside={liveStatus(state)}
+      description="Manage this week and the next season checkpoint."
     >
       <>
         <section
@@ -895,15 +925,24 @@ export function Stage1CommissionerView({
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-bold" id="commissioner-current-state">
-              Current league and season state
+              Current season
             </h2>
             {liveStatus(state)}
           </div>
           <dl className="mt-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
             <div className="flex justify-between gap-3 sm:block">
-              <dt className="text-muted">Lifecycle</dt>
+              <dt className="text-muted">Season phase</dt>
               <dd className="font-semibold sm:mt-1">
-                {state.league.lifecycle.replaceAll("_", " ")}
+                {(
+                  {
+                    DRAFT: "Formation",
+                    ROSTER_LOCKED: "Roster set",
+                    REGULAR: "Regular season",
+                    PLAYOFFS: "Playoffs",
+                    EXHIBITION: "Exhibition",
+                    ARCHIVED: "Archived",
+                  } as Record<string, string>
+                )[state.league.lifecycle] ?? "Season in progress"}
               </dd>
             </div>
             <div className="flex justify-between gap-3 sm:block">
@@ -921,20 +960,19 @@ export function Stage1CommissionerView({
               </dd>
             </div>
             <div className="flex justify-between gap-3 sm:block">
-              <dt className="text-muted">
-                {ownerRehearsal ? "Corrections" : "Ready cards · Corrections"}
-              </dt>
+              <dt className="text-muted">Corrections</dt>
               <dd className="font-semibold sm:mt-1">
-                {ownerRehearsal ? (
-                  state.commissioner.correctionCount
-                ) : (
-                  <>
-                    {state.commissioner.readyCount ?? "Sealed"} ·{" "}
-                    {state.commissioner.correctionCount}
-                  </>
-                )}
+                {state.commissioner.correctionCount}
               </dd>
             </div>
+            {!ownerRehearsal && state.commissioner.readyCount !== null ? (
+              <div className="flex justify-between gap-3 sm:block">
+                <dt className="text-muted">Ready cards</dt>
+                <dd className="font-semibold sm:mt-1">
+                  {state.commissioner.readyCount}
+                </dd>
+              </div>
+            ) : null}
           </dl>
         </section>
 
@@ -1006,8 +1044,8 @@ export function Stage1CommissionerView({
                 Member privacy boundary
               </summary>
               <p className="text-graphite px-5 pb-5 text-sm leading-6">
-                You can see how many cards are ready, but never a member’s picks
-                before they are revealed by the game schedule.
+                Only authorized card status is shown. Members’ picks stay
+                private until each game’s start is confirmed.
               </p>
             </details>
           </aside>

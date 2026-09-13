@@ -302,7 +302,7 @@ describe("Phase 10 dense league records", () => {
     expect(screen.getByRole("heading", { name: "Card sealed" })).toBeVisible();
     expect(
       screen.getByRole("region", { name: "Your weekly card" }),
-    ).toHaveTextContent("1,000 / 1,000");
+    ).toHaveTextContent("1,000 credits sealed");
     expect(
       screen.queryByText("Allocation", { exact: true }),
     ).not.toBeInTheDocument();

@@ -27,6 +27,72 @@ async function addPick(page: Page, outcomeName: string, stake: string) {
   await expect(dialog).not.toBeVisible();
 }
 
+test("editor keeps its close, return and action inside a shortened visual viewport", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  // Deterministic geometry regression; the real iOS keyboard still needs a
+  // device check because WebKit automation does not display its accessory bar.
+  await page.addInitScript(() => {
+    const viewport = Object.assign(new EventTarget(), {
+      height: 844,
+      offsetTop: 0,
+    });
+    Object.defineProperty(window, "visualViewport", {
+      value: viewport,
+      configurable: true,
+    });
+  });
+  await page.goto("/practice");
+  const trigger = page
+    .getByRole("button", { name: "Harbor Club −185" })
+    .first();
+  await trigger.click();
+  const dialog = page.getByRole("dialog");
+  const stake = dialog.getByLabel("Stake in credits");
+  await stake.fill("250");
+  for (const textSize of [100, 200]) {
+    await page.evaluate((size) => {
+      document.documentElement.style.fontSize = `${size}%`;
+      const viewport = window.visualViewport!;
+      Object.assign(viewport, { height: 400, offsetTop: 64 });
+      viewport.dispatchEvent(new Event("resize"));
+      viewport.dispatchEvent(new Event("scroll"));
+    }, textSize);
+    await expect(dialog).toHaveAttribute("data-compact-viewport", "true");
+    await expect(stake).toHaveValue("250");
+    for (const control of [
+      dialog.getByRole("button", { name: "Close pick editor" }),
+      dialog.getByRole("group", { name: "Return if this pick wins" }),
+      dialog.getByRole("button", { name: "Add to card" }),
+    ]) {
+      await expect(control).toBeVisible();
+      const rect = await control.boundingBox();
+      expect(rect!.y).toBeGreaterThanOrEqual(64);
+      expect(rect!.y + rect!.height).toBeLessThanOrEqual(465);
+    }
+    const action = await dialog
+      .getByRole("button", { name: "Add to card" })
+      .boundingBox();
+    expect(action!.height).toBeGreaterThanOrEqual(48);
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: info.outputPath(`editor-visual-viewport-${textSize}.png`),
+    });
+  }
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "100%";
+    Object.assign(window.visualViewport!, { height: 844, offsetTop: 0 });
+    window.visualViewport!.dispatchEvent(new Event("resize"));
+  });
+  await expect(dialog).toHaveAttribute("data-compact-viewport", "false");
+  await dialog.getByRole("button", { name: "Add to card" }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Working card" }),
+  ).toContainText("1 pick · 250 allocated");
+});
+
 test("public Practice is factual, unsaved, accessible, and usable at 320 px", async ({
   page,
 }) => {
@@ -60,7 +126,7 @@ test("public Practice is factual, unsaved, accessible, and usable at 320 px", as
       (element) =>
         getComputedStyle(element).gridTemplateColumns.split(" ").length,
     );
-  expect(compactColumns).toBe(1);
+  expect(compactColumns).toBe(2);
 
   await expectNoHorizontalOverflow(page);
   await expectNoSeriousAccessibilityViolations(page);

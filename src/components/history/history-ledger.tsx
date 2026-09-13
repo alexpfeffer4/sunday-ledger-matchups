@@ -22,7 +22,7 @@ export function HistoryLedger({
 }) {
   return (
     <PageFrame
-      description="Every row is the latest finalized official matchup version. Corrections preserve their prior version and explanation."
+      description="Your completed matchups, results, and receipts."
       eyebrow={`${memory.league.nflYear} active season · private league record`}
       title="History ledger"
     >
@@ -30,8 +30,8 @@ export function HistoryLedger({
         <section className="border-boundary bg-surface mt-7 rounded-xl border p-6">
           <h2 className="text-lg font-bold">No finalized matchups yet</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Provisional scores stay on the matchup page. This ledger begins when
-            the first official matchup version is final.
+            Results appear here when your matchups are final. You can follow
+            this week on the matchup page.
           </p>
           <Link
             className="text-action mt-4 inline-flex min-h-11 items-center font-semibold hover:underline"
