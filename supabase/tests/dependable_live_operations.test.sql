@@ -357,11 +357,72 @@ select throws_ok($$select api.import_live_scores('82000000-0000-4000-8000-000000
   jsonb_set(jsonb_set(pg_temp.live_score_import(false,0,0,false,null,null),'{events}',jsonb_build_array(pg_temp.live_score_import(false,0,0,false,null,null)->'events'->0)),
     '{events,0,lastUpdate}',to_jsonb((select scheduled_start_at-interval '1 minute' from private.sports_events where fixture_event_key='provider-live-result-one'))),'reject-pregame-score-source')$$,
   '22023','A live score event is internally inconsistent.','pre-kickoff evidence cannot reveal a pick');
+-- Live provider evidence uses a more precise kickoff without changing the slate.
+create temp table published_before_score_recovery as
+select e.scheduled_start_at, w.common_lock_at, r.receipt_hash
+from private.sports_events e join private.season_weeks w on w.id=e.week_id
+join private.position_receipts r on r.event_id=e.id
+where e.fixture_event_key='provider-live-result-one';
+create temp table later_kickoff_payload as
+select jsonb_set(jsonb_set(pg_temp.live_score_import(false,0,0,false,null,null),'{events}',
+  jsonb_build_array(pg_temp.live_score_import(false,0,0,false,null,null)->'events'->0)),
+  '{events,0,scheduledStartAt}',to_jsonb((select scheduled_start_at+interval '4 minutes 5 seconds'
+  from private.sports_events where fixture_event_key='provider-live-result-one'))) value;
+select throws_ok($$select api.import_live_scores('82000000-0000-4000-8000-000000000001',
+  jsonb_set((select value from later_kickoff_payload),'{events,0,lastUpdate}',to_jsonb(
+    (select scheduled_start_at+interval '2 minutes' from published_before_score_recovery))),
+  'before-reported-start')$$,'22023','A live score event is internally inconsistent.',
+  'evidence after published time but before reported kickoff cannot confirm play');
+select throws_ok($$select api.import_live_scores('82000000-0000-4000-8000-000000000001',
+  jsonb_set((select value from later_kickoff_payload),'{events,0,scheduledStartAt}',to_jsonb(clock_timestamp()+interval '1 hour')),
+  'future-reported-start')$$,'22023','A live score event is internally inconsistent.',
+  'scores cannot confirm a reported kickoff that is still in the future');
+select throws_ok($$select api.import_live_scores('82000000-0000-4000-8000-000000000001',
+  jsonb_set((select value from later_kickoff_payload),'{events,0,scheduledStartAt}',to_jsonb(
+    (select scheduled_start_at-interval '1 second' from published_before_score_recovery))),
+  'earlier-reported-start')$$,'22023','The provider changed a published event identity or kickoff.',
+  'earlier kickoff still requires operator review');
+select throws_ok($$select api.import_live_scores('82000000-0000-4000-8000-000000000001',
+  jsonb_set((select value from later_kickoff_payload),'{events,0,scheduledStartAt}',to_jsonb(
+    (select scheduled_start_at+interval '48 hours' from published_before_score_recovery))),
+  'outside-postponement-window')$$,'22023','The provider changed a published event identity or kickoff.',
+  'kickoff at the postponement boundary still requires operator review');
+select throws_ok($$select api.import_live_scores('82000000-0000-4000-8000-000000000001',
+  jsonb_set((select value from later_kickoff_payload),'{events,0,scheduledStartAt}','null'::jsonb),
+  'missing-reported-start')$$,'22023','The provider changed a published event identity or kickoff.',
+  'missing kickoff cannot bypass identity validation');
+select throws_ok($$select api.import_live_scores('82000000-0000-4000-8000-000000000001',
+  jsonb_set((select value from later_kickoff_payload),'{events,0,awayTeam}','"Different team"'::jsonb),
+  'later-time-different-team')$$,'22023','The provider changed a published event identity or kickoff.',
+  'later kickoff never permits different teams');
+select throws_ok($$select api.import_live_scores('82000000-0000-4000-8000-000000000001',
+  jsonb_set((select value from later_kickoff_payload),'{events,0,externalEventId}','"different-game-id"'::jsonb),
+  'later-time-different-id')$$,'22023','The live score batch must match published events.',
+  'later kickoff never permits an unknown game ID');
+select lives_ok($$select api.import_live_scores('82000000-0000-4000-8000-000000000001',
+  jsonb_set(jsonb_set(jsonb_set((select value from later_kickoff_payload),'{events,0,awayScore}','null'::jsonb),
+    '{events,0,homeScore}','null'::jsonb),'{events,0,lastUpdate}','null'::jsonb),
+  'later-time-no-score')$$,'later kickoff without scores records only a pending check');
+select is((select state from private.sports_events where fixture_event_key='provider-live-result-one'),
+  'SCHEDULED','timing alone does not mark play as started');
+select is((select actual_started_at from private.sports_events where fixture_event_key='provider-live-result-one'),
+  null::timestamptz,'timing alone does not establish actual start');
 select set_config('request.jwt.claims','{"role":"service_role"}',true);
 select is(api.complete_provider_request((select (value->>'leaseId')::uuid from checkpoint_claim),
-  jsonb_set(pg_temp.live_score_import(false,0,0,false,null,null),'{events}',jsonb_build_array(pg_temp.live_score_import(false,0,0,false,null,null)->'events'->0)),465)->>'status','SUCCEEDED','provider scores confirm a start without settling');
+  jsonb_set((select value from later_kickoff_payload),'{fetchedAt}',to_jsonb(clock_timestamp())),465)->>'status','SUCCEEDED','provider scores after the later kickoff confirm a start without settling');
 select is((select state from private.sports_events where fixture_event_key='provider-live-result-one'),'LIVE','confirmed start recorded');
 select is((select count(*) from private.event_result_versions),0::bigint,'live scores never settle positions');
+select is((select scheduled_start_at from private.sports_events where fixture_event_key='provider-live-result-one'),
+  (select scheduled_start_at from published_before_score_recovery),'published kickoff remains unchanged');
+select is((select common_lock_at from private.season_weeks where id='85000000-0000-4000-8000-000000000001'),
+  (select common_lock_at from published_before_score_recovery),'published card deadline remains unchanged');
+select is((select receipt_hash from private.position_receipts where id='8b000000-0000-4000-8000-000000000001'),
+  (select receipt_hash from published_before_score_recovery),'accepted receipt remains unchanged');
+select ok(exists(select 1 from private.live_score_imports where
+  (payload->'events'->0->>'scheduledStartAt')::timestamptz=
+    (select scheduled_start_at+interval '4 minutes 5 seconds' from published_before_score_recovery)),
+  'private import preserves the original provider-reported kickoff');
+
 select is((select state from private.sports_events where fixture_event_key='provider-live-result-two'),'SCHEDULED','future event remains unstarted');
 select ok((select next_check_at>clock_timestamp()+interval '50 minutes' from private.live_score_checks where event_id='88000000-0000-4000-8000-000000000001'),'no continuous refresh between start and final');
 select set_config('request.jwt.claims','{"sub":"81000000-0000-4000-8000-000000000002","role":"authenticated"}',true);
@@ -386,7 +447,7 @@ truncate checkpoint_claim;
 insert into checkpoint_claim select api.claim_live_score_refresh('82000000-0000-4000-8000-000000000001');
 select set_config('request.jwt.claims','{"role":"service_role"}',true);
 select is(api.complete_provider_request((select (value->>'leaseId')::uuid from checkpoint_claim),
-  jsonb_set(pg_temp.live_score_import(true,27,20,false,null,null),'{events}',jsonb_build_array(pg_temp.live_score_import(true,27,20,false,null,null)->'events'->0)),461)->>'status','SUCCEEDED','recovery captures a final through the authoritative settlement engine');
+  jsonb_set(jsonb_set(pg_temp.live_score_import(true,27,20,false,null,null),'{events}',jsonb_build_array(pg_temp.live_score_import(true,27,20,false,null,null)->'events'->0)), '{events,0,scheduledStartAt}', (select value->'events'->0->'scheduledStartAt' from later_kickoff_payload)),461)->>'status','SUCCEEDED','later kickoff final reaches the authoritative settlement engine');
 select is((select count(*) from private.event_result_versions),1::bigint,'one result version');
 select is((select returned_centicredits from private.settlement_versions limit 1),200000::bigint,'immutable terms produce expected return');
 select is(api.complete_provider_request((select (value->>'leaseId')::uuid from checkpoint_claim),null,900)->>'status','SUCCEEDED','completion replay returns stored receipt');
