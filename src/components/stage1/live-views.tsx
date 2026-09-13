@@ -1,4 +1,5 @@
 import { competitionLabel } from "@/application/presentation/competition-label";
+import { opponentCardStatus } from "@/application/queries/project-paired-matchup";
 import { MatchupStateRefresh } from "@/components/matchup/matchup-state-refresh";
 import { ownerCardContext } from "@/components/card/owner-card-context";
 import { OwnerCardProgress } from "@/components/card/owner-card-progress";
@@ -302,13 +303,10 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
                 <p className="text-copper mt-3 text-sm font-semibold">
                   {result
                     ? formatScore(result.opponentPointsForCenticredits)
-                    : state.matchup.opponentReadiness
-                      ? state.matchup.opponentReadiness === "COMPLIANT"
-                        ? "Card ready"
-                        : state.matchup.opponentReadiness === "INCOMPLETE"
-                          ? "Incomplete"
-                          : "Pending"
-                      : "Sealed until cards lock"}
+                    : opponentCardStatus(
+                        state.matchup.opponentReadiness,
+                        state.matchup.opponentSealed,
+                      )}
                 </p>
               </div>
             </div>
@@ -559,7 +557,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
               {state.ownerCard.positions.map((position) => (
                 <li className="p-4 sm:p-5" key={position.id}>
                   <div className="flex justify-between gap-4">
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
                         {position.marketType} · {position.eventLabel}
                       </p>
@@ -567,7 +565,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
                         {formatMarketProposition(position.proposition)}
                       </h2>
                     </div>
-                    <p className="font-mono font-semibold">
+                    <p className="shrink-0 font-mono font-semibold whitespace-nowrap">
                       {formatOdds(position.americanOdds)}
                     </p>
                   </div>

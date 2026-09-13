@@ -276,6 +276,7 @@ export function makePhase6State(variant: FixtureVariant): {
       opponentEntryId: ids.opponentEntry,
       opponentName: "Jordan Rival",
       opponentReadiness: weekState === "OPEN" ? null : "COMPLIANT",
+      opponentSealed: true,
       opponentRevealedPositions: opponentPositions,
       futureSealed: !complete,
       result: officialResult,

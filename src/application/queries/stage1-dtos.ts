@@ -169,6 +169,9 @@ export const stage1StateSchema = z.object({
       selfEntryId: z.uuid(),
       opponentEntryId: z.uuid(),
       opponentName: z.string(),
+      // A single submission fact; never draft progress or sealed pick metadata.
+      // Missing on an older database during rollout means unknown, not unsealed.
+      opponentSealed: z.boolean().nullable().optional(),
       opponentReadiness: z
         .enum(["PENDING", "COMPLIANT", "INCOMPLETE"])
         .nullable(),

@@ -286,6 +286,26 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     .fill(identities[1]!.password);
   await page.getByRole("button", { name: "Sign in with password" }).click();
   await page.waitForURL(`**/l/${slug}/matchup`);
+  await expect(page.getByText("Not sealed", { exact: true })).toBeVisible();
+  const initialMemberState = await rpc(members[1]!, "get_stage1_state", {
+    p_league_slug: slug,
+  });
+  const opponentEmail = sql(
+    `select u.email from private.season_entries e join auth.users u on u.id=e.user_id where e.id='${initialMemberState.matchup.opponentEntryId}'::uuid`,
+  );
+  const opponentIdentity = identities.find(
+    (identity) => identity.email === opponentEmail,
+  )!;
+  const opponent = client(key!);
+  expect(
+    (await opponent.auth.signInWithPassword(opponentIdentity)).error,
+  ).toBeNull();
+  const initialOpponentState = await rpc(opponent, "get_stage1_state", {
+    p_league_slug: slug,
+  });
+  expect(initialOpponentState.matchup.opponentSealed).toBe(false);
+  expect(initialOpponentState.matchup.opponentReadiness).toBeNull();
+  expect(initialOpponentState.matchup.opponentRevealedPositions).toEqual([]);
   const makePicks = page
     .getByRole("link", { name: "Make picks", exact: true })
     .last();
@@ -383,6 +403,9 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     ).toContainText(`${((index + 1) * 50).toLocaleString("en-US")} allocated`);
   }
   expect(readFileSync(`${fixture}.calls`, "utf8")).toBe("");
+  expect(
+    (await rpc(opponent, "get_stage1_state", { p_league_slug: slug })).matchup,
+  ).toEqual(initialOpponentState.matchup);
   const reviewButton = page
     .getByRole("button", { name: "Review 20 picks" })
     .first();
@@ -411,6 +434,13 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
   });
   expect(state.ownerCard.positions).toHaveLength(20);
   expect(state.matchup.opponentRevealedPositions).toEqual([]);
+  const sealedOpponentState = await rpc(opponent, "get_stage1_state", {
+    p_league_slug: slug,
+  });
+  expect(sealedOpponentState.matchup.opponentSealed).toBe(true);
+  expect({ ...sealedOpponentState.matchup, opponentSealed: false }).toEqual(
+    initialOpponentState.matchup,
+  );
   expect(
     (
       await members[0]!.schema("api").rpc("delete_empty_draft_league", {

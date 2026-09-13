@@ -469,6 +469,14 @@ begin
 end;
 $$;
 
+set local role authenticated;
+select is(
+  api.get_stage1_state('stage1-database-test') #> '{matchup,opponentSealed}',
+  'false'::jsonb,
+  'a scheduled opponent has not sealed before any receipt exists'
+);
+reset role;
+
 select lives_ok(
   $$select pg_temp.accept_card(
     1,
@@ -480,6 +488,47 @@ select lives_ok(
   )$$,
   'two positions are accepted together as one complete card'
 );
+-- The scheduled opponent can observe submission without receipt access, even
+-- while compliance remains PENDING until common lock.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-4000-8000-000000000008","role":"authenticated"}', true);
+set local role authenticated;
+select is(
+  api.get_stage1_state('stage1-database-test') #> '{matchup,opponentSealed}',
+  'true'::jsonb,
+  'atomic acceptance exposes the single sealed fact before common lock'
+);
+select is(
+  api.get_stage1_state('stage1-database-test') #> '{matchup,opponentReadiness}',
+  'null'::jsonb,
+  'pre-lock compliance remains withheld'
+);
+select is(
+  api.get_stage1_state('stage1-database-test') #> '{matchup,opponentRevealedPositions}',
+  '[]'::jsonb,
+  'a sealed badge reveals no receipt details or count'
+);
+select is((select count(*) from private.position_receipts), 0::bigint,
+  'knowing an opponent sealed does not grant direct receipt access');
+select is((select count(*) from private.weekly_cards), 1::bigint,
+  'knowing an opponent sealed does not grant direct card access');
+reset role;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-4000-8000-000000000009","role":"authenticated"}', true);
+set local role authenticated;
+select throws_ok(
+  $$select api.get_stage1_state('stage1-database-test')$$,
+  '42501', 'League membership required.',
+  'an outsider cannot discover the sealed status'
+);
+reset role;
+set local role anon;
+select throws_ok(
+  $$select api.get_stage1_state('stage1-database-test')$$,
+  '42501', 'permission denied for function get_stage1_state',
+  'anonymous callers cannot discover the sealed status'
+);
+reset role;
 select lives_ok(
   $$select pg_temp.accept_market(8, 'buf-nyj', 'TOTAL', 'OVER', 1000, 'accept-user8-push')$$,
   'the completed opponent card stores a push proposition'
@@ -550,7 +599,7 @@ select is(
 select is(
   api.get_stage1_state('stage1-database-test') #>> '{matchup,opponentReadiness}',
   'COMPLIANT',
-  'opponent readiness appears only after common lock'
+  'full compliance readiness still appears after common lock'
 );
 
 select api.advance_stage1_clock(

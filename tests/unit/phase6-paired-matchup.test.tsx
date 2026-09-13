@@ -21,6 +21,39 @@ afterEach(() => {
 });
 
 describe("Phase 6 paired matchup surface", () => {
+  it("shows pregame opponent status and refreshes without exposing picks", () => {
+    const matchup = makePhase6Matchup("PREGAME");
+    matchup.opponent.cardStatus = "Not sealed";
+    const { rerender, container } = render(
+      <PairedMatchupView
+        matchup={matchup}
+        refreshControl={<MatchupStateRefresh />}
+      />,
+    );
+    expect(screen.getByLabelText("Jordan Rival card status")).toHaveTextContent(
+      "Not sealed",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Refresh matchup" }));
+    expect(refresh).toHaveBeenCalledOnce();
+    rerender(
+      <PairedMatchupView
+        matchup={{
+          ...matchup,
+          opponent: { ...matchup.opponent, cardStatus: "Sealed" },
+        }}
+        refreshControl={<MatchupStateRefresh />}
+      />,
+    );
+    expect(screen.getByLabelText("Jordan Rival card status")).toHaveTextContent(
+      "Sealed",
+    );
+    expect(container).not.toHaveTextContent(unrevealableReceiptText);
+    expect(
+      screen.queryByLabelText("Jordan Rival score 0.00 credits"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Picks by game")).not.toBeInTheDocument();
+  });
+
   it("renders one generic placeholder and no unrevealable receipt content", () => {
     const matchup = makePhase6Matchup("PARTIAL_REVEAL");
     const { container } = render(
