@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type {
   PairedMatchupDto,
   PositionLedgerSection,
@@ -52,12 +53,22 @@ export function PairedMatchupView({
         pregame
           ? undefined
           : completed
-            ? "Your result, its season impact, and the picks behind it."
+            ? matchup.spectator
+              ? "The result and the picks behind it."
+              : "Your result, its season impact, and the picks behind it."
             : "Picks reveal after a confirmed start. Scores update after results are checked."
       }
       eyebrow={`${matchup.league.name} · ${matchup.league.mode === "LIVE" ? "Live season" : "Practice/test · Simulation"}`}
       title={`Week ${matchup.week.nflWeek} matchup`}
     >
+      {matchup.spectator ? (
+        <Link
+          href={`/l/${matchup.league.slug}/matchup`}
+          className="text-action mt-3 inline-flex min-h-11 items-center font-semibold hover:underline"
+        >
+          Back to your matchup
+        </Link>
+      ) : null}
       <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-5">
           <PairedMatchupHeader
@@ -66,7 +77,9 @@ export function PairedMatchupView({
             cardProgress={pregame ? cardProgress : undefined}
           />
           {weeklyClose}
-          {!pregame && !completed ? <ScorePath matchup={matchup} /> : null}
+          {!matchup.spectator && !pregame && !completed ? (
+            <ScorePath matchup={matchup} />
+          ) : null}
           {!pregame && !completed ? cardProgress : null}
 
           {!pregame ? (
@@ -110,7 +123,11 @@ export function PairedMatchupView({
                     {rows.length > 0 ? (
                       <ol className="mt-2 space-y-2">
                         {rows.map((row) => (
-                          <PositionLedgerRow key={row.id} row={row} />
+                          <PositionLedgerRow
+                            key={row.id}
+                            row={row}
+                            showMemberName={matchup.spectator}
+                          />
                         ))}
                       </ol>
                     ) : (

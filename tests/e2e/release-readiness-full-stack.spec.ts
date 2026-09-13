@@ -71,7 +71,7 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
   const run = Date.now().toString(36);
   const admin = client(secret!);
   const members: SupabaseClient[] = [];
-  const identities = [];
+  const identities: Array<{ email: string; password: string }> = [];
   for (let index = 0; index < 10; index++) {
     const identity = {
       email: `release-${run}-${index}@acceptance.test`,
@@ -603,4 +603,111 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     await expect(refresh).toBeFocused();
   });
   expect(readFileSync(`${fixture}.calls`, "utf8")).toBe(callsBefore);
+  // A third member browses the sealed owner's pairing through the actual route.
+  // Only disposable stored event evidence changes; no production/provider call.
+  const observerIdentity = identities.find(
+    (identity) => identity !== identities[1] && identity !== opponentIdentity,
+  )!;
+  const observer = client(key!);
+  expect(
+    (await observer.auth.signInWithPassword(observerIdentity)).error,
+  ).toBeNull();
+  const observerState = await rpc(observer, "get_stage1_state", {
+    p_league_slug: slug,
+  });
+  const target = observerState.schedule.find(
+    (game: { sideAEntryId: string; sideBEntryId: string }) =>
+      [game.sideAEntryId, game.sideBEntryId].includes(state.viewer.entryId),
+  );
+  expect(target.id).not.toBe(observerState.matchup.id);
+  const observerContext = await page
+    .context()
+    .browser()!
+    .newContext({ viewport: { width: 390, height: 844 } });
+  try {
+    const observerPage = await observerContext.newPage();
+    await observerPage.goto(
+      `${baseURL}/auth/sign-in?next=${encodeURIComponent(`/l/${slug}/matchup`)}`,
+    );
+    await observerPage.getByLabel("Email address").fill(observerIdentity.email);
+    await observerPage
+      .getByLabel("Password", { exact: true })
+      .fill(observerIdentity.password);
+    await observerPage
+      .getByRole("button", { name: "Sign in with password" })
+      .click();
+    await observerPage.waitForURL(`**/l/${slug}/matchup`);
+    await observerPage
+      .getByRole("link", {
+        name: `View ${target.sideAName} versus ${target.sideBName}`,
+      })
+      .click();
+    await expect(observerPage).toHaveURL(
+      new RegExp(`matchup\\?matchup=${target.id}$`),
+    );
+    const targetHeader = observerPage.getByRole("region", {
+      name: `${target.sideAName} versus ${target.sideBName}`,
+    });
+    await expect(targetHeader).toBeVisible();
+    await expect(observerPage.locator("[data-position-id]")).toHaveCount(0);
+    let response = await observerPage.request.get(observerPage.url());
+    let body = await response.text();
+    for (const position of state.ownerCard.positions)
+      expect(body).not.toContain(position.id);
+    const revealedEvent = state.ownerCard.positions[0].eventId;
+    expect(revealedEvent).toMatch(/^[0-9a-f-]{36}$/);
+    sql(
+      `update private.sports_events set state='LIVE',actual_started_at=clock_timestamp()-interval '1 minute' where id='${revealedEvent}' and league_id='${leagueId}';`,
+    );
+    await observerPage.reload();
+    const visible = state.ownerCard.positions.filter(
+      (position: { eventId: string }) => position.eventId === revealedEvent,
+    );
+    const hidden = state.ownerCard.positions.filter(
+      (position: { eventId: string }) => position.eventId !== revealedEvent,
+    );
+    expect(visible.length).toBeGreaterThan(0);
+    expect(hidden.length).toBeGreaterThan(0);
+    await expect(observerPage.locator("[data-position-id]")).toHaveCount(
+      visible.length,
+    );
+    response = await observerPage.request.get(observerPage.url());
+    body = await response.text();
+    for (const position of hidden) {
+      expect(body).not.toContain(position.id);
+      expect(body).not.toContain(position.receiptHash);
+    }
+    const revealedCards = await rpc(observer, "get_league_matchup_cards", {
+      p_league_slug: slug,
+      p_week_id: state.week.id,
+    });
+    const publicCard = revealedCards.cards.find(
+      (card: { entryId: string }) => card.entryId === state.viewer.entryId,
+    );
+    expect(publicCard.positions).toHaveLength(visible.length);
+    expect(publicCard.scoreCenticredits).toBe(0);
+    await observerPage.setViewportSize({ width: 320, height: 800 });
+    await observerPage.locator("html").evaluate((element) => {
+      element.style.fontSize = "200%";
+    });
+    await inspectMemberSurface(
+      observerPage,
+      info,
+      "other-matchup-partial-reveal-320-200-percent",
+    );
+    await observerPage.screenshot({
+      path: info.outputPath("other-matchup-partial-reveal.png"),
+      fullPage: true,
+    });
+    await observerPage
+      .getByRole("link", { name: "Back to your matchup" })
+      .click();
+    await expect(observerPage).toHaveURL(`${baseURL}/l/${slug}/matchup`);
+    await expect(
+      observerPage.getByRole("link", { name: "Back to your matchup" }),
+    ).toHaveCount(0);
+    expect(readFileSync(`${fixture}.calls`, "utf8")).toBe(callsBefore);
+  } finally {
+    await observerContext.close();
+  }
 });

@@ -30,18 +30,20 @@ function MemberScore({
   opponent = false,
   pregame = false,
   completed = false,
+  spectator = false,
 }: {
   member: PairedMatchupDto["self"];
   opponent?: boolean;
   pregame?: boolean;
   completed?: boolean;
+  spectator?: boolean;
 }) {
   return (
     <div className={`matchup-member ${opponent ? "text-right" : "text-left"}`}>
       <p
         className={`text-xs font-bold tracking-[0.08em] uppercase ${opponent ? "text-copper" : "text-registry"}`}
       >
-        {opponent ? "Opponent" : "You"}
+        {spectator ? "Member" : opponent ? "Opponent" : "You"}
       </p>
       <h2 className="mt-1 text-lg leading-6 font-bold break-words sm:text-xl">
         {member.displayName}
@@ -64,7 +66,7 @@ function MemberScore({
           {formatScore(member.scoreCenticredits)}
         </p>
       ) : null}
-      {!completed && (!pregame || opponent) ? (
+      {!completed && (!pregame || opponent) && !(spectator && pregame) ? (
         <div
           role="group"
           aria-label={`${member.displayName} card status`}
@@ -129,15 +131,19 @@ export function PairedMatchupHeader({
             className={`text-2xl font-bold ${matchup.self.decision === "WIN" ? "text-positive" : matchup.self.decision === "LOSS" ? "text-negative" : "text-graphite"}`}
           >
             {matchup.resultStatus === "PROVISIONAL" ? "Provisional: " : ""}
-            {matchup.self.decision === "WIN"
-              ? "You won"
-              : matchup.self.decision === "LOSS"
-                ? "You lost"
-                : "You tied"}
+            {matchup.spectator
+              ? matchup.self.decision === "TIE"
+                ? "Matchup tied"
+                : `${matchup.self.decision === "WIN" ? matchup.self.displayName : matchup.opponent.displayName} won`
+              : matchup.self.decision === "WIN"
+                ? "You won"
+                : matchup.self.decision === "LOSS"
+                  ? "You lost"
+                  : "You tied"}
           </h3>
           <p className="text-graphite mt-2 text-sm">
             {matchup.week.scope === "REGULAR"
-              ? `Season record: ${matchup.self.record}.`
+              ? `${matchup.spectator ? matchup.self.displayName + "’s season record" : "Season record"}: ${matchup.self.record}.`
               : "This result does not change the regular-season standings."}
             {matchup.resultStatus === "PROVISIONAL"
               ? " Scores can still change during the correction window."
@@ -151,6 +157,7 @@ export function PairedMatchupHeader({
           member={matchup.self}
           pregame={matchup.phase === "PREGAME"}
           completed={completed}
+          spectator={matchup.spectator}
         />
         <p
           aria-hidden="true"
@@ -163,6 +170,7 @@ export function PairedMatchupHeader({
           opponent
           pregame={matchup.phase === "PREGAME"}
           completed={completed}
+          spectator={matchup.spectator}
         />
       </div>
 
@@ -203,11 +211,13 @@ export function PairedMatchupHeader({
             )}
           </div>
           <span className="sr-only" role="status" aria-atomic="true">
-            {matchup.phaseLabel}. Your score{" "}
+            {matchup.phaseLabel}.{" "}
+            {matchup.spectator ? matchup.self.displayName : "Your"} score{" "}
             {matchup.self.scoreCenticredits === null
               ? "unavailable"
               : formatScore(matchup.self.scoreCenticredits)}
-            . Opponent score{" "}
+            . {matchup.spectator ? matchup.opponent.displayName : "Opponent"}{" "}
+            score{" "}
             {matchup.opponent.scoreCenticredits === null
               ? "unavailable"
               : formatScore(matchup.opponent.scoreCenticredits)}
