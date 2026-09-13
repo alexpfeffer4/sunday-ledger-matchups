@@ -1,5 +1,8 @@
 # Sunday Ledger — current governing source index
 
+September 13 supplement: [commissioner card-status decision](2026-09-13-commissioner-card-status.md)
+extends the submission flag to the current commissioner's current-week roster only.
+
 September 13 supplement: [opponent sealed-status decision](2026-09-13-opponent-sealed-status.md)
 permits a single pre-lock submission indicator for the scheduled opponent.
 The historical pre-lock readiness prohibition is superseded only to that extent.
