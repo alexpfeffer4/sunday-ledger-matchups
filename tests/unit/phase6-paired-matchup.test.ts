@@ -8,6 +8,29 @@ import {
 
 describe("Phase 6 paired matchup projection", () => {
   it.each([
+    [true, "Sealed"],
+    [false, "Not sealed"],
+    [null, "Status unavailable"],
+    [undefined, "Status unavailable"],
+  ] as const)(
+    "projects only the pre-lock submission fact %s",
+    (sealed, label) => {
+      const { state, operations, now } = makePhase6State("PREGAME");
+      state.matchup!.opponentSealed = sealed;
+      const matchup = projectPairedMatchup(state, operations, now)!;
+      expect(matchup.opponent.cardStatus).toBe(label);
+      expect(state.matchup!.opponentReadiness).toBeNull();
+      expect(state.matchup!.opponentRevealedPositions).toEqual([]);
+      expect(
+        Object.values(matchup.rows)
+          .flat()
+          .filter((row) => row.side === "OPPONENT"),
+      ).toEqual([]);
+      expect(matchup.scorePath.opponentRemainingMaximumCenticredits).toBeNull();
+    },
+  );
+
+  it.each([
     "PREGAME",
     "LOCKED",
     "PARTIAL_REVEAL",

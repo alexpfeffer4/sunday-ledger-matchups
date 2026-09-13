@@ -286,6 +286,28 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     .fill(identities[1]!.password);
   await page.getByRole("button", { name: "Sign in with password" }).click();
   await page.waitForURL(`**/l/${slug}/matchup`);
+  await expect(page.getByRole("group", { name: /card status$/ })).toContainText(
+    "Not sealed",
+  );
+  const initialMemberState = await rpc(members[1]!, "get_stage1_state", {
+    p_league_slug: slug,
+  });
+  const opponentEmail = sql(
+    `select u.email from private.season_entries e join auth.users u on u.id=e.user_id where e.id='${initialMemberState.matchup.opponentEntryId}'::uuid`,
+  );
+  const opponentIdentity = identities.find(
+    (identity) => identity.email === opponentEmail,
+  )!;
+  const opponent = client(key!);
+  expect(
+    (await opponent.auth.signInWithPassword(opponentIdentity)).error,
+  ).toBeNull();
+  const initialOpponentState = await rpc(opponent, "get_stage1_state", {
+    p_league_slug: slug,
+  });
+  expect(initialOpponentState.matchup.opponentSealed).toBe(false);
+  expect(initialOpponentState.matchup.opponentReadiness).toBeNull();
+  expect(initialOpponentState.matchup.opponentRevealedPositions).toEqual([]);
   const makePicks = page
     .getByRole("link", { name: "Make picks", exact: true })
     .last();
@@ -383,6 +405,9 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     ).toContainText(`${((index + 1) * 50).toLocaleString("en-US")} allocated`);
   }
   expect(readFileSync(`${fixture}.calls`, "utf8")).toBe("");
+  expect(
+    (await rpc(opponent, "get_stage1_state", { p_league_slug: slug })).matchup,
+  ).toEqual(initialOpponentState.matchup);
   const reviewButton = page
     .getByRole("button", { name: "Review 20 picks" })
     .first();
@@ -411,6 +436,13 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
   });
   expect(state.ownerCard.positions).toHaveLength(20);
   expect(state.matchup.opponentRevealedPositions).toEqual([]);
+  const sealedOpponentState = await rpc(opponent, "get_stage1_state", {
+    p_league_slug: slug,
+  });
+  expect(sealedOpponentState.matchup.opponentSealed).toBe(true);
+  expect({ ...sealedOpponentState.matchup, opponentSealed: false }).toEqual(
+    initialOpponentState.matchup,
+  );
   expect(
     (
       await members[0]!.schema("api").rpc("delete_empty_draft_league", {
@@ -454,7 +486,65 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
       page.getByRole("heading", { name: "Card sealed" }),
     ).toBeVisible();
   });
-  // The saved-state refresh belongs to Live, not the pregame sealed view.
+  // An independently authenticated opponent sees only the submission fact in
+  // the real RSC route, and pregame refresh does not contact the provider.
+  const opponentContext = await page
+    .context()
+    .browser()!
+    .newContext({ viewport: { width: 390, height: 844 } });
+  try {
+    const opponentPage = await opponentContext.newPage();
+    await opponentPage.goto(
+      `${baseURL}/auth/sign-in?next=${encodeURIComponent(`/l/${slug}/matchup`)}`,
+    );
+    await opponentPage.getByLabel("Email address").fill(opponentIdentity.email);
+    await opponentPage
+      .getByLabel("Password", { exact: true })
+      .fill(opponentIdentity.password);
+    await opponentPage
+      .getByRole("button", { name: "Sign in with password" })
+      .click();
+    await opponentPage.waitForURL(`**/l/${slug}/matchup`);
+    const opponentBadge = opponentPage.getByLabel(
+      `${state.viewer.displayName} card status`,
+    );
+    await expect(opponentBadge).toContainText("Sealed");
+    await expect(
+      opponentPage.getByRole("heading", { name: "Picks by game" }),
+    ).toHaveCount(0);
+    const beforeRefreshCalls = readFileSync(`${fixture}.calls`, "utf8");
+    // Capture before fulfillment, as in the rehearsal privacy lane. Chromium
+    // can discard a streamed navigation body before Response.text() reads it.
+    let rsc: string | null = null;
+    const refreshRoute = `**/l/${slug}/matchup*`;
+    await opponentPage.route(refreshRoute, async (route) => {
+      if (route.request().headers()["rsc"] !== "1") {
+        await route.continue();
+        return;
+      }
+      const response = await route.fetch();
+      rsc = await response.text();
+      await route.fulfill({ response });
+    });
+    const refreshed = opponentPage.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === `/l/${slug}/matchup` &&
+        response.request().headers()["rsc"] === "1",
+    );
+    await opponentPage.getByRole("button", { name: "Refresh matchup" }).click();
+    await refreshed;
+    await opponentPage.unroute(refreshRoute);
+    expect(readFileSync(`${fixture}.calls`, "utf8")).toBe(beforeRefreshCalls);
+    expect(rsc).not.toBeNull();
+    expect(rsc).toContain("Sealed");
+    for (const position of state.ownerCard.positions) {
+      expect(rsc).not.toContain(position.id);
+      expect(rsc).not.toContain(position.receiptHash);
+    }
+    await expect(opponentBadge).toContainText("Sealed");
+  } finally {
+    await opponentContext.close();
+  }
   // Advance only this loopback fixture's event times, then use the real lock RPC.
   expect(leagueId).toMatch(/^[0-9a-f-]{36}$/);
   sql(`update private.season_weeks set opens_at=clock_timestamp()-interval '6 hours',common_lock_at=clock_timestamp()-interval '65 minutes' where league_id='${leagueId}';

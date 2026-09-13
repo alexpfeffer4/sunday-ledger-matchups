@@ -5,7 +5,14 @@ import { resolve } from "node:path";
 import { unrevealableReceiptText } from "../fixtures/phase6-paired-matchup";
 
 type FixtureName =
-  "FINAL" | "LIVE" | "LIVE_UPDATE" | "PARTIAL_REVEAL" | "PROVISIONAL";
+  | "FINAL"
+  | "LIVE"
+  | "LIVE_UPDATE"
+  | "PARTIAL_REVEAL"
+  | "PROVISIONAL"
+  | "PREGAME"
+  | "UNSEALED"
+  | "MOBILE_CARD";
 
 const fixtureMarkup = JSON.parse(
   readFileSync(
@@ -40,6 +47,75 @@ test.beforeEach(async ({ page }) => {
     route.abort(),
   );
   await page.goto("/");
+});
+
+test("pregame shows only opponent submission status at a narrow width", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await mountMatchup(page, "UNSEALED");
+  await expect(page.getByLabel("Jordan Rival card status")).toContainText(
+    "Not sealed",
+  );
+  await expect(
+    page.getByRole("button", { name: "Refresh matchup" }),
+  ).toBeVisible();
+  await mountMatchup(page, "PREGAME");
+  await expect(page.getByLabel("Jordan Rival card status")).toContainText(
+    "Sealed",
+  );
+  await expect(
+    page.getByRole("heading", { name: "Picks by game" }),
+  ).toHaveCount(0);
+  expect(await page.locator("body").innerHTML()).not.toContain(
+    unrevealableReceiptText,
+  );
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+  await page.screenshot({
+    path: info.outputPath("opponent-sealed-320.png"),
+    fullPage: true,
+  });
+});
+
+test("My Card keeps signed odds on one line beside long titles", async ({
+  page,
+}, info) => {
+  await mountMatchup(page, "MOBILE_CARD");
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const scale of [100, 200]) {
+      await page.locator("html").evaluate((element, value) => {
+        element.style.fontSize = `${value}%`;
+      }, scale);
+      for (const value of ["−265", "+1234"]) {
+        const odds = page.getByText(value, { exact: true }).first();
+        await expect(odds).toBeVisible();
+        const geometry = await odds.evaluate((element) => {
+          const range = document.createRange();
+          range.selectNodeContents(element);
+          const box = element.getBoundingClientRect();
+          const title = element.previousElementSibling!.getBoundingClientRect();
+          return {
+            lines: range.getClientRects().length,
+            left: box.left,
+            right: box.right,
+            titleRight: title.right,
+          };
+        });
+        expect(geometry.lines).toBe(1);
+        expect(geometry.left).toBeGreaterThanOrEqual(geometry.titleRight);
+        expect(geometry.right).toBeLessThanOrEqual(width);
+      }
+      await expectNoHorizontalOverflow(page);
+      const screenshot = info.outputPath(`my-card-${width}-${scale}.png`);
+      await page.screenshot({ path: screenshot, fullPage: true });
+      await info.attach(`my-card-${width}-${scale}`, {
+        path: screenshot,
+        contentType: "image/png",
+      });
+    }
+  }
 });
 
 test("partial reveal keeps sealed receipt data out of DOM and accessible names", async ({

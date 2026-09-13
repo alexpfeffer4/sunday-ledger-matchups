@@ -60,10 +60,22 @@ function MemberScore({
           {formatScore(member.scoreCenticredits)}
         </p>
       ) : null}
-      {!pregame && !completed ? (
-        <p className="text-muted mt-2 text-xs font-semibold">
-          {member.cardStatus}
-        </p>
+      {!completed && (!pregame || opponent) ? (
+        <div
+          role="group"
+          aria-label={`${member.displayName} card status`}
+          className="text-muted mt-2 text-xs font-semibold"
+        >
+          {pregame ? (
+            <StatusBadge
+              tone={member.cardStatus === "Sealed" ? "sealed" : "pending"}
+            >
+              {member.cardStatus}
+            </StatusBadge>
+          ) : (
+            member.cardStatus
+          )}
+        </div>
       ) : null}
     </div>
   );
@@ -151,7 +163,15 @@ export function PairedMatchupHeader({
       </div>
 
       {matchup.phase === "PREGAME" ? (
-        cardProgress
+        <>
+          {cardProgress}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-muted text-xs">
+              Picks stay hidden until each game starts.
+            </p>
+            {refreshControl}
+          </div>
+        </>
       ) : !completed ? (
         <div className="border-boundary flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

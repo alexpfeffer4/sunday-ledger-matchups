@@ -172,13 +172,16 @@ function cardStatus(
   return "Pending";
 }
 
-function opponentCardStatus(
+export function opponentCardStatus(
   readiness: NonNullable<Stage1StateDto["matchup"]>["opponentReadiness"],
+  sealed: NonNullable<Stage1StateDto["matchup"]>["opponentSealed"],
 ): string {
   if (readiness === "COMPLIANT") return "Sealed";
   if (readiness === "INCOMPLETE") return "Incomplete";
   if (readiness === "PENDING") return "Pending";
-  return "Private";
+  if (sealed === true) return "Sealed";
+  if (sealed === false) return "Not sealed";
+  return "Status unavailable";
 }
 
 function remainingPathSentence(params: {
@@ -486,7 +489,10 @@ export function projectPairedMatchup(
     seed: opponentPlayoffSeed ?? opponentStanding?.seed ?? null,
     seedKind: opponentPlayoffSeed === null ? "REGULAR" : "PLAYOFF",
     scoreCenticredits: opponentScore,
-    cardStatus: opponentCardStatus(state.matchup.opponentReadiness),
+    cardStatus: opponentCardStatus(
+      state.matchup.opponentReadiness,
+      state.matchup.opponentSealed,
+    ),
     decision: result?.opponentDecision ?? null,
   };
 

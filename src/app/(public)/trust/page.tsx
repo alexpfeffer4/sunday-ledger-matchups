@@ -24,7 +24,7 @@ export default function TrustPage() {
           {[
             [
               "Sealed means sealed",
-              "You can always see your own card. Opponents and commissioners cannot see your picks before they are revealed.",
+              "You can always see your own card. Your opponent can see whether you have sealed it, but picks stay hidden until their games start. Commissioners cannot inspect unrevealed picks.",
             ],
             [
               "Receipts do not change",

@@ -1,5 +1,9 @@
 # Sunday Ledger — current governing source index
 
+September 13 supplement: [opponent sealed-status decision](2026-09-13-opponent-sealed-status.md)
+permits a single pre-lock submission indicator for the scheduled opponent.
+The historical pre-lock readiness prohibition is superseded only to that extent.
+
 Reconciliation revision 2, prepared September 11, 2026 for audit Stage 6 (A11–A12).
 Read each historical base with the [governing addendum](2026-09-11-governing-addendum.md).
 The addendum records existing approvals and the September 11 owner direction to
