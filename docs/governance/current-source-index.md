@@ -1,6 +1,10 @@
 # Sunday Ledger — current governing source index
 
 September 13 supplement: [commissioner card-status decision](2026-09-13-commissioner-card-status.md)
+
+September 13 correction: [score-provider kickoff recovery](../score-provider-kickoff-recovery.md)
+preserves published deadlines and frozen rules while accepting verified later
+kickoff evidence for the same game.
 extends the submission flag to the current commissioner's current-week roster only.
 
 September 13 supplement: [opponent sealed-status decision](2026-09-13-opponent-sealed-status.md)

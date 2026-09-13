@@ -68,8 +68,10 @@ leases can be reclaimed; repeated completion returns its saved response.
 
 Per-event source update, successful fetch, attempt, and next checkpoint remain
 separate. A missing/backward result cannot become fresh merely because another
-game fetched successfully. Subsets must match published identities and kickoffs;
-unrelated returned IDs and future/backward source times fail closed. Captured
+game fetched successfully. Subsets must match published event IDs and teams.
+The [September 13 kickoff correction](score-provider-kickoff-recovery.md) accepts
+later provider kickoff evidence inside the existing postponement window while
+preserving published times. Unrelated IDs and future/backward source times fail closed. Captured
 older finals survive provider retention while newer selected games continue.
 
 During a game, the UI explains result checks around +4 hours instead of implying
