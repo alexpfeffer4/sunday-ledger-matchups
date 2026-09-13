@@ -34,6 +34,14 @@ completion, and final settlement. The full existing database suite remains the
 gate before applying the additive migration. Live recovery is verified through
 one normal budgeted refresh after deployment, without manual result edits.
 
+The clean database gate passed all 988 assertions. Production migration
+`20260913183929_score_provider_kickoff_evidence` applied successfully. The normal
+commissioner refresh at 18:39 UTC then captured all eight early games and marked
+them LIVE, with successful checks and provider updates displayed at 2:39 PM EDT.
+Later games remained SCHEDULED. The migration filename matches the hosted ledger;
+its SQL is identical to the tested change. Final application CI and merge are
+tracked in PR #43; this observation does not claim live final-result settlement.
+
 Provider reference: [The Odds API scores documentation](https://the-odds-api.com/liveapi/guides/v4/#get-scores)
 documents shared event IDs between odds and score responses. The exact timing
 mismatch above is observed production evidence, not an assumption from that
