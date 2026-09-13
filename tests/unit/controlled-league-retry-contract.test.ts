@@ -65,7 +65,9 @@ describe("controlled-league retry contract", () => {
       ),
       "utf8",
     );
-    expect(actions).toContain("refreshLiveScores(context.data.leagueId)");
+    expect(actions).toContain(
+      "refreshLiveScores(context.data.leagueId, state.slate)",
+    );
     expect(adapter).toContain('"complete_provider_request"');
     expect(scoreMigration).toContain(
       "if r.state<>'RUNNING' then return r.response;",

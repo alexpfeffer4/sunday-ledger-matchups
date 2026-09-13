@@ -10,6 +10,10 @@ import { getSupabasePublicConfig } from "@/adapters/supabase/config";
 import { getSupabaseServerSecret } from "@/adapters/supabase/server-secret";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import type { Database, Json } from "@/adapters/supabase/database.types";
+import {
+  scoreEventMismatches,
+  type PublishedEvent,
+} from "@/application/providers/score-event-mismatches";
 
 function providerClient() {
   const secret = getSupabaseServerSecret();
@@ -68,7 +72,10 @@ const claimSchema = z.discriminatedUnion("status", [
 
 /** Called by the authenticated checkpoint endpoint or an explicit commissioner
  * action. Browser refresh never reaches this adapter. No participant reads. */
-export async function refreshLiveScores(leagueId?: string) {
+export async function refreshLiveScores(
+  leagueId?: string,
+  publishedEvents?: readonly PublishedEvent[],
+) {
   const admin = providerClient();
   const claimed = leagueId
     ? await (
@@ -97,13 +104,25 @@ export async function refreshLiveScores(leagueId?: string) {
         p_requests_remaining: remaining ?? undefined,
       });
     if (completed.error) throw new Error(completed.error.message);
-    return z
+    const result = z
       .object({
         status: z.enum(["SUCCEEDED", "PARTIAL", "FAILED"]),
         eventCount: z.number().int().nonnegative(),
         failureCodes: z.array(z.string()).optional(),
       })
       .parse(completed.data);
+    if (
+      publishedEvents &&
+      result.failureCodes?.includes("EVENT_IDENTITY_CHANGED")
+    ) {
+      console.warn(
+        JSON.stringify({
+          message: "Score provider event mismatch",
+          mismatches: scoreEventMismatches(publishedEvents, imported.events),
+        }),
+      );
+    }
+    return result;
   } catch (error) {
     await admin.schema("api").rpc("complete_provider_request", {
       p_request_id: claim.leaseId,

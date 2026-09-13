@@ -1367,7 +1367,7 @@ export async function importLiveScoresAction(
   }
 
   try {
-    const result = await refreshLiveScores(context.data.leagueId);
+    const result = await refreshLiveScores(context.data.leagueId, state.slate);
     const feedback = scoreRefreshFeedback(result);
     // Also refresh after failure: check timestamps/recovery state may have changed.
     await finish(context.data.leagueSlug, feedback.message);
