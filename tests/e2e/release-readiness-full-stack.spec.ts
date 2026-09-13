@@ -513,15 +513,30 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
       opponentPage.getByRole("heading", { name: "Picks by game" }),
     ).toHaveCount(0);
     const beforeRefreshCalls = readFileSync(`${fixture}.calls`, "utf8");
+    // Capture before fulfillment, as in the rehearsal privacy lane. Chromium
+    // can discard a streamed navigation body before Response.text() reads it.
+    let rsc: string | null = null;
+    const refreshRoute = `**/l/${slug}/matchup*`;
+    await opponentPage.route(refreshRoute, async (route) => {
+      if (route.request().headers()["rsc"] !== "1") {
+        await route.continue();
+        return;
+      }
+      const response = await route.fetch();
+      rsc = await response.text();
+      await route.fulfill({ response });
+    });
     const refreshed = opponentPage.waitForResponse(
       (response) =>
         new URL(response.url()).pathname === `/l/${slug}/matchup` &&
         response.request().headers()["rsc"] === "1",
     );
     await opponentPage.getByRole("button", { name: "Refresh matchup" }).click();
-    const response = await refreshed;
+    await refreshed;
+    await opponentPage.unroute(refreshRoute);
     expect(readFileSync(`${fixture}.calls`, "utf8")).toBe(beforeRefreshCalls);
-    const rsc = await response.text();
+    expect(rsc).not.toBeNull();
+    expect(rsc).toContain("Sealed");
     for (const position of state.ownerCard.positions) {
       expect(rsc).not.toContain(position.id);
       expect(rsc).not.toContain(position.receiptHash);
