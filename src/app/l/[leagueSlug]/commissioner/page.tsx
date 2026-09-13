@@ -10,6 +10,7 @@ import { getMyLeagueSummary } from "@/application/queries/get-my-league-summary"
 import { getSeasonArchive } from "@/application/queries/get-season-archive";
 import { getOwnerRehearsalForLeague } from "@/application/queries/get-owner-rehearsal";
 import { Stage1CommissionerView } from "@/components/stage1/live-views";
+import { getCommissionerCardStatus } from "@/application/queries/get-commissioner-card-status";
 
 export const metadata: Metadata = { title: "Commissioner" };
 
@@ -39,8 +40,16 @@ export default async function CommissionerPage({
     getOwnerRehearsalForLeague(leagueSlug),
   ]);
   if (live) {
+    const cardStatus =
+      live.commissioner.isCommissioner &&
+      !ownerRehearsal &&
+      live.week &&
+      live.week.state !== "PLANNED"
+        ? await getCommissionerCardStatus(leagueSlug)
+        : null;
     return (
       <Stage1CommissionerView
+        cardStatus={cardStatus}
         invites={invites}
         leagueManagement={leagueManagement}
         latestLiveImport={latestLiveImport}

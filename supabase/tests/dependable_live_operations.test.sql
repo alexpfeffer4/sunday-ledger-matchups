@@ -357,6 +357,7 @@ select throws_ok($$select api.import_live_scores('82000000-0000-4000-8000-000000
   jsonb_set(jsonb_set(pg_temp.live_score_import(false,0,0,false,null,null),'{events}',jsonb_build_array(pg_temp.live_score_import(false,0,0,false,null,null)->'events'->0)),
     '{events,0,lastUpdate}',to_jsonb((select scheduled_start_at-interval '1 minute' from private.sports_events where fixture_event_key='provider-live-result-one'))),'reject-pregame-score-source')$$,
   '22023','A live score event is internally inconsistent.','pre-kickoff evidence cannot reveal a pick');
+select set_config('request.jwt.claims','{"role":"service_role"}',true);
 select is(api.complete_provider_request((select (value->>'leaseId')::uuid from checkpoint_claim),
   jsonb_set(pg_temp.live_score_import(false,0,0,false,null,null),'{events}',jsonb_build_array(pg_temp.live_score_import(false,0,0,false,null,null)->'events'->0)),465)->>'status','SUCCEEDED','provider scores confirm a start without settling');
 select is((select state from private.sports_events where fixture_event_key='provider-live-result-one'),'LIVE','confirmed start recorded');
@@ -383,6 +384,7 @@ update private.provider_requests set attempted_at=clock_timestamp()-interval '2 
 update private.odds_refresh_policy set next_request_at='-infinity';
 truncate checkpoint_claim;
 insert into checkpoint_claim select api.claim_live_score_refresh('82000000-0000-4000-8000-000000000001');
+select set_config('request.jwt.claims','{"role":"service_role"}',true);
 select is(api.complete_provider_request((select (value->>'leaseId')::uuid from checkpoint_claim),
   jsonb_set(pg_temp.live_score_import(true,27,20,false,null,null),'{events}',jsonb_build_array(pg_temp.live_score_import(true,27,20,false,null,null)->'events'->0)),461)->>'status','SUCCEEDED','recovery captures a final through the authoritative settlement engine');
 select is((select count(*) from private.event_result_versions),1::bigint,'one result version');
@@ -392,6 +394,7 @@ select is((select count(*) from private.event_result_versions),1::bigint,'replay
 select is((select requests_remaining from private.odds_refresh_policy),461,'replayed response cannot increase provider balance');
 select is((select state from private.season_weeks where id='85000000-0000-4000-8000-000000000001'),'LOCKED','future unresolved game prevents provisional week');
 -- An equal provider timestamp is not a new result, even under a new actor.
+select set_config('request.jwt.claims','{"sub":"81000000-0000-4000-8000-000000000002","role":"authenticated"}',true);
 savepoint transferred_objective_correction;
 select lives_ok($$select api.transfer_league_commissioner('stage3-live-result-test','81000000-0000-4000-8000-000000000003')$$,'transfer after provider final succeeds');
 select set_config('request.jwt.claims','{"sub":"81000000-0000-4000-8000-000000000003","role":"authenticated"}',true);
@@ -428,5 +431,26 @@ update private.provider_requests set attempted_at=clock_timestamp()-interval '2 
 update private.odds_refresh_policy set next_request_at='-infinity',requests_remaining=31;
 select throws_ok($$select api.claim_live_score_refresh('82000000-0000-4000-8000-000000000001')$$,'P0001','QUOTE_REFRESH_BUDGET','manual fallback cannot spend reserve');
 select ok(not exists(select 1 from private.position_receipts where receipt_hash<>repeat('9',64)),'accepted receipt unchanged');
+-- Live failures retain bounded causes rather than swallowing every import error.
+update private.provider_requests set attempted_at=clock_timestamp()-interval '2 minutes';
+update private.odds_refresh_policy set next_request_at='-infinity',requests_remaining=200;
+truncate checkpoint_claim;
+insert into checkpoint_claim select api.claim_live_score_refresh('82000000-0000-4000-8000-000000000001');
+create temp table rejected_score_update as
+select api.complete_provider_request((select (value->>'leaseId')::uuid from checkpoint_claim),
+  jsonb_set(jsonb_set(pg_temp.live_score_import(true,27,20,true,14,21),'{events}',
+    jsonb_build_array(pg_temp.live_score_import(true,27,20,true,14,21)->'events'->1)),
+    '{events,0,awayTeam}','"Unexpected provider team"'::jsonb),198) value;
+select is((select value->>'status' from rejected_score_update),'FAILED','mismatched identity remains rejected');
+select is((select value->'failureCodes' from rejected_score_update),'["EVENT_IDENTITY_CHANGED"]'::jsonb,'identity rejection has an actionable safe code');
+select ok((select value::text not like '%Unexpected provider team%' from rejected_score_update),'diagnostic output excludes raw provider data');
+select is((select count(*) from private.event_result_versions),2::bigint,'failed update cannot replace captured finals');
+update private.provider_requests set attempted_at=clock_timestamp()-interval '2 minutes';
+update private.odds_refresh_policy set next_request_at='-infinity';
+truncate checkpoint_claim;
+insert into checkpoint_claim select api.claim_live_score_refresh('82000000-0000-4000-8000-000000000001');
+select is(api.complete_provider_request((select (value->>'leaseId')::uuid from checkpoint_claim),
+  jsonb_build_object('source','THE_ODDS_API','fetchedAt',clock_timestamp(),'events','[]'::jsonb),196)->'failureCodes',
+  '["PROVIDER_EVENTS_MISSING"]'::jsonb,'empty provider response is distinguished from a rejected import');
 select * from finish();
 rollback;

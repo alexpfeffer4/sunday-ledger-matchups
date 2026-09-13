@@ -266,6 +266,10 @@ export type Database = {
         Args: { p_league_slug: string };
         Returns: Json | null;
       };
+      get_commissioner_card_status: {
+        Args: { p_league_slug: string };
+        Returns: Json;
+      };
       get_week17_correction_operations: {
         Args: { p_league_slug: string };
         Returns: Json | null;

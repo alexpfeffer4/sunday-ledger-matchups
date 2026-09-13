@@ -6,6 +6,10 @@ import {
 } from "@/adapters/providers/the-odds-api/provider-requests";
 import { refreshCardQuotes } from "@/adapters/providers/the-odds-api/refresh-card-quotes";
 import { quoteRecoveryMessage } from "@/application/providers/card-quote-review";
+import {
+  scoreRefreshFeedback,
+  scoreRefreshError,
+} from "@/application/providers/score-refresh-feedback";
 
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
@@ -1363,24 +1367,11 @@ export async function importLiveScoresAction(
   }
 
   try {
-    const result = await refreshLiveScores(context.data.leagueId);
-    if (result.status === "BUSY")
-      return mutationError(
-        "A score check is already running. Wait a minute, then refresh this page.",
-      );
-    if (result.status === "IDLE")
-      return finish(
-        context.data.leagueSlug,
-        "No automatic score check is due. Games outside the provider capture window need the documented objective-result recovery.",
-      );
-    if (result.status === "FAILED")
-      return mutationError(
-        "Scores are unavailable. Stored results remain unchanged; check the recovery guidance before retrying.",
-      );
-    return finish(
-      context.data.leagueSlug,
-      `${result.eventCount} NFL game updates captured${result.status === "PARTIAL" ? "; some games are still unavailable" : ""}. Only provider-confirmed final results settle cards. Finalization remains a separate action.`,
-    );
+    const result = await refreshLiveScores(context.data.leagueId, state.slate);
+    const feedback = scoreRefreshFeedback(result);
+    // Also refresh after failure: check timestamps/recovery state may have changed.
+    await finish(context.data.leagueSlug, feedback.message);
+    return feedback;
   } catch (error) {
     console.error(
       JSON.stringify({
@@ -1390,6 +1381,8 @@ export async function importLiveScoresAction(
         errorMessage: error instanceof Error ? error.message : "Unknown error",
       }),
     );
+    // The adapter may have recorded a failed check before throwing.
+    await finish(context.data.leagueSlug, "");
     if (error instanceof OddsProviderRequestError) {
       return { status: "error", message: error.message };
     }
@@ -1399,7 +1392,7 @@ export async function importLiveScoresAction(
         message: "The score update was incomplete. No results were changed.",
       };
     }
-    return mutationError("The live score import failed.");
+    return scoreRefreshError(error instanceof Error ? error.message : "");
   }
 }
 

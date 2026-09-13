@@ -18,6 +18,8 @@ import type { Week17CorrectionOperations } from "@/application/queries/get-week1
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
 import { formatMarketProposition } from "@/components/card/market-option-copy";
 import { Stage1CommissionerControls } from "@/components/commissioner/stage1-controls";
+import { CommissionerCardStatusPanel } from "@/components/commissioner/card-status";
+import type { CommissionerCardStatus } from "@/application/queries/get-commissioner-card-status";
 import { LeagueSettings } from "@/components/commissioner/league-settings";
 import type { MyLeagueSummary } from "@/application/queries/get-my-league-summary";
 import { PageFrame } from "@/components/league/page-frame";
@@ -893,6 +895,7 @@ export function Stage1StandingsView({
 }
 
 export function Stage1CommissionerView({
+  cardStatus = null,
   invites,
   leagueManagement,
   latestLiveImport,
@@ -902,6 +905,7 @@ export function Stage1CommissionerView({
   state,
   week17CorrectionOperations,
 }: {
+  cardStatus?: CommissionerCardStatus | null;
   invites: LeagueInviteSummary[];
   leagueManagement: MyLeagueSummary | null;
   latestLiveImport: LiveOddsImportReview | null;
@@ -968,16 +972,14 @@ export function Stage1CommissionerView({
                 {state.commissioner.correctionCount}
               </dd>
             </div>
-            {!ownerRehearsal && state.commissioner.readyCount !== null ? (
-              <div className="flex justify-between gap-3 sm:block">
-                <dt className="text-muted">Ready cards</dt>
-                <dd className="font-semibold sm:mt-1">
-                  {state.commissioner.readyCount}
-                </dd>
-              </div>
-            ) : null}
           </dl>
         </section>
+
+        {!ownerRehearsal && state.week && state.week.state !== "PLANNED" ? (
+          <CommissionerCardStatusPanel
+            status={cardStatus?.weekId === state.week.id ? cardStatus : null}
+          />
+        ) : null}
 
         <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
           {ownerRehearsal ? (
