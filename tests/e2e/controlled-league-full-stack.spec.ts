@@ -1,15 +1,18 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { execFileSync } from "node:child_process";
 
 const baseURL = "http://127.0.0.1:3000";
 const supabaseUrl = process.env.TEST_SUPABASE_URL;
 const publishableKey = process.env.TEST_SUPABASE_PUBLISHABLE_KEY;
 const serviceRoleKey = process.env.TEST_SUPABASE_SERVICE_ROLE_KEY;
+const databaseUrl = process.env.TEST_SUPABASE_DB_URL;
 const acceptanceRequested = process.env.FULL_STACK_ACCEPTANCE === "1";
 const missingSettings = [
   ["TEST_SUPABASE_URL", supabaseUrl],
   ["TEST_SUPABASE_PUBLISHABLE_KEY", publishableKey],
   ["TEST_SUPABASE_SERVICE_ROLE_KEY", serviceRoleKey],
+  ["TEST_SUPABASE_DB_URL", databaseUrl],
 ]
   .filter(([, value]) => !value)
   .map(([name]) => name);
@@ -21,6 +24,15 @@ if (acceptanceRequested && missingSettings.length > 0) {
 }
 
 const enabled = acceptanceRequested && missingSettings.length === 0;
+if (enabled) {
+  for (const value of [supabaseUrl!, databaseUrl!]) {
+    if (!["localhost", "127.0.0.1"].includes(new URL(value).hostname)) {
+      throw new Error(
+        "Controlled acceptance refuses hosted Auth or database servers.",
+      );
+    }
+  }
+}
 
 type Identity = {
   displayName: string;
@@ -183,6 +195,32 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   });
   const leagueId = created[0]?.league_id;
   expect(leagueId).toBeTruthy();
+
+  // The frozen fixture opens on September 13, 2026. New simulation leagues
+  // start at wall-clock now(), which eventually passes that fixture date.
+  // Seed only this newly created disposable season before testing monotonic
+  // advancement through the real commissioner action. Production stays untouched.
+  execFileSync(
+    "psql",
+    [
+      databaseUrl!,
+      "-X",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-v",
+      `league_id=${leagueId}`,
+    ],
+    {
+      input:
+        "update private.seasons set simulated_now = '2026-09-01 00:00:00+00' where league_id = :'league_id'::uuid and mode = 'SIMULATION';",
+      encoding: "utf8",
+    },
+  );
+  expect(
+    new Date(
+      (await getState(commissionerClient, slug)).season.simulatedNow,
+    ).toISOString(),
+  ).toBe("2026-09-01T00:00:00.000Z");
 
   const invitation = await expectRpc<{ token: string }>(
     commissionerClient,
