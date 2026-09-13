@@ -121,7 +121,11 @@ export function OwnerCardProgress({
           {closed ? "Picks closed" : "Your weekly card"}
         </h2>
         <StatusBadge tone={status === "Incomplete" ? "negative" : "pending"}>
-          {hydrated ? status : "Checking your card…"}
+          {closed && status !== "Incomplete"
+            ? "Closed"
+            : hydrated
+              ? status
+              : "Checking your card…"}
         </StatusBadge>
       </div>
       {hydrated ? (

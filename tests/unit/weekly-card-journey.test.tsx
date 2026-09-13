@@ -179,7 +179,7 @@ describe("weekly card journey", () => {
   });
 
   it("closes at the deadline even before commissioner lock without inventing the consequence", async () => {
-    const { context } = store([500]);
+    const { context } = store();
     const live = {
       ...context,
       mode: "LIVE" as const,
@@ -190,6 +190,8 @@ describe("weekly card journey", () => {
     };
     const { rerender } = render(<OwnerCardProgress context={live} />);
     await screen.findByRole("heading", { name: "Picks closed" });
+    expect(screen.getByText("Closed")).toBeVisible();
+    expect(screen.queryByText("Ready to review")).not.toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     expect(screen.queryByText("Incomplete")).not.toBeInTheDocument();
     rerender(

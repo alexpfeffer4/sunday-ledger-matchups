@@ -60,6 +60,10 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
+  // This LIVE fixture must stay before its fixed Sunday lock time. Keep real
+  // timers so quote-review promises and Testing Library polling run normally.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-09-13T16:45:00.000Z"));
   localStorage.clear();
   vi.mocked(reviewLiveCardQuotes).mockReset();
   vi.mocked(reviewLiveCardQuotes).mockResolvedValue({ status: "disabled" });
@@ -67,6 +71,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
 });
 
 const leagueId = "10000000-0000-4000-8000-000000000001";
