@@ -1381,6 +1381,8 @@ export async function importLiveScoresAction(
         errorMessage: error instanceof Error ? error.message : "Unknown error",
       }),
     );
+    // The adapter may have recorded a failed check before throwing.
+    await finish(context.data.leagueSlug, "");
     if (error instanceof OddsProviderRequestError) {
       return { status: "error", message: error.message };
     }

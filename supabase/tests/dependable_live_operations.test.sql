@@ -431,5 +431,26 @@ update private.provider_requests set attempted_at=clock_timestamp()-interval '2 
 update private.odds_refresh_policy set next_request_at='-infinity',requests_remaining=31;
 select throws_ok($$select api.claim_live_score_refresh('82000000-0000-4000-8000-000000000001')$$,'P0001','QUOTE_REFRESH_BUDGET','manual fallback cannot spend reserve');
 select ok(not exists(select 1 from private.position_receipts where receipt_hash<>repeat('9',64)),'accepted receipt unchanged');
+-- Live failures retain bounded causes rather than swallowing every import error.
+update private.provider_requests set attempted_at=clock_timestamp()-interval '2 minutes';
+update private.odds_refresh_policy set next_request_at='-infinity',requests_remaining=200;
+truncate checkpoint_claim;
+insert into checkpoint_claim select api.claim_live_score_refresh('82000000-0000-4000-8000-000000000001');
+create temp table rejected_score_update as
+select api.complete_provider_request((select (value->>'leaseId')::uuid from checkpoint_claim),
+  jsonb_set(jsonb_set(pg_temp.live_score_import(true,27,20,true,14,21),'{events}',
+    jsonb_build_array(pg_temp.live_score_import(true,27,20,true,14,21)->'events'->1)),
+    '{events,0,awayTeam}','"Unexpected provider team"'::jsonb),198) value;
+select is((select value->>'status' from rejected_score_update),'FAILED','mismatched identity remains rejected');
+select is((select value->'failureCodes' from rejected_score_update),'["EVENT_IDENTITY_CHANGED"]'::jsonb,'identity rejection has an actionable safe code');
+select ok((select value::text not like '%Unexpected provider team%' from rejected_score_update),'diagnostic output excludes raw provider data');
+select is((select count(*) from private.event_result_versions),2::bigint,'failed update cannot replace captured finals');
+update private.provider_requests set attempted_at=clock_timestamp()-interval '2 minutes';
+update private.odds_refresh_policy set next_request_at='-infinity';
+truncate checkpoint_claim;
+insert into checkpoint_claim select api.claim_live_score_refresh('82000000-0000-4000-8000-000000000001');
+select is(api.complete_provider_request((select (value->>'leaseId')::uuid from checkpoint_claim),
+  jsonb_build_object('source','THE_ODDS_API','fetchedAt',clock_timestamp(),'events','[]'::jsonb),196)->'failureCodes',
+  '["PROVIDER_EVENTS_MISSING"]'::jsonb,'empty provider response is distinguished from a rejected import');
 select * from finish();
 rollback;

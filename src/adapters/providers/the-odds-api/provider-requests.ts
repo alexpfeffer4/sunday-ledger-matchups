@@ -101,6 +101,7 @@ export async function refreshLiveScores(leagueId?: string) {
       .object({
         status: z.enum(["SUCCEEDED", "PARTIAL", "FAILED"]),
         eventCount: z.number().int().nonnegative(),
+        failureCodes: z.array(z.string()).optional(),
       })
       .parse(completed.data);
   } catch (error) {

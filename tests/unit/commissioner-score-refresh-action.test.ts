@@ -56,6 +56,7 @@ it("explains the shared request budget without exposing an internal exception", 
   expect(
     (await importLiveScoresAction(initialAppActionState, form())).message,
   ).toContain("request limit has been reached");
+  expect(mocks.revalidate).toHaveBeenCalled();
 });
 it("rejects members before any provider request", async () => {
   const data = form();
@@ -67,3 +68,21 @@ it("rejects members before any provider request", async () => {
   ).toBe("error");
   expect(mocks.refresh).not.toHaveBeenCalled();
 });
+
+it.each([
+  ["EVENT_IDENTITY_CHANGED", "differ from the published slate"],
+  ["INVALID_SCORE_EVIDENCE", "update times could not be verified"],
+  ["DATABASE_23502", "Score processing failed on the server"],
+])(
+  "shows the verified %s category without exposing database details",
+  async (code, message) => {
+    mocks.refresh.mockResolvedValue({
+      status: "FAILED",
+      eventCount: 0,
+      failureCodes: [code],
+    });
+    const result = await importLiveScoresAction(initialAppActionState, form());
+    expect(result.message).toContain(message);
+    expect(result.message).not.toContain(code);
+  },
+);
