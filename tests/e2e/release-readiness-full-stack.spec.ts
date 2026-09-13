@@ -484,7 +484,50 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
       page.getByRole("heading", { name: "Card sealed" }),
     ).toBeVisible();
   });
-  // The saved-state refresh belongs to Live, not the pregame sealed view.
+  // An independently authenticated opponent sees only the submission fact in
+  // the real RSC route, and pregame refresh does not contact the provider.
+  const opponentContext = await page
+    .context()
+    .browser()!
+    .newContext({ viewport: { width: 390, height: 844 } });
+  try {
+    const opponentPage = await opponentContext.newPage();
+    await opponentPage.goto(
+      `${baseURL}/auth/sign-in?next=${encodeURIComponent(`/l/${slug}/matchup`)}`,
+    );
+    await opponentPage.getByLabel("Email address").fill(opponentIdentity.email);
+    await opponentPage
+      .getByLabel("Password", { exact: true })
+      .fill(opponentIdentity.password);
+    await opponentPage
+      .getByRole("button", { name: "Sign in with password" })
+      .click();
+    await opponentPage.waitForURL(`**/l/${slug}/matchup`);
+    const opponentBadge = opponentPage.getByLabel(
+      `${state.viewer.displayName} card status`,
+    );
+    await expect(opponentBadge).toHaveText("Sealed");
+    await expect(
+      opponentPage.getByRole("heading", { name: "Picks by game" }),
+    ).toHaveCount(0);
+    const beforeRefreshCalls = readFileSync(`${fixture}.calls`, "utf8");
+    const refreshed = opponentPage.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === `/l/${slug}/matchup` &&
+        response.request().headers()["rsc"] === "1",
+    );
+    await opponentPage.getByRole("button", { name: "Refresh matchup" }).click();
+    const response = await refreshed;
+    expect(readFileSync(`${fixture}.calls`, "utf8")).toBe(beforeRefreshCalls);
+    const rsc = await response.text();
+    for (const position of state.ownerCard.positions) {
+      expect(rsc).not.toContain(position.id);
+      expect(rsc).not.toContain(position.receiptHash);
+    }
+    await expect(opponentBadge).toHaveText("Sealed");
+  } finally {
+    await opponentContext.close();
+  }
   // Advance only this loopback fixture's event times, then use the real lock RPC.
   expect(leagueId).toMatch(/^[0-9a-f-]{36}$/);
   sql(`update private.season_weeks set opens_at=clock_timestamp()-interval '6 hours',common_lock_at=clock_timestamp()-interval '65 minutes' where league_id='${leagueId}';
