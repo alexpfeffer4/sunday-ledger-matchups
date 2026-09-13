@@ -21,8 +21,8 @@ const phaseTones: Record<
   CORRECTED: "corrected",
 };
 
-function formatScore(value: number): string {
-  return formatCenticredits(BigInt(value), true);
+function formatScore(value: number | null): string {
+  return value === null ? "—" : formatCenticredits(BigInt(value), true);
 }
 
 function MemberScore({
@@ -54,7 +54,11 @@ function MemberScore({
       </p>
       {!pregame ? (
         <p
-          aria-label={`${member.displayName} score ${formatScore(member.scoreCenticredits)} credits`}
+          aria-label={
+            member.scoreCenticredits === null
+              ? `${member.displayName} score unavailable`
+              : `${member.displayName} score ${formatScore(member.scoreCenticredits)} credits`
+          }
           className="mt-4 text-[2.125rem] leading-9 font-bold tracking-[-0.04em] tabular-nums sm:text-[2.5rem] sm:leading-10"
         >
           {formatScore(member.scoreCenticredits)}
@@ -200,8 +204,14 @@ export function PairedMatchupHeader({
           </div>
           <span className="sr-only" role="status" aria-atomic="true">
             {matchup.phaseLabel}. Your score{" "}
-            {formatScore(matchup.self.scoreCenticredits)}. Opponent score{" "}
-            {formatScore(matchup.opponent.scoreCenticredits)}.
+            {matchup.self.scoreCenticredits === null
+              ? "unavailable"
+              : formatScore(matchup.self.scoreCenticredits)}
+            . Opponent score{" "}
+            {matchup.opponent.scoreCenticredits === null
+              ? "unavailable"
+              : formatScore(matchup.opponent.scoreCenticredits)}
+            .
           </span>
           {refreshControl}
         </div>

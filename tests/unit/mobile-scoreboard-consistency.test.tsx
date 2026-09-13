@@ -10,6 +10,7 @@ import {
 } from "@/components/stage1/live-views";
 import { makePhase6State } from "../fixtures/phase6-paired-matchup";
 import { frozenCardRulesFixture } from "../fixtures/card-rules";
+import { formatCenticredits } from "@/domain/odds/american";
 
 vi.mock("server-only", () => ({}));
 afterEach(() => {
@@ -80,10 +81,38 @@ describe("score availability across member routes", () => {
     const view = render(
       <PairedMatchupView matchup={matchup} refreshControl={null} />,
     );
+    const header = screen.getByRole("region", { name: /versus/ });
+    if (phase === "LOCKED" || phase === "DELAYED") {
+      for (const member of [matchup.self, matchup.opponent]) {
+        expect(
+          within(header).getByLabelText(
+            `${member.displayName} score unavailable`,
+          ),
+        ).toHaveTextContent("—");
+      }
+      expect(within(header).queryByText("0.00", { exact: true })).toBeNull();
+      expect(within(header).getByRole("status")).toHaveTextContent(
+        "Your score unavailable. Opponent score unavailable.",
+      );
+    } else if (phase !== "PREGAME") {
+      for (const member of [matchup.self, matchup.opponent]) {
+        expect(member.scoreCenticredits).not.toBeNull();
+        const score = formatCenticredits(
+          BigInt(member.scoreCenticredits!),
+          true,
+        );
+        expect(
+          within(header).getByLabelText(
+            `${member.displayName} score ${score} credits`,
+          ),
+        ).toHaveTextContent(score);
+      }
+    }
     const expected = screen.getByRole("region", {
       name: /scoreboard/,
     }).textContent;
     view.rerender(<Stage1LeagueView state={state} operations={operations} />);
+    expect(screen.queryByText("Cards open", { exact: true })).toBeNull();
     const actual = screen.getByRole("region", { name: /scoreboard/ });
     // The Matchup route alone adds an overview link after the shared scores.
     expect(expected).toBe(`${actual.textContent}Open League Overview`);
@@ -96,4 +125,39 @@ describe("score availability across member routes", () => {
       expect(within(own).getByText("200.00", { exact: true })).toBeVisible();
     }
   });
+
+  it("keeps genuine zero scores visible when a started game has delayed updates", () => {
+    const { state, operations, now } = makePhase6State("LIVE");
+    state.slate[0].providerHealth = "DEGRADED";
+    const matchup = projectPairedMatchup(state, operations, now)!;
+    expect(matchup.phase).toBe("DELAYED");
+    render(<PairedMatchupView matchup={matchup} refreshControl={null} />);
+    for (const member of [matchup.self, matchup.opponent]) {
+      expect(
+        screen.getByLabelText(`${member.displayName} score 0.00 credits`),
+      ).toBeVisible();
+    }
+    expect(matchup.scoreboard[0].sideAScoreCenticredits).toBe(0);
+    expect(matchup.scoreboard[0].sideBScoreCenticredits).toBe(0);
+  });
+
+  it.each([
+    ["PENDING", 1000, "Sealed"],
+    ["PENDING", 500, "Not started"],
+    ["INCOMPLETE", 1000, "Incomplete"],
+  ] as const)(
+    "labels %s owner compliance with %i accepted credits as %s",
+    (compliance, allocated, label) => {
+      const { state, operations, now } = makePhase6State("DELAYED");
+      state.week!.state = "OPEN";
+      state.ownerCard!.compliance = compliance;
+      state.ownerCard!.allocatedCredits = allocated;
+      state.ownerCard!.remainingCredits = 1000 - allocated;
+      const matchup = projectPairedMatchup(state, operations, now)!;
+      render(<PairedMatchupView matchup={matchup} refreshControl={null} />);
+      expect(
+        screen.getByLabelText(`${matchup.self.displayName} card status`),
+      ).toHaveTextContent(label);
+    },
+  );
 });

@@ -43,7 +43,7 @@ type MatchupMember = {
   record: string;
   seed: number | null;
   seedKind: "PLAYOFF" | "REGULAR";
-  scoreCenticredits: number;
+  scoreCenticredits: number | null;
   cardStatus: string;
   decision: "WIN" | "LOSS" | "TIE" | null;
 };
@@ -166,8 +166,13 @@ function cardStatus(
   card: NonNullable<Stage1StateDto["ownerCard"]>,
   weekState: NonNullable<Stage1StateDto["week"]>["state"],
 ): string {
-  if (card.compliance === "COMPLIANT") return "Sealed";
   if (card.compliance === "INCOMPLETE") return "Incomplete";
+  if (
+    card.compliance === "COMPLIANT" ||
+    (card.allocatedCredits === card.grantedCredits &&
+      card.remainingCredits === 0)
+  )
+    return "Sealed";
   if (weekState === "OPEN") return "Not started";
   return "Pending";
 }
@@ -393,6 +398,7 @@ export function projectPairedMatchup(
   const hasRevealedEvent = state.slate.some((event) =>
     ["LIVE", "FINAL", "VOID", "CORRECTED"].includes(event.state),
   );
+  const scoresAvailable = hasRevealedEvent || Boolean(state.matchup.result);
   const hasDegradedProvider = state.slate.some(
     (event) => event.providerHealth === "DEGRADED",
   );
@@ -478,7 +484,7 @@ export function projectPairedMatchup(
     record: recordLabel(selfStanding),
     seed: selfPlayoffSeed ?? selfStanding?.seed ?? null,
     seedKind: selfPlayoffSeed === null ? "REGULAR" : "PLAYOFF",
-    scoreCenticredits: selfScore,
+    scoreCenticredits: scoresAvailable ? selfScore : null,
     cardStatus: cardStatus(state.ownerCard, state.week.state),
     decision: result?.selfDecision ?? null,
   };
@@ -488,7 +494,7 @@ export function projectPairedMatchup(
     record: recordLabel(opponentStanding),
     seed: opponentPlayoffSeed ?? opponentStanding?.seed ?? null,
     seedKind: opponentPlayoffSeed === null ? "REGULAR" : "PLAYOFF",
-    scoreCenticredits: opponentScore,
+    scoreCenticredits: scoresAvailable ? opponentScore : null,
     cardStatus: opponentCardStatus(
       state.matchup.opponentReadiness,
       state.matchup.opponentSealed,
@@ -568,15 +574,13 @@ export function projectPairedMatchup(
       sideAName: matchup.sideAName,
       sideBName: matchup.sideBName,
       sideAScoreCenticredits:
-        matchup.id === state.matchup!.id &&
-        (hasRevealedEvent || Boolean(result))
+        matchup.id === state.matchup!.id && scoresAvailable
           ? state.matchup!.selfEntryId === matchup.sideAEntryId
             ? selfScore
             : opponentScore
           : (matchup.result?.sideAPointsForCenticredits ?? null),
       sideBScoreCenticredits:
-        matchup.id === state.matchup!.id &&
-        (hasRevealedEvent || Boolean(result))
+        matchup.id === state.matchup!.id && scoresAvailable
           ? state.matchup!.selfEntryId === matchup.sideBEntryId
             ? selfScore
             : opponentScore
