@@ -309,13 +309,13 @@ select is(pg_temp.cards()#>>'{cards,1,scoreCenticredits}','0','incomplete card h
 -- Add a future event/receipt to the same card; revealed response must not change.
 create temp table prior_reveal as select pg_temp.cards() value;
 insert into private.sports_events(id,week_id,season_id,league_id,fixture_event_key,away_team,home_team,scheduled_start_at)
-select '88000000-0000-4000-8000-000000000002',week_id,season_id,league_id,'future-private-game','Future Away','Future Home',clock_timestamp()+interval '2 hours'
+select '88000000-0000-4000-8000-000000000003',week_id,season_id,league_id,'future-private-game','Future Away','Future Home',clock_timestamp()+interval '2 hours'
 from private.sports_events where id='88000000-0000-4000-8000-000000000001';
 insert into private.market_snapshots(id,event_id,week_id,league_id,market_type,outcome_key,proposition,line_milli,american_odds,quality_status,observed_at,payload_hash)
-select '89000000-0000-4000-8000-000000000002','88000000-0000-4000-8000-000000000002',week_id,league_id,market_type,outcome_key,'SECRET FUTURE PICK',line_milli,american_odds,quality_status,observed_at,repeat('8',64)
+select '89000000-0000-4000-8000-000000000002','88000000-0000-4000-8000-000000000003',week_id,league_id,market_type,outcome_key,'SECRET FUTURE PICK',line_milli,american_odds,quality_status,observed_at,repeat('8',64)
 from private.market_snapshots where id='89000000-0000-4000-8000-000000000001';
 insert into private.position_receipts(id,card_id,week_id,league_id,entry_id,owner_user_id,event_id,market_snapshot_id,market_type,outcome_key,proposition,line_milli,american_odds,stake_credits,quote_observed_at,accepted_at,ruleset_snapshot_id,idempotency_key,request_hash,receipt_hash)
-select '8b000000-0000-4000-8000-000000000002',card_id,week_id,league_id,entry_id,owner_user_id,'88000000-0000-4000-8000-000000000002','89000000-0000-4000-8000-000000000002',market_type,outcome_key,'SECRET FUTURE PICK',line_milli,american_odds,50,quote_observed_at,accepted_at,ruleset_snapshot_id,'future-read-test',repeat('7',64),repeat('8',64)
+select '8b000000-0000-4000-8000-000000000002',card_id,week_id,league_id,entry_id,owner_user_id,'88000000-0000-4000-8000-000000000003','89000000-0000-4000-8000-000000000002',market_type,outcome_key,'SECRET FUTURE PICK',line_milli,american_odds,50,quote_observed_at,accepted_at,ruleset_snapshot_id,'future-read-test',repeat('7',64),repeat('8',64)
 from private.position_receipts where id='8b000000-0000-4000-8000-000000000001';
 select is(pg_temp.cards(),(select value from prior_reveal),'hidden pick cannot affect payload or any derived score/metadata');
 -- Latest append-only settlement is used, including a correction.
@@ -324,7 +324,15 @@ values('8c000000-0000-4000-8000-000000000001','88000000-0000-4000-8000-000000000
 insert into private.settlement_versions(receipt_id,result_version_id,week_id,league_id,owner_user_id,outcome,returned_centicredits)
 values('8b000000-0000-4000-8000-000000000001','8c000000-0000-4000-8000-000000000001','85000000-0000-4000-8000-000000000001','82000000-0000-4000-8000-000000000001','81000000-0000-4000-8000-000000000001','WIN',200000);
 select is(pg_temp.cards()#>>'{cards,0,scoreCenticredits}','200000','score reproduces visible settlement');
-update private.sports_events set state='VOID',actual_started_at=null where id='88000000-0000-4000-8000-000000000002';
+insert into private.event_result_versions(id,event_id,week_id,league_id,version,status,away_score,home_score,source,reason,recorded_by,input_hash,supersedes_id)
+select '8c000000-0000-4000-8000-000000000002',event_id,week_id,league_id,2,'FINAL',10,20,source,'test correction',recorded_by,repeat('6',64),id
+from private.event_result_versions where id='8c000000-0000-4000-8000-000000000001';
+insert into private.settlement_versions(receipt_id,result_version_id,week_id,league_id,owner_user_id,outcome,returned_centicredits,supersedes_id)
+select receipt_id,'8c000000-0000-4000-8000-000000000002',week_id,league_id,owner_user_id,'LOSS',0,id
+from private.settlement_versions where result_version_id='8c000000-0000-4000-8000-000000000001';
+select is(pg_temp.cards()#>>'{cards,0,scoreCenticredits}','0','latest correction replaces the earlier return without double-counting');
+select is(pg_temp.cards()#>>'{cards,0,positions,0,settlement,outcome}','LOSS','revealed pick shows the corrected outcome');
+update private.sports_events set state='VOID',actual_started_at=null where id='88000000-0000-4000-8000-000000000003';
 select is(jsonb_array_length(pg_temp.cards()#>'{cards,0,positions}'),2,'authoritatively voided event is public without kickoff');
 delete from private.league_memberships where league_id='82000000-0000-4000-8000-000000000001' and user_id='81000000-0000-4000-8000-000000000003';
 select throws_ok($$select pg_temp.cards()$$,'42501','League membership required.','removed member immediately loses access');
