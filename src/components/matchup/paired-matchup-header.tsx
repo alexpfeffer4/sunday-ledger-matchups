@@ -97,9 +97,9 @@ export function PairedMatchupHeader({
       aria-labelledby="paired-matchup-heading"
       className="paired-matchup-card border-boundary bg-surface rounded-xl border p-4 shadow-[var(--shadow-card)] sm:p-6"
     >
-      <div className="border-boundary flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+      <div className="border-boundary flex flex-wrap items-center justify-between gap-3 border-b pb-3">
         <div>
-          <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
+          <p className="text-muted text-sm font-semibold">
             Week {matchup.week.nflWeek} ·{" "}
             {matchup.week.competition ??
               (matchup.week.scope === "REGULAR"
@@ -142,7 +142,7 @@ export function PairedMatchupHeader({
         </div>
       ) : null}
 
-      <div className="paired-scores grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 py-5 sm:gap-8 sm:py-7">
+      <div className="paired-scores grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 py-4 sm:gap-8 sm:py-5">
         <MemberScore
           member={matchup.self}
           pregame={matchup.phase === "PREGAME"}
@@ -165,9 +165,9 @@ export function PairedMatchupHeader({
       {matchup.phase === "PREGAME" ? (
         <>
           {cardProgress}
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
             <p className="text-muted text-xs">
-              Picks stay hidden until each game starts.
+              Picks reveal after each game’s start is confirmed.
             </p>
             {refreshControl}
           </div>

@@ -24,7 +24,10 @@ import {
   useCardDeadline,
   useCardDraft,
 } from "@/components/card/use-card-draft";
-import { OwnerCardProgress } from "@/components/card/owner-card-progress";
+import {
+  OwnerCardProgress,
+  SealedCardSummary,
+} from "@/components/card/owner-card-progress";
 import { PickReturn, ReturnExplanation } from "@/components/card/pick-return";
 import { easternTime } from "@/application/queries/score-freshness";
 import { CardTray } from "@/components/card/card-tray";
@@ -34,7 +37,6 @@ import {
 } from "@/components/card/outcome-selector";
 import { PositionEditorSheet } from "@/components/card/position-editor-sheet";
 import { ActionFeedback } from "@/components/forms/action-feedback";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { validateDraftCard } from "@/domain/cards/validate-card-draft";
 import {
   maximumStakeForOdds,
@@ -180,7 +182,7 @@ function Stage1CardBuilderEditor({
     initialReview && state.league.mode === "LIVE",
   );
   const context = { ...ownerCardContext(state), slate };
-  const { drafts, setDrafts, hydrated, saved, sealed, status, clearDrafts } =
+  const { drafts, setDrafts, hydrated, sealed, clearDrafts } =
     useCardDraft(context);
   const closed = useCardDeadline(context);
   const [kickoffFilter, setKickoffFilter] = useState<KickoffFilter>("ALL");
@@ -577,29 +579,13 @@ function Stage1CardBuilderEditor({
 
   if (sealed || actionState.status === "success") {
     return (
-      <section className="border-positive/30 bg-positive/5 mt-7 rounded-xl border p-6">
-        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-          <div>
-            <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-              Card sealed
-            </p>
-            <h2 className="mt-2 text-xl font-bold">
-              All 1,000 credits are sealed
-            </h2>
-            <p className="text-graphite mt-2 text-sm">
-              Your card is sealed and every pick has a receipt. Open My Card to
-              see your saved picks.
-            </p>
-            <Link
-              className="text-action mt-3 inline-flex min-h-11 items-center text-sm font-semibold hover:underline"
-              href={`/l/${state.league.slug}/card`}
-            >
-              View card
-            </Link>
-          </div>
-          <StatusBadge tone="sealed">Sealed</StatusBadge>
-        </div>
-      </section>
+      <div className="mt-4">
+        <SealedCardSummary
+          heading="All 1,000 credits are sealed"
+          leagueSlug={state.league.slug}
+          lockAt={state.week.commonLockAt}
+        />
+      </div>
     );
   }
 
@@ -612,7 +598,7 @@ function Stage1CardBuilderEditor({
 
   if (reviewing && drafts.length > 0) {
     return (
-      <div className="mt-7 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="mt-4 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <section className="border-registry bg-surface min-w-0 rounded-xl border p-4 wrap-break-word shadow-[var(--shadow-card)] sm:p-6">
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
             Final review
@@ -707,9 +693,7 @@ function Stage1CardBuilderEditor({
         </section>
         <aside className="min-w-0 space-y-5 wrap-break-word xl:sticky xl:top-6 xl:self-start">
           <section className="border-boundary bg-subtle rounded-xl border p-5">
-            <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
-              Card total
-            </p>
+            <p className="text-muted text-sm font-semibold">Card total</p>
             <p className="mt-2 font-mono text-3xl font-bold">
               {formatCredits(rules.card.weeklyAllocationCredits)} /{" "}
               {formatCredits(rules.card.weeklyAllocationCredits)}
@@ -822,40 +806,9 @@ function Stage1CardBuilderEditor({
 
   return (
     <>
-      <div className="mt-7 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="space-y-6">
-          <section className="border-boundary bg-surface rounded-xl border p-5">
-            <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-              Your weekly card
-            </p>
-            <div className="mt-2">
-              <StatusBadge tone="pending">{status}</StatusBadge>
-            </div>
-            <p className="mt-2 font-mono text-2xl font-bold">
-              {formatCredits(totalCredits)} /{" "}
-              {formatCredits(rules.card.weeklyAllocationCredits)}
-            </p>
-            <p className="text-graphite mt-2 text-sm leading-6">
-              {drafts.length > 0
-                ? saved
-                  ? "Draft saved on this device."
-                  : "Draft not saved on this device. Keep this page open to avoid losing it."
-                : "Choose a side to start your card. Drafts stay on this device."}{" "}
-              Your picks stay editable until you seal the complete card.
-            </p>
-            <dl className="border-boundary mt-4 grid gap-3 border-t pt-4 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-muted">Card deadline</dt>
-                <dd className="mt-1 font-semibold">
-                  {formatDate(state.week.commonLockAt)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted">If incomplete at lock</dt>
-                <dd className="mt-1 font-semibold">Automatic matchup loss</dd>
-              </div>
-            </dl>
-          </section>
+      <div className="mt-4 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="space-y-3">
+          <OwnerCardProgress context={context} onSlatePage />
 
           <nav
             aria-label="Filter games by kickoff"
@@ -881,7 +834,7 @@ function Stage1CardBuilderEditor({
           {visibleEvents.map((event) => (
             <section
               aria-labelledby={`card-builder-event-${event.id}`}
-              className="border-boundary bg-surface rounded-xl border p-5"
+              className="border-boundary bg-surface rounded-lg border p-4"
               key={event.id}
             >
               <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
@@ -919,13 +872,13 @@ function Stage1CardBuilderEditor({
                   );
                   return (
                     <article
-                      className={`grid gap-3 py-4 sm:grid-cols-[110px_minmax(0,1fr)] sm:items-center ${
+                      className={`grid gap-2 py-3 sm:grid-cols-[110px_minmax(0,1fr)] sm:items-center ${
                         selectedDraft ? "bg-registry/5" : ""
                       }`}
                       key={marketType}
                     >
                       <div className="flex items-center justify-between gap-3 sm:block">
-                        <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
+                        <p className="text-muted text-sm font-semibold">
                           {marketLabels[marketType]}
                         </p>
                         {selectedDraft ? (
@@ -971,10 +924,23 @@ function Stage1CardBuilderEditor({
               </div>
             </section>
           ))}
+          <details className="text-graphite text-sm">
+            <summary className="min-h-11 cursor-pointer py-3 font-semibold">
+              Card requirements
+            </summary>
+            <p className="pb-3 leading-6">
+              Allocate all {formatCredits(rules.card.weeklyAllocationCredits)}{" "}
+              credits and seal before the deadline.{" "}
+              {state.week.scope === "EXHIBITION"
+                ? "An incomplete card scores zero for this exhibition; your official season record stays unchanged."
+                : "An incomplete card receives an automatic matchup loss under this season’s Ruleset."}{" "}
+              Picks stay editable until you seal.
+            </p>
+          </details>
         </div>
 
         <aside className="min-w-0 space-y-5 wrap-break-word xl:sticky xl:top-6 xl:self-start">
-          <section className="border-boundary bg-surface rounded-xl border p-5">
+          <section className="border-boundary bg-surface rounded-lg border p-4">
             <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
               Your picks
             </p>
@@ -1011,7 +977,7 @@ function Stage1CardBuilderEditor({
                               selected.market.proposition,
                             )}
                           </p>
-                          <p className="text-muted mt-1 font-mono text-xs">
+                          <p className="text-muted mt-1 font-mono text-[.9375rem] leading-5">
                             {formatAmericanOdds(selected.market.americanOdds)} ·
                             cap{" "}
                             {formatCredits(selected.market.maximumStakeCredits)}

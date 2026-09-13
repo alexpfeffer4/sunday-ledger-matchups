@@ -167,7 +167,9 @@ as $$
         'sportKey', 'americanfootball_nfl',
         'awayTeam', 'Buffalo Bills',
         'homeTeam', 'New York Jets',
-        'scheduledStartAt', '2026-09-13T17:00:00.000Z',
+        -- Transaction-stable future kickoff keeps publication testable after
+        -- the original September 2026 fixture date without weakening lock rules.
+        'scheduledStartAt', now() + interval '7 days',
         'markets', jsonb_build_array(
           jsonb_build_object(
             'sourceBook', 'draftkings', 'marketType', 'MONEYLINE',
@@ -538,7 +540,7 @@ select is(
 );
 select is(
   (
-    select common_lock_at = '2026-09-13T16:55:00.000Z'::timestamptz
+    select common_lock_at = now() + interval '7 days' - interval '5 minutes'
     from private.season_weeks
     where season_id = '64000000-0000-4000-8000-000000000001'
     limit 1

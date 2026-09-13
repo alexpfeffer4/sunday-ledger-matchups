@@ -62,7 +62,7 @@ export function CardTray({
             </p>
           </div>
           <button
-            className="bg-registry hover:bg-registry-hover min-h-11 shrink-0 rounded-lg px-4 text-sm font-semibold text-white"
+            className="bg-registry hover:bg-registry-hover min-h-12 shrink-0 rounded-lg px-4 text-sm font-semibold text-white"
             onClick={onReview}
             type="button"
           >

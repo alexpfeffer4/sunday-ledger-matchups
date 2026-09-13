@@ -15,6 +15,7 @@ import { StandingsTable } from "@/components/league/standings-table";
 import { LeagueScoreboard } from "@/components/matchup/league-scoreboard";
 import {
   SeasonArchiveMyCard,
+  SeasonArchivePlayoffs,
   SeasonArchiveSchedule,
 } from "@/components/season/archive-views";
 import {
@@ -60,6 +61,15 @@ function archiveWithCorrection(eventId: string): SeasonArchiveDto {
 }
 
 describe("Phase 10 dense league records", () => {
+  it("reserves championship-win copy for the Week 17 title game", () => {
+    render(<SeasonArchivePlayoffs archive={exampleSeasonArchive} />);
+    expect(screen.getAllByText(/won the championship/)).toHaveLength(1);
+    const semifinals = screen
+      .getByRole("heading", { name: "Week 16 · semifinals" })
+      .closest("section")!;
+    expect(within(semifinals).getAllByText(/advanced/)).toHaveLength(2);
+    expect(within(semifinals).queryByText(/won the championship/)).toBeNull();
+  });
   it("keeps rank, You, record, Points For, and one playoff line decisive", () => {
     const rows = [
       {
@@ -302,7 +312,7 @@ describe("Phase 10 dense league records", () => {
     expect(screen.getByRole("heading", { name: "Card sealed" })).toBeVisible();
     expect(
       screen.getByRole("region", { name: "Your weekly card" }),
-    ).toHaveTextContent("1,000 / 1,000");
+    ).toHaveTextContent("1,000 credits sealed");
     expect(
       screen.queryByText("Allocation", { exact: true }),
     ).not.toBeInTheDocument();

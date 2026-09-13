@@ -56,8 +56,12 @@ export function OutcomeSelector({
               <span className="block text-sm leading-5 font-semibold break-words">
                 {option.primary}
               </span>
-              <span className="mt-1 block font-mono text-xs leading-4">
-                {option.secondary}
+              <span className="mt-1 -mr-7 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 font-mono text-[0.9375rem] leading-5">
+                {option.secondary.split(" · ").map((value, index) => (
+                  <span className="whitespace-nowrap" key={index}>
+                    {value}
+                  </span>
+                ))}
               </span>
               <span
                 aria-hidden="true"

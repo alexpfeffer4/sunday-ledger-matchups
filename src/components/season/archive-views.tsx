@@ -685,7 +685,7 @@ export function SeasonArchivePlayoffs({
                       </div>
                       <p className="text-positive mt-3 text-xs font-semibold">
                         {line.winner
-                          ? `${line.winner} ${game.scope === "PLAYOFF" ? "advanced" : "won"}${game.advancementReason ? ` · ${game.advancementReason.toLowerCase().replaceAll("_", " ")}` : ""}`
+                          ? `${line.winner} ${game.postseasonRole === "CHAMPIONSHIP" && game.week === 17 ? "won the championship" : game.scope === "PLAYOFF" && game.week < 17 ? "advanced" : "won"}${game.advancementReason ? ` · ${game.advancementReason.toLowerCase().replaceAll("_", " ")}` : ""}`
                           : "Matchup finished tied"}
                       </p>
                     </article>

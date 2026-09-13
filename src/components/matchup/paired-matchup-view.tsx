@@ -50,16 +50,16 @@ export function PairedMatchupView({
       dark={matchup.broadcast}
       description={
         pregame
-          ? "One opponent. One weekly card. Seal your picks before the deadline."
+          ? undefined
           : completed
             ? "Your result, its season impact, and the picks behind it."
-            : "Follow your contest. Opponent picks appear only after their games are confirmed started."
+            : "Picks reveal after a confirmed start. Scores update after results are checked."
       }
       eyebrow={`${matchup.league.name} · ${matchup.league.mode === "LIVE" ? "Live season" : "Practice/test · Simulation"}`}
       title={`Week ${matchup.week.nflWeek} matchup`}
     >
-      <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="min-w-0 space-y-6">
+      <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 space-y-5">
           <PairedMatchupHeader
             matchup={matchup}
             refreshControl={refreshControl}
@@ -75,9 +75,6 @@ export function PairedMatchupView({
               className="space-y-5"
             >
               <div>
-                <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-                  Picks
-                </p>
                 <h2
                   className="mt-1 text-xl font-bold"
                   id="position-ledger-heading"

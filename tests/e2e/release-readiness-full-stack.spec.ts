@@ -321,6 +321,18 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
         .getByRole("button")
         .first(),
     ).toBeEnabled();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const firstMarket = await page
+      .locator("main .outcome-selector-group")
+      .first()
+      .boundingBox();
+    const navigation = await page
+      .getByRole("navigation", { name: "Mobile league navigation" })
+      .boundingBox();
+    expect(
+      firstMarket!.y + firstMarket!.height,
+      "One complete market fits above navigation on the first 390px view",
+    ).toBeLessThanOrEqual(navigation!.y);
     await page
       .locator(".outcome-selector-group")
       .first()
@@ -403,6 +415,28 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     await expect(
       page.getByRole("region", { name: "Working card" }),
     ).toContainText(`${((index + 1) * 50).toLocaleString("en-US")} allocated`);
+    if (index === 0) {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.locator("html").evaluate((element) => {
+        element.style.fontSize = "100%";
+      });
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const market = await groups.first().boundingBox();
+      const tray = await page
+        .getByRole("region", { name: "Working card" })
+        .boundingBox();
+      expect(
+        market!.y + market!.height,
+        "A complete first market stays above the tray with a partial draft",
+      ).toBeLessThanOrEqual(tray!.y);
+      await page.screenshot({
+        path: info.outputPath("partial-draft-first-view-390.png"),
+      });
+      await page.setViewportSize({ width: 320, height: 800 });
+      await page.locator("html").evaluate((element) => {
+        element.style.fontSize = "200%";
+      });
+    }
   }
   expect(readFileSync(`${fixture}.calls`, "utf8")).toBe("");
   expect(

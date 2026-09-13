@@ -55,7 +55,7 @@ export type LeagueScoreboardItem = {
   sideAScoreCenticredits: number | null;
   sideBScoreCenticredits: number | null;
   state:
-    | "Pregame"
+    | "Not started"
     | "Locked"
     | "Live"
     | "Delayed"
@@ -505,7 +505,7 @@ export function projectPairedMatchup(
     if (scheduleResult?.status === "PROVISIONAL") return "Provisional";
     if (delayed) return "Delayed";
     if (hasLiveEvent || hasRevealedEvent) return "Live";
-    if (phase === "PREGAME") return "Pregame";
+    if (phase === "PREGAME") return "Not started";
     return "Locked";
   };
 
@@ -568,13 +568,15 @@ export function projectPairedMatchup(
       sideAName: matchup.sideAName,
       sideBName: matchup.sideBName,
       sideAScoreCenticredits:
-        matchup.id === state.matchup!.id
+        matchup.id === state.matchup!.id &&
+        (hasRevealedEvent || Boolean(result))
           ? state.matchup!.selfEntryId === matchup.sideAEntryId
             ? selfScore
             : opponentScore
           : (matchup.result?.sideAPointsForCenticredits ?? null),
       sideBScoreCenticredits:
-        matchup.id === state.matchup!.id
+        matchup.id === state.matchup!.id &&
+        (hasRevealedEvent || Boolean(result))
           ? state.matchup!.selfEntryId === matchup.sideBEntryId
             ? selfScore
             : opponentScore

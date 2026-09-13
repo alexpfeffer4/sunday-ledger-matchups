@@ -153,8 +153,10 @@ export function StandingsRulesetSummary({
   const labels = rulesetTiebreakLabels(presentation.canonicalJson);
 
   return (
-    <section className="border-boundary mt-6 border-t pt-5">
-      <h2 className="font-bold">How ties are ordered</h2>
+    <details className="border-boundary mt-6 border-t">
+      <summary className="min-h-11 cursor-pointer py-3">
+        <h2 className="inline font-bold">How ties are ordered</h2>
+      </summary>
       {labels.length > 0 ? (
         <p className="text-graphite mt-2 max-w-3xl text-sm leading-6">
           {labels.join(", ")}. The mini-table is used only when every tied pair
@@ -170,6 +172,6 @@ export function StandingsRulesetSummary({
       <div className="mt-4 max-w-xl">
         <RulesetAuditDetails presentation={presentation} />
       </div>
-    </section>
+    </details>
   );
 }

@@ -34,15 +34,12 @@ export function LeagueScoreboard({
     >
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-muted text-xs font-bold tracking-[0.08em] uppercase">
-            Around the league
-          </p>
-          <h2 className="mt-1 text-lg font-bold" id="league-scoreboard-heading">
+          <h2 className="text-lg font-bold" id="league-scoreboard-heading">
             Week {week} scoreboard
           </h2>
         </div>
       </div>
-      <ol className="border-boundary bg-surface mt-3 divide-y overflow-hidden rounded-lg border">
+      <ol className="border-boundary divide-boundary bg-surface mt-3 divide-y overflow-hidden rounded-lg border">
         {games.map((game) => (
           <li
             aria-current={game.selected ? "true" : undefined}
