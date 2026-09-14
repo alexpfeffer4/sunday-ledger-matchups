@@ -1,7 +1,11 @@
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import type { RestoredCardDraft } from "@/components/card/card-draft-storage";
 import { validateDraftCard } from "@/domain/cards/validate-card-draft";
-import { resolveSeasonCardRules, type CardRules } from "@/rulesets/card-rules";
+import {
+  resolveSeasonCardRules,
+  usesRollingSubmissions,
+  type CardRules,
+} from "@/rulesets/card-rules";
 
 // Only the authenticated owner's card and published markets cross this boundary.
 // Never add opponent draft/readiness data to this client-side progress contract.
@@ -42,6 +46,7 @@ export function cardDraftStorageKey(context: OwnerCardContext): string | null {
 export function cardIsSealed(context: OwnerCardContext): boolean {
   const card = context.ownerCard;
   return Boolean(
+    !usesRollingSubmissions(context.rules) &&
     card &&
     (card.compliance === "COMPLIANT" ||
       (card.allocatedCredits === card.grantedCredits &&
@@ -53,6 +58,8 @@ export function ownerDraftState(
   context: OwnerCardContext,
   drafts: RestoredCardDraft[],
 ) {
+  if (usesRollingSubmissions(context.rules) && !drafts.length)
+    return context.ownerCard?.positions.length ? "Submitted" : "Not submitted";
   if (cardIsSealed(context)) return "Sealed";
   if (context.ownerCard?.compliance === "INCOMPLETE") return "Incomplete";
   if (!drafts.length) return "Not started";
@@ -68,4 +75,18 @@ export function ownerDraftState(
     ruleset: context.rules,
   });
   return validation.accepted ? "Ready to review" : "Draft";
+}
+
+/** UI hint only. Database time and persisted deadlines decide acceptance. */
+export function eventAcceptsBets(
+  event: Stage1StateDto["slate"][number],
+  now: string,
+): boolean {
+  return (
+    event.entryOpen !== false &&
+    event.actualStartedAt === null &&
+    event.state === "SCHEDULED" &&
+    new Date(now).getTime() <
+      new Date(event.entryClosesAt ?? event.scheduledStartAt).getTime()
+  );
 }

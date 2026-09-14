@@ -190,8 +190,8 @@ export function StandingsTable({
       </div>
       <p className="text-muted mt-3 text-sm leading-6">
         <strong className="text-graphite">Incomplete weeks</strong> count
-        regular-season cards that were not fully sealed before the deadline.{" "}
-        {playoffIneligibilityAtMisses} makes a member playoff-ineligible.
+        regular-season weeks recorded as attendance misses under that week’s
+        rules. {playoffIneligibilityAtMisses} makes a member playoff-ineligible.
       </p>
     </>
   );

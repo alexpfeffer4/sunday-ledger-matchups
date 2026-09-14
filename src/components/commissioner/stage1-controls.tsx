@@ -35,6 +35,9 @@ export type Stage1CommissionerControlState = {
     | "commonLockAt"
     | "correctionWindowClosesAt"
     | "finalizationMode"
+    | "rollingSubmissionsEnabled"
+    | "entryClosesAt"
+    | "entryClosed"
   > | null;
   slate: Array<
     Pick<
@@ -176,6 +179,13 @@ function commissionerNextStep({
   }
 
   if (state.week.state === "OPEN") {
+    if (state.week.rollingSubmissionsEnabled)
+      return {
+        detail:
+          "Members can submit bets until each game’s kickoff. Any accepted bet counts as participation; unused allocation expires at the final cutoff.",
+        prerequisites: `Week ${state.week.nflWeek} betting is open`,
+        title: "Betting continues game by game",
+      };
     return {
       detail:
         state.league.mode === "LIVE"
@@ -190,7 +200,9 @@ function commissionerNextStep({
     return {
       detail:
         "Record final game results as they arrive. Matchup scores update from the accepted card terms.",
-      prerequisites: "All member cards are locked",
+      prerequisites: state.week.rollingSubmissionsEnabled
+        ? "Submitted bets remain permanent; later games can still accept bets"
+        : "All member cards are locked",
       title: "Record final results",
     };
   }

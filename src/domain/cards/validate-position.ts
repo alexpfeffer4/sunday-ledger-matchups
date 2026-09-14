@@ -4,7 +4,7 @@ import {
 } from "@/domain/cards/completion";
 import { formatCredits } from "@/domain/odds/american";
 import type { MarketType } from "@/rulesets/schema";
-import type { CardRules } from "@/rulesets/card-rules";
+import { usesRollingSubmissions, type CardRules } from "@/rulesets/card-rules";
 
 export type AcceptedCardPosition = {
   eventId: string;
@@ -163,7 +163,7 @@ export function validateProposedPosition(params: {
     opportunities: remainingOpportunities,
   });
 
-  if (!completion.possible) {
+  if (!usesRollingSubmissions(ruleset) && !completion.possible) {
     return {
       accepted: false,
       code: "NO_LEGAL_COMPLETION",
@@ -191,7 +191,10 @@ export function cardCompliance(
     (total, position) => total + position.stakeCredits,
     0,
   );
-  return acceptedCredits === ruleset.card.weeklyAllocationCredits &&
+  return (usesRollingSubmissions(ruleset)
+    ? acceptedCredits > 0 &&
+      acceptedCredits <= ruleset.card.weeklyAllocationCredits
+    : acceptedCredits === ruleset.card.weeklyAllocationCredits) &&
     positions.length >= ruleset.card.minimumPositions &&
     positions.length <= ruleset.card.maximumPositions
     ? "COMPLIANT"

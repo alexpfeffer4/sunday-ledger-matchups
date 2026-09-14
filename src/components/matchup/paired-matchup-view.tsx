@@ -9,6 +9,7 @@ import { PairedMatchupHeader } from "@/components/matchup/paired-matchup-header"
 import { PositionLedgerRow } from "@/components/matchup/position-ledger-row";
 import { ScorePath } from "@/components/matchup/score-path";
 import { PageFrame } from "@/components/league/page-frame";
+import { SelectedGameList } from "@/components/matchup/selected-game-list";
 
 const sections: Array<{
   id: PositionLedgerSection;
@@ -77,6 +78,31 @@ export function PairedMatchupView({
             cardProgress={pregame ? cardProgress : undefined}
           />
           {weeklyClose}
+          {(matchup.self.selectedGames?.length ?? 0) > 0 ||
+          (matchup.opponent.selectedGames?.length ?? 0) > 0 ? (
+            <section
+              aria-labelledby="selected-games-heading"
+              className="border-boundary bg-surface rounded-xl border p-4 sm:p-5"
+            >
+              <h2 id="selected-games-heading" className="text-lg font-bold">
+                Games selected
+              </h2>
+              <p className="text-muted mt-1 text-sm">
+                Games appear when bets are submitted. Bet details reveal after
+                each game’s start is confirmed.
+              </p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <SelectedGameList
+                  games={matchup.self.selectedGames ?? []}
+                  memberName={matchup.self.displayName}
+                />
+                <SelectedGameList
+                  games={matchup.opponent.selectedGames ?? []}
+                  memberName={matchup.opponent.displayName}
+                />
+              </div>
+            </section>
+          ) : null}
           {!matchup.spectator && !pregame && !completed ? (
             <ScorePath matchup={matchup} />
           ) : null}
@@ -136,7 +162,9 @@ export function PairedMatchupView({
                       </p>
                     )}
 
-                    {section.id === "REMAINING" && matchup.futureSealed ? (
+                    {section.id === "REMAINING" &&
+                    matchup.futureSealed &&
+                    !matchup.gameIdentitiesVisible ? (
                       <div
                         aria-label="Future picks sealed. Unstarted events remain private."
                         className="border-boundary bg-subtle mt-2 flex min-h-24 items-center justify-center rounded-lg border px-4 py-5 text-center"

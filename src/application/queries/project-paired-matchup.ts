@@ -7,6 +7,11 @@ import {
 import type { LiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import { returnedCenticredits } from "@/domain/odds/american";
+import {
+  distinctUnrevealedGames,
+  rollingSubmissionStatus,
+  type SelectedGame,
+} from "./rolling-matchup";
 
 export type PairedMatchupPhase =
   | "PREGAME"
@@ -46,6 +51,10 @@ type MatchupMember = {
   seedKind: "PLAYOFF" | "REGULAR";
   scoreCenticredits: number | null;
   outstanding: { picks: number; credits: number } | null;
+  selectedGames?: SelectedGame[];
+  availableCredits?: number | null;
+  expiredCredits?: number | null;
+  canSubmit?: boolean | null;
   cardStatus: string;
   decision: "WIN" | "LOSS" | "TIE" | null;
 };
@@ -72,6 +81,7 @@ export type LeagueScoreboardItem = {
 
 export type PairedMatchupDto = {
   spectator?: boolean;
+  gameIdentitiesVisible?: boolean;
   league: {
     name: string;
     slug: string;
@@ -82,6 +92,9 @@ export type PairedMatchupDto = {
     scope: "REGULAR" | "PLAYOFF" | "PLACEMENT" | "EXHIBITION";
     commonLockAt: string;
     competition?: string;
+    rollingSubmissionsEnabled?: boolean;
+    entryClosed?: boolean;
+    entryClosesAt?: string | null;
   };
   phase: PairedMatchupPhase;
   phaseLabel: string;
@@ -98,6 +111,7 @@ export type PairedMatchupDto = {
     selfRemainingMaximumCenticredits: number;
     opponentRemainingMaximumCenticredits: number | null;
     sentence: string | null;
+    furtherSubmissionsPossible?: boolean;
   };
   freshness: {
     updatedAt: string | null;
@@ -271,6 +285,29 @@ export function projectPairedMatchup(
   if (state.league.mode === "SIMULATION" && state.season.simulatedNow) {
     now = new Date(state.season.simulatedNow);
   }
+  const rolling = state.week.rollingSubmissionsEnabled === true;
+  const entryClosed = state.week.entryClosed === true;
+  const cardsByEntry = new Map(
+    (leagueCards?.weekId === state.week.id ? leagueCards.cards : []).map(
+      (card) => [card.entryId, card],
+    ),
+  );
+  const opponentPublicCard = cardsByEntry.get(state.matchup.opponentEntryId);
+  const gameIdentitiesVisible =
+    opponentPublicCard?.selectedGames !== undefined ||
+    state.matchup.opponentSelectedGames !== undefined;
+  const opponentCanSubmit =
+    opponentPublicCard?.canSubmit ?? state.matchup.opponentCanSubmit;
+  // Unknown public availability is not proof that a member is finished.
+  const furtherSubmissionsPossible =
+    rolling &&
+    !entryClosed &&
+    (state.ownerCard.canSubmit !== false ||
+      opponentCanSubmit !== false ||
+      state.ownerCard.positions.length === 0 ||
+      state.matchup.opponentSubmitted !== true);
+  // A stale result must not claim a win while another accepted bet is possible.
+  const result = furtherSubmissionsPossible ? null : state.matchup.result;
 
   const eventById = new Map(state.slate.map((event) => [event.id, event]));
   const operationByEventId = new Map(
@@ -361,11 +398,10 @@ export function projectPairedMatchup(
       state.matchup.opponentReadiness,
       opponentSettled,
     ) ?? opponentSettled;
-  const selfScore =
-    state.matchup.result?.selfPointsForCenticredits ?? derivedSelfScore;
+  const selfScore = result?.selfPointsForCenticredits ?? derivedSelfScore;
   const opponentScore =
-    state.matchup.result?.opponentPointsForCenticredits ?? derivedOpponentScore;
-  if (state.matchup.result) {
+    result?.opponentPointsForCenticredits ?? derivedOpponentScore;
+  if (result) {
     const expectedSelfScore = officialScoreFromSettlements(
       state.ownerCard.compliance,
       selfSettled,
@@ -389,8 +425,9 @@ export function projectPairedMatchup(
     state.ownerCard.compliance === "INCOMPLETE"
       ? 0
       : sumRemainingMaximum(allRows, "SELF");
-  const opponentRemainingMaximum =
-    state.matchup.opponentReadiness === "INCOMPLETE"
+  const opponentRemainingMaximum = furtherSubmissionsPossible
+    ? null
+    : state.matchup.opponentReadiness === "INCOMPLETE"
       ? 0
       : state.matchup.futureSealed
         ? null
@@ -404,7 +441,7 @@ export function projectPairedMatchup(
   const hasRevealedEvent = state.slate.some((event) =>
     ["LIVE", "FINAL", "VOID", "CORRECTED"].includes(event.state),
   );
-  const scoresAvailable = hasRevealedEvent || Boolean(state.matchup.result);
+  const scoresAvailable = hasRevealedEvent || Boolean(result);
   const hasDegradedProvider = state.slate.some(
     (event) => event.providerHealth === "DEGRADED",
   );
@@ -423,28 +460,30 @@ export function projectPairedMatchup(
   let phase: PairedMatchupPhase;
   if (correctedCount > 0) phase = "CORRECTED";
   else if (
-    state.matchup.result?.status === "FINAL" ||
-    state.week.state === "FINAL"
+    result?.status === "FINAL" ||
+    (!furtherSubmissionsPossible && state.week.state === "FINAL")
   )
     phase = "FINAL";
   else if (
-    state.matchup.result?.status === "PROVISIONAL" ||
-    state.week.state === "PROVISIONAL"
+    result?.status === "PROVISIONAL" ||
+    (!furtherSubmissionsPossible && state.week.state === "PROVISIONAL")
   )
     phase = "PROVISIONAL";
   else if (delayed) phase = "DELAYED";
   else if (hasLiveEvent) phase = "LIVE";
   else if (hasRevealedEvent) phase = "PARTIAL_REVEAL";
   else if (
-    state.week.state === "LOCKED" ||
-    now.getTime() >= new Date(state.week.commonLockAt).getTime()
+    rolling
+      ? entryClosed
+      : state.week.state === "LOCKED" ||
+        now.getTime() >= new Date(state.week.commonLockAt).getTime()
   )
     phase = "LOCKED";
   else phase = "PREGAME";
 
   const phaseLabels: Record<PairedMatchupPhase, string> = {
     PREGAME: "Pregame",
-    LOCKED: "Cards locked",
+    LOCKED: rolling ? "Betting closed" : "Cards locked",
     PARTIAL_REVEAL: "Partial reveal",
     LIVE: "Live",
     DELAYED: "Updates delayed",
@@ -476,7 +515,6 @@ export function projectPairedMatchup(
   const opponentStanding = state.standings.find(
     (row) => row.entryId === state.matchup!.opponentEntryId,
   );
-  const result = state.matchup.result;
   const usesPlayoffSeeds = state.matchup.postseasonRole === "CHAMPIONSHIP";
   const selfPlayoffSeed = usesPlayoffSeeds
     ? (qualificationSeeds.get(state.viewer.entryId) ?? null)
@@ -484,11 +522,6 @@ export function projectPairedMatchup(
   const opponentPlayoffSeed = usesPlayoffSeeds
     ? (qualificationSeeds.get(state.matchup.opponentEntryId) ?? null)
     : null;
-  const cardsByEntry = new Map(
-    (leagueCards?.weekId === state.week.id ? leagueCards.cards : []).map(
-      (card) => [card.entryId, card],
-    ),
-  );
   const self: MatchupMember = {
     entryId: state.viewer.entryId,
     displayName: state.viewer.displayName,
@@ -497,7 +530,26 @@ export function projectPairedMatchup(
     seedKind: selfPlayoffSeed === null ? "REGULAR" : "PLAYOFF",
     scoreCenticredits: scoresAvailable ? selfScore : null,
     outstanding: cardsByEntry.get(state.viewer.entryId)?.outstanding ?? null,
-    cardStatus: cardStatus(state.ownerCard, state.week.state),
+    selectedGames: gameIdentitiesVisible
+      ? distinctUnrevealedGames(state.ownerCard.positions, state.slate)
+      : undefined,
+    availableCredits: rolling
+      ? entryClosed
+        ? 0
+        : state.ownerCard.remainingCredits
+      : undefined,
+    expiredCredits: rolling
+      ? entryClosed
+        ? state.ownerCard.remainingCredits
+        : 0
+      : undefined,
+    canSubmit: rolling ? state.ownerCard.canSubmit : undefined,
+    cardStatus: rolling
+      ? rollingSubmissionStatus(
+          state.ownerCard.positions.length > 0,
+          entryClosed,
+        )
+      : cardStatus(state.ownerCard, state.week.state),
     decision: result?.selfDecision ?? null,
   };
   const opponent: MatchupMember = {
@@ -509,10 +561,33 @@ export function projectPairedMatchup(
     scoreCenticredits: scoresAvailable ? opponentScore : null,
     outstanding:
       cardsByEntry.get(state.matchup.opponentEntryId)?.outstanding ?? null,
-    cardStatus: opponentCardStatus(
-      state.matchup.opponentReadiness,
-      state.matchup.opponentSealed,
-    ),
+    selectedGames: gameIdentitiesVisible
+      ? distinctUnrevealedGames(
+          opponentPublicCard?.selectedGames ??
+            state.matchup.opponentSelectedGames,
+          state.slate,
+        )
+      : undefined,
+    availableCredits: rolling
+      ? (opponentPublicCard?.availableCredits ??
+        state.matchup.opponentAvailableCredits ??
+        null)
+      : undefined,
+    expiredCredits: rolling
+      ? (opponentPublicCard?.expiredCredits ??
+        state.matchup.opponentExpiredCredits ??
+        null)
+      : undefined,
+    canSubmit: rolling ? (opponentCanSubmit ?? null) : undefined,
+    cardStatus: rolling
+      ? rollingSubmissionStatus(
+          state.matchup.opponentSubmitted ?? opponentPublicCard?.submitted,
+          entryClosed,
+        )
+      : opponentCardStatus(
+          state.matchup.opponentReadiness,
+          state.matchup.opponentSealed,
+        ),
     decision: result?.opponentDecision ?? null,
   };
 
@@ -521,6 +596,7 @@ export function projectPairedMatchup(
     scheduleResult: Stage1StateDto["schedule"][number]["result"],
   ): LeagueScoreboardItem["state"] => {
     if (selected && phase === "CORRECTED") return "Corrected";
+    if (selected && furtherSubmissionsPossible) scheduleResult = null;
     if (scheduleResult?.status === "FINAL") return "Final";
     if (scheduleResult?.status === "PROVISIONAL") return "Picks settled";
     if (delayed) return "Delayed";
@@ -530,6 +606,7 @@ export function projectPairedMatchup(
   };
 
   return {
+    gameIdentitiesVisible,
     league: {
       name: state.league.name,
       slug: state.league.slug,
@@ -539,6 +616,9 @@ export function projectPairedMatchup(
       nflWeek: state.week.nflWeek,
       scope: state.week.scope,
       commonLockAt: state.week.commonLockAt,
+      rollingSubmissionsEnabled: rolling,
+      entryClosed: rolling ? entryClosed : undefined,
+      entryClosesAt: state.week.entryClosesAt,
       competition: competitionLabel({
         scope: state.week.scope,
         postseasonRole: state.matchup.postseasonRole,
@@ -548,7 +628,7 @@ export function projectPairedMatchup(
     },
     phase,
     phaseLabel: phaseLabels[phase],
-    resultStatus: state.matchup.result?.status ?? null,
+    resultStatus: result?.status ?? null,
     broadcast: hasLiveEvent,
     self,
     opponent,
@@ -564,16 +644,19 @@ export function projectPairedMatchup(
       opponentSettledCenticredits: opponentSettled,
       selfRemainingMaximumCenticredits: selfRemainingMaximum,
       opponentRemainingMaximumCenticredits: opponentRemainingMaximum,
-      sentence: remainingPathSentence({
-        selfName: self.displayName,
-        opponentName: opponent.displayName,
-        selfScore,
-        opponentScore,
-        selfRemainingMaximum,
-        opponentRemainingMaximum,
-        result,
-        scope: state.week.scope,
-      }),
+      furtherSubmissionsPossible,
+      sentence: furtherSubmissionsPossible
+        ? "More bets can still be submitted on games that have not started. The matchup remains open."
+        : remainingPathSentence({
+            selfName: self.displayName,
+            opponentName: opponent.displayName,
+            selfScore,
+            opponentScore,
+            selfRemainingMaximum,
+            opponentRemainingMaximum,
+            result,
+            scope: state.week.scope,
+          }),
     },
     freshness: {
       updatedAt,
@@ -583,41 +666,53 @@ export function projectPairedMatchup(
       nextCheckAt: scoreUpdate.nextCheckAt,
     },
     correctedCount,
-    scoreboard: state.schedule.map((matchup) => ({
-      id: matchup.id,
-      sideAName: matchup.sideAName,
-      sideBName: matchup.sideBName,
-      sideAScoreCenticredits:
-        matchup.id === state.matchup!.id && scoresAvailable
-          ? state.matchup!.selfEntryId === matchup.sideAEntryId
-            ? selfScore
-            : opponentScore
-          : (matchup.result?.sideAPointsForCenticredits ??
-            cardsByEntry.get(matchup.sideAEntryId)?.scoreCenticredits ??
-            null),
-      sideBScoreCenticredits:
-        matchup.id === state.matchup!.id && scoresAvailable
-          ? state.matchup!.selfEntryId === matchup.sideBEntryId
-            ? selfScore
-            : opponentScore
-          : (matchup.result?.sideBPointsForCenticredits ??
-            cardsByEntry.get(matchup.sideBEntryId)?.scoreCenticredits ??
-            null),
-      state: scoreboardState(matchup.id === state.matchup!.id, matchup.result),
-      competition: competitionLabel({
-        ...matchup,
-        week: state.week!.nflWeek,
-        lifecycle: state.league.lifecycle,
-      }),
-      selected: matchup.id === state.matchup!.id,
-      own: matchup.id === state.matchup!.id,
-      href:
-        matchup.id === state.matchup!.id
-          ? `/l/${state.league.slug}/matchup`
-          : cardsByEntry.has(matchup.sideAEntryId) &&
-              cardsByEntry.has(matchup.sideBEntryId)
-            ? `/l/${state.league.slug}/matchup?matchup=${matchup.id}`
-            : undefined,
-    })),
+    scoreboard: state.schedule.map((matchup) => {
+      const sideA = cardsByEntry.get(matchup.sideAEntryId);
+      const sideB = cardsByEntry.get(matchup.sideBEntryId);
+      const resultVisible =
+        !rolling ||
+        entryClosed ||
+        (sideA?.submitted === true &&
+          sideB?.submitted === true &&
+          sideA.canSubmit === false &&
+          sideB.canSubmit === false);
+      const matchupResult = resultVisible ? matchup.result : null;
+      return {
+        id: matchup.id,
+        sideAName: matchup.sideAName,
+        sideBName: matchup.sideBName,
+        sideAScoreCenticredits:
+          matchup.id === state.matchup!.id && scoresAvailable
+            ? state.matchup!.selfEntryId === matchup.sideAEntryId
+              ? selfScore
+              : opponentScore
+            : (matchupResult?.sideAPointsForCenticredits ??
+              cardsByEntry.get(matchup.sideAEntryId)?.scoreCenticredits ??
+              null),
+        sideBScoreCenticredits:
+          matchup.id === state.matchup!.id && scoresAvailable
+            ? state.matchup!.selfEntryId === matchup.sideBEntryId
+              ? selfScore
+              : opponentScore
+            : (matchupResult?.sideBPointsForCenticredits ??
+              cardsByEntry.get(matchup.sideBEntryId)?.scoreCenticredits ??
+              null),
+        state: scoreboardState(matchup.id === state.matchup!.id, matchupResult),
+        competition: competitionLabel({
+          ...matchup,
+          week: state.week!.nflWeek,
+          lifecycle: state.league.lifecycle,
+        }),
+        selected: matchup.id === state.matchup!.id,
+        own: matchup.id === state.matchup!.id,
+        href:
+          matchup.id === state.matchup!.id
+            ? `/l/${state.league.slug}/matchup`
+            : cardsByEntry.has(matchup.sideAEntryId) &&
+                cardsByEntry.has(matchup.sideBEntryId)
+              ? `/l/${state.league.slug}/matchup?matchup=${matchup.id}`
+              : undefined,
+      };
+    }),
   };
 }

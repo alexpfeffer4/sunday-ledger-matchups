@@ -96,12 +96,20 @@ export default async function MatchupPage({
             active={
               live.league.mode === "LIVE" &&
               live.week?.state !== "FINAL" &&
-              live.week?.state !== "OPEN"
+              (matchup.gameIdentitiesVisible === true ||
+                live.week?.state !== "OPEN")
             }
+            intervalMs={matchup.gameIdentitiesVisible ? 30_000 : undefined}
           />
         }
         weeklyClose={
-          !matchup.spectator && memory?.recordBridge ? (
+          !matchup.spectator &&
+          memory?.recordBridge &&
+          !(
+            currentClose &&
+            matchup.week.rollingSubmissionsEnabled &&
+            matchup.scorePath.furtherSubmissionsPossible
+          ) ? (
             currentClose ? (
               <WeeklyCloseModule
                 bridge={memory.recordBridge}

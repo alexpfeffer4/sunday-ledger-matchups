@@ -37,6 +37,7 @@ export const getAuthoritativeLeagueState = cache(
     if (!state.week) return state;
     if (
       state.league.mode === "SIMULATION" &&
+      !state.week.rollingSubmissionsEnabled &&
       !(await getOwnerRehearsalForLeague(leagueSlug))
     ) {
       return state;

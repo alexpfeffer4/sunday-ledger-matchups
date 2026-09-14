@@ -305,7 +305,7 @@ select is(pg_temp.cards()#>'{cards,0,outstanding}', 'null'::jsonb,
   'even a LOCKED state cannot disclose totals before the common deadline');
 
 update private.season_weeks set state='OPEN',locked_at=null,common_lock_at=now()+interval '1 hour' where id='85000000-0000-4000-8000-000000000001';
-select is(pg_temp.cards()#>'{cards,0,readiness}','null'::jsonb,'pregame compliance and submission facts stay private');
+select is(pg_temp.cards()#>'{cards,0,readiness}','null'::jsonb,'pregame compliance stays private');
 select is(pg_temp.cards()#>'{cards,0,outstanding}', 'null'::jsonb, 'pregame totals stay private');
 update private.season_weeks set common_lock_at=now()
   where id='85000000-0000-4000-8000-000000000001';
@@ -325,7 +325,8 @@ select is(jsonb_array_length(pg_temp.cards()#>'{cards,0,positions}'),1,'confirme
 select is(pg_temp.cards()#>>'{cards,0,positions,0,proposition}','Buffalo Bills to win','visible terms retain accepted proposition');
 select is(pg_temp.cards()#>>'{cards,0,scoreCenticredits}','0','compliant card has actual zero before settlement');
 select is(pg_temp.cards()#>>'{cards,1,scoreCenticredits}','0','incomplete card has official zero');
--- Add a future event/receipt to the same card; revealed response must not change.
+-- Add a future event/receipt: game identity and whole-card totals may change,
+-- while every actual bet detail remains behind confirmed-start evidence.
 create temp table prior_reveal as select pg_temp.cards() value;
 insert into private.sports_events(id,week_id,season_id,league_id,fixture_event_key,away_team,home_team,scheduled_start_at)
 select '88000000-0000-4000-8000-000000000003',week_id,season_id,league_id,'future-private-game','Future Away','Future Home',clock_timestamp()+interval '2 hours'
@@ -340,9 +341,14 @@ insert into private.position_receipts(id,card_id,week_id,league_id,entry_id,owne
 select '8b000000-0000-4000-8000-000000000002',card_id,week_id,league_id,entry_id,owner_user_id,'88000000-0000-4000-8000-000000000003','89000000-0000-4000-8000-000000000002',market_type,outcome_key,'SECRET FUTURE PICK',line_milli,american_odds,50,quote_observed_at,accepted_at,ruleset_snapshot_id,'future-read-test',repeat('7',64),repeat('8',64)
 from private.position_receipts where id='8b000000-0000-4000-8000-000000000001';
 select is(
-  (select jsonb_agg(c - 'outstanding') from jsonb_array_elements(pg_temp.cards()->'cards') c),
-  (select jsonb_agg(c - 'outstanding') from prior_reveal, jsonb_array_elements(value->'cards') c),
-  'hidden picks affect only the two newly authorized aggregate totals');
+  (select jsonb_agg(c - 'outstanding' - 'selectedGames') from jsonb_array_elements(pg_temp.cards()->'cards') c),
+  (select jsonb_agg(c - 'outstanding' - 'selectedGames') from prior_reveal, jsonb_array_elements(value->'cards') c),
+  'hidden picks affect only authorized game identities and whole-card aggregate totals');
+select is(jsonb_array_length(pg_temp.cards()#>'{cards,0,selectedGames}'),2,
+  'a later accepted game becomes visible in an existing legacy week');
+select ok(not exists(select 1 from jsonb_array_elements(pg_temp.cards()#>'{cards,0,selectedGames}') event,
+  jsonb_object_keys(event) field where field not in ('eventId','eventLabel','scheduledStartAt')),
+  'even the newly visible future game contains no per-game bet details or count');
 select is(pg_temp.cards()#>'{cards,0,outstanding}', '{"picks":2,"credits":1050}'::jsonb,
   'live and hidden future stakes are both outstanding');
 select ok(not (pg_temp.cards()::text like '%SECRET FUTURE PICK%'), 'hidden selection remains absent');

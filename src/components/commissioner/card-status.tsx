@@ -7,6 +7,7 @@ export function CommissionerCardStatusPanel({
 }) {
   const sealed =
     status?.cards.filter((card) => card.sealed === true).length ?? 0;
+  const rolling = status?.rollingSubmissionsEnabled === true;
   return (
     <section
       aria-labelledby="commissioner-card-status"
@@ -21,7 +22,8 @@ export function CommissionerCardStatusPanel({
       {status && status.cards.length > 0 ? (
         <>
           <p className="mt-3 font-semibold">
-            {sealed} of {status.cards.length} cards sealed
+            {sealed} of {status.cards.length}{" "}
+            {rolling ? "members submitted bets" : "cards sealed"}
           </p>
           <ul className="divide-boundary mt-2 divide-y">
             {status.cards.map((card) => (
@@ -36,15 +38,20 @@ export function CommissionerCardStatusPanel({
                   {card.sealed === null
                     ? "Status unavailable"
                     : card.sealed
-                      ? "Sealed"
-                      : "Not sealed"}
+                      ? rolling
+                        ? "Submitted"
+                        : "Sealed"
+                      : rolling
+                        ? "Not submitted"
+                        : "Not sealed"}
                 </span>
               </li>
             ))}
           </ul>
           <p className="text-muted mt-2 text-sm">
-            Only accepted cards count as sealed. The published deadline applies
-            even if someone has not sealed.
+            {rolling
+              ? "Any accepted bet counts as participation. Members can add bets until each game’s kickoff; unused credits expire at the final cutoff."
+              : "Only accepted cards count as sealed. The published deadline applies even if someone has not sealed."}
           </p>
         </>
       ) : (

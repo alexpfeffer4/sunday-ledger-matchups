@@ -312,6 +312,69 @@ export const ownerRehearsalGuide: Record<
   },
 };
 
+/** Keep historical rehearsal wording while new weeks teach rolling entry. */
+export function ownerRehearsalGuideStep(
+  checkpoint: OwnerRehearsalCheckpoint,
+  rolling = false,
+): OwnerRehearsalGuideStep {
+  const legacy = ownerRehearsalGuide[checkpoint];
+  if (!rolling) return legacy;
+  const overrides: Partial<
+    Record<OwnerRehearsalCheckpoint, Partial<OwnerRehearsalGuideStep>>
+  > = {
+    FORMATION_READY: {
+      confirmation:
+        "This freezes the roster and schedule and opens Week 1 under its recorded rules. Approved updates may apply to later unopened weeks.",
+      detail:
+        "Review the roster and this week's rules. The next step opens ordinary member submissions with 1,000 credits each.",
+    },
+    WEEK_1_OPEN: {
+      action:
+        "Review and submit one or several bets. You can leave credits for later games.",
+      advanceLabel: "Begin the first games",
+      confirmation:
+        "Advancing starts the first games and reveals their bet details. Later games remain open for additional bets until their own cutoffs; unsubmitted drafts are kept.",
+      detail:
+        "Each submitted batch is permanent. League members immediately see the selected games once each; selections, odds and stakes reveal only when those games start.",
+      linkLabel: "Make my Week 1 bets",
+    },
+    WEEK_1_PARTIAL: {
+      action:
+        "Compare revealed bets, then add a later-game bet with any remaining credits.",
+      detail:
+        "Started games reject new bets. Afternoon and Monday games stay available until their own cutoffs. An early settled bet never replenishes the weekly allocation.",
+    },
+    WEEK_1_PROVISIONAL: {
+      detail:
+        "Results finalize after no valid new bets can be added and accepted bets have resolved. Unused credits expire at zero; a later verified correction stays visible.",
+    },
+    WEEK_2_OPEN: {
+      detail:
+        "A deterministic quote changes before submission. Changed terms are never accepted silently; review and confirm the new terms as a new batch attempt.",
+    },
+    WEEK_5_OPEN: {
+      confirmation:
+        "One rehearsal team intentionally submits zero bets so you can see its missed-week consequence. Partially allocated cards participate normally.",
+      detail:
+        "Only zero accepted bets at the final cutoff creates a miss. No partial card is automatically lost. Bot bet details remain private until their games start.",
+      title: "Learn zero-submission consequences",
+    },
+    WEEK_14_OPEN: {
+      detail:
+        "Points For and balanced head-to-head results resolve meaningful ties. One bot's third zero-submission week demonstrates the regular-season attendance eligibility rule.",
+    },
+    WEEK_16_OPEN: {
+      detail:
+        "The Week 15 zero-submission edge has shown deterministic advancement. Partial semifinal cards participate normally; future-game bet details stay private.",
+    },
+    COMPLETE: {
+      detail:
+        "You practiced publishing, submitting permanent batches, adding later-game bets, immediate game visibility, event-timed bet reveal, automatic finality and visible corrections.",
+    },
+  };
+  return { ...legacy, ...overrides[checkpoint] };
+}
+
 export function ownerRehearsalSamplePlan(seed: string, week: number) {
   const specialEventOrdinals: Record<number, number> = {
     2: 4,

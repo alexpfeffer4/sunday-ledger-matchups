@@ -163,6 +163,27 @@ export const seasonRulesetSchema = seasonRulesetV11Schema.extend({
   }),
 });
 
+/** Approved rolling contract; catalog activation is a separate release operation. */
+export const seasonRulesetV13Schema = seasonRulesetSchema.extend({
+  version: z.literal("1.3"),
+  productBibleVersion: z.literal("3.2"),
+  card: seasonRulesetSchema.shape.card.extend({
+    acceptanceUnit: z.literal("BATCH_ATOMIC"),
+    irreversibleAction: z.literal("SUBMIT_BETS"),
+    requireFullAllocation: z.literal(false),
+    unusedCredits: z.literal("EXPIRE_AT_WEEK_ENTRY_CLOSE"),
+  }),
+  slate: seasonRulesetSchema.shape.slate.extend({
+    entryCutoff: z.literal("EVENT_SCHEDULED_KICKOFF"),
+    gameVisibility: z.literal("ACCEPTED_SUBMISSION"),
+    aggregateVisibility: z.literal("COMMON_LOCK"),
+  }),
+  attendance: seasonRulesetSchema.shape.attendance.extend({
+    incompleteDefinition: z.literal("ZERO_ACCEPTED_POSITIONS"),
+  }),
+});
+export type RollingSeasonRuleset = z.infer<typeof seasonRulesetV13Schema>;
+
 export type RosterSize = z.infer<typeof rosterSizeSchema>;
 export type MarketType = z.infer<typeof marketTypeSchema>;
 export type StandingsTiebreak = z.infer<typeof standingsTiebreakSchema>;
@@ -203,6 +224,7 @@ const historicalSeasonRulesetV1Schema = legacySeasonRulesetV11Schema.extend({
 });
 
 export const persistedSeasonRulesetSchema = z.union([
+  seasonRulesetV13Schema,
   seasonRulesetSchema,
   seasonRulesetV11Schema,
   legacySeasonRulesetV11Schema,

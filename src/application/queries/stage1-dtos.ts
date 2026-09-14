@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+// Public game identity is deliberately separate from a receipt. Zod strips
+// unrecognized fields so no per-game allocation/market metadata is forwarded.
+export const selectedGameSchema = z.object({
+  eventId: z.uuid(),
+  eventLabel: z.string(),
+  scheduledStartAt: z.string(),
+});
+
 const settlementSchema = z
   .object({
     outcome: z.enum(["WIN", "LOSS", "PUSH", "VOID"]),
@@ -98,6 +106,9 @@ export const stage1StateSchema = z.object({
       lockedAt: z.string().nullable(),
       correctionWindowClosesAt: z.string().nullable(),
       finalizationMode: z.enum(["MANUAL_24H", "AFTER_RESULTS"]).optional(),
+      rollingSubmissionsEnabled: z.boolean().optional(),
+      entryClosesAt: z.string().nullable().optional(),
+      entryClosed: z.boolean().optional(),
     })
     .nullable(),
   schedule: z.array(
@@ -132,6 +143,8 @@ export const stage1StateSchema = z.object({
       homeTeam: z.string(),
       scheduledStartAt: z.string(),
       actualStartedAt: z.string().nullable(),
+      entryClosesAt: z.string().nullable().optional(),
+      entryOpen: z.boolean().optional(),
       state: z.enum(["SCHEDULED", "LIVE", "FINAL", "VOID", "CORRECTED"]),
       providerHealth: z.enum(["HEALTHY", "DEGRADED"]),
       markets: z.array(stage1MarketSchema),
@@ -147,6 +160,8 @@ export const stage1StateSchema = z.object({
       lockedAt: z.string().nullable(),
       allocatedCredits: z.number().int().nonnegative(),
       remainingCredits: z.number().int().nonnegative(),
+      rollingSubmissionsEnabled: z.boolean().optional(),
+      canSubmit: z.boolean().optional(),
       positions: z.array(
         positionSchema.extend({
           eventKey: z.string(),
@@ -173,6 +188,21 @@ export const stage1StateSchema = z.object({
       // A single submission fact; never draft progress or sealed pick metadata.
       // Missing on an older database during rollout means unknown, not unsealed.
       opponentSealed: z.boolean().nullable().optional(),
+      opponentSubmitted: z.boolean().nullable().optional(),
+      opponentSelectedGames: z.array(selectedGameSchema).optional(),
+      opponentAvailableCredits: z
+        .number()
+        .int()
+        .nonnegative()
+        .nullable()
+        .optional(),
+      opponentExpiredCredits: z
+        .number()
+        .int()
+        .nonnegative()
+        .nullable()
+        .optional(),
+      opponentCanSubmit: z.boolean().nullable().optional(),
       opponentReadiness: z
         .enum(["PENDING", "COMPLIANT", "INCOMPLETE"])
         .nullable(),

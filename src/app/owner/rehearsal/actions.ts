@@ -52,11 +52,14 @@ function safeError(message: string): AppActionState {
         "Already completed. The rehearsal moved to its next checkpoint; the latest state is shown now.",
     };
   }
-  if (message.includes("Seal your card")) {
+  if (
+    message.includes("Seal your card") ||
+    message.includes("Submit bets or confirm a sample card")
+  ) {
     return {
       status: "error",
       message:
-        "Seal your complete 1,000-credit card or confirm the sample card before advancing.",
+        "Submit your bets under this week’s rules or confirm the sample card before advancing.",
     };
   }
   if (message.includes("confirmation does not match")) {
@@ -263,8 +266,9 @@ export async function useOwnerRehearsalSampleCardAction(
       refreshRehearsal(rehearsal.leagueSlug);
       return {
         status: "success",
-        message:
-          "Already completed. The original sample card remains sealed once.",
+        message: rehearsal.rollingSubmissionsEnabled
+          ? "Already completed. The original sample bets remain submitted once."
+          : "Already completed. The original sample card remains sealed once.",
       };
     }
     return safeError(result.error.message);
@@ -272,7 +276,9 @@ export async function useOwnerRehearsalSampleCardAction(
   refreshRehearsal(rehearsal.leagueSlug);
   return {
     status: "success",
-    message: `A Ruleset-valid 1,000-credit Week ${rehearsal.currentWeek ?? ""} sample card is sealed through the ordinary receipt path.`,
+    message: rehearsal.rollingSubmissionsEnabled
+      ? `Your Week ${rehearsal.currentWeek ?? ""} sample bets are submitted. You can use your remaining credits before the final game cutoff.`
+      : `A Ruleset-valid 1,000-credit Week ${rehearsal.currentWeek ?? ""} sample card is sealed through the ordinary receipt path.`,
     href: `/l/${rehearsal.leagueSlug}/card`,
     hrefLabel: "Open accepted card",
   };

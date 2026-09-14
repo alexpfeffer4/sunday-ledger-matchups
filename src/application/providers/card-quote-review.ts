@@ -16,13 +16,14 @@ export const cardQuoteReviewSchema = z.object({
 export type CardQuoteReviewResult =
   | { status: "ready"; review: z.infer<typeof cardQuoteReviewSchema> }
   | { status: "disabled" }
+  | { status: "simulation"; quotes: z.infer<typeof liveQuoteHeadsSchema> }
   | { status: "error"; message: string };
 
 export function quoteRecoveryMessage(code: string): string {
   if (/lock|not open|not available/i.test(code))
     return "Picks are closed or this card is no longer available. Your draft has been kept.";
   if (/QUOTE_REVIEW_EXPIRED|QUOTE_REVIEW_REQUIRED/i.test(code))
-    return "Check current odds again before sealing. Your draft has been kept.";
+    return "Check current odds again before submitting. Your draft has been kept.";
   if (/QUOTE_CHANGED/i.test(code))
     return "Odds changed during confirmation. Check current odds and review the changes beside your picks.";
   if (/QUOTE_REFRESH_BUSY|QUOTE_REFRESH_COOLDOWN/i.test(code))
@@ -31,5 +32,5 @@ export function quoteRecoveryMessage(code: string): string {
     return "Odds checks are temporarily paused. Try again later. Your draft has been kept.";
   if (/QUOTE_SOURCE_STALE/i.test(code))
     return "The latest odds response is still too old to verify. Try again later. Your draft has been kept.";
-  return "We could not verify current odds. Nothing was sealed. Your draft has been kept; try again shortly.";
+  return "We could not verify current odds. Nothing new was submitted. Your draft has been kept; try again shortly.";
 }

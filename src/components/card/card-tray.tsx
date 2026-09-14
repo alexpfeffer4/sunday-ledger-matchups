@@ -9,12 +9,14 @@ export function CardTray({
   onReview,
   pickCount,
   remainingCredits,
+  reviewLabel = "Review card",
 }: {
   aboveMobileNavigation?: boolean;
   allocatedCredits: number;
   onReview: () => void;
   pickCount: number;
   remainingCredits: number;
+  reviewLabel?: string;
 }) {
   const trayRef = useRef<HTMLElement>(null);
   const [trayHeight, setTrayHeight] = useState(0);
@@ -66,7 +68,7 @@ export function CardTray({
             onClick={onReview}
             type="button"
           >
-            Review card
+            {reviewLabel}
           </button>
         </div>
       </section>

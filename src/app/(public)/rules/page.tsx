@@ -47,8 +47,32 @@ export default function RulesPage() {
           Season 1 rules
         </h1>
         <p className="text-graphite mt-5 text-lg leading-7">
-          Every member plays by the same rules for the full season.
+          Every member plays by the same rules within a week. Your league’s
+          Rules page identifies the version for that week. Submission and
+          scoring changes apply only to unopened future weeks.
         </p>
+        <section className="border-boundary mt-8 rounded-lg border p-5">
+          <h2 className="font-bold">Submission rules depend on your week</h2>
+          <p className="text-graphite mt-2 leading-6">
+            The baseline below describes Rules v1.2. Weeks using v1.3 allow one
+            or several bets per submission until each game’s kickoff. Submitted
+            bets are permanent; partial cards score normally, and unused credits
+            expire at the final game’s cutoff. Only zero submitted bets creates
+            a missed week. An already-open week keeps its existing submission,
+            deadline and scoring rules.
+          </p>
+        </section>
+        <section className="border-boundary mt-5 rounded-lg border p-5">
+          <h2 className="font-bold">Selected games are visible now</h2>
+          <p className="text-graphite mt-2 leading-6">
+            League members see each selected game immediately after a successful
+            submission, including games already selected in the current week. A
+            game appears once even when someone has several bets on it. The
+            actual bets and per-game counts stay hidden until the game’s start
+            is confirmed. Drafts remain private. This visibility change does not
+            reopen betting or change existing credits, receipts or results.
+          </p>
+        </section>
         <div className="divide-boundary border-boundary mt-10 divide-y border-y">
           {sections.map((section) => (
             <section

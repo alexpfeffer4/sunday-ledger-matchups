@@ -21,7 +21,7 @@ import {
 import type { OwnerRehearsalSummary } from "@/application/queries/get-owner-rehearsal";
 import { ActionFeedback } from "@/components/forms/action-feedback";
 import { Button, buttonClassName } from "@/components/ui/button";
-import { ownerRehearsalGuide } from "@/domain/rehearsal/owner-rehearsal";
+import { ownerRehearsalGuideStep } from "@/domain/rehearsal/owner-rehearsal";
 
 function prepareOperation(
   event: FormEvent<HTMLFormElement>,
@@ -154,7 +154,10 @@ export function OwnerRehearsalGuide({
     );
   }
 
-  const step = ownerRehearsalGuide[rehearsal.checkpoint];
+  const step = ownerRehearsalGuideStep(
+    rehearsal.checkpoint,
+    rehearsal.rollingSubmissionsEnabled,
+  );
   const openWeek = rehearsal.checkpoint.endsWith("_OPEN");
   const cardNeeded = openWeek && !rehearsal.ownerCardSealed;
   const percent = Math.round(
@@ -248,7 +251,11 @@ export function OwnerRehearsalGuide({
               intent={manualFirst ? "secondary" : "primary"}
               type="submit"
             >
-              {sampling ? "Sealing sample…" : "Use a sample card"}
+              {sampling
+                ? rehearsal.rollingSubmissionsEnabled
+                  ? "Submitting sample…"
+                  : "Sealing sample…"
+                : "Use a sample card"}
             </Button>
           </OperationForm>
         </div>
@@ -288,7 +295,9 @@ export function OwnerRehearsalGuide({
           </Button>
           {cardNeeded ? (
             <p className="text-muted mt-2 text-xs leading-5">
-              This becomes available after your card is sealed.
+              {rehearsal.rollingSubmissionsEnabled
+                ? "This becomes available after you submit at least one bet."
+                : "This becomes available after your card is sealed."}
             </p>
           ) : null}
         </OperationForm>

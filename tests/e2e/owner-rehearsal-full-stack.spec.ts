@@ -85,6 +85,68 @@ function expectPrivateResponse(response: Response | null) {
   expect(cacheControl).not.toMatch(/(?:^|,)\s*public\b|s-maxage/i);
 }
 
+async function expectGameOnlyPreview(
+  page: Page,
+  ownerApi: SupabaseClient,
+  slug: string,
+) {
+  const response = await ownerApi
+    .schema("api")
+    .rpc("get_stage1_state", { p_league_slug: slug });
+  expect(response.error).toBeNull();
+  const current = response.data as {
+    viewer: { displayName: string };
+    slate: Array<{ id: string; state: string; actualStartedAt: string | null }>;
+    ownerCard: { positions: Array<{ eventId: string }> };
+    matchup: {
+      opponentName: string;
+      opponentSelectedGames: Array<{
+        eventId: string;
+        eventLabel: string;
+        scheduledStartAt: string;
+      }>;
+    };
+  };
+  expect(Array.isArray(current.matchup.opponentSelectedGames)).toBe(true);
+  for (const game of current.matchup.opponentSelectedGames) {
+    expect(Object.keys(game).sort()).toEqual(
+      ["eventId", "eventLabel", "scheduledStartAt"].sort(),
+    );
+  }
+  const unstarted = new Set(
+    current.slate
+      .filter(
+        (event) =>
+          event.state === "SCHEDULED" && event.actualStartedAt === null,
+      )
+      .map((event) => event.id),
+  );
+  for (const member of [
+    { name: current.viewer.displayName, games: current.ownerCard.positions },
+    {
+      name: current.matchup.opponentName,
+      games: current.matchup.opponentSelectedGames,
+    },
+  ]) {
+    const count = new Set(
+      member.games
+        .filter((game) => unstarted.has(game.eventId))
+        .map((game) => game.eventId),
+    ).size;
+    const preview = page.getByRole("region", {
+      name: `${member.name} selected games`,
+    });
+    if (count === 0) await expect(preview).toHaveCount(0);
+    else {
+      await expect(preview.getByRole("listitem")).toHaveCount(count);
+      expect(await preview.innerText()).not.toMatch(
+        /credits|odds|moneyline|spread|total/i,
+      );
+    }
+  }
+  await expect(page.getByTestId("future-sealed-placeholder")).toHaveCount(0);
+}
+
 async function advance(page: Page, name: string, timeout = 5_000) {
   const started = performance.now();
   const guide = page.locator("[data-owner-rehearsal-guide]");
@@ -352,8 +414,7 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   await page.getByRole("link", { name: "See partial reveal" }).click();
   const partialRsc = await partialRscResponse;
   expectPrivateResponse(partialRsc);
-  await expect(page.getByText("Future picks sealed")).toBeVisible();
-  await expect(page.getByTestId("future-sealed-placeholder")).toHaveCount(1);
+  await expectGameOnlyPreview(page, ownerApi, leagueSlug);
   await page.unroute(partialRoute);
   expect(partialBody).not.toBeNull();
   const partialHtml = await page.content();
@@ -387,7 +448,7 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   ).toBeVisible();
   await page.goto(`/l/${leagueSlug}/matchup`);
   await page.reload();
-  await expect(page.getByText("Future picks sealed")).toBeVisible();
+  await expectGameOnlyPreview(page, ownerApi, leagueSlug);
 
   await page.goto("/owner/rehearsal");
   await advance(page, "Finish games and show result");

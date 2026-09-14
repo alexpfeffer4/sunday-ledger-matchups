@@ -6,6 +6,20 @@ function credits(value: number): string {
 }
 
 export function ScorePath({ matchup }: { matchup: PairedMatchupDto }) {
+  if (!matchup.resultStatus && matchup.scorePath.furtherSubmissionsPossible) {
+    return (
+      <section
+        aria-label="Matchup remains open"
+        className="border-boundary bg-surface rounded-xl border p-4 sm:p-5"
+      >
+        <p className="font-semibold">More bets can still be submitted</p>
+        <p className="text-muted mt-1 text-sm leading-6">
+          Games close for betting at their own kickoff. Submitted bets settle
+          normally; unused credits expire when weekly betting closes.
+        </p>
+      </section>
+    );
+  }
   // A recorded matchup result means both cards are complete, even while the
   // rest of the weekly slate is still playing.
   if (

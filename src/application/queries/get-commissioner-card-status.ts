@@ -7,6 +7,7 @@ import { createSupabaseServerClient } from "@/adapters/supabase/server";
 const commissionerCardStatusSchema = z.object({
   weekId: z.uuid(),
   nflWeek: z.number().int().min(1).max(18),
+  rollingSubmissionsEnabled: z.boolean().optional(),
   cards: z
     .array(
       z.object({

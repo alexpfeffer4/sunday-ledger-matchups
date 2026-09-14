@@ -1,7 +1,10 @@
 "use server";
 
 import { z } from "zod";
-import { resolveSeasonCardRules } from "@/rulesets/card-rules";
+import {
+  resolveSeasonCardRules,
+  usesRollingSubmissions,
+} from "@/rulesets/card-rules";
 import { refreshCardQuotes } from "@/adapters/providers/the-odds-api/refresh-card-quotes";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import {
@@ -10,6 +13,7 @@ import {
   quoteRecoveryMessage,
   type CardQuoteReviewResult,
 } from "@/application/providers/card-quote-review";
+import { liveQuoteHeadsSchema } from "@/application/queries/stage1-dtos";
 import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
 
 export async function reviewLiveCardQuotes(
@@ -23,14 +27,12 @@ export async function reviewLiveCardQuotes(
     })
     .safeParse({ leagueSlug, positions });
   if (!input.success)
-    return { status: "error", message: "Review a complete card first." };
+    return { status: "error", message: "Choose at least one bet to review." };
   try {
     const state = await getAuthoritativeLeagueState(input.data.leagueSlug);
     if (
       !state?.week ||
       !state.ownerCard ||
-      state.league.mode !== "LIVE" ||
-      state.week.state !== "OPEN" ||
       state.ownerCard.remainingCredits === 0
     )
       throw new Error("Card not available");
@@ -41,19 +43,50 @@ export async function reviewLiveCardQuotes(
     if (!resolved.supported)
       return { status: "error", message: resolved.message };
     const { card } = resolved.rules;
+    const rolling = usesRollingSubmissions(resolved.rules);
+    if (
+      (!rolling && state.week.state !== "OPEN") ||
+      (rolling &&
+        (state.week.entryClosed ||
+          ["PLANNED", "FINAL"].includes(state.week.state)))
+    )
+      throw new Error("Card not available");
+    const submittedCount = rolling ? state.ownerCard.positions.length : 0;
+    const submittedCredits = rolling ? state.ownerCard.allocatedCredits : 0;
+    const batchCredits = input.data.positions.reduce(
+      (sum, p) => sum + p.stakeCredits,
+      0,
+    );
     if (
       input.data.positions.length < card.minimumPositions ||
-      input.data.positions.length > card.maximumPositions ||
+      input.data.positions.length + submittedCount > card.maximumPositions ||
       input.data.positions.some(
         (p) => p.stakeCredits < card.minimumStakeCredits,
       ) ||
-      input.data.positions.reduce((sum, p) => sum + p.stakeCredits, 0) !==
-        card.weeklyAllocationCredits
+      (rolling
+        ? batchCredits + submittedCredits > card.weeklyAllocationCredits
+        : batchCredits !== card.weeklyAllocationCredits)
     )
       return {
         status: "error",
-        message: "Review a complete card under these season rules first.",
+        message: rolling
+          ? "Review a valid batch within your remaining credits and weekly bet limit."
+          : "Review a complete card under these season rules first.",
       };
+    if (state.league.mode === "SIMULATION") {
+      if (!rolling) return { status: "disabled" };
+      const user = await createSupabaseServerClient();
+      const result = await user
+        .schema("api")
+        .rpc("prepare_simulation_card_quotes", {
+          p_league_slug: input.data.leagueSlug,
+        });
+      if (result.error) throw new Error(result.error.message);
+      const prepared = z
+        .object({ quotes: liveQuoteHeadsSchema })
+        .parse(result.data);
+      return { status: "simulation", quotes: prepared.quotes };
+    }
     const refreshed = await refreshCardQuotes(state.league.id);
     if (refreshed === "DISABLED") return { status: "disabled" };
     const user = await createSupabaseServerClient();
