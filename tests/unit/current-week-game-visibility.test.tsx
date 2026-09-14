@@ -55,16 +55,20 @@ describe("immediate current-week game visibility with legacy betting rules", () 
     expect(matchup.opponent.availableCredits).toBeUndefined();
     expect(matchup.self.canSubmit).toBeUndefined();
     render(<PairedMatchupView matchup={matchup} refreshControl={null} />);
-    const games = screen.getByRole("region", {
-      name: "Jordan Rival selected games",
+    const game = screen.getByRole("region", {
+      name: "Harbor Club at Lake Club",
     });
-    expect(within(games).getAllByRole("listitem")).toHaveLength(2);
-    expect(within(games).getAllByText("Harbor Club at Lake Club")).toHaveLength(
+    expect(within(game).getAllByText("Harbor Club at Lake Club")).toHaveLength(
       1,
     );
-    expect(games).not.toHaveTextContent(
-      /credits|moneyline|spread|total|[+]100|2 bets/i,
-    );
+    const games = screen.getAllByLabelText(/^Jordan Rival · .*Club$/);
+    expect(games).toHaveLength(2);
+    for (const lane of games) {
+      expect(lane).toHaveTextContent("Bets hidden until confirmed kickoff");
+      expect(lane).not.toHaveTextContent(
+        /credits|moneyline|spread|total|[+]100|2 bets/i,
+      );
+    }
     expect(
       screen.queryByLabelText("Jordan Rival outstanding picks and credits"),
     ).toBeNull();
@@ -85,8 +89,8 @@ describe("immediate current-week game visibility with legacy betting rules", () 
     ]);
     render(<PairedMatchupView matchup={matchup} refreshControl={null} />);
     expect(
-      screen.getByRole("region", { name: "Jordan Rival selected games" }),
-    ).toHaveTextContent("River Club at Capital Club");
+      screen.getByLabelText("Jordan Rival · River Club at Capital Club"),
+    ).toHaveTextContent("Bets hidden until confirmed kickoff");
     expect(screen.getByText("Lake Club +2.5")).toBeVisible();
     expect(
       screen.getByLabelText("Jordan Rival outstanding picks and credits"),
@@ -140,11 +144,11 @@ describe("immediate current-week game visibility with legacy betting rules", () 
     expect(selected.week.rollingSubmissionsEnabled).toBe(false);
     render(<PairedMatchupView matchup={selected} refreshControl={null} />);
     expect(
-      screen.getByRole("region", { name: "Soup selected games" }),
-    ).toHaveTextContent("Harbor Club at Lake Club");
+      screen.getByLabelText("Soup · Harbor Club at Lake Club"),
+    ).toHaveTextContent("Bets hidden until confirmed kickoff");
     expect(
-      screen.getByRole("region", { name: "Lee selected games" }),
-    ).toHaveTextContent("River Club at Capital Club");
+      screen.getByLabelText("Lee · River Club at Capital Club"),
+    ).toHaveTextContent("Bets hidden until confirmed kickoff");
     expect(
       screen.queryByRole("region", { name: "Alex Ledger selected games" }),
     ).toBeNull();

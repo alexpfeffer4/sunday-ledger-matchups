@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { unrevealableReceiptText } from "../fixtures/phase6-paired-matchup";
 
 type FixtureName =
+  | "STRESS"
   | "FINAL"
   | "LIVE"
   | "LIVE_UPDATE"
@@ -40,7 +41,27 @@ async function expectNoHorizontalOverflow(page: Page) {
     clientWidth: document.documentElement.clientWidth,
     scrollWidth: document.documentElement.scrollWidth,
   }));
-  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
+  const overflowing =
+    dimensions.scrollWidth > dimensions.clientWidth
+      ? await page.evaluate(() =>
+          [...document.querySelectorAll("body *")]
+            .filter(
+              (element) =>
+                element.getBoundingClientRect().right >
+                document.documentElement.clientWidth + 1,
+            )
+            .slice(0, 8)
+            .map((element) => ({
+              tag: element.tagName,
+              className: element.className,
+              right: element.getBoundingClientRect().right,
+            })),
+        )
+      : [];
+  expect(
+    dimensions.scrollWidth,
+    JSON.stringify(overflowing),
+  ).toBeLessThanOrEqual(dimensions.clientWidth);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -55,6 +76,9 @@ test("remaining-return values align when metric labels wrap", async ({
 }, info) => {
   await page.setViewportSize({ width: 640, height: 900 });
   await mountMatchup(page, "LIVE");
+  await page
+    .getByText("Score details & remaining returns", { exact: true })
+    .click();
   const labelHeights = await page
     .locator(".score-path-facts dt")
     .evaluateAll((labels) =>
@@ -214,10 +238,14 @@ test("Live remains paired, mobile-safe, keyboard-visible, and reduced-motion saf
       name: "Alex Ledger versus Jordan Rival",
     }),
   ).toHaveCount(1);
-  await expect(page.getByText("Live", { exact: true }).first()).toBeVisible();
+  await expect(
+    page
+      .locator(".paired-matchup-card .status-badge")
+      .filter({ hasText: "Live" }),
+  ).toBeVisible();
 
-  await page.keyboard.press("Tab");
   const refresh = page.getByRole("button", { name: "Refresh matchup" });
+  await refresh.focus();
   await expect(refresh).toBeFocused();
   expect(
     await refresh.evaluate((element) => getComputedStyle(element).outlineStyle),
@@ -228,6 +256,22 @@ test("Live remains paired, mobile-safe, keyboard-visible, and reduced-motion saf
   expect(transitionSeconds).toBeLessThanOrEqual(0.001);
 
   await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+  await expect(
+    page.getByRole("combobox", { name: "Matchup", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("combobox", { name: "Week", exact: true }).focus();
+  await page.locator(".matchup-sticky").evaluate((element) => {
+    element.setAttribute("data-compact", "true");
+  });
+  await expect(page.getByRole("status")).toContainText("Your score");
+  await expect(
+    page.getByRole("region", {
+      name: "Alex Ledger versus Jordan Rival",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Alex Ledger score 0.00 credits")).toBeVisible();
   await expectNoSeriousAccessibilityViolations(page);
 });
 
@@ -254,15 +298,76 @@ test("stored Live updates preserve identity and progress to provisional and fina
 
   await mountMatchup(page, "PROVISIONAL");
   await expect(
-    page.getByText("Picks settled", { exact: true }).first(),
+    page
+      .locator(".paired-matchup-card .status-badge")
+      .filter({ hasText: "Picks settled" }),
   ).toBeVisible();
   await expect(
     page.getByLabel("Alex Ledger score 400.00 credits"),
   ).toBeVisible();
 
   await mountMatchup(page, "FINAL");
-  await expect(page.getByText("Final", { exact: true }).first()).toBeVisible();
+  await expect(
+    page
+      .locator(".paired-matchup-card .status-badge")
+      .filter({ hasText: "Final" }),
+  ).toBeVisible();
   await expect(
     page.getByLabel("Jordan Rival score 200.00 credits"),
   ).toBeVisible();
+});
+
+test("two player lanes align from score to bets on desktop, mobile, and large text", async ({
+  page,
+}, info) => {
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    await mountMatchup(page, "STRESS");
+    for (const scale of [100, 200]) {
+      await page.locator("html").evaluate((element, value) => {
+        element.style.fontSize = `${value}%`;
+      }, scale);
+      await expect(page.locator('[data-side="SELF"]')).toHaveCount(20);
+      await expect(page.locator('[data-side="OPPONENT"]')).toHaveCount(1);
+      const geometry = await page.evaluate(() => {
+        const self = document
+          .querySelector(".matchup-self")!
+          .getBoundingClientRect();
+        const opponent = document
+          .querySelector(".matchup-opponent")!
+          .getBoundingClientRect();
+        const left = document
+          .querySelector(".lineup-self")!
+          .getBoundingClientRect();
+        const right = document
+          .querySelector(".lineup-opponent")!
+          .getBoundingClientRect();
+        const scores = [...document.querySelectorAll(".matchup-score")].map(
+          (score) => score.getBoundingClientRect().top,
+        );
+        return {
+          scores,
+          selfTop: self.top,
+          opponentTop: opponent.top,
+          selfLeft: self.left,
+          betLeft: left.left,
+          opponentLeft: opponent.left,
+          betRight: right.left,
+        };
+      });
+      expect(geometry.selfTop).toBe(geometry.opponentTop);
+      expect(geometry.scores[0]).toBe(geometry.scores[1]);
+      expect(
+        Math.abs(geometry.selfLeft - geometry.betLeft),
+      ).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(geometry.opponentLeft - geometry.betRight),
+      ).toBeLessThanOrEqual(1);
+      await expectNoHorizontalOverflow(page);
+      await expectNoSeriousAccessibilityViolations(page);
+      await page.screenshot({
+        path: info.outputPath(`paired-lineup-${width}-${scale}.png`),
+      });
+    }
+  }
 });

@@ -543,7 +543,7 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
   await measure(info, "ten-member-matchup-read", async () => {
     await page.goto(`/l/${slug}/matchup`);
     await expect(
-      page.getByRole("heading", { name: "Card sealed" }),
+      page.getByText("Your card is sealed · View details", { exact: true }),
     ).toBeVisible();
   });
   // An independently authenticated opponent sees submission and distinct games in
@@ -569,13 +569,11 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
       `${state.viewer.displayName} card status`,
     );
     await expect(opponentBadge).toContainText("Sealed");
-    const gamePreview = opponentPage.getByRole("region", {
-      name: `${state.viewer.displayName} selected games`,
-    });
-    await expect(gamePreview.getByRole("listitem")).toHaveCount(
-      selectedEventIds.length,
+    const gamePreview = opponentPage.locator(
+      `[data-member-name="${state.viewer.displayName}"][data-game-selected="true"]`,
     );
-    expect(await gamePreview.innerText()).not.toMatch(
+    await expect(gamePreview).toHaveCount(selectedEventIds.length);
+    expect((await gamePreview.allTextContents()).join(" ")).not.toMatch(
       /credits|odds|moneyline|spread|total/i,
     );
     await expect(
@@ -583,7 +581,7 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     ).toHaveCount(0);
     await expect(
       opponentPage.getByRole("heading", { name: "Picks by game" }),
-    ).toHaveCount(0);
+    ).toBeVisible();
     const beforeRefreshCalls = readFileSync(`${fixture}.calls`, "utf8");
     // Capture before fulfillment, as in the rehearsal privacy lane. Chromium
     // can discard a streamed navigation body before Response.text() reads it.
@@ -686,10 +684,8 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
       .click();
     await observerPage.waitForURL(`**/l/${slug}/matchup`);
     await observerPage
-      .getByRole("link", {
-        name: `View ${target.sideAName} versus ${target.sideBName}`,
-      })
-      .click();
+      .getByRole("combobox", { name: "Matchup", exact: true })
+      .selectOption(target.id);
     await expect(observerPage).toHaveURL(
       new RegExp(`matchup\\?matchup=${target.id}$`),
     );

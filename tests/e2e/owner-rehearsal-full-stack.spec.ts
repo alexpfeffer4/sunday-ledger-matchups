@@ -122,7 +122,6 @@ async function expectGameOnlyPreview(
       .map((event) => event.id),
   );
   for (const member of [
-    { name: current.viewer.displayName, games: current.ownerCard.positions },
     {
       name: current.matchup.opponentName,
       games: current.matchup.opponentSelectedGames,
@@ -133,13 +132,13 @@ async function expectGameOnlyPreview(
         .filter((game) => unstarted.has(game.eventId))
         .map((game) => game.eventId),
     ).size;
-    const preview = page.getByRole("region", {
-      name: `${member.name} selected games`,
-    });
+    const preview = page.locator(
+      `[data-member-name="${member.name}"][data-game-selected="true"]`,
+    );
     if (count === 0) await expect(preview).toHaveCount(0);
     else {
-      await expect(preview.getByRole("listitem")).toHaveCount(count);
-      expect(await preview.innerText()).not.toMatch(
+      await expect(preview).toHaveCount(count);
+      expect((await preview.allTextContents()).join(" ")).not.toMatch(
         /credits|odds|moneyline|spread|total/i,
       );
     }

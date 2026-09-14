@@ -339,3 +339,217 @@ a {
     opacity: 0.75;
   }
 }
+
+/* Matchup: the same two member lanes from scoreboard through every game. */
+.matchup-comparison {
+  --matchup-lane-padding: 1rem;
+}
+.matchup-navigation {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr);
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.matchup-sticky {
+  position: sticky;
+  top: var(--matchup-header-offset, 4rem);
+  z-index: 20;
+}
+.matchup-comparison .paired-matchup-card {
+  padding: 1rem 0 0;
+  overflow-wrap: anywhere;
+}
+.matchup-comparison .paired-matchup-card > .matchup-secondary {
+  margin-inline: 1rem;
+}
+.matchup-comparison .matchup-member {
+  min-width: 0;
+  padding-inline: var(--matchup-lane-padding);
+}
+.matchup-comparison .matchup-opponent {
+  border-left: 1px solid var(--border-subtle);
+}
+.matchup-comparison .paired-scores {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+}
+.matchup-comparison .matchup-score {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: min(
+    var(--matchup-score-size, 2.5rem),
+    calc(
+      (50cqw - var(--matchup-lane-padding) * 2 - 1px) / var(--score-length, 8) *
+        1.55
+    )
+  );
+  line-height: 1.25;
+  overflow-wrap: normal;
+}
+.matchup-comparison .matchup-member h2 {
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.matchup-sticky[data-compact="true"]:not(:focus-within) .matchup-secondary {
+  display: none;
+}
+.matchup-sticky[data-compact="true"]:not(:focus-within) .paired-matchup-card {
+  padding-top: 0;
+  border-radius: 0 0 0.75rem 0.75rem;
+}
+.matchup-sticky[data-compact="true"]:not(:focus-within) .paired-scores {
+  padding-block: 0.6rem;
+}
+.matchup-sticky[data-compact="true"]:not(:focus-within) .matchup-score {
+  margin-top: 0.2rem;
+  --matchup-score-size: 1.65rem;
+}
+.lineup-game {
+  margin-top: 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  background: var(--app-surface);
+  overflow: clip;
+}
+.lineup-game-title,
+.lineup-game-toggle {
+  background: var(--app-subtle);
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.lineup-game-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 44px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+.lineup-game-toggle > span {
+  min-width: 0;
+}
+.lineup-game-toggle:focus-visible {
+  outline-offset: -3px;
+}
+.lineup-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.lineup-pair + .lineup-pair {
+  border-top: 1px solid var(--border-subtle);
+}
+.lineup-side {
+  container-type: inline-size;
+  min-width: 0;
+  padding: 0.25rem 1rem;
+}
+.lineup-self {
+  border-top: 2px solid var(--brand-primary);
+}
+.lineup-opponent {
+  border-top: 2px solid var(--brand-copper);
+  border-left: 1px solid var(--border-subtle);
+}
+.lineup-bet {
+  padding-block: 0.85rem;
+  min-width: 0;
+  scroll-margin-top: 15rem;
+}
+.lineup-bet + .lineup-bet {
+  border-top: 1px solid var(--border-subtle);
+}
+.lineup-pick {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+.lineup-bet-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.lineup-empty {
+  padding-block: 1rem;
+}
+.matchup-comparison :is(a, button, summary, select) {
+  scroll-margin-block: 16rem 5rem;
+}
+@media (max-width: 480px) {
+  .matchup-comparison {
+    --matchup-lane-padding: 0.65rem;
+  }
+  .matchup-navigation {
+    gap: 0.6rem;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  }
+  .lineup-side {
+    padding-inline: 0.65rem;
+  }
+}
+@container (max-width: 22em) {
+  .lineup-bet-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-height: 480px) {
+  .matchup-sticky {
+    position: static;
+  }
+}
+
+/* Safari's native select can retain its option's intrinsic minimum width. */
+.matchup-navigation label {
+  position: relative;
+}
+.matchup-navigation select {
+  appearance: none;
+  max-width: 100%;
+  padding-right: 2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.matchup-navigation label::after {
+  content: "⌄";
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.65rem;
+  pointer-events: none;
+  font-size: 1rem;
+}
+/* Let both names contribute to shared rows before positioning the scores. */
+.matchup-comparison .paired-scores {
+  align-items: stretch;
+}
+.matchup-comparison .matchup-member {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-row: span 7;
+  align-items: start;
+}
+.matchup-member > :first-child {
+  grid-row: 1;
+}
+.matchup-member > h2 {
+  grid-row: 2;
+}
+.matchup-member > h2 + p {
+  grid-row: 3;
+}
+.matchup-member > .matchup-score {
+  grid-row: 4;
+}
+.matchup-member > [aria-label$="outstanding picks and credits"] {
+  grid-row: 5;
+}
+.matchup-member > [aria-label$="unused credits"] {
+  grid-row: 6;
+}
+.matchup-member > [aria-label$="card status"] {
+  grid-row: 7;
+}
+
+.matchup-comparison .matchup-member > * {
+  min-width: 0;
+  max-width: 100%;
+}

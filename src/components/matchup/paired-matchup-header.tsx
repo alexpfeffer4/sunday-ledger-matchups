@@ -3,7 +3,7 @@ import type {
   PairedMatchupDto,
   PairedMatchupPhase,
 } from "@/application/queries/project-paired-matchup";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCenticredits } from "@/domain/odds/american";
 
@@ -43,7 +43,9 @@ function MemberScore({
   entryClosed?: boolean;
 }) {
   return (
-    <div className={`matchup-member ${opponent ? "text-right" : "text-left"}`}>
+    <div
+      className={`matchup-member text-left ${opponent ? "matchup-opponent" : "matchup-self"}`}
+    >
       <p
         className={`text-xs font-bold tracking-[0.08em] uppercase ${opponent ? "text-copper" : "text-registry"}`}
       >
@@ -52,7 +54,7 @@ function MemberScore({
       <h2 className="mt-1 text-lg leading-6 font-bold break-words sm:text-xl">
         {member.displayName}
       </h2>
-      <p className="text-muted mt-1 text-xs sm:text-sm">
+      <p className="matchup-secondary text-muted mt-1 text-xs sm:text-sm">
         {member.record}
         {member.seed
           ? ` · No. ${member.seed} ${member.seedKind === "PLAYOFF" ? "playoff seed" : "in standings"}`
@@ -65,6 +67,14 @@ function MemberScore({
               ? `${member.displayName} score unavailable`
               : `${member.displayName} score ${formatScore(member.scoreCenticredits)} credits`
           }
+          style={
+            {
+              "--score-length": Math.max(
+                formatScore(member.scoreCenticredits).length,
+                4,
+              ),
+            } as CSSProperties
+          }
           className="matchup-score mt-4 text-[2.125rem] leading-9 font-bold tracking-[-0.04em] tabular-nums sm:text-[2.5rem] sm:leading-10"
         >
           {formatScore(member.scoreCenticredits)}
@@ -74,7 +84,7 @@ function MemberScore({
         <div
           role="group"
           aria-label={`${member.displayName} outstanding picks and credits`}
-          className="mt-3 text-sm leading-5 break-words tabular-nums"
+          className="matchup-secondary mt-3 text-sm leading-5 break-words tabular-nums"
         >
           {member.outstanding ? (
             <>
@@ -95,10 +105,12 @@ function MemberScore({
         </div>
       ) : null}
       {rolling &&
+      !opponent &&
+      !spectator &&
       member.availableCredits !== null &&
       member.availableCredits !== undefined ? (
         <p
-          className="text-muted mt-2 text-sm leading-5 tabular-nums"
+          className="matchup-secondary text-muted mt-2 text-sm leading-5 tabular-nums"
           aria-label={`${member.displayName} unused credits`}
         >
           {entryClosed ? (
@@ -121,7 +133,7 @@ function MemberScore({
         <div
           role="group"
           aria-label={`${member.displayName} card status`}
-          className="text-muted mt-2 text-xs font-semibold"
+          className="matchup-secondary text-muted mt-2 text-xs font-semibold"
         >
           {pregame ? (
             <StatusBadge
@@ -158,18 +170,18 @@ export function PairedMatchupHeader({
       aria-labelledby="paired-matchup-heading"
       className="paired-matchup-card border-boundary bg-surface rounded-xl border p-4 shadow-[var(--shadow-card)] sm:p-6"
     >
-      <div className="border-boundary flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+      <h2 className="sr-only" id="paired-matchup-heading">
+        {matchup.self.displayName} versus {matchup.opponent.displayName}
+      </h2>
+      <div className="matchup-secondary border-boundary flex flex-wrap items-center justify-between gap-3 border-b pb-3">
         <div>
           <p className="text-muted text-sm font-semibold">
-            Week {matchup.week.nflWeek} ·{" "}
+            Weekly score · Week {matchup.week.nflWeek} ·{" "}
             {matchup.week.competition ??
               (matchup.week.scope === "REGULAR"
                 ? "Regular season"
                 : matchup.week.scope.toLowerCase())}
           </p>
-          <h2 className="sr-only" id="paired-matchup-heading">
-            {matchup.self.displayName} versus {matchup.opponent.displayName}
-          </h2>
         </div>
         <StatusBadge tone={phaseTones[matchup.phase]}>
           {matchup.phase === "CORRECTED" && matchup.resultStatus
@@ -181,7 +193,7 @@ export function PairedMatchupHeader({
       </div>
 
       {matchup.self.decision ? (
-        <div className="mt-5">
+        <div className="matchup-secondary mt-5">
           <h3
             className={`text-2xl font-bold break-words ${matchup.spectator ? "text-graphite" : matchup.self.decision === "WIN" ? "text-positive" : matchup.self.decision === "LOSS" ? "text-negative" : "text-graphite"}`}
           >
@@ -196,6 +208,10 @@ export function PairedMatchupHeader({
                   : "You tied"}
           </h3>
           <p className="text-graphite mt-2 text-sm break-words">
+            {matchup.self.scoreCenticredits !== null &&
+            matchup.opponent.scoreCenticredits !== null
+              ? `Margin: ${formatScore(Math.abs(matchup.self.scoreCenticredits - matchup.opponent.scoreCenticredits))} credits. `
+              : ""}
             {matchup.week.scope === "REGULAR"
               ? matchup.spectator
                 ? `${matchup.self.displayName}: ${matchup.self.record}. ${matchup.opponent.displayName}: ${matchup.opponent.record}.`
@@ -208,7 +224,7 @@ export function PairedMatchupHeader({
         </div>
       ) : null}
 
-      <div className="paired-scores grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 py-4 sm:gap-8 sm:py-5">
+      <div className="paired-scores grid grid-cols-2 items-start py-4 sm:py-5">
         <MemberScore
           member={matchup.self}
           pregame={matchup.phase === "PREGAME"}
@@ -217,12 +233,6 @@ export function PairedMatchupHeader({
           rolling={matchup.week.rollingSubmissionsEnabled}
           entryClosed={matchup.week.entryClosed}
         />
-        <p
-          aria-hidden="true"
-          className="paired-vs text-muted pt-14 text-xs font-bold tracking-[0.12em] uppercase"
-        >
-          vs
-        </p>
         <MemberScore
           member={matchup.opponent}
           opponent
@@ -234,18 +244,23 @@ export function PairedMatchupHeader({
         />
       </div>
 
-      {matchup.phase !== "PREGAME" &&
-      (matchup.self.outstanding || matchup.opponent.outstanding) ? (
-        <p className="text-muted mb-3 text-xs leading-5">
-          Outstanding includes live and unstarted picks. Credits are the
-          original stakes, not potential returns.
+      <details className="matchup-secondary border-boundary border-t text-xs leading-5">
+        <summary className="text-action min-h-11 cursor-pointer py-3 font-semibold">
+          How scoring works
+        </summary>
+        <p className="text-muted pb-3">
+          Weekly score is the confirmed credit return from settled bets,
+          including returned stakes. Outstanding includes live and unstarted
+          picks. Credits outstanding are their original stakes, not potential
+          returns. Available credits are unused credits you can still bet. This
+          week’s rules determine incomplete-card results.
         </p>
-      ) : null}
+      </details>
 
       {matchup.phase === "PREGAME" ? (
         <>
-          {cardProgress}
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="matchup-secondary">{cardProgress}</div>
+          <div className="matchup-secondary mt-2 flex flex-wrap items-center justify-between gap-2">
             <p className="text-muted text-xs">
               Picks reveal after each game’s start is confirmed.
             </p>
@@ -253,9 +268,9 @@ export function PairedMatchupHeader({
           </div>
         </>
       ) : !completed ? (
-        <div className="border-boundary flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="matchup-secondary border-boundary flex flex-wrap items-center justify-between gap-2 border-t pt-3">
           <div>
-            <p className="text-sm font-semibold">
+            <p className="text-muted text-xs">
               {matchup.freshness.updatedAt ? (
                 <>
                   Scores checked {matchup.freshness.ageLabel}
@@ -276,21 +291,24 @@ export function PairedMatchupHeader({
               </p>
             ) : null}
           </div>
-          <span className="sr-only" role="status" aria-atomic="true">
-            {matchup.phaseLabel}.{" "}
-            {matchup.spectator ? matchup.self.displayName : "Your"} score{" "}
-            {matchup.self.scoreCenticredits === null
-              ? "unavailable"
-              : formatScore(matchup.self.scoreCenticredits)}
-            . {matchup.spectator ? matchup.opponent.displayName : "Opponent"}{" "}
-            score{" "}
-            {matchup.opponent.scoreCenticredits === null
-              ? "unavailable"
-              : formatScore(matchup.opponent.scoreCenticredits)}
-            .
-          </span>
+
           {refreshControl}
         </div>
+      ) : null}
+      {matchup.phase !== "PREGAME" && !completed ? (
+        <span className="sr-only" role="status" aria-atomic="true">
+          {matchup.phaseLabel}.{" "}
+          {matchup.spectator ? matchup.self.displayName : "Your"} score{" "}
+          {matchup.self.scoreCenticredits === null
+            ? "unavailable"
+            : formatScore(matchup.self.scoreCenticredits)}
+          . {matchup.spectator ? matchup.opponent.displayName : "Opponent"}{" "}
+          score{" "}
+          {matchup.opponent.scoreCenticredits === null
+            ? "unavailable"
+            : formatScore(matchup.opponent.scoreCenticredits)}
+          .
+        </span>
       ) : null}
     </section>
   );

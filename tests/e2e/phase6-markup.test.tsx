@@ -45,7 +45,34 @@ test("writes deterministic Phase 6 browser fixture markup", () => {
     position.lineMilli = null;
     position.americanOdds = index === 0 ? -265 : 1234;
   });
+  const stress = makePhase6Matchup("LIVE");
+  stress.self.displayName = "Alexandria Montgomery-Wellington";
+  stress.opponent.displayName = "Christopher Van Der Linden";
+  const base = stress.rows.IN_PROGRESS[0]!;
+  stress.rows = {
+    SETTLED: [],
+    REMAINING: [],
+    IN_PROGRESS: [
+      ...Array.from({ length: 20 }, (_, index) => ({
+        ...base,
+        id: `stress-${index}`,
+        side: "SELF" as const,
+        memberName: stress.self.displayName,
+        proposition: "Pittsburgh Steelers −3.5",
+        marketType: "SPREAD" as const,
+      })),
+      {
+        ...base,
+        id: "stress-opponent",
+        side: "OPPONENT",
+        memberName: stress.opponent.displayName,
+        proposition: "Atlanta Falcons +3.5",
+        marketType: "SPREAD",
+      },
+    ],
+  };
   const markup = {
+    STRESS: renderMatchup(stress),
     PREGAME: renderMatchup(makePhase6Matchup("PREGAME")),
     UNSEALED: renderMatchup(unsealed),
     OUTSTANDING: renderMatchup(outstanding),
