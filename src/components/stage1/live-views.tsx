@@ -1,3 +1,4 @@
+import type { LeagueMatchupCards } from "@/application/queries/league-matchup-dtos";
 import { competitionLabel } from "@/application/presentation/competition-label";
 import {
   opponentCardStatus,
@@ -734,13 +735,21 @@ export function Stage1LiveView({ state }: { state: Stage1StateDto }) {
 export function Stage1LeagueView({
   state,
   operations = null,
+  leagueCards = null,
 }: {
   state: Stage1StateDto;
   operations?: LiveWeekOperations | null;
+  leagueCards?: LeagueMatchupCards | null;
 }) {
   const week = state.week?.nflWeek ?? 1;
   const currentState = weekStatus(state);
-  const paired = projectPairedMatchup(state, operations);
+  const paired = projectPairedMatchup(
+    state,
+    operations,
+    new Date(),
+    new Map(),
+    leagueCards,
+  );
   const games =
     paired?.scoreboard ??
     state.schedule.map((matchup) => ({

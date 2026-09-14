@@ -53,6 +53,10 @@ export type Database = {
       };
     };
     Functions: {
+      get_league_matchup_cards: {
+        Args: { p_league_slug: string; p_week_id: string };
+        Returns: Json;
+      };
       claim_provider_odds_request: {
         Args: { p_league_id: string };
         Returns: string;

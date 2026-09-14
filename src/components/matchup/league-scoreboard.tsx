@@ -10,6 +10,8 @@ export type LeagueScoreboardGame = {
   state: string;
   competition: string;
   selected: boolean;
+  own?: boolean;
+  href?: string;
 };
 
 function score(value: number | null): string {
@@ -43,35 +45,44 @@ export function LeagueScoreboard({
         {games.map((game) => (
           <li
             aria-current={game.selected ? "true" : undefined}
-            className={`px-4 py-3 ${game.selected ? "bg-registry/5 border-l-registry border-l-4" : ""}`}
+            className={`${game.selected ? "bg-registry/5 border-l-registry border-l-4" : ""}`}
             key={game.id}
           >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-muted text-xs font-semibold">
-                {game.selected ? "Your matchup" : game.competition}
-              </p>
-              <span className="text-graphite text-xs font-bold">
-                {game.state}
-              </span>
-            </div>
-            <dl className="scoreboard-facts mt-2 grid gap-2 text-sm">
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
-                <dt className="min-w-0 font-semibold break-words">
-                  {game.sideAName}
-                </dt>
-                <dd className="font-mono">
-                  {score(game.sideAScoreCenticredits)}
-                </dd>
+            <ScoreboardRowLink game={game}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-muted text-xs font-semibold">
+                  {(game.own ?? game.selected)
+                    ? "Your matchup"
+                    : game.competition}
+                </p>
+                <span className="text-graphite text-xs font-bold">
+                  {game.state}
+                </span>
               </div>
-              <div className="border-boundary grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-t pt-2">
-                <dt className="min-w-0 font-semibold break-words">
-                  {game.sideBName}
-                </dt>
-                <dd className="font-mono">
-                  {score(game.sideBScoreCenticredits)}
-                </dd>
-              </div>
-            </dl>
+              <dl className="scoreboard-facts mt-2 grid gap-2 text-sm">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+                  <dt className="min-w-0 font-semibold break-words">
+                    {game.sideAName}
+                  </dt>
+                  <dd className="font-mono">
+                    {score(game.sideAScoreCenticredits)}
+                  </dd>
+                </div>
+                <div className="border-boundary grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-t pt-2">
+                  <dt className="min-w-0 font-semibold break-words">
+                    {game.sideBName}
+                  </dt>
+                  <dd className="font-mono">
+                    {score(game.sideBScoreCenticredits)}
+                  </dd>
+                </div>
+              </dl>
+              {game.href ? (
+                <p className="text-action mt-2 text-xs font-semibold">
+                  {game.selected ? "Viewing matchup" : "View matchup →"}
+                </p>
+              ) : null}
+            </ScoreboardRowLink>
           </li>
         ))}
       </ol>
@@ -84,5 +95,26 @@ export function LeagueScoreboard({
         </Link>
       ) : null}
     </section>
+  );
+}
+
+function ScoreboardRowLink({
+  game,
+  children,
+}: {
+  game: LeagueScoreboardGame;
+  children: React.ReactNode;
+}) {
+  return game.href ? (
+    <Link
+      href={game.href}
+      prefetch={false}
+      aria-label={`View ${game.sideAName} versus ${game.sideBName}`}
+      className="hover:bg-registry/5 focus-visible:outline-registry block px-4 py-3 focus-visible:outline-2 focus-visible:outline-offset-[-3px]"
+    >
+      {children}
+    </Link>
+  ) : (
+    <div className="px-4 py-3">{children}</div>
   );
 }

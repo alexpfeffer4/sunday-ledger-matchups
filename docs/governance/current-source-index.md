@@ -1,5 +1,9 @@
 # Sunday Ledger — current governing source index
 
+September 13 requested implementation: [league matchup browsing](../league-matchup-browsing.md)
+allows league members to follow other pairings through the existing event-timed reveal boundary.
+It adds no pre-lock roster submission disclosure.
+
 September 13 supplement: [commissioner card-status decision](2026-09-13-commissioner-card-status.md)
 extends the submission flag to the current commissioner's current-week roster only.
 

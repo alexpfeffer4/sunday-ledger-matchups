@@ -1,3 +1,4 @@
+import type { LeagueMatchupCards } from "./league-matchup-dtos";
 import { competitionLabel } from "@/application/presentation/competition-label";
 import {
   scoreFreshness,
@@ -64,9 +65,12 @@ export type LeagueScoreboardItem = {
     | "Corrected";
   competition: string;
   selected: boolean;
+  own?: boolean;
+  href?: string;
 };
 
 export type PairedMatchupDto = {
+  spectator?: boolean;
   league: {
     name: string;
     slug: string;
@@ -260,6 +264,7 @@ export function projectPairedMatchup(
   operations: LiveWeekOperations | null,
   now: Date = new Date(),
   qualificationSeeds: ReadonlyMap<string, number> = new Map(),
+  leagueCards: LeagueMatchupCards | null = null,
 ): PairedMatchupDto | null {
   if (!state.week || !state.matchup || !state.ownerCard) return null;
   if (state.league.mode === "SIMULATION" && state.season.simulatedNow) {
@@ -502,6 +507,11 @@ export function projectPairedMatchup(
     decision: result?.opponentDecision ?? null,
   };
 
+  const cardsByEntry = new Map(
+    (leagueCards?.weekId === state.week.id ? leagueCards.cards : []).map(
+      (card) => [card.entryId, card],
+    ),
+  );
   const scoreboardState = (
     selected: boolean,
     scheduleResult: Stage1StateDto["schedule"][number]["result"],
@@ -578,13 +588,17 @@ export function projectPairedMatchup(
           ? state.matchup!.selfEntryId === matchup.sideAEntryId
             ? selfScore
             : opponentScore
-          : (matchup.result?.sideAPointsForCenticredits ?? null),
+          : (matchup.result?.sideAPointsForCenticredits ??
+            cardsByEntry.get(matchup.sideAEntryId)?.scoreCenticredits ??
+            null),
       sideBScoreCenticredits:
         matchup.id === state.matchup!.id && scoresAvailable
           ? state.matchup!.selfEntryId === matchup.sideBEntryId
             ? selfScore
             : opponentScore
-          : (matchup.result?.sideBPointsForCenticredits ?? null),
+          : (matchup.result?.sideBPointsForCenticredits ??
+            cardsByEntry.get(matchup.sideBEntryId)?.scoreCenticredits ??
+            null),
       state: scoreboardState(matchup.id === state.matchup!.id, matchup.result),
       competition: competitionLabel({
         ...matchup,
@@ -592,6 +606,14 @@ export function projectPairedMatchup(
         lifecycle: state.league.lifecycle,
       }),
       selected: matchup.id === state.matchup!.id,
+      own: matchup.id === state.matchup!.id,
+      href:
+        matchup.id === state.matchup!.id
+          ? `/l/${state.league.slug}/matchup`
+          : cardsByEntry.has(matchup.sideAEntryId) &&
+              cardsByEntry.has(matchup.sideBEntryId)
+            ? `/l/${state.league.slug}/matchup?matchup=${matchup.id}`
+            : undefined,
     })),
   };
 }

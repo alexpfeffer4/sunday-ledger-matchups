@@ -1,3 +1,4 @@
+import { getLeagueMatchupCards } from "@/application/queries/get-league-matchup-cards";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
@@ -22,6 +23,17 @@ export default async function LeaguePage({
   if (archive) {
     return <SeasonArchiveHome archive={archive} leagueSlug={leagueSlug} />;
   }
-  if (live) return <Stage1LeagueView state={live} operations={operations} />;
+  if (live) {
+    const leagueCards = live.week
+      ? await getLeagueMatchupCards(leagueSlug, live.week.id)
+      : null;
+    return (
+      <Stage1LeagueView
+        state={live}
+        operations={operations}
+        leagueCards={leagueCards}
+      />
+    );
+  }
   notFound();
 }

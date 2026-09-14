@@ -31,7 +31,13 @@ function rowState(row: PositionLedgerItem): {
   return { label: "Remaining", tone: "sealed" };
 }
 
-export function PositionLedgerRow({ row }: { row: PositionLedgerItem }) {
+export function PositionLedgerRow({
+  row,
+  showMemberName = false,
+}: {
+  row: PositionLedgerItem;
+  showMemberName?: boolean;
+}) {
   const status = rowState(row);
   const proposition = formatMarketProposition(row.proposition);
   const returnLabel =
@@ -50,7 +56,7 @@ export function PositionLedgerRow({ row }: { row: PositionLedgerItem }) {
           <p
             className={`text-xs font-bold tracking-[0.07em] uppercase ${row.side === "SELF" ? "text-registry" : "text-copper"}`}
           >
-            {row.side === "SELF" ? "You" : row.memberName}
+            {row.side === "SELF" && !showMemberName ? "You" : row.memberName}
           </p>
           <p className="mt-1 text-sm font-semibold break-words">
             {row.eventLabel}

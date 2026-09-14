@@ -1,3 +1,5 @@
+import { getLeagueMatchupCards } from "@/application/queries/get-league-matchup-cards";
+import { projectLeagueMatchup } from "@/application/queries/project-league-matchup";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
@@ -19,10 +21,19 @@ export const metadata: Metadata = { title: "Matchup" };
 
 export default async function MatchupPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ leagueSlug: string }>;
+  searchParams: Promise<{ matchup?: string | string[] }>;
 }) {
   const { leagueSlug } = await params;
+  const requested = (await searchParams).matchup;
+  if (
+    requested !== undefined &&
+    (typeof requested !== "string" ||
+      !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(requested))
+  )
+    notFound();
   const [live, archive, operations, weeklyCloseState] = await Promise.all([
     getAuthoritativeLeagueState(leagueSlug),
     getSeasonArchive(leagueSlug),
@@ -47,12 +58,27 @@ export default async function MatchupPage({
         qualifier.qualificationSeed,
       ]),
     );
-    const matchup = projectPairedMatchup(
+    const leagueCards = live.week
+      ? await getLeagueMatchupCards(leagueSlug, live.week.id)
+      : null;
+    const ownMatchup = projectPairedMatchup(
       live,
       operations,
       new Date(),
       qualificationSeeds,
+      leagueCards,
     );
+    const matchup =
+      requested && ownMatchup
+        ? projectLeagueMatchup(
+            live,
+            ownMatchup,
+            leagueCards,
+            requested,
+            qualificationSeeds,
+          )
+        : ownMatchup;
+    if (requested && !matchup) notFound();
     const memory = weeklyCloseState
       ? projectSeasonMemory(weeklyCloseState)
       : null;
@@ -60,7 +86,11 @@ export default async function MatchupPage({
     return matchup ? (
       <PairedMatchupView
         matchup={matchup}
-        cardProgress={<OwnerCardProgress context={ownerCardContext(live)} />}
+        cardProgress={
+          matchup.spectator ? undefined : (
+            <OwnerCardProgress context={ownerCardContext(live)} />
+          )
+        }
         refreshControl={
           <MatchupStateRefresh
             active={
@@ -71,7 +101,7 @@ export default async function MatchupPage({
           />
         }
         weeklyClose={
-          memory?.recordBridge ? (
+          !matchup.spectator && memory?.recordBridge ? (
             currentClose ? (
               <WeeklyCloseModule
                 bridge={memory.recordBridge}
