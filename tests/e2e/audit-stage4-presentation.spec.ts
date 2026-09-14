@@ -34,7 +34,7 @@ for (const [name, markup] of Object.entries(fixtures)) {
         `${name} at ${width}px/${textSize}%`,
       ).toBeLessThanOrEqual(dimensions.client);
       const brokenNumbers = await page
-        .locator(".standings-value, .paired-scores [aria-label]")
+        .locator(".standings-value, .paired-scores .matchup-score")
         .filter({ visible: true })
         .evaluateAll((elements) =>
           elements

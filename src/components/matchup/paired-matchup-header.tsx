@@ -61,7 +61,7 @@ function MemberScore({
               ? `${member.displayName} score unavailable`
               : `${member.displayName} score ${formatScore(member.scoreCenticredits)} credits`
           }
-          className="mt-4 text-[2.125rem] leading-9 font-bold tracking-[-0.04em] tabular-nums sm:text-[2.5rem] sm:leading-10"
+          className="matchup-score mt-4 text-[2.125rem] leading-9 font-bold tracking-[-0.04em] tabular-nums sm:text-[2.5rem] sm:leading-10"
         >
           {formatScore(member.scoreCenticredits)}
         </p>
