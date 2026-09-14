@@ -92,7 +92,7 @@ export const ownerRehearsalGuide: Record<
   },
   WEEK_1_PARTIAL: {
     action: "Open Matchup and compare the revealed positions.",
-    advanceLabel: "Finish games and show provisional result",
+    advanceLabel: "Finish games and show result",
     detail:
       "Only games that have started reveal their positions. Commissioner status never unlocks future bot picks.",
     href: (slug) => `/l/${slug}/matchup`,
@@ -101,14 +101,14 @@ export const ownerRehearsalGuide: Record<
     title: "Watch event-timed reveal",
   },
   WEEK_1_PROVISIONAL: {
-    action: "Review the provisional matchup, then close its correction window.",
-    advanceLabel: "Finalize Week 1",
+    action: "Review the final matchup, then finish the score-review lesson.",
+    advanceLabel: "Review Week 1 final result",
     confirmation:
-      "Finalization closes the correction window and makes this weekly result official.",
+      "The week is already final. This step advances past the score-review period.",
     detail:
-      "Provisional means all known games are scored but the correction window remains open. Final makes the weekly result official.",
+      "Results become final when all published games and picks settle. A later verified correction remains visible in history.",
     href: (slug) => `/l/${slug}/matchup`,
-    linkLabel: "Review provisional result",
+    linkLabel: "Review final result",
     task: commissioner,
     title: "Understand result finality",
   },
@@ -166,12 +166,12 @@ export const ownerRehearsalGuide: Record<
     title: "Connect attendance to eligibility",
   },
   WEEK_8_OPEN: {
-    action: "Choose your Week 8 card and produce a provisional result.",
-    advanceLabel: "Show provisional Week 8 result",
+    action: "Choose your Week 8 card and settle its games.",
+    advanceLabel: "Show Week 8 result",
     confirmation:
-      "The next result is intentionally provisional so the correction can be examined before finalization.",
+      "The next result is final; the following step demonstrates a verified correction.",
     detail:
-      "This week pauses before finality so you can see the original result and the later correction as separate versions.",
+      "This week pauses after settlement so you can compare the original result with the later correction.",
     href: (slug) => `/l/${slug}/slate`,
     linkLabel: "Make or sample my card",
     task: member,
@@ -185,7 +185,7 @@ export const ownerRehearsalGuide: Record<
     href: (slug) => `/l/${slug}/matchup`,
     linkLabel: "Review original result",
     task: commissioner,
-    title: "Compare provisional and corrected",
+    title: "Compare original and corrected",
   },
   WEEK_8_CORRECTED: {
     action:
@@ -304,7 +304,7 @@ export const ownerRehearsalGuide: Record<
   COMPLETE: {
     action: "Explore the final archive or safely reset this rehearsal.",
     detail:
-      "You practiced the real cadence: publish, make cards, lock together, reveal by kickoff, settle provisionally, correct when needed, and finalize.",
+      "You practiced the real cadence: publish, make cards, lock together, reveal by kickoff, finalize automatically, and record verified corrections when needed.",
     href: (slug) => `/l/${slug}/history`,
     linkLabel: "Open season history",
     task: commissioner,

@@ -1,5 +1,9 @@
 begin;
 
+-- Historical-policy compatibility fixtures. New/default policy is exercised in
+-- automatic_weekly_finalization and the authoritative full-season suites.
+alter table private.season_weeks alter column finalization_mode set default 'MANUAL_24H';
+
 create extension if not exists pgtap with schema extensions;
 select no_plan();
 

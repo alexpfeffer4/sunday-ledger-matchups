@@ -1358,7 +1358,13 @@ export async function importLiveScoresAction(
     !state.commissioner.isCommissioner ||
     state.league.mode !== "LIVE" ||
     !state.week ||
-    !["LOCKED", "PROVISIONAL"].includes(state.week.state) ||
+    !(
+      ["LOCKED", "PROVISIONAL"].includes(state.week.state) ||
+      (state.week.state === "FINAL" &&
+        state.week.finalizationMode === "AFTER_RESULTS" &&
+        state.week.correctionWindowClosesAt !== null &&
+        Date.parse(state.week.correctionWindowClosesAt) > Date.now())
+    ) ||
     state.slate.length === 0
   ) {
     return mutationError(

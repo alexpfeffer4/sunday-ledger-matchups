@@ -408,7 +408,7 @@ function PublishedRoundCard({
               : round.state === "LOCKED"
                 ? "Cards locked"
                 : round.state === "PROVISIONAL"
-                  ? "Provisional"
+                  ? "Picks settled"
                   : "Final"}
         </StatusBadge>
       </div>

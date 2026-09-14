@@ -70,6 +70,29 @@ it("rejects members before any provider request", async () => {
 });
 
 it.each([
+  ["AFTER_RESULTS", "2026-09-15T12:00:00Z", true],
+  ["AFTER_RESULTS", "2026-09-14T09:00:00Z", false],
+  ["AFTER_RESULTS", null, false],
+  ["MANUAL_24H", "2026-09-15T12:00:00Z", false],
+] as const)(
+  "final-week score checks respect %s review eligibility (%s)",
+  async (mode, closes, allowed) => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-14T12:00:00Z"));
+    const data = form();
+    const { state } = makePhase6State("FINAL");
+    state.commissioner.isCommissioner = true;
+    state.league.mode = "LIVE";
+    state.week!.finalizationMode = mode;
+    state.week!.correctionWindowClosesAt = closes;
+    mocks.league.mockResolvedValue(state);
+    mocks.refresh.mockResolvedValue({ status: "IDLE", eventCount: 0 });
+    const result = await importLiveScoresAction(initialAppActionState, data);
+    expect(mocks.refresh).toHaveBeenCalledTimes(allowed ? 1 : 0);
+    expect(result.status).toBe(allowed ? "success" : "error");
+  },
+);
+
+it.each([
   ["EVENT_IDENTITY_CHANGED", "differ from the published slate"],
   ["INVALID_SCORE_EVIDENCE", "update times could not be verified"],
   ["DATABASE_23502", "Score processing failed on the server"],

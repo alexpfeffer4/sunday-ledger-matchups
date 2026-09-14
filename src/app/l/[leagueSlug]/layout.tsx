@@ -41,7 +41,7 @@ function shellPhaseLabel(state: Stage1StateDto): string {
     PLANNED: "Published",
     OPEN: "Cards open",
     LOCKED: "Cards locked",
-    PROVISIONAL: "Provisional",
+    PROVISIONAL: "Picks settled",
     FINAL: "Final",
   };
   return labels[state.week.state];

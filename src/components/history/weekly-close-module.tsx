@@ -68,10 +68,10 @@ export function WeeklyCloseModule({
   const resultLabel = matchup.corrected
     ? matchup.status === "FINAL"
       ? "Corrected final"
-      : "Corrected provisional"
+      : "Corrected · picks settled"
     : matchup.status === "FINAL"
       ? "Matchup final"
-      : "Provisional";
+      : "Picks settled";
   const resultTone = matchup.corrected
     ? "corrected"
     : matchup.status === "FINAL"
@@ -144,12 +144,8 @@ export function WeeklyCloseModule({
 
       <p className="text-graphite mt-3 text-sm leading-6">
         {matchup.status === "PROVISIONAL"
-          ? bridge.correctionWindowClosesAt
-            ? `Correction window closes ${easternTime(bridge.correctionWindowClosesAt)}.`
-            : "This result remains provisional; the correction deadline is unavailable."
-          : bridge.correctionWindowClosesAt
-            ? `Correction window closed ${easternTime(bridge.correctionWindowClosesAt)}.`
-            : "This matchup result is final."}
+          ? "Both cards are settled. The week becomes final when all its games finish and picks settle."
+          : "This matchup result is final."}
         {matchup.nflWeek === 17 && matchup.scope === "PLAYOFF"
           ? " Champion confirmation and the complete season archive are separate steps."
           : ""}

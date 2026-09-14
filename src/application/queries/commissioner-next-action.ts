@@ -39,6 +39,13 @@ export function timedCommissionerAction(
           prerequisites: `Lock Week ${week.nflWeek} at ${deadline}`,
         };
   if (week.state === "PROVISIONAL") {
+    if (week.finalizationMode === "AFTER_RESULTS")
+      return {
+        title: "Check weekly settlement",
+        detail:
+          "The week closes automatically once all published games and picks are settled.",
+        prerequisites: "Review any unresolved game result",
+      };
     const closes = week.correctionWindowClosesAt;
     const due = closes !== null && Date.parse(closes) <= now.getTime();
     return {

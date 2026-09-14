@@ -95,7 +95,7 @@ function weekStatus(state: Stage1StateDto): string {
     LOCKED: state.slate.some((event) => event.state === "LIVE")
       ? "Live"
       : "Cards locked",
-    PROVISIONAL: "Provisional",
+    PROVISIONAL: "Picks settled",
     FINAL: "Final",
   };
   return labels[state.week.state];
@@ -124,7 +124,7 @@ function liveStatus(state: Stage1StateDto): ReactNode {
   if (state.week.state === "FINAL")
     return <StatusBadge tone="sealed">Final</StatusBadge>;
   if (state.week.state === "PROVISIONAL")
-    return <StatusBadge tone="pending">Provisional</StatusBadge>;
+    return <StatusBadge tone="pending">Picks settled</StatusBadge>;
   if (state.week.state === "OPEN")
     return <StatusBadge tone="positive">Cards open</StatusBadge>;
   return <StatusBadge tone="sealed">Cards locked</StatusBadge>;
@@ -244,7 +244,7 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
   const matchupState = result
     ? result.status === "FINAL"
       ? "Final"
-      : "Provisional"
+      : "Picks settled"
     : state.week.state === "OPEN"
       ? ownerReady
         ? "Your card is ready"
@@ -1028,6 +1028,7 @@ export function Stage1CommissionerView({
                       commonLockAt: state.week.commonLockAt,
                       correctionWindowClosesAt:
                         state.week.correctionWindowClosesAt,
+                      finalizationMode: state.week.finalizationMode,
                     }
                   : null,
                 slate: state.slate.map((event) => ({

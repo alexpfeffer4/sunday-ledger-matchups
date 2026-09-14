@@ -84,7 +84,7 @@ test("provisional close states only supported cutline and preserves next access"
   await mount(page, "PROVISIONAL");
 
   await expect(
-    page.getByTestId("weekly-close-module").getByText(/Provisional/),
+    page.getByTestId("weekly-close-module").getByText(/Picks settled/),
   ).toBeVisible();
   await expect(page.getByText("Playoff picture")).toBeVisible();
   await expect(page.getByText(/not a clinch or elimination/)).toBeVisible();

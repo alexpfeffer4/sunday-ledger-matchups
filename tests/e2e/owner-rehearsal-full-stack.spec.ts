@@ -390,12 +390,12 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   await expect(page.getByText("Future picks sealed")).toBeVisible();
 
   await page.goto("/owner/rehearsal");
-  await advance(page, "Finish games and show provisional result");
+  await advance(page, "Finish games and show result");
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "Understand result finality" }),
   ).toBeVisible();
-  await advance(page, "Finalize Week 1");
+  await advance(page, "Review Week 1 final result");
   await advance(page, "Open Week 2");
 
   await page.getByRole("button", { name: "Use a sample card" }).click();
@@ -410,7 +410,7 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   await advance(page, "Finalize Week 5");
   await advance(page, "Run Weeks 6–7 and open Week 8");
   await sample(page);
-  await advance(page, "Show provisional Week 8 result");
+  await advance(page, "Show Week 8 result");
   await advance(page, "Apply Week 8 correction");
   await page.getByRole("link", { name: "See corrected result" }).click();
   await expect(page.getByText(/Corrected/).first()).toBeVisible();

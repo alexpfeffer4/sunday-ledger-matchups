@@ -50,6 +50,35 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
+test("remaining-return values align when metric labels wrap", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 640, height: 900 });
+  await mountMatchup(page, "LIVE");
+  const labelHeights = await page
+    .locator(".score-path-facts dt")
+    .evaluateAll((labels) =>
+      labels.map((label) => {
+        const range = document.createRange();
+        range.selectNodeContents(label);
+        return range.getBoundingClientRect().height;
+      }),
+    );
+  expect(Math.max(...labelHeights)).toBeGreaterThan(Math.min(...labelHeights));
+  const tops = await page
+    .locator(".score-path-facts dd")
+    .evaluateAll((values) =>
+      values.map((value) => value.getBoundingClientRect().top),
+    );
+  expect(tops).toHaveLength(4);
+  expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(1);
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: info.outputPath("aligned-score-path.png"),
+    fullPage: true,
+  });
+});
+
 test("outstanding totals stay paired and readable at 320px and 200% text", async ({
   page,
 }, info) => {
@@ -225,7 +254,7 @@ test("stored Live updates preserve identity and progress to provisional and fina
 
   await mountMatchup(page, "PROVISIONAL");
   await expect(
-    page.getByText("Provisional", { exact: true }).first(),
+    page.getByText("Picks settled", { exact: true }).first(),
   ).toBeVisible();
   await expect(
     page.getByLabel("Alex Ledger score 400.00 credits"),

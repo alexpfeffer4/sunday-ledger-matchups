@@ -613,24 +613,12 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
         week: state.week?.state,
       };
     })
-    .toEqual({ matchup: "PROVISIONAL", week: "PROVISIONAL" });
+    .toEqual({ matchup: "FINAL", week: "FINAL" });
 
   await commissionerBrowser.page.reload();
-  const correctionWindowClosesAt = (await getState(invitedClient, slug)).week
-    ?.correctionWindowClosesAt;
-  expect(correctionWindowClosesAt).toBeTruthy();
-  await commissionerBrowser.page
-    .getByRole("button", { name: "Advance past correction window" })
-    .click();
-  await expect
-    .poll(async () => {
-      const state = await getState(invitedClient, slug);
-      return new Date(state.season.simulatedNow).getTime();
-    })
-    .toBeGreaterThan(new Date(correctionWindowClosesAt!).getTime());
-  await commissionerBrowser.page
-    .getByRole("button", { name: "Finalize Week 1" })
-    .click();
+  await expect(
+    commissionerBrowser.page.getByRole("button", { name: "Finalize Week 1" }),
+  ).toHaveCount(0);
   await expect(
     commissionerBrowser.page.getByRole("heading", {
       name: "Make practice Week 2 available",
