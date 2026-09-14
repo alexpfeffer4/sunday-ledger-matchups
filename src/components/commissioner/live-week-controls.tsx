@@ -413,13 +413,15 @@ export function LiveWeekCommissionerControls({
               disabled={
                 !providerConfigured ||
                 importingScores ||
-                state.week.state === "FINAL"
+                (state.week.state === "FINAL" &&
+                  !liveWeekOperations?.correctionsOpen)
               }
               type="submit"
             >
               {importingScores
                 ? "Checking NFL scores…"
-                : state.week.state === "FINAL"
+                : state.week.state === "FINAL" &&
+                    !liveWeekOperations?.correctionsOpen
                   ? "Week finalized"
                   : "Refresh NFL scores & settle completed games"}
             </button>

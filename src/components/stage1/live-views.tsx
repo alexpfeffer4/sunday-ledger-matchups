@@ -1028,6 +1028,7 @@ export function Stage1CommissionerView({
                       commonLockAt: state.week.commonLockAt,
                       correctionWindowClosesAt:
                         state.week.correctionWindowClosesAt,
+                      finalizationMode: state.week.finalizationMode,
                     }
                   : null,
                 slate: state.slate.map((event) => ({
