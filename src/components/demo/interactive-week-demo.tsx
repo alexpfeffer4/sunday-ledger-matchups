@@ -66,6 +66,9 @@ const marketLabels: Record<InteractiveDemoMarket["marketType"], string> = {
   MONEYLINE: "Winner",
   SPREAD: "Spread",
   TOTAL: "Total",
+  PLAYER_PASSING_YARDS: "Passing yards",
+  PLAYER_RUSHING_YARDS: "Rushing yards",
+  PLAYER_RECEIVING_YARDS: "Receiving yards",
 };
 
 function marketKey(eventId: string, marketType: string): string {

@@ -1,10 +1,14 @@
 import { z } from "zod";
+import { marketTypeSchema } from "@/rulesets/schema";
+import { playerSubjectFields } from "./player-prop-dtos";
 
 const receiptSchema = z.object({
   id: z.string(),
   receiptHash: z.string().length(64),
   eventId: z.string(),
-  marketType: z.enum(["MONEYLINE", "SPREAD", "TOTAL"]),
+  marketType: marketTypeSchema,
+  ...playerSubjectFields,
+  finalYards: z.number().nullable().optional(),
   selection: z.enum(["HOME", "AWAY", "OVER", "UNDER"]),
   americanOdds: z.number().int(),
   lineMilli: z.number().int().nullable(),

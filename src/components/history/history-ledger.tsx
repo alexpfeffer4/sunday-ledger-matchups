@@ -97,6 +97,12 @@ export function HistoryLedger({
                 <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
                   <Link
                     className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
+                    href={`/l/${leagueSlug}/matchup?matchup=${matchup.id}`}
+                  >
+                    View this week’s picks
+                  </Link>
+                  <Link
+                    className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
                     href={`/l/${leagueSlug}/rivalry/${matchup.self.entryId}/${matchup.opponent.entryId}`}
                   >
                     View rivalry with {matchup.opponent.name}

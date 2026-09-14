@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { formatMarketProposition } from "@/components/card/market-option-copy";
+import {
+  formatMarketProposition,
+  marketOptionCopy,
+} from "@/components/card/market-option-copy";
 
 describe("market proposition copy", () => {
   it("removes database-scale zeroes without changing meaningful precision", () => {
@@ -15,4 +18,21 @@ describe("market proposition copy", () => {
       "Arizona Firebirds to win",
     );
   });
+});
+
+it("preserves signed and zero player yardage lines in the visible and accessible terms", () => {
+  for (const lineMilli of [-1500, 0, 245500]) {
+    const result = marketOptionCopy({
+      americanOdds: -110,
+      awayTeam: "Away",
+      homeTeam: "Home",
+      fallbackLabel: "Player yards",
+      lineMilli,
+      marketType: "PLAYER_PASSING_YARDS",
+      outcomeKey: "OVER",
+    });
+    const line = String(lineMilli / 1000).replace("-", "−");
+    expect(result.secondary).toBe(`${line} · −110`);
+    expect(result.accessibleLabel).toBe(`Over ${line} −110`);
+  }
 });

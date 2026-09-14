@@ -22,6 +22,9 @@ import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
 import { reviewLiveCardQuotes } from "@/app/l/[leagueSlug]/card-quote-actions";
 
+vi.mock("@/app/l/[leagueSlug]/player-prop-actions", () => ({
+  refreshPlayerPropQuotesAction: vi.fn(),
+}));
 vi.mock("@/app/l/[leagueSlug]/card-quote-actions", () => ({
   reviewLiveCardQuotes: vi.fn(async () => ({ status: "disabled" })),
 }));
@@ -475,7 +478,7 @@ describe("authenticated card editor", () => {
     ).toBeEnabled();
   });
 
-  it("requires another check after the server review expires", async () => {
+  it("allows explicit Submit to renew an expired review without another Review click", async () => {
     storeHomeDraft();
     vi.mocked(reviewLiveCardQuotes).mockResolvedValue(
       readyReview(165, new Date(Date.now() - 1000).toISOString()),
@@ -487,11 +490,14 @@ describe("authenticated card editor", () => {
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: "Confirm and seal card" }),
-      ).toBeDisabled(),
+      ).toBeEnabled(),
     );
     expect(
-      screen.getByRole("button", { name: "Check current odds again" }),
-    ).toBeEnabled();
+      await screen.findByText(/We’ll check the latest odds when you submit/),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Check current odds again" }),
+    ).not.toBeInTheDocument();
   });
 });
 

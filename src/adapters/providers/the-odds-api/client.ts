@@ -7,6 +7,12 @@ import {
 } from "@/adapters/providers/the-odds-api/normalize";
 import { normalizeTheOddsApiScores } from "@/adapters/providers/the-odds-api/normalize-scores";
 import type { LiveOddsImport } from "@/application/providers/live-odds";
+import { normalizeTheOddsApiProps } from "./normalize-props";
+import {
+  propMarketFamilies,
+  type PropMarketFamily,
+  type PropQuoteImport,
+} from "@/application/providers/player-prop-quotes";
 import type { LiveScoreImport } from "@/application/providers/live-scores";
 
 const nflEventsUrl =
@@ -31,6 +37,7 @@ async function fetchProviderJson(
   url: URL,
   fetchImpl: typeof fetch,
   onUsage?: (remaining: number | null) => void,
+  onUsageDetail?: (usage: OddsUsage) => void,
 ): Promise<unknown> {
   let response: Response;
   try {
@@ -48,6 +55,16 @@ async function fetchProviderJson(
   const remainingHeader = response.headers.get("x-requests-remaining");
   const remaining = remainingHeader === null ? NaN : Number(remainingHeader);
   onUsage?.(Number.isInteger(remaining) && remaining >= 0 ? remaining : null);
+  const count = (name: string) => {
+    const raw = response.headers.get(name);
+    const n = raw === null ? NaN : Number(raw);
+    return Number.isInteger(n) && n >= 0 ? n : null;
+  };
+  onUsageDetail?.({
+    remaining: count("x-requests-remaining"),
+    used: count("x-requests-used"),
+    last: count("x-requests-last"),
+  });
   if (!response.ok) {
     throw new OddsProviderRequestError(
       `The Odds API request failed with status ${response.status}.`,
@@ -69,6 +86,7 @@ export async function fetchNflOdds(options?: {
   fetchImpl?: typeof fetch;
   fetchedAt?: string;
   onUsage?: (remaining: number | null) => void;
+  onUsageDetail?: (usage: OddsUsage) => void;
 }): Promise<LiveOddsImport> {
   const apiKey = options?.apiKey ?? process.env.ODDS_API_KEY;
   if (!apiKey) {
@@ -111,7 +129,12 @@ export async function fetchNflOdds(options?: {
   oddsUrl.searchParams.set("oddsFormat", "american");
   oddsUrl.searchParams.set("dateFormat", "iso");
   oddsUrl.searchParams.set("eventIds", eventIds.join(","));
-  const payload = await fetchProviderJson(oddsUrl, fetchImpl, options?.onUsage);
+  const payload = await fetchProviderJson(
+    oddsUrl,
+    fetchImpl,
+    options?.onUsage,
+    options?.onUsageDetail,
+  );
 
   const liveImport = normalizeTheOddsApiOdds(
     payload,
@@ -150,6 +173,7 @@ export async function fetchNflScores(options: {
   fetchImpl?: typeof fetch;
   fetchedAt?: string;
   onUsage?: (remaining: number | null) => void;
+  onUsageDetail?: (usage: OddsUsage) => void;
 }): Promise<LiveScoreImport> {
   const apiKey = options.apiKey ?? process.env.ODDS_API_KEY;
   if (!apiKey) {
@@ -194,4 +218,57 @@ export async function fetchNflScores(options: {
     );
   }
   return scoreImport;
+}
+
+export type OddsUsage = {
+  remaining: number | null;
+  used: number | null;
+  last: number | null;
+};
+
+export async function fetchNflPlayerProps(options: {
+  externalEventId: string;
+  families: readonly PropMarketFamily[];
+  apiKey?: string;
+  fetchImpl?: typeof fetch;
+  fetchedAt?: string;
+  onUsage?: (remaining: number | null) => void;
+  onUsageDetail?: (usage: OddsUsage) => void;
+}): Promise<PropQuoteImport> {
+  const apiKey = options.apiKey ?? process.env.ODDS_API_KEY;
+  if (!apiKey)
+    throw new OddsProviderRequestError(
+      "The Odds API is not configured for this environment.",
+    );
+  if (
+    !options.externalEventId.trim() ||
+    options.families.length < 1 ||
+    options.families.length > 3 ||
+    new Set(options.families).size !== options.families.length ||
+    options.families.some((f) => !propMarketFamilies.includes(f))
+  ) {
+    throw new OddsProviderRequestError(
+      "A player quote request requires an event and one through three supported distinct market families.",
+    );
+  }
+  const url = new URL(
+    `${nflEventsUrl}/${encodeURIComponent(options.externalEventId)}/odds`,
+  );
+  url.searchParams.set("apiKey", apiKey);
+  url.searchParams.set("bookmakers", "draftkings");
+  url.searchParams.set("markets", [...options.families].sort().join(","));
+  url.searchParams.set("oddsFormat", "american");
+  url.searchParams.set("dateFormat", "iso");
+  const payload = await fetchProviderJson(
+    url,
+    options.fetchImpl ?? fetch,
+    options.onUsage,
+    options.onUsageDetail,
+  );
+  return normalizeTheOddsApiProps(
+    payload,
+    options.fetchedAt ?? new Date().toISOString(),
+    options.externalEventId,
+    options.families,
+  );
 }

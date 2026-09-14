@@ -54,6 +54,27 @@ const checked = apiFunctions(readFileSync(checkedPath, "utf8"));
 const generated = apiFunctions(readFileSync(generatedPath, "utf8"));
 const differences = [];
 const checkedFunctions = [
+  "configure_player_prop_odds_budget",
+  "apply_live_quote_plan",
+  "bind_card_submission_intent",
+  "claim_nflverse_reconciliation",
+  "claim_player_result_jobs",
+  "claim_shared_quote_request",
+  "complete_nflverse_reconciliation",
+  "complete_player_result_request",
+  "complete_shared_quote_request",
+  "confirm_player_prop_menu",
+  "get_player_prop_menu",
+  "import_player_catalog",
+  "import_player_result_observations",
+  "plan_live_quote_refresh",
+  "plan_player_menu_quotes",
+  "prepare_player_prop_menu",
+  "register_player_result_event",
+  "reserve_player_metadata_request",
+  "resolve_player_result_candidate",
+  "revalidate_card_submission_intent",
+
   "get_league_matchup_cards",
   "get_commissioner_card_status",
   "claim_provider_odds_request",

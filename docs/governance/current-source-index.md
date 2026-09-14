@@ -1,5 +1,20 @@
 # Sunday Ledger — current governing source index
 
+## Full-slate player props preparation — September 14, 2026
+
+The owner authorized the prospective [full-slate props and Submit recovery contract](../player-props.md),
+Ruleset 1.4 / Product Bible 3.3, implementation, public PR and isolated Preview.
+Purchases and Production migration, merge, deployment, scheduler activation and
+live offers are **not authorized by the build request**. Prepared pilot adoption
+applies only to eligible unopened future weeks; no old binding or receipt changes.
+
+Read-only checks for this build verified main and Production at PR #50,
+`56d1cbfc83d833a90d35d2a9a9c1640751a9c57b`, and both global catalogs active on
+1.3/3.2. The older preparation sentence below saying 1.2 remains active is
+superseded by that verified rollout. It must not trigger duplicate activation or
+downgrade. The feature release record distinguishes fixture/code evidence from
+provider readiness and actual settlement latency.
+
 ## Matchup presentation amendment — 2026-09-14
 
 The owner approved implementing and releasing the paired desktop/mobile matchup preview. [Paired matchup lineups](../paired-matchup-lineups.md) records the presentation scope and its unchanged privacy/scoring boundaries. This adds no season rules or database mutation.

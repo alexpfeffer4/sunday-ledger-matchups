@@ -3,10 +3,14 @@ import {
   type CompletionOpportunity,
 } from "@/domain/cards/completion";
 import { formatCredits } from "@/domain/odds/american";
+import {
+  selectionIdentityKey,
+  type SelectionIdentity,
+} from "@/domain/cards/selection-identity";
 import type { MarketType } from "@/rulesets/schema";
 import { usesRollingSubmissions, type CardRules } from "@/rulesets/card-rules";
 
-export type AcceptedCardPosition = {
+export type AcceptedCardPosition = SelectionIdentity & {
   eventId: string;
   marketType: MarketType;
   stakeCredits: number;
@@ -56,11 +60,7 @@ export function maximumStakeForOdds(
     : ruleset.concentration.standardSinglePositionCapCredits;
 }
 
-function marketKey(
-  position: Pick<AcceptedCardPosition, "eventId" | "marketType">,
-): string {
-  return `${position.eventId}:${position.marketType}`;
-}
+const marketKey = selectionIdentityKey;
 
 export function validateProposedPosition(params: {
   acceptedPositions: readonly AcceptedCardPosition[];
@@ -76,7 +76,17 @@ export function validateProposedPosition(params: {
     0,
   );
 
-  if (!ruleset.markets.eligible.includes(proposedPosition.marketType)) {
+  const validPropIdentity =
+    !proposedPosition.marketType.startsWith("PLAYER_") ||
+    (Boolean(proposedPosition.subjectId) &&
+      proposedPosition.period === "FULL_GAME" &&
+      proposedPosition.statistic === proposedPosition.marketType.slice(7));
+  if (
+    !(ruleset.markets.eligible as readonly string[]).includes(
+      proposedPosition.marketType,
+    ) ||
+    !validPropIdentity
+  ) {
     return {
       accepted: false,
       code: "INELIGIBLE_MARKET",
@@ -149,8 +159,7 @@ export function validateProposedPosition(params: {
   const remainingOpportunities = params.eligibleOpportunities
     .filter((opportunity) => !usedKeys.has(marketKey(opportunity)))
     .map((opportunity) => ({
-      eventId: opportunity.eventId,
-      marketType: opportunity.marketType,
+      ...opportunity,
       maximumStakeCredits: maximumStakeForOdds(
         opportunity.americanOdds,
         ruleset,

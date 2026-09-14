@@ -1,6 +1,8 @@
-export type CompletionOpportunity = {
-  eventId: string;
-  marketType: "MONEYLINE" | "SPREAD" | "TOTAL";
+import type { SelectionIdentity } from "@/domain/cards/selection-identity";
+import type { MarketType } from "@/rulesets/schema";
+
+export type CompletionOpportunity = SelectionIdentity & {
+  marketType: MarketType;
   maximumStakeCredits: number;
 };
 

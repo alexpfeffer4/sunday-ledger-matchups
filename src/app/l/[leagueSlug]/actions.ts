@@ -22,6 +22,9 @@ import type { Json } from "@/adapters/supabase/database.types";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import type { AppActionState } from "@/application/actions/action-state";
 import { stableOperationKey } from "@/application/actions/stable-operation-key";
+import { submitCardIntent } from "@/application/actions/submit-card-intent";
+import { selectionIdentityKey } from "@/domain/cards/selection-identity";
+import type { MarketType } from "@/rulesets/schema";
 import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
 import { getOwnerRehearsalForLeague } from "@/application/queries/get-owner-rehearsal";
 import { validateDraftCard } from "@/domain/cards/validate-card-draft";
@@ -1604,6 +1607,7 @@ export async function voidLiveEventAfterPostponementAction(
 
 const cardDraftPositionSchema = z.object({
   reviewId: z.uuid().optional(),
+  intentId: z.uuid().optional(),
   marketSnapshotId: z.uuid(),
   payloadHash: z.string().regex(/^[0-9a-f]{64}$/),
   // Transport bound; gameplay constraints come from the season below.
@@ -1642,7 +1646,7 @@ export async function acceptStage1CardAction(
     };
   }
 
-  const operationKey = stableOperationKey({
+  let operationKey = stableOperationKey({
     command: "ACCEPT_STAGE1_CARD",
     leagueSlug: context.data.leagueSlug,
     ...(context.data.submissionId
@@ -1650,6 +1654,49 @@ export async function acceptStage1CardAction(
       : { positions: context.data.positions }),
   });
   const supabase = await createSupabaseServerClient();
+  if (context.data.submissionId) {
+    try {
+      const submission = await submitCardIntent(supabase, {
+        leagueSlug: context.data.leagueSlug,
+        submissionId: context.data.submissionId,
+        positions: context.data.positions,
+      });
+      if (submission.status === "accepted")
+        return finish(
+          context.data.leagueSlug,
+          submission.replayed
+            ? "Your original bets are saved; no bet was added twice."
+            : `${context.data.positions.length} ${context.data.positions.length === 1 ? "bet" : "bets"} submitted. Your accepted terms are saved.`,
+        );
+      if (submission.status === "changed")
+        return {
+          status: "error",
+          requiresConfirmation: true,
+          message:
+            "Odds changed. Review the highlighted terms and confirm them before submitting. No new bets were accepted.",
+          quoteReview: submission.quoteReview,
+          quoteChanges: submission.quoteChanges,
+        };
+      if (submission.status === "error") {
+        // A successful public refresh may withdraw a selected offer even when a
+        // complete new review cannot be issued. Refresh its availability so the
+        // preserved draft identifies the unavailable selection.
+        if (/QUOTE_|market|quote/i.test(submission.code)) {
+          revalidatePath(`/l/${context.data.leagueSlug}/slate`);
+          revalidatePath(`/l/${context.data.leagueSlug}/card`);
+        }
+        return mutationError(submission.code);
+      }
+      operationKey = submission.operationKey;
+      context.data.positions[0].intentId = submission.intentId;
+    } catch {
+      return {
+        status: "error",
+        message:
+          "We could not confirm the response. Your draft is saved. Submit again to safely check whether these bets were accepted.",
+      };
+    }
+  }
   if (
     await operationAlreadyCompleted(
       supabase,
@@ -1784,14 +1831,17 @@ export async function acceptStage1CardAction(
     string,
     {
       eventId: string;
-      marketType: "MONEYLINE" | "SPREAD" | "TOTAL";
+      marketType: MarketType;
+      subjectId?: string | null;
+      statistic?: string | null;
+      period?: string | null;
       americanOdds: number;
     }
   >();
   for (const event of state.slate) {
     for (const market of event.markets) {
       if (market.qualityStatus !== "HEALTHY") continue;
-      const key = `${event.id}:${market.marketType}`;
+      const key = selectionIdentityKey({ eventId: event.id, ...market });
       const current = eligibleByMarket.get(key);
       if (
         !current ||
@@ -1801,6 +1851,9 @@ export async function acceptStage1CardAction(
         eligibleByMarket.set(key, {
           eventId: event.id,
           marketType: market.marketType,
+          subjectId: market.subjectId,
+          statistic: market.statistic,
+          period: market.period,
           americanOdds: market.americanOdds,
         });
       }
@@ -1811,12 +1864,18 @@ export async function acceptStage1CardAction(
     acceptedPositions: state.ownerCard.positions.map((position) => ({
       eventId: position.eventId,
       marketType: position.marketType,
+      subjectId: position.subjectId,
+      statistic: position.statistic,
+      period: position.period,
       stakeCredits: position.stakeCredits,
       americanOdds: position.americanOdds,
     })),
     draftPositions: selected.map(({ event, market, stakeCredits }) => ({
       eventId: event.id,
       marketType: market.marketType,
+      subjectId: market.subjectId,
+      statistic: market.statistic,
+      period: market.period,
       stakeCredits,
       americanOdds: market.americanOdds,
     })),

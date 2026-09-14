@@ -1,4 +1,10 @@
-type MarketType = "MONEYLINE" | "SPREAD" | "TOTAL";
+type MarketType =
+  | "MONEYLINE"
+  | "SPREAD"
+  | "TOTAL"
+  | "PLAYER_PASSING_YARDS"
+  | "PLAYER_RUSHING_YARDS"
+  | "PLAYER_RECEIVING_YARDS";
 type OutcomeKey = "AWAY" | "HOME" | "OVER" | "UNDER";
 
 type MarketOptionCopyInput = {
@@ -64,8 +70,13 @@ export function marketOptionCopy({
     };
   }
 
-  if (marketType === "TOTAL" && lineMilli !== null) {
-    const line = formatMilliValue(lineMilli);
+  if (
+    (marketType === "TOTAL" || marketType.startsWith("PLAYER_")) &&
+    lineMilli !== null
+  ) {
+    const line = marketType.startsWith("PLAYER_")
+      ? String(lineMilli / 1_000).replace("-", "−")
+      : formatMilliValue(lineMilli);
     return {
       accessibleLabel: `${primary} ${line} ${odds}`,
       primary,

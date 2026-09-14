@@ -7,6 +7,10 @@ import { Stage1SlateView } from "@/components/stage1/live-views";
 
 export const metadata: Metadata = { title: "Make picks" };
 
+// A full mixed batch can require seventeen spaced provider requests. The
+// internal planner stops at ninety seconds and never submits in the background.
+export const maxDuration = 120;
+
 export default async function SlatePage({
   params,
   searchParams,

@@ -36,7 +36,7 @@ export type ArchivedReceipt = {
   id: string;
   receiptHash: string;
   eventId: string;
-  marketType: "MONEYLINE" | "SPREAD" | "TOTAL";
+  marketType: import("@/rulesets/schema").MarketType;
   selection: "HOME" | "AWAY" | "OVER" | "UNDER";
   americanOdds: number;
   lineMilli: number | null;

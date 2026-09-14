@@ -17,6 +17,7 @@ import type { LiveRegularSeasonSchedule } from "@/application/queries/get-live-r
 import type { LiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import type { Week17CorrectionOperations } from "@/application/queries/get-week17-correction-operations";
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
+import { marketLabel } from "@/components/card/selection-identity";
 import { formatMarketProposition } from "@/components/card/market-option-copy";
 import { Stage1CommissionerControls } from "@/components/commissioner/stage1-controls";
 import { CommissionerCardStatusPanel } from "@/components/commissioner/card-status";
@@ -72,10 +73,7 @@ function formatOdds(odds: number): string {
   return odds > 0 ? `+${odds}` : `−${Math.abs(odds)}`;
 }
 
-function formatLine(
-  lineMilli: number | null,
-  marketType: "MONEYLINE" | "SPREAD" | "TOTAL",
-): string {
+function formatLine(lineMilli: number | null, marketType: string): string {
   if (lineMilli === null) return marketType === "MONEYLINE" ? "Moneyline" : "—";
   const line = lineMilli / 1000;
   return marketType === "SPREAD" && line > 0 ? `+${line}` : `${line}`;
@@ -637,7 +635,14 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
                               PUSH: "Push",
                               VOID: "Void",
                             }[position.settlement.outcome]
-                          : "Pending"}
+                          : position.subjectId &&
+                              state.slate.some(
+                                (event) =>
+                                  event.id === position.eventId &&
+                                  ["FINAL", "CORRECTED"].includes(event.state),
+                              )
+                            ? "Awaiting player results"
+                            : "Pending"}
                       </dd>
                     </div>
                     {position.settlement ? (
@@ -651,6 +656,19 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
                       </div>
                     ) : null}
                   </dl>
+                  {position.subjectId ? (
+                    <p className="text-muted mt-2 text-xs">
+                      {position.subjectLabel} · {position.subjectTeam} ·{" "}
+                      {marketLabel(position.marketType)} · Full game
+                    </p>
+                  ) : null}
+                  {position.settlement?.finalYards !== null &&
+                  position.settlement?.finalYards !== undefined ? (
+                    <p className="mt-2 text-sm font-semibold">
+                      Final: {position.settlement.finalYards}{" "}
+                      {marketLabel(position.marketType).toLowerCase()}
+                    </p>
+                  ) : null}
                   {!position.settlement ? (
                     <div className="mt-3">
                       <PickReturn
@@ -1420,7 +1438,13 @@ export function Stage1ReceiptView({
     (candidate) => candidate.id === receipt.eventId,
   );
   const corrected = event?.state === "CORRECTED";
-  const result = receipt.settlement?.outcome ?? "Pending";
+  const result = receipt.settlement
+    ? { WIN: "Won", LOSS: "Lost", PUSH: "Push", VOID: "Void" }[
+        receipt.settlement.outcome
+      ]
+    : receipt.subjectId && event && ["FINAL", "CORRECTED"].includes(event.state)
+      ? "Awaiting player results"
+      : "Pending";
   return (
     <PageFrame
       eyebrow="Sealed pick"
@@ -1475,8 +1499,36 @@ export function Stage1ReceiptView({
           </div>
           <div>
             <dt className="text-muted text-xs uppercase">Market</dt>
-            <dd className="mt-1 font-semibold">{receipt.marketType}</dd>
+            <dd className="mt-1 font-semibold">
+              {marketLabel(receipt.marketType)}
+            </dd>
           </div>
+          {receipt.subjectId ? (
+            <>
+              <div>
+                <dt className="text-muted text-xs uppercase">Player</dt>
+                <dd className="mt-1 font-semibold">
+                  {receipt.subjectLabel} · {receipt.subjectTeam}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted text-xs uppercase">Period</dt>
+                <dd className="mt-1 font-semibold">
+                  Full game, including overtime
+                </dd>
+              </div>
+            </>
+          ) : null}
+          {receipt.settlement?.finalYards !== null &&
+          receipt.settlement?.finalYards !== undefined ? (
+            <div>
+              <dt className="text-muted text-xs uppercase">Final yards</dt>
+              <dd className="mt-1 font-semibold">
+                {receipt.settlement.finalYards}{" "}
+                {marketLabel(receipt.marketType).toLowerCase()}
+              </dd>
+            </div>
+          ) : null}
           <div>
             <dt className="text-muted text-xs uppercase">Line</dt>
             <dd className="mt-1 font-mono font-semibold">

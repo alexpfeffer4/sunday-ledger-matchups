@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import {
+  selectionKey,
+  sameSelection,
+  marketLabels,
+} from "@/components/card/selection-identity";
+import { PlayerPropsGame } from "@/components/card/player-props-game";
 import { submissionAttemptId } from "@/components/card/submission-attempt";
+import { refreshPlayerPropQuotesAction } from "@/app/l/[leagueSlug]/player-prop-actions";
 import { reviewLiveCardQuotes } from "@/app/l/[leagueSlug]/card-quote-actions";
 import type { CardQuoteReviewResult } from "@/application/providers/card-quote-review";
 import { useActionState, useEffect, useRef, useState } from "react";
@@ -64,13 +71,10 @@ type EditorState = {
   marketType: SlateMarket["marketType"];
   outcomeKey: SlateMarket["outcomeKey"];
   stakeCredits: string;
+  subjectId?: string | null;
+  statistic?: "PASSING_YARDS" | "RUSHING_YARDS" | "RECEIVING_YARDS" | null;
+  period?: "FULL_GAME" | null;
 };
-
-const marketLabels = {
-  MONEYLINE: "Winner",
-  SPREAD: "Spread",
-  TOTAL: "Total",
-} as const;
 
 const marketTypes = ["MONEYLINE", "SPREAD", "TOTAL"] as const;
 
@@ -113,12 +117,6 @@ function kickoffWindow(value: string): Exclude<KickoffFilter, "ALL"> | "OTHER" {
   return "SUN_NIGHT";
 }
 
-function selectionKey(
-  selection: Pick<DraftSelection, "eventId" | "marketType">,
-) {
-  return `${selection.eventId}:${selection.marketType}`;
-}
-
 function cardBuilderContextKey(state: Stage1StateDto): string {
   return JSON.stringify([
     state.league.id,
@@ -134,6 +132,15 @@ function slateSourceRevision(state: Stage1StateDto): string {
       event.id,
       event.entryClosesAt,
       event.entryOpen,
+      event.playerProps?.map((slot) => [
+        slot.team,
+        slot.slot,
+        slot.subjectId,
+        slot.subjectLabel,
+        slot.confirmed,
+        slot.frozen,
+        slot.unavailableReason,
+      ]),
       event.markets.map((market) => [
         market.id,
         market.payloadHash,
@@ -223,6 +230,7 @@ function Stage1CardBuilderEditor({
     ? drafts.filter((draft) => !excludedKeys.has(selectionKey(draft)))
     : drafts;
   const submittedKeys = useRef<Set<string>>(new Set());
+  const [marketView, setMarketView] = useState<"GAME" | "PLAYER">("GAME");
   const [kickoffFilter, setKickoffFilter] = useState<KickoffFilter>("ALL");
   const [reviewing, setReviewing] = useState(initialReview);
   const storageKey = cardDraftStorageKey(context);
@@ -241,14 +249,30 @@ function Stage1CardBuilderEditor({
   const cardFeedbackRef = useRef<HTMLParagraphElement>(null);
   const [actionState, action, sealing] = useActionState(
     async (previous: typeof initialAppActionState, formData: FormData) => {
-      if (rolling && storageKey) {
+      if (storageKey) {
         formData.set(
           "submissionId",
           submissionAttemptId(
             storageKey,
             JSON.stringify({
-              positions: formData.get("positions"),
-              reviewId: formData.get("reviewId"),
+              rules: state.season.rulesetSnapshot,
+              positions: batchDrafts
+                .map((draft) => {
+                  const market = slate
+                    .find((event) => event.id === draft.eventId)
+                    ?.markets.find(
+                      (market) => market.id === draft.marketSnapshotId,
+                    );
+                  return {
+                    identity: selectionKey(draft),
+                    outcomeKey: draft.outcomeKey,
+                    lineMilli: market?.lineMilli,
+                    americanOdds: draft.reviewedAmericanOdds,
+                    proposition: draft.reviewedProposition,
+                    stakeCredits: draft.stakeCredits,
+                  };
+                })
+                .sort((a, b) => a.identity.localeCompare(b.identity)),
             }),
           ),
         );
@@ -280,6 +304,58 @@ function Stage1CardBuilderEditor({
       setStoredReview(null);
     }
   }, [actionState.status, clearDrafts, rolling, setDrafts]);
+  const appliedActionReview = useRef<string | null>(null);
+  useEffect(() => {
+    const refreshed = actionState.quoteReview;
+    if (!refreshed || appliedActionReview.current === refreshed.reviewId)
+      return;
+    appliedActionReview.current = refreshed.reviewId;
+    const freshByEvent = new Map(
+      refreshed.quotes.map((event) => [event.eventId, event.markets]),
+    );
+    const nextSlate = slate.map((event) => ({
+      ...event,
+      markets: freshByEvent.has(event.id)
+        ? [
+            ...event.markets.filter(
+              (market) =>
+                !(freshByEvent.get(event.id) ?? []).some(
+                  (fresh) =>
+                    sameSelection(
+                      { ...fresh, eventId: event.id },
+                      { ...market, eventId: event.id },
+                    ) && fresh.outcomeKey === market.outcomeKey,
+                ),
+            ),
+            ...(freshByEvent.get(event.id) ?? []),
+          ]
+        : event.markets,
+    }));
+    setRefreshedSlate({ sourceRevision, slate: nextSlate });
+    setDrafts((current) =>
+      restoreCardDrafts(
+        JSON.stringify({ version: 1, drafts: current }),
+        nextSlate,
+      ).map((draft) => ({
+        ...draft,
+        reviewedPayloadHash:
+          draft.reviewedAmericanOdds === draft.americanOdds &&
+          draft.reviewedProposition === draft.proposition
+            ? draft.payloadHash
+            : draft.reviewedPayloadHash,
+        quoteReviewRequired:
+          draft.reviewedAmericanOdds !== draft.americanOdds ||
+          draft.reviewedProposition !== draft.proposition ||
+          nextSlate
+            .flatMap((event) => event.markets)
+            .find((market) => market.id === draft.marketSnapshotId)
+            ?.qualityStatus !== "HEALTHY",
+      })),
+    );
+    setStoredReview({ sourceRevision, review: refreshed });
+    setReviewExpired(false);
+    setReviewing(true);
+  }, [actionState.quoteReview, slate, setDrafts, sourceRevision]);
   const reviewHeadingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     if (reviewing && hydrated) reviewHeadingRef.current?.focus();
@@ -298,12 +374,15 @@ function Stage1CardBuilderEditor({
       eventId: string;
       marketType: SlateMarket["marketType"];
       americanOdds: number;
+      subjectId?: string | null;
+      statistic?: "PASSING_YARDS" | "RUSHING_YARDS" | "RECEIVING_YARDS" | null;
+      period?: "FULL_GAME" | null;
     }
   >();
   for (const event of slate) {
     for (const market of event.markets) {
       if (market.qualityStatus !== "HEALTHY") continue;
-      const key = `${event.id}:${market.marketType}`;
+      const key = selectionKey({ ...market, eventId: event.id });
       const current = eligibleByMarket.get(key);
       if (
         !current ||
@@ -313,6 +392,9 @@ function Stage1CardBuilderEditor({
         eligibleByMarket.set(key, {
           eventId: event.id,
           marketType: market.marketType,
+          subjectId: market.subjectId,
+          statistic: market.statistic,
+          period: market.period,
           americanOdds: market.americanOdds,
         });
       }
@@ -326,6 +408,9 @@ function Stage1CardBuilderEditor({
           {
             eventId: selected.event.id,
             marketType: selected.market.marketType,
+            subjectId: selected.market.subjectId,
+            statistic: selected.market.statistic,
+            period: selected.market.period,
             stakeCredits: draft.stakeCredits,
             americanOdds: selected.market.americanOdds,
           },
@@ -336,6 +421,9 @@ function Stage1CardBuilderEditor({
     acceptedPositions: ownerCard.positions.map((position) => ({
       eventId: position.eventId,
       marketType: position.marketType,
+      subjectId: position.subjectId,
+      statistic: position.statistic,
+      period: position.period,
       stakeCredits: position.stakeCredits,
       americanOdds: position.americanOdds,
     })),
@@ -363,10 +451,8 @@ function Stage1CardBuilderEditor({
     if (
       rolling &&
       (!eventAcceptsBets(event, cutoffNow) ||
-        ownerCard?.positions.some(
-          (position) =>
-            position.eventId === event.id &&
-            position.marketType === market.marketType,
+        ownerCard?.positions.some((position) =>
+          sameSelection(position, { ...market, eventId: event.id }),
         ))
     )
       return;
@@ -374,6 +460,9 @@ function Stage1CardBuilderEditor({
     setStoredReview(null);
     setEditor({
       eventId: event.id,
+      subjectId: market.subjectId,
+      statistic: market.statistic,
+      period: market.period,
       existing: Boolean(existing),
       marketSnapshotId: market.id,
       marketType: market.marketType,
@@ -469,7 +558,21 @@ function Stage1CardBuilderEditor({
           );
           const refreshedSlate = slate.map((event) => ({
             ...event,
-            markets: byEvent.get(event.id) ?? event.markets,
+            markets: byEvent.has(event.id)
+              ? [
+                  ...event.markets.filter(
+                    (market) =>
+                      !(byEvent.get(event.id) ?? []).some(
+                        (fresh) =>
+                          sameSelection(
+                            { ...fresh, eventId: event.id },
+                            { ...market, eventId: event.id },
+                          ) && fresh.outcomeKey === market.outcomeKey,
+                      ),
+                  ),
+                  ...(byEvent.get(event.id) ?? []),
+                ]
+              : event.markets,
           }));
           const restored = restoreCardDrafts(
             JSON.stringify({ version: 1, drafts }),
@@ -535,13 +638,11 @@ function Stage1CardBuilderEditor({
     ? (snapshots.get(editor.marketSnapshotId)?.market ??
       editorEvent?.markets.find(
         (market) =>
-          market.marketType === editor.marketType &&
+          sameSelection({ ...market, eventId: editor.eventId }, editor) &&
           market.outcomeKey === editor.outcomeKey,
       ))
     : undefined;
-  const editorKey = editor
-    ? `${editor.eventId}:${editor.marketType}`
-    : undefined;
+  const editorKey = editor ? selectionKey(editor) : undefined;
   const editorOtherDrafts = editorKey
     ? drafts.filter((draft) => selectionKey(draft) !== editorKey)
     : drafts;
@@ -549,6 +650,9 @@ function Stage1CardBuilderEditor({
     ...ownerCard.positions.map((position) => ({
       eventId: position.eventId,
       marketType: position.marketType,
+      subjectId: position.subjectId,
+      statistic: position.statistic,
+      period: position.period,
       stakeCredits: position.stakeCredits,
       americanOdds: position.americanOdds,
     })),
@@ -559,6 +663,9 @@ function Stage1CardBuilderEditor({
             {
               eventId: selected.event.id,
               marketType: selected.market.marketType,
+              subjectId: selected.market.subjectId,
+              statistic: selected.market.statistic,
+              period: selected.market.period,
               stakeCredits: draft.stakeCredits,
               americanOdds: selected.market.americanOdds,
             },
@@ -579,7 +686,9 @@ function Stage1CardBuilderEditor({
   const editorOptions: OutcomeSelectorOption[] =
     editorEvent && editor
       ? editorEvent.markets
-          .filter((market) => market.marketType === editor.marketType)
+          .filter((market) =>
+            sameSelection({ ...market, eventId: editor.eventId }, editor),
+          )
           .map((market) => {
             const copy = marketOptionCopy({
               americanOdds: market.americanOdds,
@@ -642,6 +751,9 @@ function Stage1CardBuilderEditor({
       proposedPosition: {
         eventId: editorEvent.id,
         marketType: editorMarket.marketType,
+        subjectId: editorMarket.subjectId,
+        statistic: editorMarket.statistic,
+        period: editorMarket.period,
         stakeCredits,
         americanOdds: editorMarket.americanOdds,
       },
@@ -655,6 +767,10 @@ function Stage1CardBuilderEditor({
 
     const replacement: DraftSelection = {
       americanOdds: editorMarket.americanOdds,
+      subjectId: editorMarket.subjectId,
+      subjectLabel: editorMarket.subjectLabel,
+      statistic: editorMarket.statistic,
+      period: editorMarket.period,
       eventId: editorEvent.id,
       marketSnapshotId: editorMarket.id,
       marketType: editorMarket.marketType,
@@ -728,6 +844,30 @@ function Stage1CardBuilderEditor({
             Check each game, selection, odds, stake, and total return. Your
             picks stay editable until you confirm.
           </p>
+          {actionState.quoteChanges?.length ? (
+            <div
+              role="alert"
+              className="border-pending/40 bg-pending/10 mt-4 rounded-lg border p-3 text-sm"
+            >
+              <p className="font-semibold">
+                Odds changed. Check the differences before submitting again.
+              </p>
+              <ul className="mt-2 space-y-2">
+                {actionState.quoteChanges.map((change) => (
+                  <li key={change.selectionKey} className="break-words">
+                    {change.label}:{" "}
+                    {change.before.lineMilli === null
+                      ? ""
+                      : `${change.before.lineMilli / 1000} · `}
+                    {formatAmericanOdds(change.before.americanOdds)} →{" "}
+                    {change.after
+                      ? `${change.after.lineMilli === null ? "" : `${change.after.lineMilli / 1000} · `}${formatAmericanOdds(change.after.americanOdds)}`
+                      : "Unavailable; your draft is kept"}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {quoteReviewCount > 0 ? (
             <p
               className="border-pending/40 bg-pending/10 text-graphite mt-4 rounded-lg border p-3 text-sm font-semibold"
@@ -827,13 +967,11 @@ function Stage1CardBuilderEditor({
                 <p>
                   Odds checked {formatObservedAt(quoteReview.fetchedAt)}.{" "}
                   {reviewExpired
-                    ? rolling
-                      ? "Check again before submitting."
-                      : "Check again before sealing."
-                    : "Confirm within 30 seconds; odds are not held."}
+                    ? "We’ll check the latest odds when you submit."
+                    : "Odds are checked again if needed when you submit."}
                 </p>
               ) : null}
-              {requiresLiveReview ||
+              {(requiresLiveReview && !quoteReview) ||
               cardFeedback ||
               actionState.status === "error" ? (
                 <button
@@ -899,6 +1037,12 @@ function Stage1CardBuilderEditor({
               disabled={
                 pending ||
                 quoteReviewCount > 0 ||
+                (quoteReview?.reviewId === actionState.quoteReview?.reviewId &&
+                  Boolean(
+                    actionState.quoteChanges?.some(
+                      (change) => change.after === null,
+                    ),
+                  )) ||
                 !draftValidation.accepted ||
                 (rolling &&
                   batchDrafts.some((draft) => {
@@ -907,16 +1051,14 @@ function Stage1CardBuilderEditor({
                       !selected || !eventAcceptsBets(selected.event, cutoffNow)
                     );
                   })) ||
-                (requiresLiveReview && (!quoteReview || reviewExpired))
+                (requiresLiveReview && !quoteReview)
               }
               type="submit"
             >
               {checkingQuotes
                 ? "Checking current odds…"
                 : sealing
-                  ? rolling
-                    ? "Submitting bets…"
-                    : "Sealing card…"
+                  ? "Checking latest odds…"
                   : quoteReviewCount > 0
                     ? "Review changed quotes first"
                     : rolling
@@ -969,111 +1111,146 @@ function Stage1CardBuilderEditor({
             ))}
           </nav>
 
-          {visibleEvents.map((event) => (
-            <section
-              aria-labelledby={`card-builder-event-${event.id}`}
-              className="border-boundary bg-surface rounded-lg border p-4"
-              key={event.id}
+          {state.week.propsEnabled ? (
+            <div
+              aria-label="Bet type"
+              className="border-boundary bg-surface grid grid-cols-2 rounded-lg border p-1"
             >
-              <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
-                <h2
-                  className="text-lg font-bold"
-                  id={`card-builder-event-${event.id}`}
+              {(["GAME", "PLAYER"] as const).map((view) => (
+                <button
+                  type="button"
+                  key={view}
+                  aria-pressed={marketView === view}
+                  className={`min-h-11 rounded-md px-3 text-sm font-semibold ${marketView === view ? "bg-registry text-white" : "text-graphite hover:bg-subtle"}`}
+                  onClick={() => setMarketView(view)}
                 >
-                  {event.awayTeam} at {event.homeTeam}
-                </h2>
-                <div className="text-muted text-sm sm:text-right">
-                  <p>{formatDate(event.scheduledStartAt)}</p>
-                  {rolling && !eventAcceptsBets(event, cutoffNow) ? (
-                    <p className="mt-1 font-semibold">Betting closed</p>
-                  ) : null}
-                  <p className="mt-1 text-xs">
-                    Odds updated{" "}
-                    {formatObservedAt(
-                      event.markets.reduce(
-                        (latest, market) =>
-                          market.observedAt > latest
-                            ? market.observedAt
-                            : latest,
-                        event.markets[0]?.observedAt ?? event.scheduledStartAt,
-                      ),
-                    )}
-                  </p>
-                </div>
-              </div>
-              <div className="divide-boundary border-boundary mt-4 divide-y border-y">
-                {marketTypes.map((marketType) => {
-                  const outcomes = event.markets.filter(
-                    (market) => market.marketType === marketType,
-                  );
-                  if (outcomes.length === 0) return null;
-                  const key = `${event.id}:${marketType}`;
-                  const selectedDraft = drafts.find(
-                    (draft) => selectionKey(draft) === key,
-                  );
-                  return (
-                    <article
-                      className={`grid gap-2 py-3 sm:grid-cols-[110px_minmax(0,1fr)] sm:items-center ${
-                        selectedDraft ? "bg-registry/5" : ""
-                      }`}
-                      key={marketType}
+                  {view === "GAME" ? "Game lines" : "Player props"}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {marketView === "PLAYER" && state.week.propsEnabled
+            ? visibleEvents.map((event) => (
+                <PlayerPropsGame
+                  leagueId={state.league.id}
+                  leagueSlug={state.league.slug}
+                  refreshAction={refreshPlayerPropQuotesAction}
+                  key={event.id}
+                  event={event}
+                  drafts={drafts}
+                  acceptedPositions={ownerCard.positions}
+                  bettingOpen={!rolling || eventAcceptsBets(event, cutoffNow)}
+                  onSelect={openEditor}
+                />
+              ))
+            : visibleEvents.map((event) => (
+                <section
+                  aria-labelledby={`card-builder-event-${event.id}`}
+                  className="border-boundary bg-surface rounded-lg border p-4"
+                  key={event.id}
+                >
+                  <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
+                    <h2
+                      className="text-lg font-bold"
+                      id={`card-builder-event-${event.id}`}
                     >
-                      <div className="flex items-center justify-between gap-3 sm:block">
-                        <p className="text-muted text-sm font-semibold">
-                          {marketLabels[marketType]}
-                        </p>
-                        {selectedDraft ? (
-                          <span className="text-positive mt-1 block text-xs font-semibold">
-                            In card
-                          </span>
-                        ) : null}
-                      </div>
-                      <OutcomeSelector
-                        label={`${event.awayTeam} at ${event.homeTeam} ${marketLabels[marketType]} outcomes`}
-                        onSelect={(marketSnapshotId) => {
-                          const market = outcomes.find(
-                            (candidate) => candidate.id === marketSnapshotId,
-                          );
-                          if (market) openEditor(event, market, selectedDraft);
-                        }}
-                        options={outcomes.map((market) => {
-                          const copy = marketOptionCopy({
-                            americanOdds: market.americanOdds,
-                            awayTeam: event.awayTeam,
-                            fallbackLabel: market.proposition,
-                            homeTeam: event.homeTeam,
-                            lineMilli: market.lineMilli,
-                            marketType: market.marketType,
-                            outcomeKey: market.outcomeKey,
-                          });
-                          return {
-                            id: market.id,
-                            accessibleLabel: copy.accessibleLabel,
-                            primary: copy.primary,
-                            secondary: copy.secondary,
-                            unavailableReason:
-                              rolling && !eventAcceptsBets(event, cutoffNow)
-                                ? "Betting closed"
-                                : rolling &&
-                                    ownerCard.positions.some(
-                                      (position) =>
-                                        position.eventId === event.id &&
-                                        position.marketType === marketType,
-                                    )
-                                  ? "Bet already submitted for this market"
-                                  : market.qualityStatus === "HEALTHY"
-                                    ? undefined
-                                    : "Current quote is unavailable",
-                          } satisfies OutcomeSelectorOption;
-                        })}
-                        selectedId={selectedDraft?.marketSnapshotId ?? null}
-                      />
-                    </article>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
+                      {event.awayTeam} at {event.homeTeam}
+                    </h2>
+                    <div className="text-muted text-sm sm:text-right">
+                      <p>{formatDate(event.scheduledStartAt)}</p>
+                      {rolling && !eventAcceptsBets(event, cutoffNow) ? (
+                        <p className="mt-1 font-semibold">Betting closed</p>
+                      ) : null}
+                      <p className="mt-1 text-xs">
+                        Odds updated{" "}
+                        {formatObservedAt(
+                          event.markets.reduce(
+                            (latest, market) =>
+                              market.observedAt > latest
+                                ? market.observedAt
+                                : latest,
+                            event.markets[0]?.observedAt ??
+                              event.scheduledStartAt,
+                          ),
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="divide-boundary border-boundary mt-4 divide-y border-y">
+                    {marketTypes.map((marketType) => {
+                      const outcomes = event.markets.filter(
+                        (market) => market.marketType === marketType,
+                      );
+                      if (outcomes.length === 0) return null;
+                      const key = `${event.id}:${marketType}`;
+                      const selectedDraft = drafts.find(
+                        (draft) => selectionKey(draft) === key,
+                      );
+                      return (
+                        <article
+                          className={`grid gap-2 py-3 sm:grid-cols-[110px_minmax(0,1fr)] sm:items-center ${
+                            selectedDraft ? "bg-registry/5" : ""
+                          }`}
+                          key={marketType}
+                        >
+                          <div className="flex items-center justify-between gap-3 sm:block">
+                            <p className="text-muted text-sm font-semibold">
+                              {marketLabels[marketType]}
+                            </p>
+                            {selectedDraft ? (
+                              <span className="text-positive mt-1 block text-xs font-semibold">
+                                In card
+                              </span>
+                            ) : null}
+                          </div>
+                          <OutcomeSelector
+                            label={`${event.awayTeam} at ${event.homeTeam} ${marketLabels[marketType]} outcomes`}
+                            onSelect={(marketSnapshotId) => {
+                              const market = outcomes.find(
+                                (candidate) =>
+                                  candidate.id === marketSnapshotId,
+                              );
+                              if (market)
+                                openEditor(event, market, selectedDraft);
+                            }}
+                            options={outcomes.map((market) => {
+                              const copy = marketOptionCopy({
+                                americanOdds: market.americanOdds,
+                                awayTeam: event.awayTeam,
+                                fallbackLabel: market.proposition,
+                                homeTeam: event.homeTeam,
+                                lineMilli: market.lineMilli,
+                                marketType: market.marketType,
+                                outcomeKey: market.outcomeKey,
+                              });
+                              return {
+                                id: market.id,
+                                accessibleLabel: copy.accessibleLabel,
+                                primary: copy.primary,
+                                secondary: copy.secondary,
+                                unavailableReason:
+                                  rolling && !eventAcceptsBets(event, cutoffNow)
+                                    ? "Betting closed"
+                                    : rolling &&
+                                        ownerCard.positions.some(
+                                          (position) =>
+                                            position.eventId === event.id &&
+                                            position.marketType === marketType,
+                                        )
+                                      ? "Bet already submitted for this market"
+                                      : market.qualityStatus === "HEALTHY"
+                                        ? undefined
+                                        : "Current quote is unavailable",
+                              } satisfies OutcomeSelectorOption;
+                            })}
+                            selectedId={selectedDraft?.marketSnapshotId ?? null}
+                          />
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
           <details className="text-graphite text-sm">
             <summary className="min-h-11 cursor-pointer py-3 font-semibold">
               Card requirements
@@ -1176,7 +1353,7 @@ function Stage1CardBuilderEditor({
                               });
                               setStoredReview(null);
                             }}
-                            aria-label={`Include ${selected.event.awayTeam} at ${selected.event.homeTeam} ${marketLabels[draft.marketType]} in submission`}
+                            aria-label={`Include ${selected.event.awayTeam} at ${selected.event.homeTeam} ${draft.subjectLabel ? `${draft.subjectLabel} ` : ""}${marketLabels[draft.marketType]} in submission`}
                           />
                           Include in submission
                         </label>
@@ -1339,7 +1516,13 @@ function Stage1CardBuilderEditor({
             : null
         }
         stakeCredits={editor?.stakeCredits ?? ""}
-        title={editor ? marketLabels[editor.marketType] : "Pick"}
+        title={
+          editorMarket?.subjectLabel
+            ? `${editorMarket.subjectLabel} · ${marketLabels[editorMarket.marketType]}`
+            : editor
+              ? marketLabels[editor.marketType]
+              : "Pick"
+        }
       />
     </>
   );

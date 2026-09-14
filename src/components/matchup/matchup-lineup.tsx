@@ -2,10 +2,11 @@ import type {
   PairedMatchupDto,
   PositionLedgerItem,
 } from "@/application/queries/project-paired-matchup";
+import { matchupGames } from "@/application/presentation/matchup-lineup";
 import {
-  lineupMarkets,
-  matchupGames,
-} from "@/application/presentation/matchup-lineup";
+  selectionKey,
+  marketLabel,
+} from "@/components/card/selection-identity";
 import { easternTime } from "@/application/queries/score-freshness";
 import {
   formatAmericanOdds,
@@ -26,9 +27,12 @@ function Bet({ row }: { row: PositionLedgerItem }) {
           ? "Push"
           : row.outcome === "VOID"
             ? "Void"
-            : row.section === "IN_PROGRESS"
-              ? "In progress"
-              : "Remaining";
+            : row.marketType.startsWith("PLAYER_") &&
+                ["FINAL", "CORRECTED"].includes(row.eventState)
+              ? "Awaiting player results"
+              : row.section === "IN_PROGRESS"
+                ? "In progress"
+                : "Remaining";
   const tone = row.corrected
     ? "corrected"
     : row.outcome === "WIN"
@@ -52,13 +56,21 @@ function Bet({ row }: { row: PositionLedgerItem }) {
       data-side={row.side}
       aria-label={`${row.memberName}, ${row.eventLabel}, ${proposition}, ${formatAmericanOdds(row.americanOdds)}, ${formatCredits(row.stakeCredits)} credits staked, ${state}, ${returned} credits returned`}
     >
-      <p className="lineup-pick font-semibold">{proposition}</p>
+      <p className="lineup-pick font-semibold break-words">{proposition}</p>
       <p className="text-muted mt-1 text-xs">
         <span className="font-mono whitespace-nowrap">
           {formatAmericanOdds(row.americanOdds)}
         </span>{" "}
-        · {row.marketType.toLowerCase()}
+        · {marketLabel(row.marketType)}
       </p>
+      {row.subjectTeam ? (
+        <p className="text-muted mt-1 text-xs">{row.subjectTeam} · Full game</p>
+      ) : null}
+      {row.finalYards !== null && row.finalYards !== undefined ? (
+        <p className="mt-2 text-xs font-semibold">
+          Final: {row.finalYards} {marketLabel(row.marketType).toLowerCase()}
+        </p>
+      ) : null}
       <dl className="lineup-bet-facts mt-3 text-xs">
         <div>
           <dt className="text-muted">Stake</dt>
@@ -72,7 +84,9 @@ function Bet({ row }: { row: PositionLedgerItem }) {
         </div>
       </dl>
       <div className="mt-3">
-        <StatusBadge tone={tone}>{state}</StatusBadge>
+        <StatusBadge tone={tone} icon={false}>
+          {state}
+        </StatusBadge>
         {row.corrected && row.outcome ? (
           <span className="mt-1 block text-xs">
             {row.outcome.toLowerCase()}
@@ -118,17 +132,18 @@ export function MatchupLineup({ matchup }: { matchup: PairedMatchupDto }) {
             </span>
           </>
         );
-        const markets = lineupMarkets.filter((market) =>
-          game.rows.some((row) => row.marketType === market),
-        );
+        const markets = [
+          ...new Map(game.rows.map((row) => [selectionKey(row), row])).values(),
+        ];
         const column = (
           side: "SELF" | "OPPONENT",
-          market?: (typeof lineupMarkets)[number],
+          market?: PositionLedgerItem,
         ) => {
           const member = side === "SELF" ? matchup.self : matchup.opponent;
           const rows = game.rows.filter(
             (row) =>
-              row.side === side && (!market || row.marketType === market),
+              row.side === side &&
+              (!market || selectionKey(row) === selectionKey(market)),
           );
           const selected =
             side === "SELF" ? game.selfSelected : game.opponentSelected;
@@ -142,7 +157,7 @@ export function MatchupLineup({ matchup }: { matchup: PairedMatchupDto }) {
               role="group"
               data-member-name={member.displayName}
               data-game-selected={selected ? "true" : undefined}
-              aria-label={`${member.displayName} · ${game.eventLabel}${market ? ` · ${market.toLowerCase()}` : ""}`}
+              aria-label={`${member.displayName} · ${game.eventLabel}${market ? ` · ${market.subjectLabel ? `${market.subjectLabel} · ` : ""}${marketLabel(market.marketType)}` : ""}`}
             >
               <p className="sr-only">{member.displayName}</p>
               {rows.length ? (
@@ -193,7 +208,7 @@ export function MatchupLineup({ matchup }: { matchup: PairedMatchupDto }) {
           </div>
         ) : (
           markets.map((market) => (
-            <div className="lineup-pair" key={market}>
+            <div className="lineup-pair" key={selectionKey(market)}>
               {column("SELF", market)}
               {column("OPPONENT", market)}
             </div>
