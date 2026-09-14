@@ -50,6 +50,25 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
+test("remaining-return values align when metric labels wrap", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await mountMatchup(page, "LIVE");
+  const tops = await page
+    .locator(".score-path-facts dd")
+    .evaluateAll((values) =>
+      values.map((value) => value.getBoundingClientRect().top),
+    );
+  expect(tops).toHaveLength(4);
+  expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(1);
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: info.outputPath("aligned-score-path.png"),
+    fullPage: true,
+  });
+});
+
 test("outstanding totals stay paired and readable at 320px and 200% text", async ({
   page,
 }, info) => {

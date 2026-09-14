@@ -67,10 +67,12 @@ describe("Phase 6 paired matchup surface", () => {
     expect(container).not.toHaveTextContent(
       /Provisional|correction deadline unavailable/,
     );
-    for (const badge of container.querySelectorAll(".status-badge")) {
-      if (/^(Won|Lost)$/.test(badge.textContent ?? ""))
-        expect(badge.querySelector("[aria-hidden]")).toBeNull();
-    }
+    const badges = [...container.querySelectorAll(".status-badge")].filter(
+      (badge) => /Won|Lost/.test(badge.textContent ?? ""),
+    );
+    expect(badges.length).toBeGreaterThan(0);
+    for (const badge of badges)
+      expect(badge.textContent).toMatch(/^(Won|Lost)$/);
   });
 
   it("shows pregame opponent status and refreshes without exposing picks", () => {

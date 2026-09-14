@@ -999,10 +999,13 @@ begin
     select 1 from private.sports_events event where event.week_id = week.id
       and event.fixture_event_key = p_import #>> '{events,0,externalEventId}'
   ) order by week.nfl_week desc limit 1 for update;
-  if v_week.id is null or (v_week.state not in ('LOCKED', 'PROVISIONAL') and not (
+  if v_week.id is null then
+    raise exception using errcode = '22023', message = 'The live score batch must match published events.';
+  end if;
+  if v_week.state not in ('LOCKED', 'PROVISIONAL') and not (
     v_week.state = 'FINAL' and v_week.finalization_mode = 'AFTER_RESULTS'
     and private.stage1_season_time(v_season.id) < v_week.correction_window_closes_at
-  )) then
+  ) then
     raise exception using errcode = '55000', message = 'Live score imports require locked cards and an unfinalized week.';
   end if;
 

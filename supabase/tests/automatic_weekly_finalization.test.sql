@@ -374,5 +374,18 @@ select throws_ok($$select api.correct_live_event_result('88000000-0000-4000-8000
 select is(api.get_live_week_operations('stage3-live-result-test')->>'correctionsOpen','false','closed correction controls have an authoritative state');
 select ok(not exists(select 1 from private.due_score_events('82000000-0000-4000-8000-000000000001',true)),'automatic polling ends after the review period');
 select lives_ok($$select private.assert_week_review_complete('85000000-0000-4000-8000-000000000001')$$,'downstream publication is allowed after review');
+-- Separate routing scenario: a later published week must not divert an earlier
+-- week's still-eligible score review. Re-arm only this disposable fixture.
+update private.season_weeks set correction_window_closes_at=clock_timestamp()+interval '1 hour' where id='85000000-0000-4000-8000-000000000001';
+insert into private.season_weeks(id,season_id,league_id,nfl_week,state,opens_at,common_lock_at)
+values('85000000-0000-4000-8000-000000000002','83500000-0000-4000-8000-000000000001','82000000-0000-4000-8000-000000000001',2,'PLANNED',clock_timestamp()+interval '1 day',clock_timestamp()+interval '6 days');
+insert into private.sports_events(id,week_id,season_id,league_id,fixture_event_key,away_team,home_team,scheduled_start_at)
+values('88000000-0000-4000-8000-000000000003','85000000-0000-4000-8000-000000000002','83500000-0000-4000-8000-000000000001','82000000-0000-4000-8000-000000000001','auto-next-week-game','Next Away','Next Home',clock_timestamp()+interval '7 days');
+select ok(exists(select 1 from private.due_score_events('82000000-0000-4000-8000-000000000001',true) where event_id='88000000-0000-4000-8000-000000000001'),'a later week does not stop eligible earlier score checks');
+select lives_ok($$select api.import_live_scores('82000000-0000-4000-8000-000000000001',jsonb_build_object('source','THE_ODDS_API','fetchedAt',clock_timestamp(),'events',jsonb_build_array(pg_temp.live_score_import(true,35,7,false,null,null)#>'{events,0}')),'auto-prior-week-provider-correction')$$,'provider correction is routed by its published game to the earlier final week');
+select is((select score_centicredits from private.weekly_score_versions where card_id='8a000000-0000-4000-8000-000000000001' order by created_at desc,id desc limit 1),200000::bigint,'the provider correction updates the earlier score');
+select is((select status from private.weekly_score_versions where card_id='8a000000-0000-4000-8000-000000000001' order by created_at desc,id desc limit 1),'FINAL','the provider correction preserves final status');
+select is((select state from private.season_weeks where nfl_week=2),'PLANNED','the later week remains untouched');
+select throws_ok($$select api.import_live_scores('82000000-0000-4000-8000-000000000001',jsonb_build_object('source','THE_ODDS_API','fetchedAt',clock_timestamp(),'events',jsonb_build_array(pg_temp.live_score_import(true,35,7,false,null,null)#>'{events,0}',jsonb_build_object('externalEventId','auto-next-week-game'))),'auto-reject-mixed-week-batch')$$,'22023','The live score batch must match published events.','mixed-week imports cannot cross the published-week boundary');
 select * from finish();
 rollback;
