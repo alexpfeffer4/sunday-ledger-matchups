@@ -723,6 +723,8 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     await observerPage.screenshot({
       path: info.outputPath("other-matchup-partial-reveal.png"),
       fullPage: true,
+      // At 200% text, iPhone device scaling exceeds WebKit's image-size limit.
+      scale: "css",
     });
     await observerPage
       .getByRole("link", { name: "Back to your matchup" })
