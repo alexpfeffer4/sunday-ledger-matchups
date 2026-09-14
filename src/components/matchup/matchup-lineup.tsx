@@ -136,6 +136,7 @@ export function MatchupLineup({ matchup }: { matchup: PairedMatchupDto }) {
             <div
               className={`lineup-side ${side === "SELF" ? "lineup-self" : "lineup-opponent"}`}
               key={side}
+              role="group"
               data-member-name={member.displayName}
               data-game-selected={selected ? "true" : undefined}
               aria-label={`${member.displayName} · ${game.eventLabel}${market ? ` · ${market.toLowerCase()}` : ""}`}

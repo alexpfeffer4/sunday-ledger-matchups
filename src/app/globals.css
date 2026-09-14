@@ -485,3 +485,54 @@ a {
     position: static;
   }
 }
+
+/* Safari's native select can retain its option's intrinsic minimum width. */
+.matchup-navigation label {
+  position: relative;
+}
+.matchup-navigation select {
+  appearance: none;
+  max-width: 100%;
+  padding-right: 2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.matchup-navigation label::after {
+  content: "⌄";
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.65rem;
+  pointer-events: none;
+  font-size: 1rem;
+}
+/* Let both names contribute to shared rows before positioning the scores. */
+.matchup-comparison .paired-scores {
+  align-items: stretch;
+}
+.matchup-comparison .matchup-member {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 7;
+  align-items: start;
+}
+.matchup-member > :first-child {
+  grid-row: 1;
+}
+.matchup-member > h2 {
+  grid-row: 2;
+}
+.matchup-member > h2 + p {
+  grid-row: 3;
+}
+.matchup-member > .matchup-score {
+  grid-row: 4;
+}
+.matchup-member > [aria-label$="outstanding picks and credits"] {
+  grid-row: 5;
+}
+.matchup-member > [aria-label$="unused credits"] {
+  grid-row: 6;
+}
+.matchup-member > [aria-label$="card status"] {
+  grid-row: 7;
+}

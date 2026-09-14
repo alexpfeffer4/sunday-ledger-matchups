@@ -86,14 +86,18 @@ export function OwnerCardProgress({
                 ? "Weekly betting is closed"
                 : canSubmit
                   ? `${formatCredits(card.remainingCredits)} credits available to bet`
-                  : "Your bets are submitted"}
+                  : card.positions.length
+                    ? "Your bets are submitted"
+                    : "No bets submitted"}
             </p>
             <p className="text-muted mt-1 text-xs">
               {closed
                 ? "Submitted bets settle normally."
                 : canSubmit
                   ? "Choose from games that have not started."
-                  : "Follow your selections below."}
+                  : card.positions.length
+                    ? "Follow your selections below."
+                    : "Open your card for details."}
             </p>
             {hydrated && drafts.length ? (
               <p className="text-muted mt-1 text-xs">

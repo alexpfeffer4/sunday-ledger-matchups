@@ -41,7 +41,27 @@ async function expectNoHorizontalOverflow(page: Page) {
     clientWidth: document.documentElement.clientWidth,
     scrollWidth: document.documentElement.scrollWidth,
   }));
-  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
+  const overflowing =
+    dimensions.scrollWidth > dimensions.clientWidth
+      ? await page.evaluate(() =>
+          [...document.querySelectorAll("body *")]
+            .filter(
+              (element) =>
+                element.getBoundingClientRect().right >
+                document.documentElement.clientWidth + 1,
+            )
+            .slice(0, 8)
+            .map((element) => ({
+              tag: element.tagName,
+              className: element.className,
+              right: element.getBoundingClientRect().right,
+            })),
+        )
+      : [];
+  expect(
+    dimensions.scrollWidth,
+    JSON.stringify(overflowing),
+  ).toBeLessThanOrEqual(dimensions.clientWidth);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -218,7 +238,11 @@ test("Live remains paired, mobile-safe, keyboard-visible, and reduced-motion saf
       name: "Alex Ledger versus Jordan Rival",
     }),
   ).toHaveCount(1);
-  await expect(page.getByText("Live", { exact: true }).first()).toBeVisible();
+  await expect(
+    page
+      .locator(".paired-matchup-card .status-badge")
+      .filter({ hasText: "Live" }),
+  ).toBeVisible();
 
   const refresh = page.getByRole("button", { name: "Refresh matchup" });
   await refresh.focus();
@@ -258,14 +282,20 @@ test("stored Live updates preserve identity and progress to provisional and fina
 
   await mountMatchup(page, "PROVISIONAL");
   await expect(
-    page.getByText("Picks settled", { exact: true }).first(),
+    page
+      .locator(".paired-matchup-card .status-badge")
+      .filter({ hasText: "Picks settled" }),
   ).toBeVisible();
   await expect(
     page.getByLabel("Alex Ledger score 400.00 credits"),
   ).toBeVisible();
 
   await mountMatchup(page, "FINAL");
-  await expect(page.getByText("Final", { exact: true }).first()).toBeVisible();
+  await expect(
+    page
+      .locator(".paired-matchup-card .status-badge")
+      .filter({ hasText: "Final" }),
+  ).toBeVisible();
   await expect(
     page.getByLabel("Jordan Rival score 200.00 credits"),
   ).toBeVisible();
@@ -296,7 +326,11 @@ test("two player lanes align from score to bets on desktop, mobile, and large te
         const right = document
           .querySelector(".lineup-opponent")!
           .getBoundingClientRect();
+        const scores = [...document.querySelectorAll(".matchup-score")].map(
+          (score) => score.getBoundingClientRect().top,
+        );
         return {
+          scores,
           selfTop: self.top,
           opponentTop: opponent.top,
           selfLeft: self.left,
@@ -306,6 +340,7 @@ test("two player lanes align from score to bets on desktop, mobile, and large te
         };
       });
       expect(geometry.selfTop).toBe(geometry.opponentTop);
+      expect(geometry.scores[0]).toBe(geometry.scores[1]);
       expect(
         Math.abs(geometry.selfLeft - geometry.betLeft),
       ).toBeLessThanOrEqual(1);
