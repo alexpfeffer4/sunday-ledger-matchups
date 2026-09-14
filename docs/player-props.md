@@ -133,9 +133,9 @@ equivalents per game/week, one catalog quote fetch, 20 bulk main fetches, four
 disjoint finish windows with 112 two-credit score calls, plus 15% headroom:
 
 | Eligible games | Four-week month | Five-week month |
-| --- | ---: | ---: |
-| 14 | 3,432 | 4,290 |
-| 16 | 3,736 | 4,670 |
+| -------------- | --------------: | --------------: |
+| 14             |           3,432 |           4,290 |
+| 16             |           3,736 |           4,670 |
 
 Five separate finish windows in the 16-game case approach 4,995/month. Demand
 above these assumptions throttles optional props; 5K is a tested candidate pilot

@@ -71,6 +71,11 @@ function Bet({ row }: { row: PositionLedgerItem }) {
           Final: {row.finalYards} {marketLabel(row.marketType).toLowerCase()}
         </p>
       ) : null}
+      {row.playerCorrectionReason ? (
+        <p className="text-corrected mt-2 text-xs">
+          Player result corrected: {row.playerCorrectionReason}
+        </p>
+      ) : null}
       <dl className="lineup-bet-facts mt-3 text-xs">
         <div>
           <dt className="text-muted">Stake</dt>

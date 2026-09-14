@@ -55,7 +55,7 @@ begin
  values(pg_temp.rid(100),pg_temp.rid(90+event_number),snapshot_id,pg_temp.rid(50),pg_temp.rid(10));
  insert into private.live_quote_heads(event_id,week_id,league_id,market_type,outcome_key,market_snapshot_id)
  values(pg_temp.rid(90+event_number),pg_temp.rid(50),pg_temp.rid(10),'MONEYLINE',p_outcome,snapshot_id)
- on conflict(event_id,market_type,outcome_key) do update set market_snapshot_id=excluded.market_snapshot_id;
+ on conflict(event_id,market_type,outcome_key) where subject_id is null do update set market_snapshot_id=excluded.market_snapshot_id;
  return jsonb_build_object('marketSnapshotId',snapshot_id,'payloadHash',h);
 end; $$;
 select pg_temp.offer(1),pg_temp.offer(2),pg_temp.offer(3);

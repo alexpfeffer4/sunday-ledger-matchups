@@ -12,9 +12,6 @@ export function playerPropsLeagueSql({ slug, userIds, games }) {
     );
   const pack = `props-acceptance-${slug}`;
   return `begin;
-create temporary table props_catalog_before on commit drop as select * from private.authoritative_season_rulesets;
-update private.authoritative_season_rulesets a set ruleset_version='1.3',product_bible_version='3.2',
- canonical_json=p.canonical_json,sha256_hash=p.sha256_hash from private.prepared_rolling_rulesets p where p.mode=a.mode;
 -- Expand the immutable canonical fixture into a separate disposable pack. All
 -- event times/results remain deterministic, with unique game and team identities.
 with original as (select manifest_json from private.simulation_fixture_manifests where pack_id='sunday-ledger-authoritative-2026-v1'),
@@ -47,11 +44,8 @@ begin
  insert into private.player_prop_leagues(league_id,enabled,rules_enabled,season_id,first_enabled_week,activated_at,release_sha,approval_reference)
  values(league_uuid,true,true,season_uuid,1,clock_timestamp(),repeat('0',40),'Disposable acceptance fixture');
  perform api.publish_simulation_fixture_week(league_uuid,1,${quoteSql(pack)},'props-publish-'||${quoteSql(slug)});
- perform api.lock_live_roster_and_open_week(league_uuid,'props-roster-'||${quoteSql(slug)});
 end;
 $fixture$;
-update private.authoritative_season_rulesets a set ruleset_version=b.ruleset_version,product_bible_version=b.product_bible_version,
- canonical_json=b.canonical_json,sha256_hash=b.sha256_hash from props_catalog_before b where b.mode=a.mode;
 update private.player_prop_controls set offers_enabled=true;
 commit;`;
 }

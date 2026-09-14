@@ -187,8 +187,7 @@ for (const games of [14, 16]) {
     ).toBe(catalogBefore);
     const commissioner = members[0]!;
     let owner = await state(commissioner, slug);
-    expect(owner.week?.propsEnabled).toBe(true);
-    expect(owner.week?.rollingSubmissionsEnabled).toBe(true);
+    expect(owner.week?.state).toBe("PLANNED");
     expect(owner.slate).toHaveLength(games);
     const events = [...owner.slate].sort(
       (a, b) =>
@@ -236,15 +235,16 @@ for (const games of [14, 16]) {
     expect(proposed.slots).toHaveLength(games * 6);
     expect(proposed.slots.every((slot) => slot.subjectId !== null)).toBe(true);
     expect(proposed.frozen).toBe(false);
-    const opponentUser = owner.members.find(
-      (member) => member.entryId === owner.matchup!.opponentEntryId,
-    )!.userId;
-    const opponentIndex = identities.findIndex(
-      (identity) => identity.userId === opponentUser,
-    );
-    const opponent = members[opponentIndex]!;
+    let opponentIndex = 1;
+    let opponent = members[opponentIndex]!;
+    const { viewport, deviceScaleFactor, isMobile, hasTouch, userAgent } =
+      info.project.use;
     const spectatorContext = await browser.newContext({
-      ...info.project.use,
+      viewport,
+      deviceScaleFactor,
+      isMobile,
+      hasTouch,
+      userAgent,
       baseURL: "http://127.0.0.1:3000",
     });
     const spectator = await spectatorContext.newPage();
@@ -281,13 +281,33 @@ for (const games of [14, 16]) {
           return menu.slots.every((slot) => slot.confirmed);
         })
         .toBe(true);
+      await page.reload();
+      await page
+        .getByRole("button", { name: "Open week for bets", exact: true })
+        .click();
+      await expect
+        .poll(async () => (await state(commissioner, slug)).week?.state)
+        .toBe("OPEN");
+      owner = await state(commissioner, slug);
+      expect(owner.week?.state).toBe("OPEN");
+      expect(owner.week?.propsEnabled).toBe(true);
+      expect(owner.week?.rollingSubmissionsEnabled).toBe(true);
+      const opponentUser = owner.members.find(
+        (member) => member.entryId === owner.matchup!.opponentEntryId,
+      )!.userId;
+      opponentIndex = identities.findIndex(
+        (identity) => identity.userId === opponentUser,
+      );
+      opponent = members[opponentIndex]!;
       const confirmed = playerPropMenuSchema.parse(
         await rpc(commissioner, "get_player_prop_menu", {
           p_league_slug: slug,
         }),
       );
       const lateLine = confirmed.slots.find(
-        (slot) => slot.eventId === early.id && slot.slot === "QB_PASS",
+        (slot) =>
+          slot.eventId === early.id &&
+          slot.subjectLabel === "Alexanderson Montgomery-Smith Jr.",
       )!;
       const existingLine = confirmed.slots.find(
         (slot) => slot.eventId === early.id && slot.slot === "RB_RUSH",

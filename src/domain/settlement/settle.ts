@@ -74,18 +74,33 @@ export function settleReceipt(
     case "PLAYER_PASSING_YARDS":
     case "PLAYER_RUSHING_YARDS":
     case "PLAYER_RECEIVING_YARDS": {
-      if (playerEvidence && (playerEvidence.eventId !== receipt.eventId ||
-        playerEvidence.subjectId !== receipt.subjectId ||
-        playerEvidence.statistic !== receipt.statistic || playerEvidence.period !== receipt.period)) {
+      if (
+        playerEvidence &&
+        (playerEvidence.eventId !== receipt.eventId ||
+          playerEvidence.subjectId !== receipt.subjectId ||
+          playerEvidence.statistic !== receipt.statistic ||
+          playerEvidence.period !== receipt.period)
+      ) {
         throw new Error("Player evidence and receipt identity do not match.");
       }
-      if (!playerEvidence?.participationComplete || playerEvidence.participation === "UNKNOWN" ||
-        (playerEvidence.participation === "OFFENSE" && (!playerEvidence.complete || playerEvidence.value === null))) {
-        return { receiptId: receipt.id, outcome: "PENDING", returnedCenticredits: null };
+      if (
+        !playerEvidence?.participationComplete ||
+        playerEvidence.participation === "UNKNOWN" ||
+        (playerEvidence.participation === "OFFENSE" &&
+          (!playerEvidence.complete || playerEvidence.value === null))
+      ) {
+        return {
+          receiptId: receipt.id,
+          outcome: "PENDING",
+          returnedCenticredits: null,
+        };
       }
-      outcome = playerEvidence.participation === "NO_OFFENSE" ? "VOID" : receipt.selectedSide === "OVER"
-        ? compare(playerEvidence.value! * 1_000, receipt.lineMilli)
-        : compare(receipt.lineMilli, playerEvidence.value! * 1_000);
+      outcome =
+        playerEvidence.participation === "NO_OFFENSE"
+          ? "VOID"
+          : receipt.selectedSide === "OVER"
+            ? compare(playerEvidence.value! * 1_000, receipt.lineMilli)
+            : compare(receipt.lineMilli, playerEvidence.value! * 1_000);
       break;
     }
   }

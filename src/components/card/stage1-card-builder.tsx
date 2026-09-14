@@ -880,7 +880,29 @@ function Stage1CardBuilderEditor({
           <div className="divide-boundary mt-6 divide-y">
             {batchDrafts.map((draft, index) => {
               const selected = snapshots.get(draft.marketSnapshotId);
-              if (!selected) return null;
+              if (!selected)
+                return (
+                  <article
+                    key={selectionKey(draft)}
+                    aria-label={`Pick ${index + 1}: unavailable ${draft.reviewedProposition}`}
+                    className="py-4 first:pt-0 last:pb-0"
+                  >
+                    <p className="text-sm font-semibold break-words">
+                      {formatMarketProposition(draft.reviewedProposition)}
+                    </p>
+                    <p className="text-muted mt-2 text-sm">
+                      {formatCredits(draft.stakeCredits)} credits · Reviewed
+                      odds {formatAmericanOdds(draft.reviewedAmericanOdds)}
+                    </p>
+                    <p
+                      role="alert"
+                      className="text-pending mt-3 text-sm leading-6"
+                    >
+                      This line is unavailable. Your draft is kept; return to
+                      edit to leave it out of this submission.
+                    </p>
+                  </article>
+                );
               return (
                 <article
                   aria-label={`Pick ${index + 1}: ${selected.event.awayTeam} at ${selected.event.homeTeam}`}

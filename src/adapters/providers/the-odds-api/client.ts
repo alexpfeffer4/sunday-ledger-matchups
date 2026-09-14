@@ -272,3 +272,31 @@ export async function fetchNflPlayerProps(options: {
     options.families,
   );
 }
+
+/** Documented zero-credit endpoint; caller must hold the isolated quota lease. */
+export async function fetchOddsEntitlementUsage(options?: {
+  apiKey?: string;
+  fetchImpl?: typeof fetch;
+}): Promise<OddsUsage> {
+  const apiKey = options?.apiKey ?? process.env.ODDS_API_KEY;
+  if (!apiKey)
+    throw new OddsProviderRequestError(
+      "The Odds API is not configured for this environment.",
+    );
+  const url = new URL("https://api.the-odds-api.com/v4/sports/");
+  url.searchParams.set("apiKey", apiKey);
+  let usage: OddsUsage = { remaining: null, used: null, last: null };
+  const payload = await fetchProviderJson(
+    url,
+    options?.fetchImpl ?? fetch,
+    undefined,
+    (value) => {
+      usage = value;
+    },
+  );
+  if (!Array.isArray(payload))
+    throw new OddsProviderPayloadError(
+      "The quota probe did not return a sports directory.",
+    );
+  return usage;
+}

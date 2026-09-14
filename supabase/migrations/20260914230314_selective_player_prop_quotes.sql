@@ -233,6 +233,7 @@ begin
  if r.state='SUCCEEDED' then return jsonb_build_object('status','SUCCEEDED','replayed',true); end if;
  if r.state<>'RUNNING' then raise exception 'QUOTE_REFRESH_LEASE_INVALID'; end if;
  remain:=(p_usage->>'remaining')::integer; used:=(p_usage->>'used')::integer; charged:=(p_usage->>'last')::integer;
+ if exists(select 1 from private.odds_refresh_policy where provider_cycle_verified_at>r.attempted_at) then remain:=null; used:=null; end if;
  if coalesce(remain,0)<0 or coalesce(used,0)<0 or coalesce(charged,0)<0 then raise exception 'Invalid provider usage'; end if;
  extra:=greatest(0,coalesce(charged,r.reserved_cost)-r.reserved_cost);
  update private.odds_refresh_policy set
@@ -243,7 +244,7 @@ begin
   prop_monthly_credits=prop_monthly_credits+case when r.kind='PROPS' then extra else 0 end where singleton;
  if p_import is null or p_import='null'::jsonb or r.expires_at<=t then
   update private.shared_quote_requests set state='FAILED',requests_remaining=remain,requests_used=used,
-   charged_cost=greatest(r.reserved_cost,coalesce(charged,0)) where id=r.id;
+   charged_cost=charged where id=r.id;
   return jsonb_build_object('status','FAILED');
  end if;
  fetched:=(p_import->>'fetchedAt')::timestamptz;
@@ -282,7 +283,7 @@ begin
   end loop;
  end loop;
  update private.shared_quote_requests set state='SUCCEEDED',payload=p_import,fetched_at=fetched,
-  requests_remaining=remain,requests_used=used,charged_cost=greatest(r.reserved_cost,coalesce(charged,0)) where id=r.id;
+  requests_remaining=remain,requests_used=used,charged_cost=charged where id=r.id;
  update private.shared_quote_coverage cov set latest_successful_request_id=r.id
   where cov.external_event_id=any(r.event_ids) and cov.family=any(r.families)
    and (cov.latest_successful_request_id is null or
@@ -427,14 +428,17 @@ create trigger odds_budget_configuration_evidence_append_only before update or d
  for each row execute function private.reject_competitive_mutation();
 create function api.configure_player_prop_odds_budget(p_verified_entitlement jsonb) returns jsonb
 language plpgsql security definer set search_path='' as $$
-declare p private.odds_refresh_policy%rowtype; credits integer; remaining integer; used integer; cycle text; observed timestamptz;
+declare p private.odds_refresh_policy%rowtype; credits integer; remaining integer; used integer; cycle text; observed timestamptz; next_reset timestamptz; reset_policy text;
 begin
  credits:=(p_verified_entitlement->>'entitlementCredits')::integer;
  remaining:=(p_verified_entitlement->>'remaining')::integer; used:=(p_verified_entitlement->>'used')::integer;
  cycle:=p_verified_entitlement->>'cycleId'; observed:=(p_verified_entitlement->>'observedAt')::timestamptz;
+ next_reset:=(p_verified_entitlement->>'nextQuotaResetAt')::timestamptz; reset_policy:=p_verified_entitlement->>'resetPolicy';
  if credits is null or credits<20000 or remaining is null or remaining<30 or used is null or used<0
-  or remaining::bigint+used::bigint>credits or nullif(cycle,'') is null or char_length(cycle)>120
+  or remaining::bigint+used::bigint<>credits or nullif(cycle,'') is null or char_length(cycle)>120
   or observed is null or observed>clock_timestamp() or observed<clock_timestamp()-interval '10 minutes'
+  or next_reset is null or next_reset is distinct from (date_trunc('month',observed at time zone 'UTC')+interval '1 month 1 day') at time zone 'UTC'
+  or reset_policy is distinct from 'FIRST_OF_MONTH_CONFIRMED_HEADERS'
  then raise exception 'ODDS_ENTITLEMENT_NOT_VERIFIED'; end if;
  select * into strict p from private.odds_refresh_policy for update;
  if p.provider_cycle_verified_at is not null and observed<=p.provider_cycle_verified_at then raise exception 'ODDS_ENTITLEMENT_EVIDENCE_OLD'; end if;
@@ -445,6 +449,7 @@ begin
   requests_remaining=case when p.provider_cycle_id is distinct from cycle or coalesce(p.provider_entitlement_credits,0)<credits
     then remaining else least(coalesce(p.requests_remaining,remaining),remaining) end,
   provider_cycle_id=cycle,provider_entitlement_credits=credits,provider_cycle_verified_at=observed,
+  next_quota_reset_at=next_reset,quota_reset_policy=reset_policy,next_entitlement_probe_at=observed+interval '1 hour',
   provider_used_high_water=case when p.provider_cycle_id is distinct from cycle then used else greatest(p.provider_used_high_water,used) end where singleton;
  -- Daily/monthly usage and the enable/offering controls are deliberately preserved.
  return jsonb_build_object('dailyCreditLimit',1000,'monthlyCreditLimit',5000,'protectedCoreDailyCredits',350,'protectedCoreMonthlyCredits',2000,
@@ -496,3 +501,130 @@ begin
  execute d;
 end;
 $latest_public_quote_proof$;
+
+-- /sports costs zero Odds API credits. Probe only after the paid profile is
+-- configured, with one global lease and no paid HTTP requests in flight.
+-- Provider docs say first of each month, not a verified UTC hour. The prepared
+-- schedule waits until day2 UTC and requires consistent fresh quota headers.
+alter table private.odds_refresh_policy add column next_quota_reset_at timestamptz,
+ add column quota_reset_policy text,
+ add column next_entitlement_probe_at timestamptz not null default '-infinity';
+create table private.odds_entitlement_probes (
+ id uuid primary key default gen_random_uuid(),started_at timestamptz not null default clock_timestamp(),
+ expires_at timestamptz not null default clock_timestamp()+interval '20 seconds',
+ state text not null default 'RUNNING' check(state in('RUNNING','SUCCEEDED','FAILED','IGNORED')),
+ remaining integer,used integer,completed_at timestamptz,failure_code text
+);
+alter table private.odds_entitlement_probes enable row level security;
+revoke all on private.odds_entitlement_probes from public,anon,authenticated;
+create index odds_entitlement_probes_running_idx on private.odds_entitlement_probes(expires_at) where state='RUNNING';
+create function api.claim_odds_entitlement_probe() returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare p private.odds_refresh_policy%rowtype; t timestamptz:=clock_timestamp(); id_new uuid;
+begin
+ select * into strict p from private.odds_refresh_policy for update;
+ if coalesce(p.provider_entitlement_credits,0)<20000 or p.next_quota_reset_at is null
+  or p.next_entitlement_probe_at>t or p.next_request_at>t
+  or exists(select 1 from private.odds_entitlement_probes where state='RUNNING' and expires_at>t)
+  or exists(select 1 from private.shared_quote_requests where state='RUNNING' and expires_at>t)
+  or exists(select 1 from private.provider_requests where state='RUNNING' and expires_at>t)
+  or exists(select 1 from private.live_quote_refreshes where state='RUNNING' and lease_expires_at>t)
+ then return jsonb_build_object('status','IDLE'); end if;
+ insert into private.odds_entitlement_probes default values returning id into id_new;
+ update private.odds_refresh_policy set next_entitlement_probe_at=t+interval '1 hour',next_request_at=t+interval '3 seconds' where singleton;
+ return jsonb_build_object('status','CLAIMED','probeId',id_new);
+end;
+$$;
+revoke all on function api.claim_odds_entitlement_probe() from public,anon,authenticated;
+grant execute on function api.claim_odds_entitlement_probe() to service_role;
+create function api.complete_odds_entitlement_probe(p_probe_id uuid,p_usage jsonb default null) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare p private.odds_refresh_policy%rowtype; r private.odds_entitlement_probes%rowtype;
+ t timestamptz:=clock_timestamp(); v_remaining integer; v_used integer; renew boolean:=false;
+begin
+ select * into strict p from private.odds_refresh_policy for update;
+ select * into strict r from private.odds_entitlement_probes where id=p_probe_id for update;
+ if r.state<>'RUNNING' then return jsonb_build_object('status',r.state,'replayed',true); end if;
+ if r.started_at<p.provider_cycle_verified_at then
+  update private.odds_entitlement_probes set state='IGNORED',completed_at=t,failure_code='OLDER_THAN_VERIFIED_CYCLE' where id=r.id;
+  return jsonb_build_object('status','IGNORED');
+ end if;
+ v_remaining:=(p_usage->>'remaining')::integer; v_used:=(p_usage->>'used')::integer;
+ if r.expires_at<=t or v_remaining is null or v_used is null or v_remaining<0 or v_used<0
+  or v_remaining::bigint+v_used::bigint<>p.provider_entitlement_credits or coalesce((p_usage->>'last')::integer,-1)<>0
+ then
+  update private.odds_entitlement_probes set state='FAILED',completed_at=t,failure_code='QUOTA_PROBE_INCOMPLETE' where id=r.id;
+  return jsonb_build_object('status','FAILED');
+ end if;
+ if r.started_at>=p.next_quota_reset_at then
+  if p.quota_reset_policy='FIRST_OF_MONTH_CONFIRMED_HEADERS' then renew:=true;
+  else
+   update private.odds_entitlement_probes set state='FAILED',remaining=v_remaining,used=v_used,completed_at=t,failure_code='RESET_POLICY_UNVERIFIED' where id=r.id;
+   return jsonb_build_object('status','FAILED');
+  end if;
+ end if;
+ update private.odds_refresh_policy set
+  requests_remaining=case when renew then v_remaining else least(coalesce(requests_remaining,v_remaining),v_remaining) end,
+  provider_used_high_water=case when renew then v_used else greatest(provider_used_high_water,v_used) end,
+  provider_cycle_id=case when renew then 'quota:'||to_char(t at time zone 'UTC','YYYY-MM') else provider_cycle_id end,
+  provider_cycle_verified_at=case when renew then t else provider_cycle_verified_at end,
+  next_quota_reset_at=case when renew then (date_trunc('month',t at time zone 'UTC')+interval '1 month 1 day') at time zone 'UTC' else next_quota_reset_at end
+ where singleton;
+ update private.odds_entitlement_probes probe set state='SUCCEEDED',remaining=v_remaining,used=v_used,completed_at=t where probe.id=r.id;
+ return jsonb_build_object('status','SUCCEEDED','cycleRenewed',renew);
+end;
+$$;
+revoke all on function api.complete_odds_entitlement_probe(uuid,jsonb) from public,anon,authenticated;
+grant execute on function api.complete_odds_entitlement_probe(uuid,jsonb) to service_role;
+
+-- Reserve/claim barriers make the free probe's headers an isolated observation.
+do $quota_probe_guards$
+declare d text;
+begin
+ d:=pg_get_functiondef('private.reserve_selective_quote_credits(integer,boolean)'::regprocedure);
+ d:=replace(d,'if p.next_request_at>t then',
+  'if exists(select 1 from private.odds_entitlement_probes where state=''RUNNING'' and expires_at>t) then raise exception ''QUOTE_REFRESH_COOLDOWN''; end if;
+ if p.next_request_at>t then'); execute d;
+ d:=pg_get_functiondef('api.claim_live_quote_refresh(uuid)'::regprocedure);
+ d:=replace(d,'  select * into strict v_policy from private.odds_refresh_policy for update;',
+  '  select * into strict v_policy from private.odds_refresh_policy for update;
+  if exists(select 1 from private.odds_entitlement_probes where state=''RUNNING'' and expires_at>clock_timestamp()) then raise exception ''QUOTE_REFRESH_COOLDOWN''; end if;'); execute d;
+ d:=pg_get_functiondef('api.complete_live_quote_refresh(uuid,jsonb,integer)'::regprocedure);
+ d:=replace(d,'if p_requests_remaining is not null and p_requests_remaining >= 0 then',
+  'if p_requests_remaining is not null and p_requests_remaining >= 0 and not exists(select 1 from private.odds_refresh_policy where provider_cycle_verified_at>v_refresh.attempted_at) then'); execute d;
+ d:=pg_get_functiondef('api.complete_provider_request(uuid,jsonb,integer)'::regprocedure);
+ d:=replace(d,'if p_requests_remaining>=0 then',
+  'if p_requests_remaining>=0 and not exists(select 1 from private.odds_refresh_policy where provider_cycle_verified_at>r.attempted_at) then'); execute d;
+end;
+$quota_probe_guards$;
+
+-- Existing five-minute dispatcher can reach the free quota probe even if local
+-- remaining quota is exhausted or no games are due. It remains idle until the
+-- reviewed paid profile is configured; no new cron job is installed here.
+create or replace function private.dispatch_score_checkpoints()
+returns bigint language plpgsql security definer set search_path='' as $$
+declare target_url text; job_secret text; request_id bigint; quota_due boolean; scores_due boolean; t timestamptz:=clock_timestamp();
+begin
+ if not exists(select 1 from private.score_refresh_policy where enabled) then return null; end if;
+ quota_due:=exists(select 1 from private.odds_refresh_policy where provider_entitlement_credits>=20000
+   and next_quota_reset_at is not null and next_entitlement_probe_at<=t and next_request_at<=t)
+  and not exists(select 1 from private.odds_entitlement_probes where state='RUNNING' and expires_at>t)
+  and not exists(select 1 from private.shared_quote_requests where state='RUNNING' and expires_at>t)
+  and not exists(select 1 from private.live_quote_refreshes where state='RUNNING' and lease_expires_at>t)
+  and not exists(select 1 from private.provider_requests where state='RUNNING' and expires_at>t);
+ scores_due:=exists(select 1 from private.due_score_events(null,false))
+  and not exists(select 1 from private.odds_refresh_policy where next_request_at>t or requests_remaining<reserve_credits+2
+    or (usage_day=(t at time zone 'UTC')::date and daily_credits+2>daily_credit_limit)
+    or (usage_month=date_trunc('month',t at time zone 'UTC')::date and monthly_credits+2>monthly_credit_limit))
+  and not exists(select 1 from private.provider_requests where kind='SCORES' and state='RUNNING' and expires_at>t);
+ if not quota_due and not scores_due then return null; end if;
+ select decrypted_secret into target_url from vault.decrypted_secrets where name='score_job_url';
+ select decrypted_secret into job_secret from vault.decrypted_secrets where name='score_job_secret';
+ if target_url is distinct from 'https://www.ledgerleagues.com/api/operations/scores' or coalesce(length(job_secret),0)<32 then
+  raise exception 'Score job Vault configuration is missing or invalid'; end if;
+ select net.http_post(url:=target_url,headers:=jsonb_build_object('Authorization','Bearer '||job_secret,'Content-Type','application/json'),
+  body:='{}'::jsonb,timeout_milliseconds:=45000) into request_id;
+ return request_id;
+end;
+$$;
+revoke all on function private.dispatch_score_checkpoints() from public,anon,authenticated;

@@ -5,7 +5,10 @@ import type {
   PlayoffCutlineFact,
   RecordBridgeFact,
 } from "@/domain/history/project-season-memory";
-import { matchupScopeLabel } from "@/domain/history/project-season-memory";
+import {
+  correctionResultChange,
+  matchupScopeLabel,
+} from "@/domain/history/project-season-memory";
 import { formatCenticredits } from "@/domain/odds/american";
 import { RecordBridge } from "@/components/history/record-bridge";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -36,8 +39,7 @@ function CorrectionDetails({
       </summary>
       <div className="text-graphite mt-2 space-y-2 text-sm leading-6">
         <p>
-          Event result: {correction.beforeEvent} → {correction.afterEvent}. Your
-          matchup score:{" "}
+          {correctionResultChange(correction)} Your matchup score:{" "}
           {beforeSelf === null ? "unavailable" : score(beforeSelf)} →{" "}
           {score(afterSelf)}.
         </p>

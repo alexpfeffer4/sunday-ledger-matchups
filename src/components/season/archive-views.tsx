@@ -15,6 +15,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { AuditDetails } from "@/components/ui/audit-details";
 import { LeagueScoreboard } from "@/components/matchup/league-scoreboard";
 import { ReceiptPanel } from "@/components/ui/receipt-panel";
+import { marketLabel } from "@/components/card/selection-identity";
 import { formatCredits } from "@/domain/odds/american";
 
 function score(centicredits: number): string {
@@ -306,8 +307,10 @@ export function SeasonArchiveMyCard({
       ? archive.corrections.map((correction) => correction.eventId)
       : [],
   );
-  const corrected = latest.card.receipts.some((receipt) =>
-    correctionEventIds.has(receipt.eventId),
+  const corrected = latest.card.receipts.some(
+    (receipt) =>
+      Boolean(receipt.playerCorrectionReason) ||
+      correctionEventIds.has(receipt.eventId),
   );
   return (
     <PageFrame
@@ -345,9 +348,32 @@ export function SeasonArchiveMyCard({
               key={receipt.id}
             >
               <div>
-                <p className="font-semibold">
-                  {receipt.selection} · {receipt.marketType}
+                <p className="font-semibold break-words">
+                  {receipt.subjectLabel ? `${receipt.subjectLabel} · ` : ""}
+                  {receipt.selection === "OVER"
+                    ? "Over"
+                    : receipt.selection === "UNDER"
+                      ? "Under"
+                      : receipt.selection}{" "}
+                  · {marketLabel(receipt.marketType)}
                 </p>
+                {receipt.subjectId ? (
+                  <p className="text-muted mt-1 text-xs">
+                    {receipt.subjectTeam} · Full game, including overtime
+                  </p>
+                ) : null}
+                {receipt.finalYards !== undefined &&
+                receipt.finalYards !== null ? (
+                  <p className="mt-2 text-sm font-semibold">
+                    Final: {receipt.finalYards}{" "}
+                    {marketLabel(receipt.marketType).toLowerCase()}
+                  </p>
+                ) : null}
+                {receipt.playerCorrectionReason ? (
+                  <p className="text-corrected mt-2 text-sm">
+                    Player result corrected: {receipt.playerCorrectionReason}
+                  </p>
+                ) : null}
                 <p className="text-muted mt-1 text-xs break-words">
                   Line {archiveLine(receipt.lineMilli, receipt.marketType)} ·
                   Odds {archiveOdds(receipt.americanOdds)} · Stake{" "}
@@ -355,8 +381,12 @@ export function SeasonArchiveMyCard({
                 </p>
               </div>
               <p className="text-sm font-semibold sm:text-right">
-                {receipt.outcome} · {score(receipt.returnedCenticredits)}{" "}
-                returned
+                {
+                  { WIN: "Won", LOSS: "Lost", PUSH: "Push", VOID: "Void" }[
+                    receipt.outcome
+                  ]
+                }{" "}
+                · {score(receipt.returnedCenticredits)} returned
               </p>
             </li>
           ))}

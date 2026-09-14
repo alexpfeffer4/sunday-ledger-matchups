@@ -9,6 +9,8 @@ const receiptSchema = z.object({
   marketType: marketTypeSchema,
   ...playerSubjectFields,
   finalYards: z.number().nullable().optional(),
+  playerEvidenceVersion: z.number().int().positive().nullable().optional(),
+  playerCorrectionReason: z.string().nullable().optional(),
   selection: z.enum(["HOME", "AWAY", "OVER", "UNDER"]),
   americanOdds: z.number().int(),
   lineMilli: z.number().int().nullable(),

@@ -40,6 +40,8 @@ export function PlayerPropMenuReview({
   frozen,
   prepareAction,
   confirmAction,
+  canOpen = false,
+  openAction,
 }: {
   leagueSlug: string;
   leagueId: string;
@@ -48,7 +50,13 @@ export function PlayerPropMenuReview({
   frozen: boolean;
   prepareAction: FormAction;
   confirmAction: FormAction;
+  canOpen?: boolean;
+  openAction?: FormAction;
 }) {
+  const [opened, openWeek, opening] = useActionState(
+    openAction ?? (async () => initialAppActionState),
+    initialAppActionState,
+  );
   const [prepared, prepare, preparing] = useActionState(
     prepareAction,
     initialAppActionState,
@@ -70,7 +78,10 @@ export function PlayerPropMenuReview({
   const groups = new Map<string, PlayerPropMenuSlot[]>();
   for (const slot of slots)
     groups.set(slot.eventId, [...(groups.get(slot.eventId) ?? []), slot]);
-  const pending = preparing || confirming || refreshing;
+  const pending = preparing || confirming || refreshing || opening;
+  const changedChoices = slots.some(
+    (slot) => chosen(slot) !== (slot.subjectId ?? ""),
+  );
   return (
     <section
       aria-labelledby="player-menu-heading"
@@ -264,6 +275,29 @@ export function PlayerPropMenuReview({
               <ActionFeedback state={confirmed} />
             </>
           ) : null}
+        </form>
+      ) : null}
+      {canOpen && openAction ? (
+        <form action={openWeek} className="border-boundary mt-5 border-t pt-5">
+          <input type="hidden" name="leagueSlug" value={leagueSlug} />
+          <p className="text-graphite text-sm leading-6">
+            The player menu is reviewed. Open the week to make game lines and
+            available player props ready for bets. Confirmed unresolved slots
+            remain unavailable; known players can receive lines later.
+          </p>
+          {changedChoices ? (
+            <p className="text-pending mt-2 text-sm">
+              Confirm your changed player choices before opening the week.
+            </p>
+          ) : null}
+          <button
+            type="submit"
+            disabled={pending || changedChoices}
+            className="bg-registry mt-3 min-h-12 rounded-lg px-5 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {opening ? "Opening week…" : "Open week for bets"}
+          </button>
+          <ActionFeedback state={opened} />
         </form>
       ) : null}
     </section>

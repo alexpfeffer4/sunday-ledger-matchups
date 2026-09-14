@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchNflPlayerProps } from "@/adapters/providers/the-odds-api/client";
+import {
+  fetchNflPlayerProps,
+  fetchOddsEntitlementUsage,
+} from "@/adapters/providers/the-odds-api/client";
 import { normalizeTheOddsApiProps } from "@/adapters/providers/the-odds-api/normalize-props";
 vi.mock("server-only", () => ({}));
 const time = "2026-09-14T12:00:00Z";
@@ -29,6 +32,28 @@ function payload(
   };
 }
 describe("selected player quote provider boundary", () => {
+  it("obtains fresh quota headers from the documented uncharged sports endpoint", async () => {
+    const fake = vi.fn<typeof fetch>(
+      async () =>
+        new Response("[]", {
+          headers: {
+            "x-requests-remaining": "19990",
+            "x-requests-used": "10",
+            "x-requests-last": "0",
+          },
+        }),
+    );
+    expect(
+      await fetchOddsEntitlementUsage({
+        apiKey: "fixture-only",
+        fetchImpl: fake,
+      }),
+    ).toEqual({ remaining: 19990, used: 10, last: 0 });
+    const url = new URL(String(fake.mock.calls[0][0]));
+    expect(url.pathname).toBe("/v4/sports/");
+    expect(url.searchParams.has("markets")).toBe(false);
+    expect(fake).toHaveBeenCalledTimes(1);
+  });
   it("uses one event-specific request and only the selected statistic family", async () => {
     const fake = vi.fn<typeof fetch>(
       async () =>

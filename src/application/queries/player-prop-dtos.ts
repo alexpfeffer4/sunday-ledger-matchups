@@ -46,5 +46,6 @@ export const playerPropMenuSchema = z.object({
   enabled: z.boolean(),
   frozen: z.boolean(),
   slots: z.array(playerPropSlotSchema),
+  canOpen: z.boolean().optional(),
 });
 export type PlayerPropMenu = z.infer<typeof playerPropMenuSchema>;

@@ -175,11 +175,29 @@ select throws_ok($$update private.player_result_observations set value=123$$,'55
 select throws_ok($$delete from private.player_evidence_bundles$$,'55000',null,'settlement bundles are append-only');
 select is((select to_jsonb(r) from private.position_receipts r where r.id=(original->>'id')::uuid),original,'settlement revisions preserve legacy accepted receipt bytes') from props_legacy_receipt;
 
+-- Missing source revision never makes arrival order authoritative.
+select api.import_player_result_observations(jsonb_build_array(jsonb_set(pg_temp.player_observation((select subject_id from result_test_subject),'API_SPORTS',999,true,'OFFENSE',1),'{sourceUpdatedAt}','null')));
+select private.reconcile_player_event((select event_id from props_context));
+select ok(exists(select 1 from private.player_result_candidates where event_id=c.event_id and reason='SOURCE_REVISION_ORDER_UNVERIFIED'),'unordered provider content change becomes a review candidate') from props_context c;
+select is((select count(*) from private.player_evidence_bundles where event_id=c.event_id),3::bigint,'unordered data cannot overwrite accepted player authority') from props_context c;
+select ok(exists(select 1 from private.corrections where event_id=c.event_id and corrected_player_evidence_bundle_id is not null and original_result_version_id=corrected_result_version_id),'player revisions enter existing correction audit without fake team score changes') from props_context c;
+
 -- Protected correction boundary is inherited and never restarted for props.
 update private.season_weeks set state='PROVISIONAL',correction_window_closes_at=(select private.stage1_season_time(season_id) from props_context)-interval '1 second' where id=(select week_id from props_context);
 create temporary table protected_player_deadline as select correction_window_closes_at deadline from private.season_weeks where id=(select week_id from props_context);
 select throws_ok($$select private.publish_player_evidence((select event_id from props_context),(select subject_id from result_test_subject),'PASSING_YARDS',(select id from private.player_result_observations where provider='API_SPORTS' and value=50 limit 1),(select id from private.player_result_observations where provider='API_SPORTS' and value=50 limit 1),'Late protected correction fixture.')$$,'55000',null,'late player correction cannot silently change protected results');
 select is((select correction_window_closes_at from private.season_weeks where id=(select week_id from props_context)),(select deadline from protected_player_deadline),'player corrections do not restart the correction clock');
+
+-- Provider daily rollover restores documented allowance, retaining every request.
+update private.player_result_policy set provider_remaining=0,provider_window_date=(clock_timestamp() at time zone 'UTC')::date-1;
+create temporary table old_player_request as with inserted as (insert into private.player_result_requests(request_class,reserved_at) values('METADATA',clock_timestamp()-interval '1 day') returning id) select id from inserted;
+select private.roll_player_result_budget_day();
+select is((select provider_remaining from private.player_result_policy),100,'new documented UTC provider day restores bounded allowance');
+select api.complete_player_result_request((select id from old_player_request),null,0,null,null);
+select is((select provider_remaining from private.player_result_policy),100,'late response from old provider day cannot poison new allowance');
+select is((select count(*) from private.player_result_requests where id=(select id from old_player_request)),1::bigint,'provider rollover never clears historical request accounting');
+select function_privs_are('api','resolve_finalized_week17_player_candidate',array['uuid','uuid','uuid','text'],'anon',array[]::text[],'protected Week17 player corrections require authenticated commissioner authority');
+select throws_ok($$select api.resolve_finalized_week17_player_candidate((select id from private.player_result_candidates order by created_at desc,id desc limit 1),null,(select id from private.player_result_observations order by created_at desc,id desc limit 1),'Invalid nonterminal correction fixture.')$$,'55000',null,'protected Week17 path rejects ordinary closed regular-season weeks');
 
 -- Independent 80-result/20-metadata budget; unknown network failures stay charged.
 select is(api.claim_player_result_jobs()->>'status','DISABLED','empty disabled scheduler is a cheap no-provider run');

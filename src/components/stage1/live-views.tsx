@@ -669,6 +669,12 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
                       {marketLabel(position.marketType).toLowerCase()}
                     </p>
                   ) : null}
+                  {position.settlement?.playerCorrectionReason ? (
+                    <p className="text-corrected mt-2 text-sm">
+                      Player result corrected:{" "}
+                      {position.settlement.playerCorrectionReason}
+                    </p>
+                  ) : null}
                   {!position.settlement ? (
                     <div className="mt-3">
                       <PickReturn
@@ -1395,7 +1401,7 @@ export function Stage1EventView({
             <div className="flex justify-between gap-4">
               <div>
                 <p className="text-muted text-xs">
-                  {market.marketType} ·{" "}
+                  {marketLabel(market.marketType)} ·{" "}
                   {market.qualityStatus === "HEALTHY"
                     ? "Available"
                     : "Unavailable"}
@@ -1437,7 +1443,9 @@ export function Stage1ReceiptView({
   const event = state.slate.find(
     (candidate) => candidate.id === receipt.eventId,
   );
-  const corrected = event?.state === "CORRECTED";
+  const playerCorrectionReason = receipt.settlement?.playerCorrectionReason;
+  const corrected =
+    event?.state === "CORRECTED" || Boolean(playerCorrectionReason);
   const result = receipt.settlement
     ? { WIN: "Won", LOSS: "Lost", PUSH: "Push", VOID: "Void" }[
         receipt.settlement.outcome
@@ -1572,8 +1580,11 @@ export function Stage1ReceiptView({
               Official correction applied
             </p>
             <p className="text-graphite mt-1 leading-6">
-              The official event result was corrected. The accepted pick, line,
-              odds, stake, and immutable receipt remain unchanged.
+              {playerCorrectionReason
+                ? `Player result corrected: ${playerCorrectionReason}`
+                : "The official event result was corrected."}{" "}
+              The accepted pick, line, odds, stake, and immutable receipt remain
+              unchanged.
             </p>
           </div>
         ) : null}

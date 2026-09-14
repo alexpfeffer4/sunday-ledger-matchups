@@ -695,3 +695,137 @@ begin
       null;
     elsif not coalesce(v_previous.ruleset_version='1.2'$new$);
 end; $migration$;
+-- Prepare and review future1.4 menus while their weeks are still PLANNED and
+-- retain their original1.3 binding. Opening is the only prospective rules pin.
+create function private.player_props_target_week(p_season_id uuid,p_nfl_week integer) returns boolean
+language sql stable security invoker set search_path='' as $$
+ select coalesce((select p.rules_enabled and p.season_id=s.id and p_nfl_week>=p.first_enabled_week
+ from private.seasons s join private.player_prop_leagues p on p.league_id=s.league_id where s.id=p_season_id),false);
+$$;
+create function private.player_props_menu_eligible(p_week_id uuid) returns boolean
+language sql stable security invoker set search_path='' as $$
+ select private.is_player_props_week(p_week_id) or coalesce((select w.state='PLANNED'
+ and private.player_props_target_week(w.season_id,w.nfl_week) from private.season_weeks w where w.id=p_week_id),false);
+$$;
+create function private.player_props_menu_reviewed(p_week_id uuid) returns boolean
+language sql stable security invoker set search_path='' as $$
+ select private.player_props_menu_eligible(p_week_id) and
+ exists(select 1 from private.slate_items i where i.week_id=p_week_id and private.is_effective_slate_item(i.id))
+ and (select count(*) from private.week_player_menu where week_id=p_week_id)=6*(select count(distinct event_id)
+ from private.slate_items i where i.week_id=p_week_id and private.is_effective_slate_item(i.id))
+ and not exists(select 1 from private.week_player_menu where week_id=p_week_id and confirmed_at is null);
+$$;
+revoke all on function private.player_props_target_week(uuid,integer),private.player_props_menu_eligible(uuid),private.player_props_menu_reviewed(uuid)
+ from public,anon,authenticated;
+do $migration$
+declare d text; f text;
+begin
+ foreach f in array array['private.prepare_player_menu(uuid)','private.guard_player_menu()','api.confirm_player_prop_menu(text,jsonb)'] loop
+ d:=pg_get_functiondef(f::regprocedure);
+ if strpos(d,'private.is_player_props_week(')=0 then raise exception 'Props planned review baseline changed'; end if;
+ execute replace(d,'private.is_player_props_week(','private.player_props_menu_eligible(');
+ end loop;
+ -- Existing future publication retains all validated game/card/schedule work.
+ -- The props-targeted week stays PLANNED until its one complete menu review.
+ d:=pg_get_functiondef('api.publish_next_live_week_slate(uuid,uuid,text[],text)'::regprocedure);
+ if strpos(d,$old$v_week_id, v_season.id, p_league_id, v_next_week, 'REGULAR', 'OPEN',$old$)=0 then
+ raise exception 'Props regular publication baseline changed'; end if;
+ d:=replace(d,$old$v_week_id, v_season.id, p_league_id, v_next_week, 'REGULAR', 'OPEN',$old$,
+ $new$v_week_id, v_season.id, p_league_id, v_next_week, 'REGULAR',
+ case when private.player_props_target_week(v_season.id,v_next_week) then 'PLANNED' else 'OPEN' end,$new$);
+ d:=replace(d,'''weekState'', ''OPEN''','''weekState'', (select state from private.season_weeks where id=v_week_id)');
+ execute d;
+ d:=pg_get_functiondef('api.publish_postseason_week(uuid,uuid,text[],text)'::regprocedure);
+ if strpos(d,$old$'OPEN', v_published_at, v_common_lock_at$old$)=0 then raise exception 'Props postseason publication baseline changed'; end if;
+ execute replace(d,$old$'OPEN', v_published_at, v_common_lock_at$old$,
+ $new$case when private.player_props_target_week(v_season.id,v_next_week) then 'PLANNED' else 'OPEN' end, v_published_at, v_common_lock_at$new$);
+ foreach f in array array['api.publish_live_week_slate(uuid,uuid,text[],text)',
+ 'api.publish_next_live_week_slate(uuid,uuid,text[],text)','api.publish_postseason_week(uuid,uuid,text[],text)'] loop
+ d:=pg_get_functiondef(f::regprocedure);
+ if strpos(d,'  v_response := jsonb_build_object(')=0 then raise exception 'Props published menu preparation baseline changed'; end if;
+ execute replace(d,'  v_response := jsonb_build_object(',
+ '  perform private.prepare_player_menu(v_week_id);'||chr(10)||'  v_response := jsonb_build_object(');
+ end loop;
+ d:=pg_get_functiondef('api.get_player_prop_menu(text)'::regprocedure);
+ d:=replace(d,$old$'enabled',private.player_prop_offers_enabled(w.id)$old$,
+ $new$'enabled',(private.player_props_menu_eligible(w.id) and exists(select 1 from private.player_prop_controls c
+ join private.player_prop_leagues p on p.league_id=w.league_id where c.offers_enabled and p.enabled)),
+ 'weekState',w.state,'canOpen',(commissioner and w.state='PLANNED' and private.player_props_menu_reviewed(w.id))$new$);
+ execute d;
+end; $migration$;
+create function private.require_player_menu_review_before_open() returns trigger
+language plpgsql security invoker set search_path='' as $$
+begin
+ if new.state='OPEN' and (tg_op='INSERT' or old.state='PLANNED')
+ and private.player_props_target_week(new.season_id,new.nfl_week)
+ and not private.player_props_menu_reviewed(new.id) then
+ raise exception using errcode='55000',message='Review the player slate before opening this props-enabled week.';
+ end if;
+ return new;
+end; $$;
+revoke all on function private.require_player_menu_review_before_open() from public,anon,authenticated;
+create trigger require_player_menu_review_before_open before insert or update of state on private.season_weeks
+ for each row execute function private.require_player_menu_review_before_open();
+create function api.open_reviewed_player_prop_week(p_league_slug text,p_idempotency_key text) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare u uuid:=(select auth.uid()); l private.leagues%rowtype; s private.seasons%rowtype; w private.season_weeks%rowtype;
+ c private.command_receipts%rowtype; j jsonb; h text;
+begin
+ select * into strict l from private.leagues where slug=lower(p_league_slug);
+ if u is null or not private.is_league_commissioner(l.id) then raise exception using errcode='42501',message='Commissioner access required.'; end if;
+ if p_idempotency_key is null or char_length(p_idempotency_key) not between 8 and 120 then raise exception using errcode='22023',message='Invalid operation identity.'; end if;
+ perform pg_advisory_xact_lock(hashtextextended(u::text||':props-open:'||p_idempotency_key,0));
+ h:=encode(extensions.digest(lower(p_league_slug),'sha256'),'hex');
+ select * into c from private.command_receipts where actor_user_id=u and command_name='OPEN_REVIEWED_PLAYER_PROP_WEEK' and idempotency_key=p_idempotency_key;
+ if found then
+ if c.request_hash<>h then raise exception using errcode='22000',message='Idempotency key belongs to a different league.'; end if;
+ return c.response_json||jsonb_build_object('replayed',true);
+ end if;
+ select * into strict s from private.seasons where league_id=l.id order by created_at desc limit 1 for update;
+ select * into strict w from private.season_weeks where season_id=s.id order by nfl_week desc limit 1 for update;
+ if w.state<>'PLANNED' or not private.player_props_menu_reviewed(w.id) then
+ raise exception using errcode='55000',message='Confirm the full player slate before opening the week.'; end if;
+ if s.lifecycle='DRAFT' and w.nfl_week=1 then
+ perform api.lock_live_roster_and_open_week(l.id,'props-roster:'||substr(p_idempotency_key,1,100));
+ else
+ if s.lifecycle not in('REGULAR','PLAYOFFS','CHAMPION_FINAL','WEEK_18_EXHIBITION') then
+ raise exception using errcode='55000',message='The season cannot open another week.'; end if;
+ if private.card_confirmation_time(s.id)>=private.week_entry_closes_at(w.id) then
+ raise exception using errcode='55000',message='The published entry window has closed.'; end if;
+ update private.season_weeks set state='OPEN',opens_at=least(private.card_confirmation_time(s.id),common_lock_at-interval '1 microsecond') where id=w.id;
+ end if;
+ j:=jsonb_build_object('weekId',w.id,'state','OPEN','rulesetVersion','1.4','replayed',false);
+ insert into private.command_receipts(league_id,actor_user_id,command_name,idempotency_key,request_hash,response_json)
+ values(l.id,u,'OPEN_REVIEWED_PLAYER_PROP_WEEK',p_idempotency_key,h,j);
+ return j;
+end; $$;
+revoke all on function api.open_reviewed_player_prop_week(text,text) from public,anon;
+grant execute on function api.open_reviewed_player_prop_week(text,text) to authenticated;
+-- Offer disable must preserve normal future week operation. The commissioner
+-- can still review supported menus; the member offer flag remains separate.
+do $migration$
+declare d text; old text;
+begin
+ d:=pg_get_functiondef('api.get_player_prop_menu(text)'::regprocedure);
+ old:=$old$'enabled',(private.player_props_menu_eligible(w.id) and exists(select 1 from private.player_prop_controls c
+ join private.player_prop_leagues p on p.league_id=w.league_id where c.offers_enabled and p.enabled))$old$;
+ if strpos(d,old)=0 then raise exception 'Props menu capability reader baseline changed'; end if;
+ execute replace(d,old,$new$'enabled',private.player_props_menu_eligible(w.id),'offersEnabled',private.player_prop_offers_enabled(w.id)$new$);
+ d:=pg_get_functiondef('private.accept_authoritative_card_for_actor(uuid,text,jsonb,text)'::regprocedure);
+ old:='    select coalesce(sum(receipt.stake_credits), 0), count(*)';
+ if strpos(d,old)=0 then raise exception 'Props acceptance menu readiness baseline changed'; end if;
+ execute replace(d,old,$new$    if private.is_player_props_week(v_week.id) and not private.player_props_menu_reviewed(v_week.id) then
+      raise exception using errcode='55000',message='The commissioner must review the player slate before bets open.';
+    end if;
+    select coalesce(sum(receipt.stake_credits), 0), count(*)$new$);
+ d:=pg_get_functiondef('api.prepare_simulation_card_quotes(text)'::regprocedure);
+ old:=$old$and q.observed_at<n-interval '60 seconds'$old$;
+ if strpos(d,old)=0 then raise exception 'Props Simulation safe-disable baseline changed'; end if;
+ execute replace(d,old,old||$new$
+     and (q.subject_id is null or private.prop_snapshot_allowed(q.event_id,q.subject_id,q.statistic,q.period))$new$);
+ d:=pg_get_functiondef('api.open_reviewed_player_prop_week(text,text)'::regprocedure);
+ old:=$old$if private.card_confirmation_time(s.id)>=private.week_entry_closes_at(w.id) then$old$;
+ d:=replace(d,old,$new$if private.card_confirmation_time(s.id)>=w.common_lock_at then$new$);
+ d:=replace(d,'opens_at=least(private.card_confirmation_time(s.id),common_lock_at-interval ''1 microsecond'')','opens_at=private.card_confirmation_time(s.id)');
+ execute d;
+end; $migration$;

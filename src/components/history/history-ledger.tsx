@@ -1,6 +1,9 @@
 import Link from "next/link";
 import type { SeasonMemoryProjection } from "@/domain/history/project-season-memory";
-import { matchupScopeLabel } from "@/domain/history/project-season-memory";
+import {
+  correctionResultChange,
+  matchupScopeLabel,
+} from "@/domain/history/project-season-memory";
 import { formatCenticredits } from "@/domain/odds/american";
 import { PageFrame } from "@/components/league/page-frame";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -131,9 +134,9 @@ export function HistoryLedger({
                       className="border-corrected/30 text-graphite border-t py-3 text-sm leading-6"
                       key={correction.id}
                     >
-                      {correction.eventLabel}: {correction.beforeEvent} →{" "}
-                      {correction.afterEvent}. {correction.actorName}:{" "}
-                      {correction.reason}
+                      {correction.eventLabel}:{" "}
+                      {correctionResultChange(correction)}{" "}
+                      {correction.actorName}: {correction.reason}
                     </p>
                   ))}
                 </details>

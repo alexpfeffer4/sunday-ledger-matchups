@@ -17,6 +17,7 @@ import {
   preparePlayerPropMenuAction,
   confirmPlayerPropMenuAction,
   refreshPlayerPropQuotesAction,
+  openPlayerPropWeekAction,
 } from "../player-prop-actions";
 
 export const metadata: Metadata = { title: "Commissioner" };
@@ -48,10 +49,9 @@ export default async function CommissionerPage({
     getOwnerRehearsalForLeague(leagueSlug),
   ]);
   if (live) {
-    const menu =
-      live.commissioner.isCommissioner && live.week?.propsEnabled
-        ? await getPlayerPropMenu(leagueSlug)
-        : null;
+    const menu = live.commissioner.isCommissioner
+      ? await getPlayerPropMenu(leagueSlug)
+      : null;
     const cardStatus =
       live.commissioner.isCommissioner &&
       !ownerRehearsal &&
@@ -73,6 +73,8 @@ export default async function CommissionerPage({
             prepareAction={preparePlayerPropMenuAction}
             confirmAction={confirmPlayerPropMenuAction}
             refreshAction={refreshPlayerPropQuotesAction}
+            canOpen={menu.canOpen ?? false}
+            openAction={openPlayerPropWeekAction.bind(null, menu.weekId ?? "")}
           />
         )}
         <Stage1CommissionerView

@@ -31,6 +31,17 @@ begin
  raise exception 'Prepared package differs from tested application'; end if;
  if exists(select 1 from private.authoritative_season_rulesets a where a.ruleset_version<>'1.3'
  or a.canonical_json is distinct from private.rolling_ruleset_package(a.mode)) then raise exception 'Unexpected global catalog'; end if;
+ if not exists(select 1 from private.odds_refresh_policy where enabled and daily_credit_limit=1000 and monthly_credit_limit=5000
+ and protected_core_daily_credits>=350 and protected_core_monthly_credits>=2000 and provider_entitlement_credits>=20000
+ and provider_cycle_verified_at>clock_timestamp()-interval '24 hours') then
+ raise exception 'Reviewed paid-plan budget and recent verified entitlement are required before offers'; end if;
+ if not exists(select 1 from private.player_result_policy where processing_enabled and api_sports_contract_validated and nflverse_contract_validated) then
+ raise exception 'Validated automatic player-result processing is required before offers'; end if;
+ if to_regprocedure('private.dispatch_player_result_checkpoints()') is null then raise exception 'Player result dispatcher is not installed'; end if;
+ if not exists(select 1 from cron.job where jobname='sunday-ledger-score-checkpoints' and schedule='*/5 * * * *' and active)
+ or strpos(pg_get_functiondef('private.dispatch_score_checkpoints()'::regprocedure),'perform private.dispatch_player_result_checkpoints();')=0 then
+ raise exception 'The verified five-minute score/player-result scheduler is required before offers'; end if;
+
  select coalesce(max(nfl_week),0)+1 into boundary from private.season_weeks where season_id=s.id and state<>'PLANNED';
  if boundary>18 then raise exception 'No eligible unopened week remains in this season'; end if;
  select coalesce(jsonb_agg(jsonb_build_array(w.id,w.ruleset_snapshot_id) order by w.id),'[]') into before_bindings

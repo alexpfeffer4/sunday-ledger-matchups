@@ -41,6 +41,8 @@ export type PositionLedgerItem = {
   statistic?: "PASSING_YARDS" | "RUSHING_YARDS" | "RECEIVING_YARDS" | null;
   period?: "FULL_GAME" | null;
   finalYards?: number | null;
+  playerEvidenceVersion?: number | null;
+  playerCorrectionReason?: string | null;
   proposition: string;
   americanOdds: number;
   stakeCredits: number;
@@ -366,6 +368,8 @@ export function projectPairedMatchup(
       statistic: position.statistic,
       period: position.period,
       finalYards: settlement?.finalYards ?? null,
+      playerEvidenceVersion: settlement?.playerEvidenceVersion ?? null,
+      playerCorrectionReason: settlement?.playerCorrectionReason ?? null,
       proposition: position.proposition,
       americanOdds: position.americanOdds,
       stakeCredits: position.stakeCredits,
@@ -376,7 +380,9 @@ export function projectPairedMatchup(
         : event.state === "LIVE"
           ? "IN_PROGRESS"
           : "REMAINING",
-      corrected: correctedEventIds.has(position.eventId),
+      corrected:
+        correctedEventIds.has(position.eventId) ||
+        Boolean(settlement?.playerCorrectionReason),
     };
   };
 

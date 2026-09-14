@@ -4,9 +4,46 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import type { AppActionState } from "@/application/actions/action-state";
+import { stableOperationKey } from "@/application/actions/stable-operation-key";
+import { getPlayerPropMenu } from "@/application/queries/get-player-prop-menu";
 import { refreshPlayerMenuQuotes } from "@/adapters/providers/the-odds-api/refresh-card-quotes";
 
 const slugSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+
+export async function openPlayerPropWeekAction(
+  expectedWeekId: string,
+  _: AppActionState,
+  form: FormData,
+): Promise<AppActionState> {
+  const slug = slugSchema.safeParse(form.get("leagueSlug"));
+  if (!slug.success || !z.uuid().safeParse(expectedWeekId).success)
+    return failure("");
+  const menu = await getPlayerPropMenu(slug.data);
+  if (!menu || menu.weekId !== expectedWeekId)
+    return {
+      status: "error",
+      message:
+        "The current week changed. Refresh the commissioner page before opening a week.",
+    };
+  const client = await createSupabaseServerClient();
+  const result = await client
+    .schema("api")
+    .rpc("open_reviewed_player_prop_week", {
+      p_league_slug: slug.data,
+      p_idempotency_key: stableOperationKey({
+        command: "OPEN_REVIEWED_PLAYER_PROP_WEEK",
+        leagueSlug: slug.data,
+        weekId: expectedWeekId,
+      }),
+    });
+  if (result.error) return failure(result.error.message);
+  revalidatePath(`/l/${slug.data}`, "layout");
+  return {
+    status: "success",
+    message:
+      "The reviewed week is open. Members can submit bets on the published slate.",
+  };
+}
 const choicesSchema = z
   .array(
     z.object({
@@ -62,12 +99,10 @@ export async function confirmPlayerPropMenuAction(
   if (!slug.success || !choices.success || form.get("confirmed") !== "true")
     return failure("");
   const client = await createSupabaseServerClient();
-  const result = await client
-    .schema("api")
-    .rpc("confirm_player_prop_menu", {
-      p_league_slug: slug.data,
-      p_choices: choices.data,
-    });
+  const result = await client.schema("api").rpc("confirm_player_prop_menu", {
+    p_league_slug: slug.data,
+    p_choices: choices.data,
+  });
   if (result.error) return failure(result.error.message);
   revalidatePath(`/l/${slug.data}/commissioner`);
   revalidatePath(`/l/${slug.data}/slate`);

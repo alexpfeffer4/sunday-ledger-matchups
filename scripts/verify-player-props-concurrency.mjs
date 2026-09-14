@@ -110,8 +110,8 @@ async function fixture(scenario) {
   );
   const context = json(
     successful(
-      await sql(`select jsonb_build_object('slug',l.slug,'league',l.id,'owner',${quote(users[0])},'season',w.season_id,'week',w.id,'card',c.id)
-    from private.leagues l join private.season_weeks w on w.league_id=l.id join private.weekly_cards c on c.week_id=w.id and c.owner_user_id=${quote(users[0])}::uuid where l.slug=${quote(slug)};`),
+      await sql(`select jsonb_build_object('slug',l.slug,'league',l.id,'owner',${quote(users[0])},'season',w.season_id,'week',w.id)
+    from private.leagues l join private.season_weeks w on w.league_id=l.id where l.slug=${quote(slug)};`),
       "Read native fixture context",
     ),
   );
@@ -123,10 +123,18 @@ async function fixture(scenario) {
    'roleRank',0,'roleEvidence','Deterministic native concurrency fixture role','resultPathVerified',true)))
    from private.sports_events e cross join lateral(values(e.away_team,'away'),(e.home_team,'home')) t(team,side)
    cross join(values('QB'),('RB'),('WR')) p(position) where e.week_id=${quote(context.week)}::uuid;
-   ${member(users[0], `select api.prepare_player_prop_menu(${quote(slug)}); select api.confirm_player_prop_menu(${quote(slug)},api.get_player_prop_menu(${quote(slug)})->'slots')`)}
+   ${member(users[0], `select api.prepare_player_prop_menu(${quote(slug)}); select api.confirm_player_prop_menu(${quote(slug)},api.get_player_prop_menu(${quote(slug)})->'slots'); select api.open_reviewed_player_prop_week(${quote(slug)},'native-reviewed-open-'||${quote(slug)})`)}
    ${playerPropsQuoteSql({ weekId: context.week })}`),
     "Prepare canonical menu and fixture observations",
   );
+  context.card = json(
+    successful(
+      await sql(
+        `select jsonb_build_object('card',id) from private.weekly_cards where week_id=${quote(context.week)}::uuid and owner_user_id=${quote(context.owner)}::uuid;`,
+      ),
+      "Read opened owner card",
+    ),
+  ).card;
   return { ...context, ...(await markets(context)) };
 }
 async function markets(context) {

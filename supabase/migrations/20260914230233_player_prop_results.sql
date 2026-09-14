@@ -41,12 +41,13 @@ create table private.player_result_observations (
  value integer check(value between -1000 and 2000), complete boolean not null,
  participation text not null check(participation in('UNKNOWN','OFFENSE','NO_OFFENSE')),
  participation_complete boolean not null,
- source_updated_at timestamptz,fetched_at timestamptz not null,
+ source_updated_at timestamptz,participation_source_updated_at timestamptz,fetched_at timestamptz not null,
  content_hash text not null check(content_hash ~ '^[0-9a-f]{64}$'),
  created_at timestamptz not null default clock_timestamp(),
  check(not complete or value is not null),
  check(participation_complete=(participation<>'UNKNOWN')),
  check(source_updated_at<=fetched_at),
+ check(participation_source_updated_at<=fetched_at),
  unique(provider,external_event_id,subject_id,statistic,period,content_hash)
 );
 create index player_result_observations_latest on private.player_result_observations(external_event_id,subject_id,statistic,provider,source_updated_at desc);
@@ -165,7 +166,7 @@ begin
 end;
 $rebuild$;
 
-create function private.publish_player_evidence(p_event_id uuid,p_subject_id uuid,p_statistic text,p_stat_id uuid,p_part_id uuid,p_reason text)
+create function private.publish_player_evidence(p_event_id uuid,p_subject_id uuid,p_statistic text,p_stat_id uuid,p_part_id uuid,p_reason text,p_protected_week17 boolean default false)
 returns uuid language plpgsql security definer set search_path='' as $$
 declare e private.sports_events%rowtype;w private.season_weeks%rowtype;t private.event_result_versions%rowtype;s private.player_result_observations%rowtype;p private.player_result_observations%rowtype;b private.player_evidence_bundles%rowtype;new_id uuid;
 begin
@@ -179,19 +180,27 @@ begin
  if p_stat_id is not null then select * into strict s from private.player_result_observations where id=p_stat_id and external_event_id=e.fixture_event_key and subject_id=p_subject_id and statistic=p_statistic and period='FULL_GAME' and complete;end if;
  if p.participation='OFFENSE' and s.id is null then return null;end if;
  select * into b from private.player_evidence_bundles where event_id=e.id and subject_id=p_subject_id and statistic=p_statistic and period='FULL_GAME' order by version desc limit 1;
- if b.id is not null and b.value is not distinct from s.value and b.participation=p.participation then return b.id;end if;
+ if b.id is not null and b.value is not distinct from (case when p.participation='OFFENSE' then s.value else null end) and b.participation=p.participation then return b.id;end if;
  if (w.state not in('LOCKED','PROVISIONAL','FINAL') and not(w.state='OPEN' and private.is_rolling_week(w.id))) or (w.state='FINAL' and w.finalization_mode<>'AFTER_RESULTS') or (w.state in('PROVISIONAL','FINAL') and (w.correction_window_closes_at is null or private.stage1_season_time(e.season_id)>=w.correction_window_closes_at)) then
-  raise exception using errcode='55000',message='The correction window is closed; player evidence requires protected-result review.';
+  if not (p_protected_week17 and w.nfl_week=17 and w.state='FINAL' and exists(select 1 from private.seasons season where season.id=e.season_id and season.lifecycle in('CHAMPION_FINAL','WEEK_18_EXHIBITION','FINAL')) and exists(select 1 from private.playoff_publications pub where pub.season_id=e.season_id and pub.publication_stage='CHAMPION_FINAL')) then
+   raise exception using errcode='55000',message='The correction window is closed; player evidence requires protected-result review.';
+  end if;
  end if;
  insert into private.player_evidence_bundles(event_id,subject_id,statistic,period,version,result_version_id,statistic_observation_id,participation_observation_id,value,participation,policy_version,supersedes_id,reason)
- values(e.id,p_subject_id,p_statistic,'FULL_GAME',coalesce(b.version,0)+1,t.id,s.id,p.id,s.value,p.participation,'LEDGER_OFFENSIVE_PARTICIPATION_V1',b.id,p_reason) returning id into new_id;
+ values(e.id,p_subject_id,p_statistic,'FULL_GAME',coalesce(b.version,0)+1,t.id,s.id,p.id,case when p.participation='OFFENSE' then s.value else null end,p.participation,'LEDGER_OFFENSIVE_PARTICIPATION_V1',b.id,p_reason) returning id into new_id;
  perform private.recompute_stage1_week(w.id,t.id);
+ if b.id is not null and not p_protected_week17 then
+  insert into private.corrections(league_id,week_id,event_id,original_result_version_id,corrected_result_version_id,reason,actor_user_id,before_summary,after_summary,original_player_evidence_bundle_id,corrected_player_evidence_bundle_id)
+  values(e.league_id,w.id,e.id,t.id,t.id,p_reason,coalesce(auth.uid(),(select user_id from private.league_memberships where league_id=e.league_id and role='COMMISSIONER' order by user_id limit 1)),
+   jsonb_build_object('playerEvidenceBundleId',b.id,'playerValue',b.value,'playerParticipation',b.participation),
+   jsonb_build_object('playerEvidenceBundleId',new_id,'playerValue',case when p.participation='OFFENSE' then s.value else null end,'playerParticipation',p.participation),b.id,new_id);
+ end if;
  return new_id;
 end; $$;
 
 create function private.reconcile_player_event(p_event_id uuid)
 returns void language plpgsql security definer set search_path='' as $$
-declare e private.sports_events%rowtype;r record;s private.player_result_observations%rowtype;a private.player_result_observations%rowtype;n private.player_result_observations%rowtype;p private.player_result_observations%rowtype;b private.player_evidence_bundles%rowtype;previous_stat private.player_result_observations%rowtype;h text;reason text;
+declare e private.sports_events%rowtype;r record;s private.player_result_observations%rowtype;a private.player_result_observations%rowtype;n private.player_result_observations%rowtype;p private.player_result_observations%rowtype;b private.player_evidence_bundles%rowtype;previous_stat private.player_result_observations%rowtype;previous_part private.player_result_observations%rowtype;h text;reason text;
 begin
  select * into strict e from private.sports_events where id=p_event_id;
  perform 1 from private.seasons where id=e.season_id for update;
@@ -201,7 +210,7 @@ begin
   select * into a from private.player_result_observations where external_event_id=e.fixture_event_key and subject_id=r.subject_id and statistic=r.statistic and complete and provider='API_SPORTS' order by coalesce(source_updated_at,fetched_at) desc,created_at desc,id desc limit 1;
   select * into n from private.player_result_observations where external_event_id=e.fixture_event_key and subject_id=r.subject_id and statistic=r.statistic and complete and provider='NFLVERSE' order by coalesce(source_updated_at,fetched_at) desc,created_at desc,id desc limit 1;
   if a.id is not null then s:=a;else s:=n;end if;
-  select * into p from private.player_result_observations where external_event_id=e.fixture_event_key and subject_id=r.subject_id and statistic=r.statistic and participation_complete order by (provider='NFLVERSE') desc,coalesce(source_updated_at,fetched_at) desc,created_at desc,id desc limit 1;
+  select * into p from private.player_result_observations where external_event_id=e.fixture_event_key and subject_id=r.subject_id and statistic=r.statistic and participation_complete order by (provider='NFLVERSE') desc,coalesce(participation_source_updated_at,source_updated_at,fetched_at) desc,created_at desc,id desc limit 1;
   if p.id is null or (s.id is null and p.participation<>'NO_OFFENSE') then continue;end if;
   reason:=null;
   if a.id is not null and n.id is not null and a.value<>n.value then reason:='SOURCE_STATISTIC_DISAGREEMENT';
@@ -215,8 +224,16 @@ begin
     reason:='SOURCE_REVISION_ORDER_UNVERIFIED';
    end if;
   end if;
+  if b.participation_observation_id is not null and p.participation is distinct from b.participation then
+   select * into previous_part from private.player_result_observations where id=b.participation_observation_id;
+   if coalesce(p.participation_source_updated_at,p.source_updated_at) is null
+    or coalesce(previous_part.participation_source_updated_at,previous_part.source_updated_at) is null
+    or coalesce(p.participation_source_updated_at,p.source_updated_at)<=coalesce(previous_part.participation_source_updated_at,previous_part.source_updated_at) then
+    reason:='SOURCE_REVISION_ORDER_UNVERIFIED';
+   end if;
+  end if;
   if reason is null then
-   begin perform private.publish_player_evidence(e.id,r.subject_id,r.statistic,s.id,p.id,'Automatic player evidence reconciliation.');
+   begin perform private.publish_player_evidence(e.id,r.subject_id,r.statistic,s.id,p.id,'Official player statistics or participation were updated.');
    exception when sqlstate '55000' then reason:='PROTECTED_RESULT_REVIEW_REQUIRED';end;
   end if;
   if reason is not null then
@@ -237,7 +254,9 @@ begin
  perform 1 from private.seasons where id=e.season_id for update;
  perform 1 from private.season_weeks where id=e.week_id for update;
  select * into d from private.player_result_decisions where candidate_id=c.id;
- if d.id is not null then return jsonb_build_object('evidenceBundleId',d.evidence_bundle_id,'replayed',true);end if;
+ if d.id is not null then
+  if d.reason<>btrim(p_reason) or not exists(select 1 from private.player_evidence_bundles eb where eb.id=d.evidence_bundle_id and eb.statistic_observation_id is not distinct from p_statistic_observation_id and eb.participation_observation_id=p_participation_observation_id) then raise exception using errcode='22000',message='Candidate was already resolved with different evidence.';end if;
+  return jsonb_build_object('evidenceBundleId',d.evidence_bundle_id,'replayed',true);end if;
  b:=private.publish_player_evidence(e.id,c.subject_id,c.statistic,p_statistic_observation_id,p_participation_observation_id,btrim(p_reason));
  if b is null then raise exception using errcode='55000',message='Complete player evidence and a final game are required.';end if;
  insert into private.player_result_decisions(candidate_id,actor_user_id,reason,evidence_bundle_id) values(c.id,auth.uid(),btrim(p_reason),b);
@@ -255,8 +274,8 @@ begin
   if provider_name not in('API_SPORTS','NFLVERSE') or o->>'sourceEventId'<>(case provider_name when 'API_SPORTS' then m.api_sports_event_id else m.nflverse_event_id end) or (o->>'gameDate')::date<>m.game_date or o->>'team' not in(m.away_team,m.home_team) or (o->>'fetchedAt')::timestamptz>clock_timestamp()+interval '1 minute' then raise exception using errcode='22023',message='Unverified player result event identity.';end if;
   if not exists(select 1 from private.player_provider_mappings p where p.provider=provider_name and p.external_event_id=m.external_event_id and p.external_player_id=o->>'externalPlayerId' and p.subject_id=(o->>'subjectId')::uuid and p.team=o->>'team' and p.game_date=m.game_date and p.result_path_verified) then raise exception using errcode='22023',message='Unverified player result mapping.';end if;
   h:=encode(extensions.digest((o-'fetchedAt'-'contentHash')::text,'sha256'),'hex');
-  insert into private.player_result_observations(provider,external_event_id,source_event_id,external_player_id,subject_id,team,game_date,statistic,period,value,complete,participation,participation_complete,source_updated_at,fetched_at,content_hash)
-  values(provider_name,m.external_event_id,o->>'sourceEventId',o->>'externalPlayerId',(o->>'subjectId')::uuid,o->>'team',m.game_date,o->>'statistic',o->>'period',(o->>'value')::integer,(o->>'complete')::boolean,o->>'participation',(o->>'participationComplete')::boolean,(o->>'sourceUpdatedAt')::timestamptz,(o->>'fetchedAt')::timestamptz,h) on conflict do nothing;
+  insert into private.player_result_observations(provider,external_event_id,source_event_id,external_player_id,subject_id,team,game_date,statistic,period,value,complete,participation,participation_complete,source_updated_at,participation_source_updated_at,fetched_at,content_hash)
+  values(provider_name,m.external_event_id,o->>'sourceEventId',o->>'externalPlayerId',(o->>'subjectId')::uuid,o->>'team',m.game_date,o->>'statistic',o->>'period',(o->>'value')::integer,(o->>'complete')::boolean,o->>'participation',(o->>'participationComplete')::boolean,(o->>'sourceUpdatedAt')::timestamptz,coalesce((o->>'participationSourceUpdatedAt')::timestamptz,(o->>'sourceUpdatedAt')::timestamptz),(o->>'fetchedAt')::timestamptz,h) on conflict do nothing;
   if found then count_imported:=count_imported+1;end if;
  end loop;
  for e in select distinct ev.id,ev.season_id,ev.week_id from private.sports_events ev join private.seasons s on s.id=ev.season_id where ev.fixture_event_key in(select value->>'externalEventId' from jsonb_array_elements(p_observations)) and s.mode='LIVE' and exists(select 1 from private.position_receipts r where r.event_id=ev.id and r.subject_id is not null) order by ev.season_id,ev.week_id,ev.id loop
@@ -266,6 +285,7 @@ begin
 end; $$;
 
 alter table private.player_result_jobs add column next_reconcile_at timestamptz;
+alter table private.player_result_jobs add column reconcile_attempts integer not null default 0 check(reconcile_attempts between 0 and 7);
 alter table private.player_result_jobs add column reconcile_lease_id uuid;
 alter table private.player_result_jobs add column reconcile_lease_until timestamptz;
 
@@ -376,8 +396,8 @@ begin
  select * into strict p from private.player_result_policy where singleton for update;
  if not p.processing_enabled or not p.nflverse_contract_validated then return jsonb_build_object('status','DISABLED','jobs',items);end if;
  perform private.enqueue_player_result_jobs();
- for j in select * from private.player_result_jobs where next_reconcile_at<=clock_timestamp() and (final_observed_at>clock_timestamp()-interval '25 hours' or state<>'COMPLETE') and (reconcile_lease_until is null or reconcile_lease_until<=clock_timestamp()) order by final_observed_at,external_event_id limit 16 for update skip locked loop
-  update private.player_result_jobs set reconcile_lease_id=lease,reconcile_lease_until=clock_timestamp()+interval '90 seconds' where external_event_id=j.external_event_id;
+ for j in select * from private.player_result_jobs where next_reconcile_at<=clock_timestamp() and reconcile_attempts<7 and final_observed_at>clock_timestamp()-interval '49 hours' and (reconcile_lease_until is null or reconcile_lease_until<=clock_timestamp()) order by final_observed_at,external_event_id limit 16 for update skip locked loop
+  update private.player_result_jobs set reconcile_attempts=reconcile_attempts+1,reconcile_lease_id=lease,reconcile_lease_until=clock_timestamp()+interval '90 seconds' where external_event_id=j.external_event_id;
   items:=items||jsonb_build_array(jsonb_build_object('leaseId',lease,'context',private.player_result_event_context(j.external_event_id,'NFLVERSE')));
  end loop;
  return jsonb_build_object('status',case when jsonb_array_length(items)=0 then 'IDLE' else 'CLAIMED' end,'jobs',items);
@@ -394,8 +414,9 @@ begin
  end if;
  for j in select * from private.player_result_jobs where reconcile_lease_id=p_lease_id for update loop
   update private.player_result_jobs set reconcile_lease_id=null,reconcile_lease_until=null,
-   next_reconcile_at=now_at+case when state='COMPLETE' then interval '2 hours' else interval '1 hour' end,
-   state=case when not exists(select 1 from private.position_receipts r join private.sports_events e on e.id=r.event_id where e.fixture_event_key=j.external_event_id and r.subject_id is not null and not exists(select 1 from private.settlement_versions sv where sv.receipt_id=r.id)) then 'COMPLETE' else state end
+   next_reconcile_at=(select min(j.final_observed_at+make_interval(mins=>m)) from unnest(array[60,120,360,720,1440,2880])m where j.final_observed_at+make_interval(mins=>m)>now_at),
+   incident_code=case when j.reconcile_attempts>=7 then 'PLAYER_EVIDENCE_REQUIRES_VERIFIED_SOURCE' else incident_code end,
+   state=case when not exists(select 1 from private.position_receipts r join private.sports_events e on e.id=r.event_id where e.fixture_event_key=j.external_event_id and r.subject_id is not null and not exists(select 1 from private.settlement_versions sv where sv.receipt_id=r.id)) then 'COMPLETE' when j.reconcile_attempts>=7 then 'INCIDENT' else state end
   where external_event_id=j.external_event_id;
  end loop;
  return jsonb_build_object('status','RECORDED');
@@ -432,7 +453,7 @@ begin
   anchor:='''returnedCenticredits'', settlement.returned_centicredits';
   if strpos(d,anchor)=0 then anchor:='''returnedCenticredits'',settlement.returned_centicredits';end if;
   if strpos(d,anchor)=0 then raise exception 'Player final-yard reader anchor changed: %',signature;end if;
-  d:=replace(d,anchor,anchor||',''finalYards'',(select b.value from private.player_evidence_bundles b where b.id=settlement.player_evidence_bundle_id)');
+  d:=replace(d,anchor,anchor||',''playerEvidenceVersion'',(select b.version from private.player_evidence_bundles b where b.id=settlement.player_evidence_bundle_id),''playerCorrectionReason'',(select b.reason from private.player_evidence_bundles b where b.id=settlement.player_evidence_bundle_id and b.version>1),''finalYards'',(select b.value from private.player_evidence_bundles b where b.id=settlement.player_evidence_bundle_id)');
   execute d;
  end loop;
 end;
@@ -456,3 +477,125 @@ begin
  execute d;
 end;
 $finish_detection$;
+
+-- Existing stored archives remain immutable. New archives retain prop identity.
+do $archive_props$
+declare d text;anchor text;
+begin
+ d:=pg_get_functiondef('private.live_archive_card(uuid)'::regprocedure);
+ anchor:='''marketType'', receipt.market_type';
+ if strpos(d,anchor)=0 then raise exception 'Player archive identity anchor changed';end if;
+ d:=replace(d,anchor,anchor||',''subjectId'',receipt.subject_id,''subjectLabel'',receipt.subject_label,''subjectTeam'',receipt.subject_team,''subjectPosition'',receipt.subject_position,''statistic'',receipt.statistic,''period'',receipt.period,''serializationVersion'',receipt.receipt_serialization_version');
+ anchor:='''returnedCenticredits'', settlement.returned_centicredits';
+ if strpos(d,anchor)=0 then raise exception 'Player archive result anchor changed';end if;
+ d:=replace(d,anchor,anchor||',''playerEvidenceVersion'',(select b.version from private.player_evidence_bundles b where b.id=settlement.player_evidence_bundle_id),''playerCorrectionReason'',(select b.reason from private.player_evidence_bundles b where b.id=settlement.player_evidence_bundle_id and b.version>1),''finalYards'',(select b.value from private.player_evidence_bundles b where b.id=settlement.player_evidence_bundle_id)');
+ execute d;
+end;
+$archive_props$;
+
+-- Player revisions participate in the existing objective correction lineage.
+-- Team-result references may remain identical: no fictitious score revision.
+alter table private.corrections add column original_player_evidence_bundle_id uuid references private.player_evidence_bundles(id);
+alter table private.corrections add column corrected_player_evidence_bundle_id uuid references private.player_evidence_bundles(id);
+create function api.resolve_finalized_week17_player_candidate(p_candidate_id uuid,p_statistic_observation_id uuid,p_participation_observation_id uuid,p_reason text)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare c private.player_result_candidates%rowtype;e private.sports_events%rowtype;w private.season_weeks%rowtype;s private.seasons%rowtype;d private.player_result_decisions%rowtype;b uuid;previous_b uuid;team_result uuid;correction uuid:=gen_random_uuid();previous_champion private.playoff_publications%rowtype;new_champion private.playoff_publications%rowtype;round18 private.playoff_round_publications%rowtype;archive private.season_archive_versions%rowtype;
+begin
+ select * into strict c from private.player_result_candidates where id=p_candidate_id;
+ select * into strict e from private.sports_events where id=c.event_id;
+ if auth.uid() is null or not private.is_league_commissioner(e.league_id) then raise exception using errcode='42501',message='Commissioner membership required.';end if;
+ if char_length(btrim(p_reason)) not between 10 and 500 then raise exception using errcode='22023',message='An objective verified-evidence correction reason is required.';end if;
+ select * into strict s from private.seasons where id=e.season_id for update;
+ select * into strict w from private.season_weeks where id=e.week_id for update;
+ perform 1 from private.sports_events where id=e.id for update;
+ select * into d from private.player_result_decisions where candidate_id=c.id;
+ if d.id is not null then
+  if d.reason<>btrim(p_reason) or not exists(select 1 from private.player_evidence_bundles eb where eb.id=d.evidence_bundle_id and eb.statistic_observation_id is not distinct from p_statistic_observation_id and eb.participation_observation_id=p_participation_observation_id) then raise exception using errcode='22000',message='Candidate was already resolved with different evidence.';end if;
+  return jsonb_build_object('evidenceBundleId',d.evidence_bundle_id,'replayed',true);
+ end if;
+ if w.nfl_week<>17 or w.state<>'FINAL' or s.lifecycle not in('CHAMPION_FINAL','WEEK_18_EXHIBITION','FINAL') then raise exception using errcode='55000',message='This correction authority is limited to finalized Week 17.';end if;
+ select * into strict previous_champion from private.playoff_publications pub where pub.season_id=s.id and pub.publication_stage='CHAMPION_FINAL' and not exists(select 1 from private.playoff_publications successor where successor.supersedes_id=pub.id);
+ select id into strict team_result from private.event_result_versions where event_id=e.id order by version desc limit 1;
+ select id into previous_b from private.player_evidence_bundles where event_id=e.id and subject_id=c.subject_id and statistic=c.statistic order by version desc limit 1;
+ b:=private.publish_player_evidence(e.id,c.subject_id,c.statistic,p_statistic_observation_id,p_participation_observation_id,btrim(p_reason),true);
+ if b is null or b=previous_b then raise exception using errcode='22023',message='A protected correction must change complete objective player evidence.';end if;
+ perform private.finalize_late_week_versions(w.id);
+ insert into private.corrections(id,league_id,week_id,event_id,original_result_version_id,corrected_result_version_id,reason,actor_user_id,before_summary,after_summary,original_player_evidence_bundle_id,corrected_player_evidence_bundle_id)
+ values(correction,e.league_id,w.id,e.id,team_result,team_result,btrim(p_reason),auth.uid(),jsonb_build_object('eventResultVersionId',team_result,'playerEvidenceBundleId',previous_b,'championPublicationId',previous_champion.id,'championEntryId',previous_champion.champion_entry_id),jsonb_build_object('eventResultVersionId',team_result,'playerEvidenceBundleId',b,'weekState','FINAL'),previous_b,b);
+ new_champion:=private.append_phase8b_champion_publication(s.id,auth.uid(),correction);
+ if exists(select 1 from private.playoff_round_publications r where r.season_id=s.id and r.nfl_week=18 and not exists(select 1 from private.playoff_round_publications next where next.supersedes_id=r.id)) then
+  round18:=private.rebuild_week18_round_after_correction(s.id,new_champion.id,auth.uid());
+ end if;
+ if s.lifecycle='FINAL' then archive:=private.append_phase8b_archive(s.id,auth.uid(),correction);end if;
+ perform private.assert_phase8_terminal_lineage(s.id);
+ insert into private.player_result_decisions(candidate_id,actor_user_id,reason,evidence_bundle_id) values(c.id,auth.uid(),btrim(p_reason),b);
+ return jsonb_build_object('evidenceBundleId',b,'correctionId',correction,'championPublicationId',new_champion.id,'previousChampionEntryId',previous_champion.champion_entry_id,'championEntryId',new_champion.champion_entry_id,'week18RoundId',round18.id,'archiveId',archive.id,'replayed',false);
+end; $$;
+revoke all on function api.resolve_finalized_week17_player_candidate(uuid,uuid,uuid,text) from public,anon;
+grant execute on function api.resolve_finalized_week17_player_candidate(uuid,uuid,uuid,text) to authenticated;
+
+-- A quota-free /status probe confirms the active account after UTC rollover.
+-- Persist only quota facts, never the response's user/account/PII fields.
+alter table private.player_result_policy add column status_probe_id uuid;
+alter table private.player_result_policy add column status_probe_until timestamptz;
+create function api.claim_player_statistics_status()
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare p private.player_result_policy%rowtype;lease uuid:=gen_random_uuid();
+begin
+ perform private.roll_player_result_budget_day();
+ select * into strict p from private.player_result_policy where singleton for update;
+ if not p.processing_enabled or not p.api_sports_contract_validated then return jsonb_build_object('status','DISABLED');end if;
+ perform private.enqueue_player_result_jobs();
+ if not exists(select 1 from private.player_result_jobs where state in('WAITING','RUNNING') and attempts<5 and next_attempt_at<=clock_timestamp()) or p.provider_observed_at>=date_trunc('day',clock_timestamp() at time zone 'UTC') at time zone 'UTC' then return jsonb_build_object('status','IDLE');end if;
+ if p.status_probe_until>clock_timestamp() then return jsonb_build_object('status','BUSY');end if;
+ update private.player_result_policy set status_probe_id=lease,status_probe_until=clock_timestamp()+interval '1 minute' where singleton;
+ return jsonb_build_object('status','CLAIMED','leaseId',lease);
+end; $$;
+create function api.complete_player_statistics_status(p_lease_id uuid,p_active boolean,p_daily_limit integer,p_used integer,p_observed_at timestamptz)
+returns void language plpgsql security definer set search_path='' as $$
+declare p private.player_result_policy%rowtype;in_flight integer;
+begin
+ select * into strict p from private.player_result_policy where singleton for update;
+ if p.status_probe_id is distinct from p_lease_id or p.status_probe_until<=clock_timestamp() then raise exception using errcode='55000',message='Statistics status lease expired.';end if;
+ if p_observed_at>clock_timestamp() or p_observed_at<p.status_probe_until-interval '1 minute' or p_daily_limit<1 or p_used<0 then raise exception using errcode='22023',message='Statistics status observation invalid.';end if;
+ select count(*) into in_flight from private.player_result_requests where completed_at is null and reserved_at>=(date_trunc('day',clock_timestamp() at time zone 'UTC') at time zone 'UTC');
+ update private.player_result_policy set provider_remaining=greatest(0,least(100,p_daily_limit-p_used)-in_flight),provider_observed_at=p_observed_at,status_probe_id=null,status_probe_until=null,blocked_until=case when p_active then blocked_until else clock_timestamp()+interval '1 hour' end where singleton;
+end; $$;
+revoke all on function api.claim_player_statistics_status(),api.complete_player_statistics_status(uuid,boolean,integer,integer,timestamptz) from public,anon,authenticated;
+grant execute on function api.claim_player_statistics_status(),api.complete_player_statistics_status(uuid,boolean,integer,integer,timestamptz) to service_role;
+
+-- A player correction's impact starts at its own evidence revision, not at the
+-- possibly much earlier unchanged team-score observation.
+do $player_history$
+declare d text;anchor text;
+begin
+ d:=pg_get_functiondef('api.get_weekly_close_state(text)'::regprocedure);
+ anchor:='and affected.created_at >= corrected.created_at';
+ if strpos(d,anchor)=0 then raise exception 'Player correction effects anchor changed';end if;
+ d:=replace(d,anchor,'and affected.created_at >= coalesce((select b.created_at from private.player_evidence_bundles b where b.id=correction.corrected_player_evidence_bundle_id),corrected.created_at)');
+ anchor:='''reason'', correction.reason,';
+ if strpos(d,anchor)=0 then raise exception 'Player correction history anchor changed';end if;
+ d:=replace(d,anchor,anchor||$new$
+          'playerCorrection', (select jsonb_build_object('subjectLabel',subject.display_name,'statistic',after_player.statistic,
+           'beforeYards',before_player.value,'afterYards',after_player.value,
+           'beforeParticipation',before_player.participation,'afterParticipation',after_player.participation)
+           from private.player_evidence_bundles after_player
+           join private.player_subjects subject on subject.id=after_player.subject_id
+           left join private.player_evidence_bundles before_player on before_player.id=correction.original_player_evidence_bundle_id
+           where after_player.id=correction.corrected_player_evidence_bundle_id),$new$);
+ execute d;
+end;
+$player_history$;
+
+-- Stored complete evidence can arrive before the shared team-final observation.
+-- Resolve it when finality is first known, using the same event/week authority.
+do $player_results_after_final$
+declare d text;anchor text;
+begin
+ d:=pg_get_functiondef('private.record_stage1_result_as(uuid,uuid,text,integer,integer,text,text,text)'::regprocedure);
+ anchor:='  perform private.recompute_stage1_week(v_week.id, v_result_id);';
+ if strpos(d,anchor)=0 then raise exception 'Player team-final reconciliation anchor changed';end if;
+ d:=replace(d,anchor,'  perform private.reconcile_player_event(p_event_id);'||chr(10)||anchor);
+ execute d;
+end;
+$player_results_after_final$;

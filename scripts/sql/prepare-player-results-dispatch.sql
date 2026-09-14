@@ -10,7 +10,7 @@ begin
  perform private.enqueue_player_result_jobs();
  if not exists(select 1 from private.player_result_jobs where
   (state in('WAITING','RUNNING') and next_attempt_at<=clock_timestamp() and attempts<5 and (lease_until is null or lease_until<=clock_timestamp()))
-  or (next_reconcile_at<=clock_timestamp() and (final_observed_at>clock_timestamp()-interval '25 hours' or state<>'COMPLETE') and (reconcile_lease_until is null or reconcile_lease_until<=clock_timestamp()))) then return null;end if;
+  or (next_reconcile_at<=clock_timestamp() and reconcile_attempts<7 and final_observed_at>clock_timestamp()-interval '49 hours' and (reconcile_lease_until is null or reconcile_lease_until<=clock_timestamp()))) then return null;end if;
  select decrypted_secret into job_secret from vault.decrypted_secrets where name='score_job_secret';
  if coalesce(length(job_secret),0)<32 then raise exception 'Player result scheduler Vault configuration is missing or invalid';end if;
  select net.http_post(url:='https://www.ledgerleagues.com/api/operations/player-results',headers:=jsonb_build_object('Authorization','Bearer '||job_secret,'Content-Type','application/json'),body:='{}'::jsonb,timeout_milliseconds:=55000) into request_id;

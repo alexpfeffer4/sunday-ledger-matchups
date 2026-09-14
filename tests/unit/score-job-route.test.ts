@@ -1,8 +1,14 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/operations/scores/route";
-const mocks = vi.hoisted(() => ({ refresh: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  refresh: vi.fn(),
+  entitlement: vi.fn(async () => "IDLE"),
+}));
 vi.mock("@/adapters/providers/the-odds-api/provider-requests", () => ({
   refreshLiveScores: mocks.refresh,
+}));
+vi.mock("@/adapters/providers/the-odds-api/entitlement", () => ({
+  reconcileOddsEntitlement: mocks.entitlement,
 }));
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -20,6 +26,7 @@ it.each([undefined, "", "Bearer wrong", "Bearer undefined"])(
     );
     expect(response.status).toBe(401);
     expect(mocks.refresh).not.toHaveBeenCalled();
+    expect(mocks.entitlement).not.toHaveBeenCalled();
   },
 );
 it("fails closed when the endpoint secret is absent", async () => {

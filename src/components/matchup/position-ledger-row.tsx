@@ -87,6 +87,11 @@ export function PositionLedgerRow({
               {marketLabel(row.marketType).toLowerCase()}
             </p>
           ) : null}
+          {row.playerCorrectionReason ? (
+            <p className="text-corrected mt-2 text-xs">
+              Player result corrected: {row.playerCorrectionReason}
+            </p>
+          ) : null}
         </div>
         <div className="text-right">
           <p className="text-muted text-xs">Odds</p>

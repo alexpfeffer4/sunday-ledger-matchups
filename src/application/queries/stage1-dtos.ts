@@ -15,6 +15,8 @@ const settlementSchema = z
     outcome: z.enum(["WIN", "LOSS", "PUSH", "VOID"]),
     returnedCenticredits: z.number().int().nonnegative(),
     finalYards: z.number().nullable().optional(),
+    playerEvidenceVersion: z.number().int().positive().nullable().optional(),
+    playerCorrectionReason: z.string().nullable().optional(),
   })
   .nullable();
 

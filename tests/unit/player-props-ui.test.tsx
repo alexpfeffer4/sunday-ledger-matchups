@@ -53,6 +53,7 @@ beforeEach(() => {
   });
   localStorage.clear();
   vi.mocked(acceptStage1CardAction).mockReset();
+  vi.mocked(reviewLiveCardQuotes).mockReset();
   vi.mocked(reviewLiveCardQuotes).mockResolvedValue({ status: "disabled" });
 });
 afterEach(cleanup);
@@ -178,6 +179,54 @@ function ready(
 }
 
 describe("full-slate props member experience", () => {
+  it("keeps a withdrawn player quote visible in review and preserves it when submitting another draft", async () => {
+    const state = propsState();
+    const key = storeProps(state, [3, 0]);
+    const { rerender } = render(<Stage1CardBuilder state={state} />);
+    fireEvent.click(
+      (await screen.findAllByRole("button", { name: "Review 2 bets" }))[0]!,
+    );
+    await screen.findByRole("heading", { name: "Review your bets" });
+    const unavailable = structuredClone(state);
+    unavailable.slate[0]!.markets = unavailable.slate[0]!.markets.filter(
+      (market) => market.subjectId !== id(100),
+    );
+    rerender(<Stage1CardBuilder state={unavailable} />);
+    expect(
+      await screen.findByText(
+        "This line is unavailable. Your draft is kept; return to edit to leave it out of this submission.",
+      ),
+    ).toBeVisible();
+    expect(acceptStage1CardAction).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Back to edit" }));
+    const missing = screen.getByText(/Unavailable draft/).closest("article")!;
+    fireEvent.click(
+      within(missing).getByRole("checkbox", { name: "Include in submission" }),
+    );
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Review 1 bets" })[0]!,
+    );
+    vi.mocked(acceptStage1CardAction).mockResolvedValue({
+      status: "success",
+      message: "1 bet submitted.",
+    });
+    fireEvent.submit(
+      (await screen.findByRole("button", { name: "Submit bets" })).closest(
+        "form",
+      )!,
+    );
+    await waitFor(() => expect(acceptStage1CardAction).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(
+        restoreCardDrafts(localStorage.getItem(key), unavailable.slate),
+      ).toHaveLength(1),
+    );
+    expect(
+      restoreCardDrafts(localStorage.getItem(key), unavailable.slate)[0]!
+        .subjectId,
+    ).toBe(id(100));
+  });
+
   it("confirms all games in one commissioner action with explicit unresolved choices", async () => {
     const state = propsState(14);
     const slots = state.slate.flatMap((event) =>
@@ -198,6 +247,9 @@ describe("full-slate props member experience", () => {
     const confirm = vi
       .fn()
       .mockResolvedValue({ status: "success", message: "Menu confirmed" });
+    const open = vi
+      .fn()
+      .mockResolvedValue({ status: "success", message: "Week opened" });
     render(
       <PlayerPropMenuReview
         leagueSlug="test-league"
@@ -207,6 +259,8 @@ describe("full-slate props member experience", () => {
         prepareAction={vi.fn()}
         refreshAction={vi.fn()}
         confirmAction={confirm}
+        canOpen
+        openAction={open}
       />,
     );
     expect(
@@ -214,6 +268,10 @@ describe("full-slate props member experience", () => {
     ).toBeInTheDocument();
     const firstChoice = screen.getAllByRole("combobox", { hidden: true })[0]!;
     fireEvent.change(firstChoice, { target: { value: "" } });
+    expect(
+      screen.getByRole("button", { name: "Open week for bets" }),
+    ).toBeDisabled();
+    expect(open).not.toHaveBeenCalled();
     expect(
       screen.getByText(/1 unresolved slots will remain unavailable/),
     ).toBeVisible();
@@ -254,6 +312,29 @@ describe("full-slate props member experience", () => {
     expect(
       screen.getByRole("button", { name: "Refresh full-slate player lines" }),
     ).toBeVisible();
+    cleanup();
+    render(
+      <PlayerPropMenuReview
+        leagueSlug="test-league"
+        leagueId={state.league.id}
+        slots={slots.map((slot, index) =>
+          index === 0 ? { ...slot, subjectId: null, subjectLabel: null } : slot,
+        )}
+        frozen={false}
+        prepareAction={vi.fn()}
+        refreshAction={vi.fn()}
+        confirmAction={confirm}
+        canOpen
+        openAction={open}
+      />,
+    );
+    const openButton = screen.getByRole("button", {
+      name: "Open week for bets",
+    });
+    expect(openButton).toBeEnabled();
+    fireEvent.submit(openButton.closest("form")!);
+    await waitFor(() => expect(open).toHaveBeenCalledOnce());
+    expect(open.mock.calls[0]![1].get("leagueSlug")).toBe("test-league");
   });
 
   it("keeps both quarterbacks distinct across persisted drafts and late quote heads", () => {
@@ -478,6 +559,8 @@ describe("full-slate props member experience", () => {
           proposition: "First quarterback over 245.5 passing yards",
           eventState: "FINAL",
           finalYards: 0,
+          playerEvidenceVersion: 2,
+          playerCorrectionReason: "A completed pass was ruled a lateral.",
           outcome: "LOSS",
           returnedCenticredits: 0,
         },
@@ -501,6 +584,11 @@ describe("full-slate props member experience", () => {
     const { container } = render(<MatchupLineup matchup={matchup} />);
     expect(container.querySelectorAll(".lineup-pair")).toHaveLength(2);
     expect(screen.getByText("Final: 0 passing yards")).toBeVisible();
+    expect(
+      screen.getByText(
+        "Player result corrected: A completed pass was ruled a lateral.",
+      ),
+    ).toBeVisible();
     expect(screen.getByText("Awaiting player results")).toBeVisible();
     expect(
       container

@@ -26,7 +26,8 @@ export type TotalReceipt = ReceiptBase & {
 };
 
 export type PlayerReceipt = ReceiptBase & {
-  marketType: "PLAYER_PASSING_YARDS" | "PLAYER_RUSHING_YARDS" | "PLAYER_RECEIVING_YARDS";
+  marketType:
+    "PLAYER_PASSING_YARDS" | "PLAYER_RUSHING_YARDS" | "PLAYER_RECEIVING_YARDS";
   subjectId: string;
   statistic: "PASSING_YARDS" | "RUSHING_YARDS" | "RECEIVING_YARDS";
   period: "FULL_GAME";
@@ -45,7 +46,8 @@ export type PlayerResultEvidence = {
   participationComplete: boolean;
 };
 
-export type PositionReceipt = MoneylineReceipt | SpreadReceipt | TotalReceipt | PlayerReceipt;
+export type PositionReceipt =
+  MoneylineReceipt | SpreadReceipt | TotalReceipt | PlayerReceipt;
 
 export type EventResult =
   | {

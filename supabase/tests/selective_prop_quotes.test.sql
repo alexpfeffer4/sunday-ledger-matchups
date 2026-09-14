@@ -60,7 +60,7 @@ update private.player_prop_controls set offers_enabled=true;
 insert into private.player_prop_leagues select league_id,true from rolling_quote_context;
 select api.prepare_player_prop_menu('rolling-quotes');
 select api.confirm_player_prop_menu('rolling-quotes',(select jsonb_agg(jsonb_build_object('eventId',event_id,'team',team,'slot',slot,'subjectId',subject_id)) from private.week_player_menu where week_id=(select first_week from rolling_quote_context)));
-create temporary table prop_quote_context(plan_id uuid,request_id uuid,snapshot_id uuid,credits integer,second_league uuid);
+create temporary table prop_quote_context(plan_id uuid,request_id uuid,snapshot_id uuid,credits integer,second_league uuid,second_plan uuid,second_review jsonb,second_positions jsonb);
 insert into prop_quote_context(credits) select daily_credits from private.odds_refresh_policy;
 update prop_quote_context set plan_id=(api.plan_player_menu_quotes((select league_id from rolling_quote_context))->>'planId')::uuid;
 update prop_quote_context set request_id=(select request_ids[1] from private.member_quote_plans where id=plan_id);
@@ -111,6 +111,13 @@ insert into private.player_prop_leagues select second_league,true from prop_quot
 select api.prepare_player_prop_menu('shared-prop-quotes');
 select api.confirm_player_prop_menu('shared-prop-quotes',(select jsonb_agg(jsonb_build_object('eventId',event_id,'team',team,'slot',slot,'subjectId',subject_id)) from private.week_player_menu m join private.season_weeks w on w.id=m.week_id where w.league_id=(select second_league from prop_quote_context)));
 select is((api.plan_player_menu_quotes(second_league)->'requestIds'->>0)::uuid,request_id,'a second league reuses the same public event/statistic request') from prop_quote_context;
+update prop_quote_context set second_plan=(api.plan_player_menu_quotes(second_league)->>'planId')::uuid;
+select api.apply_live_quote_plan(second_plan) from prop_quote_context;
+update prop_quote_context p set second_positions=(select jsonb_build_array(jsonb_build_object('marketSnapshotId',s.id,'payloadHash',s.payload_hash,'stakeCredits',100))
+ from private.market_snapshots s join private.live_quote_heads h on h.market_snapshot_id=s.id
+ where h.league_id=p.second_league and h.subject_id='fa000000-0000-4000-8000-000000000001' and h.outcome_key='OVER');
+update prop_quote_context set second_review=api.review_live_card_quotes('shared-prop-quotes',second_positions);
+
 -- Main quote fetch cannot refresh prop evidence.
 update private.odds_refresh_policy set next_request_at='-infinity';
 update private.live_quote_refreshes set fetched_at=clock_timestamp()-interval '2 minutes',attempted_at=clock_timestamp()-interval '2 minutes';
@@ -123,7 +130,19 @@ update prop_quote_context set plan_id=(api.plan_player_menu_quotes((select leagu
 update prop_quote_context set request_id=(select request_ids[1] from private.member_quote_plans where id=plan_id);
 update private.odds_refresh_policy set next_request_at='-infinity';
 select api.claim_shared_quote_request(plan_id,request_id) from prop_quote_context;
-select api.complete_shared_quote_request(request_id,pg_temp.prop_quote_payload(true),'{"remaining":492,"last":1}') from prop_quote_context;
+select api.complete_shared_quote_request(request_id,pg_temp.prop_quote_payload(true),'{"remaining":492,"last":0}') from prop_quote_context;
+select throws_ok($$select private.assert_live_card_quote_review((select card_id from private.live_card_quote_reviews where id=(second_review->>'reviewId')::uuid),
+ (select auth.uid()),jsonb_build_array((second_positions->0)||jsonb_build_object('reviewId',second_review->>'reviewId')),clock_timestamp()) from prop_quote_context$$,
+ 'P0001','QUOTE_CHANGED','known shared suspension invalidates another league proof before local heads apply');
+-- Active/failed successor requests cannot hide the last successful suspension.
+insert into private.shared_quote_requests(kind,event_ids,families,state) values('PROPS',array['rolling-game-1'],array['player_pass_yds'],'FAILED');
+update private.shared_quote_coverage set request_id=(select id from private.shared_quote_requests where state='FAILED' order by created_at desc limit 1)
+ where external_event_id='rolling-game-1' and family='player_pass_yds';
+select throws_ok($$select private.assert_live_card_quote_review((select card_id from private.live_card_quote_reviews where id=(second_review->>'reviewId')::uuid),
+ (select auth.uid()),jsonb_build_array((second_positions->0)||jsonb_build_object('reviewId',second_review->>'reviewId')),clock_timestamp()) from prop_quote_context$$,
+ 'P0001','QUOTE_CHANGED','failed successor cannot hide last successful public suspension');
+
+select is((select charged_cost from private.shared_quote_requests where id=p.request_id),0,'reported zero charge is retained separately from conservative reservation') from prop_quote_context p;
 select api.apply_live_quote_plan(plan_id) from prop_quote_context;
 select is((select count(*) from private.live_quote_heads where week_id=c.first_week and subject_id is not null),0::bigint,'successful absent requested family removes old offers') from rolling_quote_context c;
 select throws_ok($$select api.review_live_card_quotes('rolling-quotes',pg_temp.selected_prop_positions())$$,'P0001','QUOTE_SOURCE_STALE','suspended offer cannot receive a new review');
@@ -152,8 +171,8 @@ select throws_ok($$select private.reserve_selective_quote_credits(1,true)$$,'P00
 select lives_ok($$select private.reserve_provider_credits(2)$$,'protected score request still fits the same global budget');
 select is((select daily_credits from private.odds_refresh_policy),12,'core reservation is recorded conservatively');
 -- An upgrade is explicit and records evidence without erasing prior usage.
-select throws_ok($$select api.configure_player_prop_odds_budget(jsonb_build_object('entitlementCredits',500,'remaining',490,'used',10,'cycleId','fixture-cycle','observedAt',clock_timestamp()))$$,'P0001','ODDS_ENTITLEMENT_NOT_VERIFIED','free allowance cannot activate the prepared paid-tier cap');
-select lives_ok($$select api.configure_player_prop_odds_budget(jsonb_build_object('entitlementCredits',20000,'remaining',19990,'used',10,'cycleId','fixture-cycle','observedAt',clock_timestamp()))$$,'verified upgraded allowance applies the prepared cap transition');
+select throws_ok($$select api.configure_player_prop_odds_budget(jsonb_build_object('entitlementCredits',500,'remaining',490,'used',10,'cycleId','fixture-cycle','observedAt',clock_timestamp(),'resetPolicy','FIRST_OF_MONTH_CONFIRMED_HEADERS','nextQuotaResetAt',(date_trunc('month',clock_timestamp() at time zone 'UTC')+interval '1 month 1 day') at time zone 'UTC'))$$,'P0001','ODDS_ENTITLEMENT_NOT_VERIFIED','free allowance cannot activate the prepared paid-tier cap');
+select lives_ok($$select api.configure_player_prop_odds_budget(jsonb_build_object('entitlementCredits',20000,'remaining',19990,'used',10,'cycleId','fixture-cycle','observedAt',clock_timestamp(),'resetPolicy','FIRST_OF_MONTH_CONFIRMED_HEADERS','nextQuotaResetAt',(date_trunc('month',clock_timestamp() at time zone 'UTC')+interval '1 month 1 day') at time zone 'UTC'))$$,'verified upgraded allowance applies the prepared cap transition');
 select is((select daily_credits from private.odds_refresh_policy),12,'upgrading never resets recorded app usage');
 select is((select monthly_credit_limit from private.odds_refresh_policy),5000,'prepared monthly app cap stays below purchased allowance');
 select is((select protected_core_monthly_credits from private.odds_refresh_policy),2000,'prepared core reserve is independently protected');
