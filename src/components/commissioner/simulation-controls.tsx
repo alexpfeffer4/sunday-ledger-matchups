@@ -160,7 +160,8 @@ export function SimulationCommissionerControls({
 
       {week &&
       (["OPEN", "LOCKED", "PROVISIONAL"].includes(week.state) ||
-        week.finalizationMode === "AFTER_RESULTS") ? (
+        (week.state === "FINAL" &&
+          week.finalizationMode === "AFTER_RESULTS")) ? (
         <section className="border-boundary bg-surface rounded-xl border p-5">
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
             Practice/test Week {week.nflWeek} · {week.state.toLowerCase()}
