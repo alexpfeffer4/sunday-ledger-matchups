@@ -13,16 +13,14 @@ afterEach(() => {
 
 it("uses the documented game id parameter, server-only header, and truthful missing source time", async () => {
   vi.stubEnv("API_SPORTS_NFL_KEY", "fixture-secret");
-  const fetcher = vi
-    .fn()
-    .mockResolvedValue(
-      new Response(JSON.stringify({ response: [] }), {
-        headers: {
-          "x-ratelimit-requests-remaining": "89",
-          "x-ratelimit-limit": "8",
-        },
-      }),
-    );
+  const fetcher = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify({ response: [] }), {
+      headers: {
+        "x-ratelimit-requests-remaining": "89",
+        "x-ratelimit-limit": "8",
+      },
+    }),
+  );
   vi.stubGlobal("fetch", fetcher);
   const usage = vi.fn();
   const result = await fetchApiSportsBoxScore("123", usage);
@@ -45,17 +43,15 @@ it("records 429 usage and backoff even when no usable evidence returns", async (
   vi.stubEnv("API_SPORTS_NFL_KEY", "fixture-secret");
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockResolvedValue(
-        new Response("unavailable", {
-          status: 429,
-          headers: {
-            "retry-after": "90",
-            "x-ratelimit-requests-remaining": "0",
-          },
-        }),
-      ),
+    vi.fn().mockResolvedValue(
+      new Response("unavailable", {
+        status: 429,
+        headers: {
+          "retry-after": "90",
+          "x-ratelimit-requests-remaining": "0",
+        },
+      }),
+    ),
   );
   const usage = vi.fn();
   await expect(fetchApiSportsBoxScore("123", usage)).rejects.toThrow(
@@ -70,17 +66,15 @@ it("records 429 usage and backoff even when no usable evidence returns", async (
 
 it("sanitizes the quota-free status response before any persistence", async () => {
   vi.stubEnv("API_SPORTS_NFL_KEY", "fixture-secret");
-  const fetcher = vi
-    .fn()
-    .mockResolvedValue(
-      Response.json({
-        response: {
-          account: { email: "private@example.test", firstname: "Private" },
-          subscription: { active: true, plan: "Free" },
-          requests: { current: 4, limit_day: 100 },
-        },
-      }),
-    );
+  const fetcher = vi.fn().mockResolvedValue(
+    Response.json({
+      response: {
+        account: { email: "private@example.test", firstname: "Private" },
+        subscription: { active: true, plan: "Free" },
+        requests: { current: 4, limit_day: 100 },
+      },
+    }),
+  );
   vi.stubGlobal("fetch", fetcher);
   const status = await fetchApiSportsQuotaStatus();
   expect(status).toMatchObject({ active: true, dailyLimit: 100, used: 4 });
