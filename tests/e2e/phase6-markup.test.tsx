@@ -34,6 +34,9 @@ function renderMatchup(matchup: PairedMatchupDto): string {
 test("writes deterministic Phase 6 browser fixture markup", () => {
   const unsealed = makePhase6Matchup("PREGAME");
   unsealed.opponent.cardStatus = "Not sealed";
+  const outstanding = makePhase6Matchup("PARTIAL_REVEAL");
+  outstanding.self.outstanding = { picks: 2, credits: 300 };
+  outstanding.opponent.outstanding = { picks: 4, credits: 600 };
   const receiptState = makePhase6State("PREGAME").state;
   receiptState.ownerCard!.positions.forEach((position, index) => {
     position.eventLabel = "Atlanta Falcons at Pittsburgh Steelers";
@@ -45,6 +48,7 @@ test("writes deterministic Phase 6 browser fixture markup", () => {
   const markup = {
     PREGAME: renderMatchup(makePhase6Matchup("PREGAME")),
     UNSEALED: renderMatchup(unsealed),
+    OUTSTANDING: renderMatchup(outstanding),
     MOBILE_CARD: renderToStaticMarkup(<Stage1CardView state={receiptState} />),
     FINAL: renderMatchup(makePhase6Matchup("FINAL")),
     LIVE: renderMatchup(makePhase6Matchup("LIVE")),

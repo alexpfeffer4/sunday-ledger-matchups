@@ -225,7 +225,7 @@ a {
   .paired-scores .matchup-member {
     text-align: left;
   }
-  .paired-scores [aria-label] {
+  .paired-scores .matchup-score {
     font-size: clamp(1rem, 10cqw, 2.5rem);
     line-height: 1.2;
     white-space: nowrap;

@@ -61,10 +61,34 @@ function MemberScore({
               ? `${member.displayName} score unavailable`
               : `${member.displayName} score ${formatScore(member.scoreCenticredits)} credits`
           }
-          className="mt-4 text-[2.125rem] leading-9 font-bold tracking-[-0.04em] tabular-nums sm:text-[2.5rem] sm:leading-10"
+          className="matchup-score mt-4 text-[2.125rem] leading-9 font-bold tracking-[-0.04em] tabular-nums sm:text-[2.5rem] sm:leading-10"
         >
           {formatScore(member.scoreCenticredits)}
         </p>
+      ) : null}
+      {!pregame ? (
+        <div
+          role="group"
+          aria-label={`${member.displayName} outstanding picks and credits`}
+          className="mt-3 text-sm leading-5 break-words tabular-nums"
+        >
+          {member.outstanding ? (
+            <>
+              <p>
+                <strong>{member.outstanding.picks}</strong>{" "}
+                {member.outstanding.picks === 1 ? "pick" : "picks"} outstanding
+              </p>
+              <p className="text-muted mt-1">
+                <strong>
+                  {member.outstanding.credits.toLocaleString("en-US")}
+                </strong>{" "}
+                credits outstanding
+              </p>
+            </>
+          ) : (
+            <p className="text-muted">Outstanding totals unavailable</p>
+          )}
+        </div>
       ) : null}
       {!completed && (!pregame || opponent) && !(spectator && pregame) ? (
         <div
@@ -175,6 +199,14 @@ export function PairedMatchupHeader({
           spectator={matchup.spectator}
         />
       </div>
+
+      {matchup.phase !== "PREGAME" &&
+      (matchup.self.outstanding || matchup.opponent.outstanding) ? (
+        <p className="text-muted mb-3 text-xs leading-5">
+          Outstanding includes live and unstarted picks. Credits are the
+          original stakes, not potential returns.
+        </p>
+      ) : null}
 
       {matchup.phase === "PREGAME" ? (
         <>

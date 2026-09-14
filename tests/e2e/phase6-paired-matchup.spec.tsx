@@ -12,6 +12,7 @@ type FixtureName =
   | "PROVISIONAL"
   | "PREGAME"
   | "UNSEALED"
+  | "OUTSTANDING"
   | "MOBILE_CARD";
 
 const fixtureMarkup = JSON.parse(
@@ -47,6 +48,33 @@ test.beforeEach(async ({ page }) => {
     route.abort(),
   );
   await page.goto("/");
+});
+
+test("outstanding totals stay paired and readable at 320px and 200% text", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await mountMatchup(page, "OUTSTANDING");
+  await expect(
+    page.getByLabel("Alex Ledger outstanding picks and credits"),
+  ).toContainText("2 picks outstanding");
+  await expect(
+    page.getByLabel("Jordan Rival outstanding picks and credits"),
+  ).toContainText("600 credits outstanding");
+  expect(await page.locator("body").innerHTML()).not.toContain(
+    unrevealableReceiptText,
+  );
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
+  await page.screenshot({
+    path: info.outputPath("outstanding-totals-mobile.png"),
+    fullPage: true,
+  });
+  await page.locator("html").evaluate((element) => {
+    element.style.fontSize = "200%";
+  });
+  await expectNoHorizontalOverflow(page);
+  await expectNoSeriousAccessibilityViolations(page);
 });
 
 test("pregame shows only opponent submission status at a narrow width", async ({

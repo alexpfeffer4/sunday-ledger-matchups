@@ -470,6 +470,11 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
   });
   expect(state.ownerCard.positions).toHaveLength(20);
   expect(state.matchup.opponentRevealedPositions).toEqual([]);
+  const prelockCards = await rpc(opponent, "get_league_matchup_cards", {
+    p_league_slug: slug,
+    p_week_id: state.week.id,
+  });
+  for (const card of prelockCards.cards) expect(card.outstanding).toBeNull();
   const sealedOpponentState = await rpc(opponent, "get_stage1_state", {
     p_league_slug: slug,
   });
@@ -544,6 +549,9 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     );
     await expect(opponentBadge).toContainText("Sealed");
     await expect(
+      opponentPage.getByLabel(/outstanding picks and credits/),
+    ).toHaveCount(0);
+    await expect(
       opponentPage.getByRole("heading", { name: "Picks by game" }),
     ).toHaveCount(0);
     const beforeRefreshCalls = readFileSync(`${fixture}.calls`, "utf8");
@@ -588,6 +596,16 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     p_idempotency_key: `release-lock-${run}`,
   });
   await page.reload();
+  await expect(
+    page.getByLabel(
+      `${state.viewer.displayName} outstanding picks and credits`,
+    ),
+  ).toContainText("20 picks outstanding");
+  await expect(
+    page.getByLabel(
+      `${state.viewer.displayName} outstanding picks and credits`,
+    ),
+  ).toContainText("1,000 credits outstanding");
   const callsBefore = readFileSync(`${fixture}.calls`, "utf8");
   const refresh = page.getByRole("button", { name: "Refresh matchup" });
   await expect(refresh).toBeVisible();
@@ -649,6 +667,11 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
       name: `${target.sideAName} versus ${target.sideBName}`,
     });
     await expect(targetHeader).toBeVisible();
+    const ownerTotals = observerPage.getByLabel(
+      `${state.viewer.displayName} outstanding picks and credits`,
+    );
+    await expect(ownerTotals).toContainText("20 picks outstanding");
+    await expect(ownerTotals).toContainText("1,000 credits outstanding");
     await expect(observerPage.locator("[data-position-id]")).toHaveCount(0);
     let response = await observerPage.request.get(observerPage.url());
     let body = await response.text();
@@ -686,6 +709,8 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     );
     expect(publicCard.positions).toHaveLength(visible.length);
     expect(publicCard.scoreCenticredits).toBe(0);
+    expect(publicCard.outstanding).toEqual({ picks: 20, credits: 1000 });
+    await expect(ownerTotals).toContainText("20 picks outstanding");
     await observerPage.setViewportSize({ width: 320, height: 800 });
     await observerPage.locator("html").evaluate((element) => {
       element.style.fontSize = "200%";
@@ -698,6 +723,8 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     await observerPage.screenshot({
       path: info.outputPath("other-matchup-partial-reveal.png"),
       fullPage: true,
+      // At 200% text, iPhone device scaling exceeds WebKit's image-size limit.
+      scale: "css",
     });
     await observerPage
       .getByRole("link", { name: "Back to your matchup" })

@@ -1,5 +1,10 @@
 # Sunday Ledger — current governing source index
 
+September 14 owner decision: [outstanding matchup totals](2026-09-14-outstanding-totals.md)
+permits whole-card unsettled pick counts and original stake totals after common
+lock, including hidden picks. This is the bounded exception to historical
+count/allocation privacy; individual positions retain event-timed reveal.
+
 September 13 requested implementation: [league matchup browsing](../league-matchup-browsing.md)
 allows league members to follow other pairings through the existing event-timed reveal boundary.
 It adds no pre-lock roster submission disclosure.
