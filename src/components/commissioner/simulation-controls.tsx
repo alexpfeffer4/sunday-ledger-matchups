@@ -180,19 +180,23 @@ export function SimulationCommissionerControls({
                 disabled={advancing}
                 type="submit"
               >
-                Advance past common lock
+                {week.rollingSubmissionsEnabled
+                  ? "Advance to first kickoff"
+                  : "Advance past common lock"}
               </button>
             </form>
-            <form action={lockAction}>
-              <ContextFields state={state} />
-              <button
-                className={buttonClass}
-                disabled={locking || week.state !== "OPEN"}
-                type="submit"
-              >
-                Lock all cards
-              </button>
-            </form>
+            {!week.rollingSubmissionsEnabled ? (
+              <form action={lockAction}>
+                <ContextFields state={state} />
+                <button
+                  className={buttonClass}
+                  disabled={locking || week.state !== "OPEN"}
+                  type="submit"
+                >
+                  Lock all cards
+                </button>
+              </form>
+            ) : null}
             <form action={clockAction}>
               <ContextFields state={state} />
               <input

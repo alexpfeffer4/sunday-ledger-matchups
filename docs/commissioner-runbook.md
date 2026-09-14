@@ -1,5 +1,15 @@
 # Sunday Ledger Live commissioner runbook
 
+September 14 policy note: read this runbook with the
+[automatic-weekly-results amendment](governance/2026-09-14-automatic-weekly-finalization.md)
+and [rolling-submission amendment](governance/2026-09-14-rolling-submissions.md).
+Ruleset 1.3 is prepared for a separate future-week activation; it is not active
+merely because its implementation is present. Check the week's actual rule
+identity before using the version-specific instructions below.
+The later owner-approved visibility exception also shows accepted game
+identities in the current legacy week. It does not reopen its submission window
+or change its credit, scoring or attendance rules.
+
 This is the bounded operating sequence for one Live NFL season. The
 Commissioner console is the only intended control surface. It never grants
 access to sealed card terms and never permits direct edits to scores, records,
@@ -10,8 +20,12 @@ September 10, 2026 (PR #29). Members explicitly review current quotes; commissio
 refresh shares its lease and quota. [Stage 2 checkpoint score updates](audit-stage2-live-operations.md)
 were activated in the approved Stage 2 rollout. A read-only Stage 7 check on
 September 12 confirmed quote and score policies enabled. Check the console's
-automation status for the current week; configuration can change. Publication, card lock, and finalization remain
-explicit commissioner actions.
+automation status for the current week; configuration can change. Publication
+remains an explicit operating action. Current automatic-policy weeks finalize
+through the guarded settlement path once their published slate and competitive
+results are complete; a commissioner does not need to wait 24 hours to make
+those weekly results final. Downstream playoff/archive publication still waits
+for its applicable score-review gate.
 
 ## Before roster lock
 
@@ -21,8 +35,10 @@ explicit commissioner actions.
 4. Select the eligible Week 1 events. The standard set is Sunday games beginning
    at 1:00 p.m. Eastern or later plus Monday night; include Thursday or early
    international games only by affirmative selection.
-5. Make the week available once. This fixes the event set and common lock at
-   five minutes before the first selected event.
+5. Make the week available once. This fixes the event set and published timing.
+   Legacy weeks use common submission lock five minutes before the first event.
+   A week that later adopts 1.3 uses each game's scheduled kickoff for submission;
+   the former common-lock time remains only for the approved aggregate display.
 6. Lock the roster and open Week 1. This freezes the ruleset, publishes the
    14-week opponent schedule, and creates equal 1,000-credit cards.
 
@@ -38,10 +54,16 @@ published event set is intentionally immutable.
    the next week adopts the latest supported, approved rules package. An already
    opened week retains its rules for every member; earlier receipts, results,
    published standings and brackets are preserved.
-4. Refresh current odds before members build cards. The refresh must return the
-   exact published event set.
-5. At common lock, lock the week. Database time enforces the deadline even if
-   the button is pressed late.
+4. Refresh current odds before members submit. A 1.3 week supports later reviews
+   for remaining eligible games through their own cutoffs, using the same
+   bounded quote policy. Neither refresh nor a delayed kickoff report changes
+   the published event set or reopens a closed game.
+5. For a legacy week, database time enforces its common submission deadline even
+   if the operating lock runs late. For 1.3, later games remain open until their
+   individual cutoffs; no commissioner action may close all submissions at the
+   former common lock. Unused allocation expires at the last published cutoff,
+   and only zero accepted bets then creates a missed week. A partial card counts
+   as participation.
 6. Confirm each game start near kickoff. With Stage 2 enabled, the server checks
    at kickoff +2, +7, and +17 minutes until play is confirmed, with up to five
    minutes of scheduler delay. Scheduled time alone never reveals picks. After
@@ -51,10 +73,15 @@ published event set is intentionally immutable.
    as needed. An unavailable response gets two short retries, then returns to
    remaining checkpoints. If automatic checks are off, use **Refresh NFL scores
    & settle completed games** at these times; the same budget and lease apply.
-7. Review provisional settlements, incomplete-card consequences, corrections,
-   and the derived standings.
-8. Finalize only after the 24-hour correction window closes and no correction is
-   unresolved.
+7. Review settled bets, applicable participation consequences, corrections and
+   derived standings. Selected game identities appear immediately after a
+   successful submission, including a legacy whole-card seal in the current
+   week. Actual selections retain their existing start/void reveal boundary.
+8. Current automatic-policy weeks finalize when every published-slate game has
+   a final/void result, complete scores and matchup results exist, and no later
+   valid submission remains possible. An early settled card alone does not close
+   the week. Preserve the score-review period for verified corrections and
+   downstream publication. Historical weeks retain their attached close policy.
 
 ## Backup operator and retention deadline
 
@@ -96,7 +123,7 @@ conditions genuinely apply. Never fabricate a score or finalize an unresolved we
   require a fresh review and cannot reuse the ambiguous operation.
 - A failed odds import saves no partial provider batch. An earlier reviewed week and
   accepted cards remain unchanged.
-- A failed quote refresh keeps the published game set, lock time, current quote
+- A failed quote refresh keeps the published game set, cutoffs, current quote
   heads, and accepted receipts unchanged. Do not seal against an unreviewed
   changed quote.
 - A failed lock leaves cards open unless database time has already made them

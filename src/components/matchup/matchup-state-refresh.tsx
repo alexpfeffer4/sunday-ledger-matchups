@@ -6,9 +6,11 @@ import { useEffect, useTransition } from "react";
 export function MatchupStateRefresh({
   active = false,
   label = "Refresh matchup",
+  intervalMs = 5 * 60_000,
 }: {
   active?: boolean;
   label?: string;
+  intervalMs?: number;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -18,9 +20,9 @@ export function MatchupStateRefresh({
     const timer = window.setInterval(() => {
       if (document.visibilityState !== "visible" || !navigator.onLine) return;
       startTransition(() => router.refresh());
-    }, 5 * 60_000);
+    }, intervalMs);
     return () => window.clearInterval(timer);
-  }, [active, isPending, router]);
+  }, [active, intervalMs, isPending, router]);
 
   return (
     <button

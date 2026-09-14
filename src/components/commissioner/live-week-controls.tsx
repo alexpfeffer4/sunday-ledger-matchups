@@ -298,6 +298,7 @@ export function LiveWeekCommissionerControls({
   }, [correctionState.status, correctionState.value, state.league.id]);
 
   if (!state.week) return null;
+  const rolling = state.week.rollingSubmissionsEnabled === true;
   const weekNumber = state.week.nflWeek;
   const nextWeekNumber = weekNumber + 1;
   const nextWeekImport =
@@ -314,16 +315,30 @@ export function LiveWeekCommissionerControls({
           Week {weekNumber} · Live controls
         </p>
         <h2 className="mt-2 font-bold">
-          {state.week.state === "OPEN"
-            ? "Cards remain open until the published deadline"
-            : "Cards are locked"}
+          {rolling
+            ? state.week.entryClosed
+              ? "Weekly betting is closed"
+              : "Each game closes at its own kickoff"
+            : state.week.state === "OPEN"
+              ? "Cards remain open until the published deadline"
+              : "Cards are locked"}
         </h2>
         <p className="text-graphite mt-2 text-sm leading-6">
-          Cards lock at{" "}
-          {timestampFormatter.format(new Date(state.week.commonLockAt))} ET.
-          Picks cannot be added or changed after that time.
+          {rolling ? (
+            "Submitted bets cannot change. Members can add bets on later games using their unused credits until weekly betting closes."
+          ) : (
+            <>
+              Cards lock at{" "}
+              {timestampFormatter.format(new Date(state.week.commonLockAt))} ET.
+              Picks cannot be added or changed after that time.
+            </>
+          )}
         </p>
-        {state.week.state === "OPEN" ? (
+        {(
+          rolling
+            ? !state.week.entryClosed && state.week.state !== "FINAL"
+            : state.week.state === "OPEN"
+        ) ? (
           <>
             <form action={quoteAction} className="mt-4">
               <ContextFields state={state} />
@@ -334,15 +349,23 @@ export function LiveWeekCommissionerControls({
               >
                 {refreshingQuotes
                   ? "Refreshing published quotes…"
-                  : "Refresh current odds before lock"}
+                  : rolling
+                    ? "Refresh odds for remaining games"
+                    : "Refresh current odds before lock"}
               </button>
             </form>
-            <form action={lockAction} className="mt-3">
-              <ContextFields state={state} />
-              <button className={buttonClass} disabled={locking} type="submit">
-                {locking ? "Locking…" : `Lock all Week ${weekNumber} cards`}
-              </button>
-            </form>
+            {!rolling ? (
+              <form action={lockAction} className="mt-3">
+                <ContextFields state={state} />
+                <button
+                  className={buttonClass}
+                  disabled={locking}
+                  type="submit"
+                >
+                  {locking ? "Locking…" : `Lock all Week ${weekNumber} cards`}
+                </button>
+              </form>
+            ) : null}
             <ActionFeedback state={quoteState} />
             <ActionFeedback state={lockState} />
           </>
@@ -353,7 +376,7 @@ export function LiveWeekCommissionerControls({
         )}
       </section>
 
-      {state.week.state !== "OPEN" ? (
+      {rolling || state.week.state !== "OPEN" ? (
         <section className="border-registry bg-surface rounded-xl border p-5">
           <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
             <div>

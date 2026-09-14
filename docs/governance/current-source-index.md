@@ -1,5 +1,25 @@
 # Sunday Ledger — current governing source index
 
+September 14 owner-approved implementation:
+[rolling submissions and immediate game visibility](2026-09-14-rolling-submissions.md)
+prepares Ruleset 1.3 / Product Bible 3.2. Members may submit immutable batches
+until each game's cutoff; partially allocated cards participate normally; unused
+credits expire; selected game identities become visible immediately after
+successful acceptance. The owner's later instruction makes game identity
+visibility effective for the **current week, including 1.2**; rolling entry and
+unused-credit rules start with the **next unopened week** (pilot Week 2).
+Actual selections retain event-timed reveal, and whole-card aggregates retain
+their separate former-common-lock timing.
+**Preparation is not activation:** the active catalog remains 1.2 until a
+separately approved activation for future unopened weeks. Read the
+[implementation/rollout record](../rolling-submissions.md) for actual verification
+and release status. Already-open and completed weeks keep their bound betting,
+credit, scoring and attendance rules; the current-week game-identity read-policy
+exception does not repin them. Public publication to
+`alexpfeffer4/sunday-ledger-matchups` is explicitly approved; release remains
+conditional on required checks. Paid hosted authenticated Preview is waived,
+while disposable full-stack CI and public Preview checks remain required.
+
 September 14 approved amendment: [automatic weekly results and matchup cleanup](2026-09-14-automatic-weekly-finalization.md)
 supersedes the mandatory 24-hour wait before weekly finalization for unfinished
 and future weeks. Verified corrections retain their review period and history.
@@ -11,7 +31,8 @@ count/allocation privacy; individual positions retain event-timed reveal.
 
 September 13 requested implementation: [league matchup browsing](../league-matchup-browsing.md)
 allows league members to follow other pairings through the existing event-timed reveal boundary.
-It adds no pre-lock roster submission disclosure.
+Its original scope added no pre-lock roster submission disclosure; the later
+September 14 game-identity amendment now permits distinct accepted game lists.
 
 September 13 supplement: [commissioner card-status decision](2026-09-13-commissioner-card-status.md)
 extends the submission flag to the current commissioner's current-week roster only.
@@ -22,13 +43,18 @@ kickoff evidence for the same game.
 
 September 13 supplement: [opponent sealed-status decision](2026-09-13-opponent-sealed-status.md)
 permits a single pre-lock submission indicator for the scheduled opponent.
-The historical pre-lock readiness prohibition is superseded only to that extent.
+That decision's original scope was only the indicator; the later September 14
+game-identity amendment extends visibility to distinct accepted game lists.
 
 Reconciliation revision 2, prepared September 11, 2026 for audit Stage 6 (A11–A12).
 Read each historical base with the [governing addendum](2026-09-11-governing-addendum.md).
 The addendum records existing approvals and the September 11 owner direction to
 apply rule updates to future play within existing development seasons. No numerical
 rule or version is invented. Open and completed weeks retain their original rules.
+
+The table and release inventory below preserve the September 11 reconciliation
+snapshot. Later dated amendments above take precedence in their stated scope;
+their presence does not retroactively change that snapshot's verification claims.
 
 | Base document/version                                | Current amendment and effective scope                                                                                                       | Decision authority                                                                                           | Implementation/evidence                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

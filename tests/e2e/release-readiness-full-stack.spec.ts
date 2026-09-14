@@ -479,9 +479,30 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     p_league_slug: slug,
   });
   expect(sealedOpponentState.matchup.opponentSealed).toBe(true);
-  expect({ ...sealedOpponentState.matchup, opponentSealed: false }).toEqual(
-    initialOpponentState.matchup,
-  );
+  expect(sealedOpponentState.matchup.opponentSubmitted).toBe(true);
+  const selectedEventIds = [
+    ...new Set(
+      state.ownerCard.positions.map(
+        (position: { eventId: string }) => position.eventId,
+      ),
+    ),
+  ].sort();
+  expect(
+    sealedOpponentState.matchup.opponentSelectedGames
+      .map((game: { eventId: string }) => game.eventId)
+      .sort(),
+  ).toEqual(selectedEventIds);
+  for (const game of sealedOpponentState.matchup.opponentSelectedGames) {
+    expect(Object.keys(game).sort()).toEqual(
+      ["eventId", "eventLabel", "scheduledStartAt"].sort(),
+    );
+  }
+  expect({
+    ...sealedOpponentState.matchup,
+    opponentSealed: false,
+    opponentSubmitted: false,
+    opponentSelectedGames: [],
+  }).toEqual(initialOpponentState.matchup);
   expect(
     (
       await members[0]!.schema("api").rpc("delete_empty_draft_league", {
@@ -525,7 +546,7 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
       page.getByRole("heading", { name: "Card sealed" }),
     ).toBeVisible();
   });
-  // An independently authenticated opponent sees only the submission fact in
+  // An independently authenticated opponent sees submission and distinct games in
   // the real RSC route, and pregame refresh does not contact the provider.
   const opponentContext = await page
     .context()
@@ -548,6 +569,15 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
       `${state.viewer.displayName} card status`,
     );
     await expect(opponentBadge).toContainText("Sealed");
+    const gamePreview = opponentPage.getByRole("region", {
+      name: `${state.viewer.displayName} selected games`,
+    });
+    await expect(gamePreview.getByRole("listitem")).toHaveCount(
+      selectedEventIds.length,
+    );
+    expect(await gamePreview.innerText()).not.toMatch(
+      /credits|odds|moneyline|spread|total/i,
+    );
     await expect(
       opponentPage.getByLabel(/outstanding picks and credits/),
     ).toHaveCount(0);

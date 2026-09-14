@@ -36,6 +36,11 @@ import {
 import { AllocationMeter } from "@/components/matchup/allocation-meter";
 import { LeagueScoreboard } from "@/components/matchup/league-scoreboard";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { SelectedGameList } from "@/components/matchup/selected-game-list";
+import {
+  distinctUnrevealedGames,
+  rollingSubmissionStatus,
+} from "@/application/queries/rolling-matchup";
 import { AuditDetails } from "@/components/ui/audit-details";
 import { ReceiptPanel } from "@/components/ui/receipt-panel";
 import { formatCenticredits, formatCredits } from "@/domain/odds/american";
@@ -91,10 +96,14 @@ function weekStatus(state: Stage1StateDto): string {
   }
   const labels: Record<NonNullable<Stage1StateDto["week"]>["state"], string> = {
     PLANNED: "Published",
-    OPEN: "Cards open",
+    OPEN: state.week.rollingSubmissionsEnabled ? "Betting open" : "Cards open",
     LOCKED: state.slate.some((event) => event.state === "LIVE")
       ? "Live"
-      : "Cards locked",
+      : state.week.rollingSubmissionsEnabled
+        ? state.week.entryClosed
+          ? "Betting closed"
+          : "Betting open"
+        : "Cards locked",
     PROVISIONAL: "Picks settled",
     FINAL: "Final",
   };
@@ -125,6 +134,12 @@ function liveStatus(state: Stage1StateDto): ReactNode {
     return <StatusBadge tone="sealed">Final</StatusBadge>;
   if (state.week.state === "PROVISIONAL")
     return <StatusBadge tone="pending">Picks settled</StatusBadge>;
+  if (state.week.rollingSubmissionsEnabled)
+    return (
+      <StatusBadge tone={state.week.entryClosed ? "sealed" : "positive"}>
+        {state.week.entryClosed ? "Betting closed" : "Betting open"}
+      </StatusBadge>
+    );
   if (state.week.state === "OPEN")
     return <StatusBadge tone="positive">Cards open</StatusBadge>;
   return <StatusBadge tone="sealed">Cards locked</StatusBadge>;
@@ -220,36 +235,48 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
       new Date(left.scheduledStartAt).getTime() -
       new Date(right.scheduledStartAt).getTime(),
   )[0];
-  const ownerReady = state.ownerCard.remainingCredits === 0;
+  const rolling = state.week.rollingSubmissionsEnabled === true;
+  const ownerReady = rolling
+    ? state.ownerCard.positions.length > 0
+    : state.ownerCard.remainingCredits === 0;
   const primaryAction =
-    state.week.state === "OPEN"
-      ? ownerReady
-        ? {
-            href: `/l/${state.league.slug}/card`,
-            label: "Review sealed card",
-          }
-        : {
-            href: `/l/${state.league.slug}/slate`,
-            label: `Use remaining ${formatCredits(state.ownerCard.remainingCredits)}`,
-          }
-      : state.week.state === "FINAL"
-        ? {
-            href: `/l/${state.league.slug}/league`,
-            label: "View final league scoreboard",
-          }
-        : {
-            href: `/l/${state.league.slug}/league`,
-            label: "View league scoreboard",
-          };
+    rolling && state.ownerCard.canSubmit
+      ? {
+          href: `/l/${state.league.slug}/slate`,
+          label: "Add bets",
+        }
+      : state.week.state === "OPEN"
+        ? ownerReady
+          ? {
+              href: `/l/${state.league.slug}/card`,
+              label: rolling ? "View submitted bets" : "Review sealed card",
+            }
+          : {
+              href: `/l/${state.league.slug}/slate`,
+              label: `Use remaining ${formatCredits(state.ownerCard.remainingCredits)}`,
+            }
+        : state.week.state === "FINAL"
+          ? {
+              href: `/l/${state.league.slug}/league`,
+              label: "View final league scoreboard",
+            }
+          : {
+              href: `/l/${state.league.slug}/league`,
+              label: "View league scoreboard",
+            };
   const matchupState = result
     ? result.status === "FINAL"
       ? "Final"
       : "Picks settled"
-    : state.week.state === "OPEN"
-      ? ownerReady
-        ? "Your card is ready"
-        : "Cards open"
-      : "Cards locked";
+    : rolling
+      ? state.week.entryClosed
+        ? "Betting closed"
+        : "Betting open"
+      : state.week.state === "OPEN"
+        ? ownerReady
+          ? "Your card is ready"
+          : "Cards open"
+        : "Cards locked";
   const consequence = result
     ? `${result.selfDecision === "WIN" ? "Win" : result.selfDecision === "LOSS" ? "Loss" : "Tie"} filed ${result.status.toLowerCase()}. The official standings update through the result shown here.`
     : state.week.scope === "PLAYOFF"
@@ -259,7 +286,11 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
     <PageFrame
       eyebrow={`${state.league.name} · Week ${state.week.nflWeek}`}
       title={`Your Week ${state.week.nflWeek} matchup`}
-      description={`Cards lock ${formatDate(state.week.commonLockAt)}. Opponent choices remain sealed until their games begin.`}
+      description={
+        rolling
+          ? "Submit bets until each game’s kickoff. Selected games appear immediately; bet details reveal after kickoff is confirmed."
+          : `Cards lock ${formatDate(state.week.commonLockAt)}. Opponent choices remain sealed until their games begin.`
+      }
       aside={liveStatus(state)}
     >
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -320,15 +351,22 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
                 <p className="text-copper mt-3 text-sm font-semibold">
                   {result
                     ? formatScore(result.opponentPointsForCenticredits)
-                    : opponentCardStatus(
-                        state.matchup.opponentReadiness,
-                        state.matchup.opponentSealed,
-                      )}
+                    : rolling
+                      ? rollingSubmissionStatus(
+                          state.matchup.opponentSubmitted,
+                          state.week.entryClosed === true,
+                        )
+                      : opponentCardStatus(
+                          state.matchup.opponentReadiness,
+                          state.matchup.opponentSealed,
+                        )}
                 </p>
               </div>
             </div>
 
-            {!result ? (
+            {!result && rolling ? (
+              <OwnerCardProgress context={ownerCardContext(state)} />
+            ) : !result ? (
               <AllocationMeter
                 allocatedCredits={state.ownerCard.allocatedCredits}
                 commonLockLabel={formatDate(state.week.commonLockAt)}
@@ -422,7 +460,11 @@ export function Stage1SlateView({
       <PageFrame
         eyebrow={`${state.league.name} · Live Week 1`}
         title="Make picks"
-        description={`Week 1 games are selected. Cards lock ${formatDate(state.week.commonLockAt)} and open after the roster is set.`}
+        description={
+          state.week.rollingSubmissionsEnabled
+            ? "Week 1 games are selected. Betting opens after the roster is set; each game closes at kickoff."
+            : `Week 1 games are selected. Cards lock ${formatDate(state.week.commonLockAt)} and open after the roster is set.`
+        }
         aside={liveStatus(state)}
       >
         <div className="mt-7 grid gap-4">
@@ -561,7 +603,9 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
         <div>
           {state.ownerCard.positions.length === 0 ? (
             <p className="border-boundary bg-surface rounded-xl border p-6">
-              Your picks and receipts will appear here after you seal the card.
+              {state.week.rollingSubmissionsEnabled
+                ? "Your bets and receipts will appear here after you submit bets."
+                : "Your picks and receipts will appear here after you seal the card."}
             </p>
           ) : (
             <ol className="border-boundary bg-surface divide-boundary divide-y overflow-hidden rounded-lg border">
@@ -636,7 +680,11 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
                           <dd>{formatDate(position.scheduledStartAt)}</dd>
                         </div>
                         <div>
-                          <dt className="text-muted">Sealed</dt>
+                          <dt className="text-muted">
+                            {state.week?.rollingSubmissionsEnabled
+                              ? "Submitted"
+                              : "Sealed"}
+                          </dt>
                           <dd>{formatDate(position.acceptedAt)}</dd>
                         </div>
                       </dl>
@@ -680,7 +728,11 @@ export function Stage1LiveView({ state }: { state: Stage1StateDto }) {
     <PageFrame
       eyebrow={hasLiveEvent ? "Live now" : "Game-day matchup"}
       title={`${state.viewer.displayName} vs ${state.matchup.opponentName}`}
-      description="Picks reveal game by game after kickoff. Future picks remain sealed."
+      description={
+        state.matchup.opponentSelectedGames !== undefined
+          ? "Selected games appear immediately. Bet details reveal after each game’s start is confirmed."
+          : "Picks reveal game by game after kickoff. Future picks remain sealed."
+      }
       aside={liveStatus(state)}
       dark={hasLiveEvent}
     >
@@ -688,6 +740,15 @@ export function Stage1LiveView({ state }: { state: Stage1StateDto }) {
         <section className="border-boundary bg-surface rounded-xl border p-5">
           <h2 className="text-lg font-bold">Opponent picks revealed by game</h2>
           <div className="mt-4 space-y-3">
+            {state.matchup.opponentSelectedGames !== undefined ? (
+              <SelectedGameList
+                games={distinctUnrevealedGames(
+                  state.matchup.opponentSelectedGames,
+                  state.slate,
+                )}
+                memberName={state.matchup.opponentName}
+              />
+            ) : null}
             {state.matchup.opponentRevealedPositions.map((position) => (
               <article
                 className="border-boundary bg-subtle rounded-lg border p-4"
@@ -706,7 +767,8 @@ export function Stage1LiveView({ state }: { state: Stage1StateDto }) {
                 </div>
               </article>
             ))}
-            {state.matchup.futureSealed ? (
+            {state.matchup.futureSealed &&
+            state.matchup.opponentSelectedGames === undefined ? (
               <div className="border-boundary bg-subtle rounded-lg border px-4 py-5 text-center">
                 <p className="font-semibold">Future picks sealed</p>
                 <p className="text-muted mt-1 text-xs">
@@ -716,15 +778,20 @@ export function Stage1LiveView({ state }: { state: Stage1StateDto }) {
             ) : null}
             {state.matchup.opponentRevealedPositions.length === 0 &&
             !state.matchup.futureSealed ? (
-              <p className="text-muted">No opponent picks were sealed.</p>
+              <p className="text-muted">
+                {state.week.rollingSubmissionsEnabled
+                  ? "No opponent bets have been revealed yet."
+                  : "No opponent picks were sealed."}
+              </p>
             ) : null}
           </div>
         </section>
         <aside className="border-boundary bg-surface h-fit rounded-xl border p-5">
           <h2 className="font-bold">What remains private</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Only picks tied to games that have started appear here. Everything
-            else remains private.
+            {state.matchup.opponentSelectedGames !== undefined
+              ? "Selections, markets, odds and individual stakes stay hidden until the game’s start is confirmed."
+              : "Only picks tied to games that have started appear here. Everything else remains private."}
           </p>
         </aside>
       </div>
@@ -1029,6 +1096,10 @@ export function Stage1CommissionerView({
                       correctionWindowClosesAt:
                         state.week.correctionWindowClosesAt,
                       finalizationMode: state.week.finalizationMode,
+                      rollingSubmissionsEnabled:
+                        state.week.rollingSubmissionsEnabled,
+                      entryClosesAt: state.week.entryClosesAt,
+                      entryClosed: state.week.entryClosed,
                     }
                   : null,
                 slate: state.slate.map((event) => ({
@@ -1280,6 +1351,9 @@ export function Stage1EventView({
 }) {
   const event = state.slate.find((candidate) => candidate.id === eventId);
   if (!event || !state.ownerCard || !state.week) return null;
+  const canChoose = state.week.rollingSubmissionsEnabled
+    ? event.entryOpen === true && state.ownerCard.canSubmit === true
+    : state.week.state === "OPEN";
   return (
     <PageFrame
       eyebrow={`${event.awayTeam} at ${event.homeTeam}`}
@@ -1316,8 +1390,7 @@ export function Stage1EventView({
                 {formatOdds(market.americanOdds)}
               </p>
             </div>
-            {state.week?.state === "OPEN" &&
-            market.qualityStatus === "HEALTHY" ? (
+            {canChoose && market.qualityStatus === "HEALTHY" ? (
               <Link
                 className="border-registry text-registry hover:bg-subtle mt-4 inline-flex min-h-11 items-center rounded-lg border px-4 text-sm font-semibold"
                 href={`/l/${state.league.slug}/slate`}

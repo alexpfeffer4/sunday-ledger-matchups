@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { submissionAttemptId } from "@/components/card/submission-attempt";
 import { reviewLiveCardQuotes } from "@/app/l/[leagueSlug]/card-quote-actions";
 import type { CardQuoteReviewResult } from "@/application/providers/card-quote-review";
 import { useActionState, useEffect, useRef, useState } from "react";
@@ -18,10 +19,12 @@ import {
 } from "@/components/card/market-option-copy";
 import {
   cardDraftStorageKey,
+  eventAcceptsBets,
   ownerCardContext,
 } from "@/components/card/owner-card-context";
 import {
   useCardDeadline,
+  useEventCutoffTime,
   useCardDraft,
 } from "@/components/card/use-card-draft";
 import {
@@ -43,7 +46,11 @@ import {
   validateProposedPosition,
 } from "@/domain/cards/validate-position";
 import { formatCredits } from "@/domain/odds/american";
-import { resolveSeasonCardRules, type CardRules } from "@/rulesets/card-rules";
+import {
+  resolveSeasonCardRules,
+  usesRollingSubmissions,
+  type CardRules,
+} from "@/rulesets/card-rules";
 
 type SlateEvent = Stage1StateDto["slate"][number];
 type SlateMarket = SlateEvent["markets"][number];
@@ -55,6 +62,7 @@ type EditorState = {
   existing: boolean;
   marketSnapshotId: string;
   marketType: SlateMarket["marketType"];
+  outcomeKey: SlateMarket["outcomeKey"];
   stakeCredits: string;
 };
 
@@ -112,24 +120,27 @@ function selectionKey(
 }
 
 function cardBuilderContextKey(state: Stage1StateDto): string {
-  const slateRevision = state.slate.flatMap((event) =>
-    event.markets.map((market) => [
-      market.id,
-      market.payloadHash,
-      market.qualityStatus,
-    ]),
-  );
-
   return JSON.stringify([
     state.league.id,
-    state.week?.id ?? null,
-    state.ownerCard?.id ?? null,
-    state.ownerCard?.compliance,
-    state.ownerCard?.allocatedCredits,
-    state.week?.state,
+    state.week?.id,
+    state.ownerCard?.id,
     state.season?.rulesetSnapshot,
-    slateRevision,
   ]);
+}
+
+function slateSourceRevision(state: Stage1StateDto): string {
+  return JSON.stringify(
+    state.slate.map((event) => [
+      event.id,
+      event.entryClosesAt,
+      event.entryOpen,
+      event.markets.map((market) => [
+        market.id,
+        market.payloadHash,
+        market.qualityStatus,
+      ]),
+    ]),
+  );
 }
 
 export function Stage1CardBuilder({
@@ -172,19 +183,46 @@ function Stage1CardBuilderEditor({
   rules: CardRules;
 }) {
   const ownerCard = state.ownerCard;
-  const [slate, setSlate] = useState(state.slate);
+  const rolling = usesRollingSubmissions(rules);
+  const sourceRevision = slateSourceRevision(state);
+  const [refreshedSlate, setRefreshedSlate] = useState<{
+    sourceRevision: string;
+    slate: Stage1StateDto["slate"];
+  } | null>(null);
+  const slate =
+    refreshedSlate?.sourceRevision === sourceRevision
+      ? refreshedSlate.slate
+      : state.slate;
+  function setSlate(next: Stage1StateDto["slate"]) {
+    setRefreshedSlate({ sourceRevision, slate: next });
+  }
   const [checkingQuotes, setCheckingQuotes] = useState(false);
-  const [quoteReview, setQuoteReview] = useState<
-    Extract<CardQuoteReviewResult, { status: "ready" }>["review"] | null
-  >(null);
+  type Review = Extract<CardQuoteReviewResult, { status: "ready" }>["review"];
+  const [storedReview, setStoredReview] = useState<{
+    sourceRevision: string;
+    review: Review;
+  } | null>(null);
+  const quoteReview =
+    storedReview?.sourceRevision === sourceRevision
+      ? storedReview.review
+      : null;
+  function setQuoteReview(review: Review | null) {
+    setStoredReview(review ? { sourceRevision, review } : null);
+  }
   const [reviewExpired, setReviewExpired] = useState(false);
   const [requiresLiveReview, setRequiresLiveReview] = useState(
-    initialReview && state.league.mode === "LIVE",
+    initialReview && (state.league.mode === "LIVE" || rolling),
   );
   const context = { ...ownerCardContext(state), slate };
-  const { drafts, setDrafts, hydrated, sealed, clearDrafts } =
+  const { drafts, setDrafts, hydrated, sealed, clearDrafts, currentRevision } =
     useCardDraft(context);
   const closed = useCardDeadline(context);
+  const cutoffNow = useEventCutoffTime(context);
+  const [excludedKeys, setExcludedKeys] = useState<Set<string>>(new Set());
+  const batchDrafts = rolling
+    ? drafts.filter((draft) => !excludedKeys.has(selectionKey(draft)))
+    : drafts;
+  const submittedKeys = useRef<Set<string>>(new Set());
   const [kickoffFilter, setKickoffFilter] = useState<KickoffFilter>("ALL");
   const [reviewing, setReviewing] = useState(initialReview);
   const storageKey = cardDraftStorageKey(context);
@@ -192,7 +230,7 @@ function Stage1CardBuilderEditor({
     const changedInAnotherTab = (event: StorageEvent) => {
       if (event.key !== null && event.key !== storageKey) return;
       setReviewing(false);
-      setQuoteReview(null);
+      setStoredReview(null);
     };
     window.addEventListener("storage", changedInAnotherTab);
     return () => window.removeEventListener("storage", changedInAnotherTab);
@@ -202,7 +240,22 @@ function Stage1CardBuilderEditor({
   const [cardFeedback, setCardFeedback] = useState<string | null>(null);
   const cardFeedbackRef = useRef<HTMLParagraphElement>(null);
   const [actionState, action, sealing] = useActionState(
-    acceptStage1CardAction,
+    async (previous: typeof initialAppActionState, formData: FormData) => {
+      if (rolling && storageKey) {
+        formData.set(
+          "submissionId",
+          submissionAttemptId(
+            storageKey,
+            JSON.stringify({
+              positions: formData.get("positions"),
+              reviewId: formData.get("reviewId"),
+            }),
+          ),
+        );
+      }
+      submittedKeys.current = new Set(batchDrafts.map(selectionKey));
+      return acceptStage1CardAction(previous, formData);
+    },
     initialAppActionState,
   );
   const pending = sealing || checkingQuotes;
@@ -215,8 +268,18 @@ function Stage1CardBuilderEditor({
     return () => window.clearTimeout(timer);
   }, [quoteReview]);
   useEffect(() => {
-    if (actionState.status === "success") clearDrafts();
-  }, [actionState.status, clearDrafts]);
+    if (actionState.status !== "success") return;
+    if (!rolling) clearDrafts();
+    else if (submittedKeys.current.size) {
+      const accepted = submittedKeys.current;
+      submittedKeys.current = new Set();
+      setDrafts((current) =>
+        current.filter((draft) => !accepted.has(selectionKey(draft))),
+      );
+      setReviewing(false);
+      setStoredReview(null);
+    }
+  }, [actionState.status, clearDrafts, rolling, setDrafts]);
   const reviewHeadingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     if (reviewing && hydrated) reviewHeadingRef.current?.focus();
@@ -256,7 +319,7 @@ function Stage1CardBuilderEditor({
     }
   }
 
-  const draftPositions = drafts.flatMap((draft) => {
+  const draftPositions = batchDrafts.flatMap((draft) => {
     const selected = snapshots.get(draft.marketSnapshotId);
     return selected
       ? [
@@ -280,6 +343,10 @@ function Stage1CardBuilderEditor({
     eligibleOpportunities: [...eligibleByMarket.values()],
     ruleset: rules,
   });
+  const batchCredits = batchDrafts.reduce(
+    (sum, draft) => sum + draft.stakeCredits,
+    0,
+  );
   const draftCredits = drafts.reduce(
     (total, draft) =>
       total + (Number.isFinite(draft.stakeCredits) ? draft.stakeCredits : 0),
@@ -293,13 +360,24 @@ function Stage1CardBuilderEditor({
     market: SlateMarket,
     existing: DraftSelection | undefined,
   ) {
+    if (
+      rolling &&
+      (!eventAcceptsBets(event, cutoffNow) ||
+        ownerCard?.positions.some(
+          (position) =>
+            position.eventId === event.id &&
+            position.marketType === market.marketType,
+        ))
+    )
+      return;
     const maximumStakeCredits = maximumStakeForOdds(market.americanOdds, rules);
-    setQuoteReview(null);
+    setStoredReview(null);
     setEditor({
       eventId: event.id,
       existing: Boolean(existing),
       marketSnapshotId: market.id,
       marketType: market.marketType,
+      outcomeKey: market.outcomeKey,
       stakeCredits: String(
         existing?.stakeCredits ?? Math.min(250, maximumStakeCredits),
       ),
@@ -309,7 +387,7 @@ function Stage1CardBuilderEditor({
   }
 
   function removeDraft(key: string) {
-    setQuoteReview(null);
+    setStoredReview(null);
     setDrafts((current) =>
       current.filter((draft) => selectionKey(draft) !== key),
     );
@@ -338,32 +416,56 @@ function Stage1CardBuilderEditor({
 
   async function reviewCard() {
     if (pending || closed || sealed) return;
+    if (
+      rolling &&
+      batchDrafts.some((draft) => {
+        const selection = snapshots.get(draft.marketSnapshotId);
+        return !selection || !eventAcceptsBets(selection.event, cutoffNow);
+      })
+    ) {
+      setCardFeedback(
+        "A selected game is closed or unavailable. Uncheck it to submit bets on later games. Your drafts are kept.",
+      );
+      return;
+    }
     if (!draftValidation.accepted) {
       setCardFeedback(draftValidation.message);
       requestAnimationFrame(() => cardFeedbackRef.current?.focus());
       return;
     }
     setCardFeedback(null);
-    if (state.league.mode === "LIVE") {
+    const reviewedDraftRevision = currentRevision();
+    if (state.league.mode === "LIVE" || rolling) {
       setCheckingQuotes(true);
-      setQuoteReview(null);
+      setStoredReview(null);
       try {
         const result = await reviewLiveCardQuotes(
           state.league.slug,
-          drafts.map(({ marketSnapshotId, payloadHash, stakeCredits }) => ({
-            marketSnapshotId,
-            payloadHash,
-            stakeCredits,
-          })),
+          batchDrafts.map(
+            ({ marketSnapshotId, payloadHash, stakeCredits }) => ({
+              marketSnapshotId,
+              payloadHash,
+              stakeCredits,
+            }),
+          ),
         );
+        if (currentRevision() !== reviewedDraftRevision) {
+          setCardFeedback(
+            "Your draft changed while odds were being checked. The latest draft is kept; review it again before submitting.",
+          );
+          return;
+        }
         if (result.status === "error") {
           setCardFeedback(result.message);
           return;
         }
         if (result.status === "disabled") setRequiresLiveReview(false);
-        if (result.status === "ready") {
+        if (result.status === "ready" || result.status === "simulation") {
           const byEvent = new Map(
-            result.review.quotes.map((event) => [event.eventId, event.markets]),
+            (result.status === "ready"
+              ? result.review.quotes
+              : result.quotes
+            ).map((event) => [event.eventId, event.markets]),
           );
           const refreshedSlate = slate.map((event) => ({
             ...event,
@@ -395,9 +497,9 @@ function Stage1CardBuilderEditor({
                 draft.reviewedProposition !== draft.proposition,
             })),
           );
-          setQuoteReview(result.review);
+          setQuoteReview(result.status === "ready" ? result.review : null);
           setReviewExpired(false);
-          setRequiresLiveReview(true);
+          setRequiresLiveReview(result.status === "ready");
         }
       } catch {
         setCardFeedback(
@@ -423,14 +525,19 @@ function Stage1CardBuilderEditor({
       kickoffFilter === "ALL" ||
       kickoffWindow(event.scheduledStartAt) === kickoffFilter,
   );
-  const quoteReviewCount = drafts.filter(
+  const quoteReviewCount = batchDrafts.filter(
     (draft) => draft.quoteReviewRequired,
   ).length;
   const editorEvent = editor
     ? slate.find((event) => event.id === editor.eventId)
     : undefined;
   const editorMarket = editor
-    ? snapshots.get(editor.marketSnapshotId)?.market
+    ? (snapshots.get(editor.marketSnapshotId)?.market ??
+      editorEvent?.markets.find(
+        (market) =>
+          market.marketType === editor.marketType &&
+          market.outcomeKey === editor.outcomeKey,
+      ))
     : undefined;
   const editorKey = editor
     ? `${editor.eventId}:${editor.marketType}`
@@ -506,6 +613,7 @@ function Stage1CardBuilderEditor({
       return {
         ...current,
         marketSnapshotId,
+        outcomeKey: market.outcomeKey,
         stakeCredits: String(
           Number.isInteger(currentStake)
             ? Math.min(currentStake, maximumStakeCredits)
@@ -518,6 +626,12 @@ function Stage1CardBuilderEditor({
 
   function saveEditor() {
     if (!editor || !editorEvent || !editorMarket) return;
+    if (rolling && !eventAcceptsBets(editorEvent, cutoffNow)) {
+      setEditorError(
+        "This game has closed. You can still choose a later game.",
+      );
+      return;
+    }
     if (editorMarket.qualityStatus !== "HEALTHY") {
       setEditorError("Choose an available outcome before saving this pick.");
       return;
@@ -577,7 +691,7 @@ function Stage1CardBuilderEditor({
     );
   }
 
-  if (sealed || actionState.status === "success") {
+  if (!rolling && (sealed || actionState.status === "success")) {
     return (
       <div className="mt-4">
         <SealedCardSummary
@@ -596,7 +710,7 @@ function Stage1CardBuilderEditor({
       </div>
     );
 
-  if (reviewing && drafts.length > 0) {
+  if (reviewing && batchDrafts.length > 0) {
     return (
       <div className="mt-4 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <section className="border-registry bg-surface min-w-0 rounded-xl border p-4 wrap-break-word shadow-[var(--shadow-card)] sm:p-6">
@@ -608,7 +722,7 @@ function Stage1CardBuilderEditor({
             ref={reviewHeadingRef}
             tabIndex={-1}
           >
-            Review your complete card
+            {rolling ? "Review your bets" : "Review your complete card"}
           </h2>
           <p className="text-graphite mt-3 leading-7">
             Check each game, selection, odds, stake, and total return. Your
@@ -624,7 +738,7 @@ function Stage1CardBuilderEditor({
             </p>
           ) : null}
           <div className="divide-boundary mt-6 divide-y">
-            {drafts.map((draft, index) => {
+            {batchDrafts.map((draft, index) => {
               const selected = snapshots.get(draft.marketSnapshotId);
               if (!selected) return null;
               return (
@@ -693,22 +807,29 @@ function Stage1CardBuilderEditor({
         </section>
         <aside className="min-w-0 space-y-5 wrap-break-word xl:sticky xl:top-6 xl:self-start">
           <section className="border-boundary bg-subtle rounded-xl border p-5">
-            <p className="text-muted text-sm font-semibold">Card total</p>
+            <p className="text-muted text-sm font-semibold">
+              {rolling ? "This submission" : "Card total"}
+            </p>
             <p className="mt-2 font-mono text-3xl font-bold">
-              {formatCredits(rules.card.weeklyAllocationCredits)} /{" "}
-              {formatCredits(rules.card.weeklyAllocationCredits)}
+              {rolling
+                ? `${formatCredits(batchCredits)} credits`
+                : `${formatCredits(rules.card.weeklyAllocationCredits)} / ${formatCredits(rules.card.weeklyAllocationCredits)}`}
             </p>
             <p className="text-graphite mt-2 text-sm">
-              {ownerCard.positions.length + drafts.length} total picks
+              {rolling
+                ? `${batchDrafts.length} bets · ${formatCredits(ownerCard.remainingCredits - batchCredits)} credits available after submission`
+                : `${ownerCard.positions.length + drafts.length} total picks`}
             </p>
           </section>
-          {state.league.mode === "LIVE" ? (
+          {state.league.mode === "LIVE" || rolling ? (
             <div className="text-graphite space-y-2 text-sm" aria-live="polite">
               {quoteReview ? (
                 <p>
                   Odds checked {formatObservedAt(quoteReview.fetchedAt)}.{" "}
                   {reviewExpired
-                    ? "Check again before sealing."
+                    ? rolling
+                      ? "Check again before submitting."
+                      : "Check again before sealing."
                     : "Confirm within 30 seconds; odds are not held."}
                 </p>
               ) : null}
@@ -725,7 +846,9 @@ function Stage1CardBuilderEditor({
                     ? "Checking current odds…"
                     : quoteReview
                       ? "Check current odds again"
-                      : "Check current odds before sealing"}
+                      : rolling
+                        ? "Check current odds before submitting"
+                        : "Check current odds before sealing"}
                 </button>
               ) : null}
             </div>
@@ -742,12 +865,15 @@ function Stage1CardBuilderEditor({
           ) : null}
           <ReturnExplanation />
           <p className="text-sm font-semibold">
-            Seal by {formatDate(state.week.commonLockAt)}.
+            {rolling
+              ? "Each selected game closes at kickoff."
+              : `Seal by ${formatDate(state.week.commonLockAt)}.`}
           </p>
           <form action={action}>
             <p className="mb-3 text-sm leading-6">
-              Sealing is final: all picks are saved together with a receipt for
-              each. You cannot edit or cancel them.
+              {rolling
+                ? "Submitting is final: these bets are accepted together with a receipt for each. You cannot edit or cancel them. You can return to add more bets with your remaining credits."
+                : "Sealing is final: all picks are saved together with a receipt for each. You cannot edit or cancel them."}
             </p>
             <input name="leagueSlug" type="hidden" value={state.league.slug} />
             <input
@@ -759,7 +885,7 @@ function Stage1CardBuilderEditor({
               name="positions"
               type="hidden"
               value={JSON.stringify(
-                drafts.map(
+                batchDrafts.map(
                   ({ marketSnapshotId, payloadHash, stakeCredits }) => ({
                     marketSnapshotId,
                     payloadHash,
@@ -774,6 +900,13 @@ function Stage1CardBuilderEditor({
                 pending ||
                 quoteReviewCount > 0 ||
                 !draftValidation.accepted ||
+                (rolling &&
+                  batchDrafts.some((draft) => {
+                    const selected = snapshots.get(draft.marketSnapshotId);
+                    return (
+                      !selected || !eventAcceptsBets(selected.event, cutoffNow)
+                    );
+                  })) ||
                 (requiresLiveReview && (!quoteReview || reviewExpired))
               }
               type="submit"
@@ -781,10 +914,14 @@ function Stage1CardBuilderEditor({
               {checkingQuotes
                 ? "Checking current odds…"
                 : sealing
-                  ? "Sealing card…"
+                  ? rolling
+                    ? "Submitting bets…"
+                    : "Sealing card…"
                   : quoteReviewCount > 0
                     ? "Review changed quotes first"
-                    : "Confirm and seal card"}
+                    : rolling
+                      ? "Submit bets"
+                      : "Confirm and seal card"}
             </button>
             <ActionFeedback state={actionState} />
           </form>
@@ -793,7 +930,7 @@ function Stage1CardBuilderEditor({
             disabled={pending}
             onClick={() => {
               setReviewing(false);
-              setQuoteReview(null);
+              setStoredReview(null);
             }}
             type="button"
           >
@@ -809,6 +946,7 @@ function Stage1CardBuilderEditor({
       <div className="mt-4 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-3">
           <OwnerCardProgress context={context} onSlatePage />
+          {rolling ? <ActionFeedback state={actionState} /> : null}
 
           <nav
             aria-label="Filter games by kickoff"
@@ -846,6 +984,9 @@ function Stage1CardBuilderEditor({
                 </h2>
                 <div className="text-muted text-sm sm:text-right">
                   <p>{formatDate(event.scheduledStartAt)}</p>
+                  {rolling && !eventAcceptsBets(event, cutoffNow) ? (
+                    <p className="mt-1 font-semibold">Betting closed</p>
+                  ) : null}
                   <p className="mt-1 text-xs">
                     Odds updated{" "}
                     {formatObservedAt(
@@ -911,9 +1052,18 @@ function Stage1CardBuilderEditor({
                             primary: copy.primary,
                             secondary: copy.secondary,
                             unavailableReason:
-                              market.qualityStatus === "HEALTHY"
-                                ? undefined
-                                : "Current quote is unavailable",
+                              rolling && !eventAcceptsBets(event, cutoffNow)
+                                ? "Betting closed"
+                                : rolling &&
+                                    ownerCard.positions.some(
+                                      (position) =>
+                                        position.eventId === event.id &&
+                                        position.marketType === marketType,
+                                    )
+                                  ? "Bet already submitted for this market"
+                                  : market.qualityStatus === "HEALTHY"
+                                    ? undefined
+                                    : "Current quote is unavailable",
                           } satisfies OutcomeSelectorOption;
                         })}
                         selectedId={selectedDraft?.marketSnapshotId ?? null}
@@ -929,12 +1079,25 @@ function Stage1CardBuilderEditor({
               Card requirements
             </summary>
             <p className="pb-3 leading-6">
-              Allocate all {formatCredits(rules.card.weeklyAllocationCredits)}{" "}
-              credits and seal before the deadline.{" "}
-              {state.week.scope === "EXHIBITION"
-                ? "An incomplete card scores zero for this exhibition; your official season record stays unchanged."
-                : "An incomplete card receives an automatic matchup loss under this season’s Ruleset."}{" "}
-              Picks stay editable until you seal.
+              {rolling ? (
+                `Submit one or more bets before each game's kickoff. You have ${formatCredits(rules.card.weeklyAllocationCredits)} credits for the entire week. Unused credits expire and partial cards score normally.`
+              ) : (
+                <>
+                  Allocate all{" "}
+                  {formatCredits(rules.card.weeklyAllocationCredits)} credits
+                  and seal before the deadline.
+                </>
+              )}{" "}
+              {rolling ? (
+                "Only zero submitted bets at the final cutoff counts as a missed week. Drafts stay editable; submitted bets are permanent. Wins, pushes and voids do not replenish available credits."
+              ) : (
+                <>
+                  {state.week.scope === "EXHIBITION"
+                    ? "An incomplete card scores zero for this exhibition; your official season record stays unchanged."
+                    : "An incomplete card receives an automatic matchup loss under this season’s Ruleset."}{" "}
+                  Picks stay editable until you seal.
+                </>
+              )}
             </p>
           </details>
         </div>
@@ -942,12 +1105,12 @@ function Stage1CardBuilderEditor({
         <aside className="min-w-0 space-y-5 wrap-break-word xl:sticky xl:top-6 xl:self-start">
           <section className="border-boundary bg-surface rounded-lg border p-4">
             <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-              Your picks
+              {rolling ? "Your drafts" : "Your picks"}
             </p>
             {ownerCard.positions.length > 0 ? (
               <p className="text-muted mt-2 text-xs">
-                {formatCredits(ownerCard.allocatedCredits)} credits are already
-                sealed and can’t be changed.
+                {formatCredits(ownerCard.allocatedCredits)} credits are already{" "}
+                {rolling ? "submitted" : "sealed"} and can’t be changed.
               </p>
             ) : null}
             {drafts.length === 0 ? (
@@ -958,10 +1121,66 @@ function Stage1CardBuilderEditor({
               <div className="divide-boundary mt-4 divide-y">
                 {drafts.map((draft, index) => {
                   const selected = snapshots.get(draft.marketSnapshotId);
-                  if (!selected) return null;
                   const key = selectionKey(draft);
+                  if (!selected)
+                    return (
+                      <article key={key} className="py-4">
+                        <p className="font-semibold">
+                          Unavailable draft ·{" "}
+                          {formatMarketProposition(draft.reviewedProposition)}
+                        </p>
+                        <p className="text-muted mt-1 text-sm">
+                          Your draft is kept. Remove it or wait for the game and
+                          quote to become available.
+                        </p>
+                        {rolling ? (
+                          <label className="flex min-h-11 items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={!excludedKeys.has(key)}
+                              onChange={() => {
+                                setExcludedKeys((current) => {
+                                  const next = new Set(current);
+                                  if (next.has(key)) next.delete(key);
+                                  else next.add(key);
+                                  return next;
+                                });
+                                setStoredReview(null);
+                              }}
+                            />
+                            Include in submission
+                          </label>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="text-action min-h-11 font-semibold"
+                          onClick={() => removeDraft(key)}
+                        >
+                          Remove
+                        </button>
+                      </article>
+                    );
                   return (
                     <article className="py-4 first:pt-0 last:pb-0" key={key}>
+                      {rolling ? (
+                        <label className="mb-2 flex min-h-11 items-center gap-2 text-sm font-semibold">
+                          <input
+                            type="checkbox"
+                            checked={!excludedKeys.has(key)}
+                            onChange={() => {
+                              setExcludedKeys((current) => {
+                                const next = new Set(current);
+                                if (next.has(key)) next.delete(key);
+                                else next.add(key);
+                                return next;
+                              });
+                              setStoredReview(null);
+                            }}
+                            aria-label={`Include ${selected.event.awayTeam} at ${selected.event.homeTeam} ${marketLabels[draft.marketType]} in submission`}
+                          />
+                          Include in submission
+                        </label>
+                      ) : null}
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0 flex-1 basis-48">
                           <p className="text-muted text-xs">
@@ -1002,8 +1221,9 @@ function Stage1CardBuilderEditor({
                                 )}
                               </p>
                               <p className="text-pending mt-2 font-semibold">
-                                Review the complete card to reconcile current
-                                terms.
+                                Review{" "}
+                                {rolling ? "these bets" : "the complete card"}{" "}
+                                to reconcile current terms.
                               </p>
                             </div>
                           ) : null}
@@ -1031,7 +1251,8 @@ function Stage1CardBuilderEditor({
               </div>
             )}
             <p className="border-boundary text-graphite mt-4 border-t pt-4 text-sm font-semibold">
-              {formatCredits(totalCredits)} used ·{" "}
+              {formatCredits(totalCredits)}{" "}
+              {rolling ? "submitted or drafted" : "used"} ·{" "}
               {remainingCredits >= 0
                 ? `${formatCredits(remainingCredits)} left`
                 : `${formatCredits(Math.abs(remainingCredits))} over`}
@@ -1058,12 +1279,16 @@ function Stage1CardBuilderEditor({
             {draftValidation.accepted
               ? quoteReviewCount > 0
                 ? `Review ${quoteReviewCount} updated quote${quoteReviewCount === 1 ? "" : "s"}`
-                : `Review ${drafts.length} picks`
-              : remainingCredits > 0
-                ? `Use ${formatCredits(remainingCredits)} more to review`
-                : remainingCredits < 0
-                  ? `Reduce by ${formatCredits(Math.abs(remainingCredits))} to review`
-                  : "Resolve card issues to review"}
+                : `Review ${batchDrafts.length} ${rolling ? "bets" : "picks"}`
+              : rolling
+                ? batchDrafts.length
+                  ? "Resolve selected bet issues"
+                  : "Select bets to review"
+                : remainingCredits > 0
+                  ? `Use ${formatCredits(remainingCredits)} more to review`
+                  : remainingCredits < 0
+                    ? `Reduce by ${formatCredits(Math.abs(remainingCredits))} to review`
+                    : "Resolve card issues to review"}
           </button>
         </aside>
       </div>
@@ -1073,6 +1298,9 @@ function Stage1CardBuilderEditor({
         onReview={reviewCard}
         pickCount={drafts.length}
         remainingCredits={remainingCredits}
+        reviewLabel={
+          rolling ? `Review ${batchDrafts.length} bets` : "Review card"
+        }
       />
       <PositionEditorSheet
         americanOdds={editorMarket?.americanOdds ?? null}
@@ -1107,7 +1335,7 @@ function Stage1CardBuilderEditor({
         remainingCredits={Math.max(0, editorAvailableCredits)}
         selectedOutcomeId={
           editorMarket?.qualityStatus === "HEALTHY"
-            ? (editor?.marketSnapshotId ?? null)
+            ? (editorMarket.id ?? null)
             : null
         }
         stakeCredits={editor?.stakeCredits ?? ""}

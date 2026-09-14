@@ -13,6 +13,22 @@ export function timedCommissionerAction(
 ) {
   const week = state.week;
   if (state.league.mode !== "LIVE" || !week) return null;
+  if (
+    week.rollingSubmissionsEnabled &&
+    ["OPEN", "LOCKED"].includes(week.state)
+  ) {
+    return {
+      title: week.entryClosed
+        ? "Check remaining game results"
+        : "Betting continues game by game",
+      detail: week.entryClosed
+        ? "Weekly betting has closed. Submitted bets settle from confirmed results and the week finalizes automatically."
+        : "Members can add bets until each game’s kickoff. Game checks run automatically; a partial allocation counts as participation.",
+      prerequisites: week.entryClosesAt
+        ? `Weekly betting ${week.entryClosed ? "closed" : "closes"} ${easternTime(week.entryClosesAt)}`
+        : "Each game closes at its own kickoff",
+    };
+  }
   const deadline = easternTime(week.commonLockAt);
   if (
     week.state === "PLANNED" &&

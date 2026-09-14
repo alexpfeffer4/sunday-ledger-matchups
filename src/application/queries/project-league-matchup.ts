@@ -1,6 +1,10 @@
 import type { Stage1StateDto } from "./stage1-dtos";
 import type { LeagueMatchupCards } from "./league-matchup-dtos";
 import { competitionLabel } from "@/application/presentation/competition-label";
+import {
+  distinctUnrevealedGames,
+  rollingSubmissionStatus,
+} from "./rolling-matchup";
 import type {
   PairedMatchupDto,
   PositionLedgerItem,
@@ -21,6 +25,18 @@ export function projectLeagueMatchup(
   const a = cards.cards.find((card) => card.entryId === game.sideAEntryId);
   const b = cards.cards.find((card) => card.entryId === game.sideBEntryId);
   if (!a || !b) return null;
+  const rolling = state.week.rollingSubmissionsEnabled === true;
+  const gameIdentitiesVisible =
+    a.selectedGames !== undefined || b.selectedGames !== undefined;
+  const entryClosed = state.week.entryClosed === true;
+  const furtherSubmissionsPossible =
+    rolling &&
+    !entryClosed &&
+    (a.canSubmit !== false ||
+      b.canSubmit !== false ||
+      a.submitted !== true ||
+      b.submitted !== true);
+  const result = furtherSubmissionsPossible ? null : game.result;
   const member = (
     card: typeof a,
     displayName: string,
@@ -43,19 +59,25 @@ export function projectLeagueMatchup(
       seedKind: seed ? "PLAYOFF" : "REGULAR",
       scoreCenticredits:
         (side === "A"
-          ? game.result?.sideAPointsForCenticredits
-          : game.result?.sideBPointsForCenticredits) ?? card.scoreCenticredits,
+          ? result?.sideAPointsForCenticredits
+          : result?.sideBPointsForCenticredits) ?? card.scoreCenticredits,
       outstanding: card.outstanding ?? null,
-      cardStatus:
-        card.readiness === "COMPLIANT"
+      selectedGames:
+        card.selectedGames !== undefined
+          ? distinctUnrevealedGames(card.selectedGames, state.slate)
+          : undefined,
+      availableCredits: rolling ? (card.availableCredits ?? null) : undefined,
+      expiredCredits: rolling ? (card.expiredCredits ?? null) : undefined,
+      canSubmit: rolling ? (card.canSubmit ?? null) : undefined,
+      cardStatus: rolling
+        ? rollingSubmissionStatus(card.submitted, entryClosed)
+        : card.readiness === "COMPLIANT"
           ? "Sealed"
           : card.readiness === "INCOMPLETE"
             ? "Incomplete"
             : "Status unavailable",
       decision:
-        (side === "A"
-          ? game.result?.sideADecision
-          : game.result?.sideBDecision) ?? null,
+        (side === "A" ? result?.sideADecision : result?.sideBDecision) ?? null,
     };
   };
   const rows: PositionLedgerItem[] = [a, b].flatMap((card, index) =>
@@ -102,9 +124,9 @@ export function projectLeagueMatchup(
   }));
   const scoreboardState = scoreboard.find((row) => row.id === matchupId)!.state;
   const phase =
-    game.result?.status === "FINAL"
+    result?.status === "FINAL"
       ? "FINAL"
-      : game.result?.status === "PROVISIONAL"
+      : result?.status === "PROVISIONAL"
         ? "PROVISIONAL"
         : scoreboardState === "Not started"
           ? "PREGAME"
@@ -119,6 +141,7 @@ export function projectLeagueMatchup(
   return {
     ...base,
     spectator: true,
+    gameIdentitiesVisible,
     week: {
       ...base.week,
       scope: game.scope,
@@ -136,11 +159,13 @@ export function projectLeagueMatchup(
       : phase === "PREGAME"
         ? "Pregame"
         : phase === "LOCKED"
-          ? "Cards locked"
+          ? rolling
+            ? "Betting closed"
+            : "Cards locked"
           : phase === "DELAYED"
             ? "Updates delayed"
             : scoreboardState,
-    resultStatus: game.result?.status ?? null,
+    resultStatus: result?.status ?? null,
     rows: {
       SETTLED: rows.filter((row) => row.section === "SETTLED"),
       IN_PROGRESS: rows.filter((row) => row.section === "IN_PROGRESS"),
@@ -155,6 +180,7 @@ export function projectLeagueMatchup(
       selfRemainingMaximumCenticredits: 0,
       opponentRemainingMaximumCenticredits: null,
       sentence: null,
+      furtherSubmissionsPossible,
     },
     correctedCount,
     scoreboard,

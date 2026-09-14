@@ -26,7 +26,11 @@ import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stag
 import { getOwnerRehearsalForLeague } from "@/application/queries/get-owner-rehearsal";
 import { validateDraftCard } from "@/domain/cards/validate-card-draft";
 import { maximumStakeForOdds } from "@/domain/cards/validate-position";
-import { resolveSeasonCardRules } from "@/rulesets/card-rules";
+import {
+  resolveSeasonCardRules,
+  usesRollingSubmissions,
+} from "@/rulesets/card-rules";
+import { eventAcceptsBets } from "@/components/card/owner-card-context";
 
 const contextSchema = z.object({
   leagueId: z.uuid(),
@@ -121,6 +125,32 @@ async function requestOrigin(): Promise<string> {
 }
 
 function mutationError(message: string): AppActionState {
+  if (
+    /ENTRY_CLOSED|EVENT_CLOSED|kickoff cutoff|entry cutoff|closed for new bets/i.test(
+      message,
+    )
+  )
+    return {
+      status: "error",
+      message:
+        "One of these games has closed. No new bets were accepted. Your earlier bets and drafts are unchanged.",
+    };
+  if (
+    /remaining budget|cumulative|allocation exceeded|exceed.*1,000|exceed.*remaining/i.test(
+      message,
+    )
+  )
+    return {
+      status: "error",
+      message:
+        "This batch exceeds your available credits. Refresh your card to see bets submitted from another tab or device, then review again.",
+    };
+  if (/already.*market|duplicate.*market|opposing.*market/i.test(message))
+    return {
+      status: "error",
+      message:
+        "A bet is already submitted for this game and market. Submitted bets cannot be changed or topped up.",
+    };
   if (/QUOTE_(REVIEW|REFRESH|SOURCE|FETCH)/.test(message)) {
     return { status: "error", message: quoteRecoveryMessage(message) };
   }
@@ -1588,9 +1618,11 @@ export async function acceptStage1CardAction(
     .object({
       leagueSlug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
       positions: z.array(cardDraftPositionSchema).min(1).max(100),
+      submissionId: z.uuid().optional(),
     })
     .safeParse({
       leagueSlug: formData.get("leagueSlug"),
+      submissionId: formData.get("submissionId") || undefined,
       positions: (() => {
         try {
           const positions = JSON.parse(String(formData.get("positions")));
@@ -1613,7 +1645,9 @@ export async function acceptStage1CardAction(
   const operationKey = stableOperationKey({
     command: "ACCEPT_STAGE1_CARD",
     leagueSlug: context.data.leagueSlug,
-    positions: context.data.positions,
+    ...(context.data.submissionId
+      ? { submissionId: context.data.submissionId }
+      : { positions: context.data.positions }),
   });
   const supabase = await createSupabaseServerClient();
   if (
@@ -1623,9 +1657,17 @@ export async function acceptStage1CardAction(
       operationKey,
     )
   ) {
+    // Always let the authoritative command compare the request fingerprint.
+    // A known identity with different content must not look like a success.
+    const replay = await supabase.schema("api").rpc("accept_stage1_card", {
+      p_league_slug: context.data.leagueSlug,
+      p_positions: context.data.positions as unknown as Json,
+      p_idempotency_key: operationKey,
+    });
+    if (replay.error) return mutationError(replay.error.message);
     return completed(
       context.data.leagueSlug,
-      "Your original complete card is sealed; no pick was added twice.",
+      "Your original bets are saved; no bet was added twice.",
       {
         href: `/l/${context.data.leagueSlug}/card`,
         label: "Open your accepted card",
@@ -1634,7 +1676,17 @@ export async function acceptStage1CardAction(
   }
 
   const state = await getAuthoritativeLeagueState(context.data.leagueSlug);
-  if (state?.ownerCard?.compliance === "COMPLIANT") {
+  if (!state?.week || !state.ownerCard)
+    return mutationError("This week's card is not open.");
+  const resolvedRules = resolveSeasonCardRules(
+    state.season.rulesetSnapshot,
+    state.league.mode,
+  );
+  if (!resolvedRules.supported)
+    return { status: "error", message: resolvedRules.message };
+  const rules = resolvedRules.rules;
+  const rolling = usesRollingSubmissions(rules);
+  if (!rolling && state.ownerCard.compliance === "COMPLIANT") {
     return completed(
       context.data.leagueSlug,
       "Your card is already sealed. Your saved picks and receipts are unchanged.",
@@ -1644,17 +1696,24 @@ export async function acceptStage1CardAction(
       },
     );
   }
-  if (!state?.week || !state.ownerCard || state.week.state !== "OPEN") {
-    return mutationError("This week’s card is not open.");
+  if (rolling && !context.data.submissionId)
+    return {
+      status: "error",
+      message:
+        "Review these bets again before submitting. Your draft has been kept.",
+    };
+  if (
+    (!rolling && state.week.state !== "OPEN") ||
+    (rolling &&
+      (state.week.entryClosed ||
+        ["PLANNED", "FINAL"].includes(state.week.state)))
+  ) {
+    return {
+      status: "error",
+      message:
+        "Submissions are closed for this week. Your submitted bets are unchanged.",
+    };
   }
-
-  const resolvedRules = resolveSeasonCardRules(
-    state.season.rulesetSnapshot,
-    state.league.mode,
-  );
-  if (!resolvedRules.supported)
-    return { status: "error", message: resolvedRules.message };
-  const rules = resolvedRules.rules;
   const rehearsal = await getOwnerRehearsalForLeague(context.data.leagueSlug);
   if (rehearsal?.quoteReviewPending) {
     const quoteReview = await supabase
@@ -1691,6 +1750,24 @@ export async function acceptStage1CardAction(
     return {
       status: "error",
       message: "A selected quote is no longer on this slate. Review the card.",
+    };
+  }
+  if (
+    rolling &&
+    selected.some(
+      ({ event }) =>
+        !eventAcceptsBets(
+          event,
+          state.league.mode === "SIMULATION"
+            ? (state.season.simulatedNow ?? "")
+            : new Date().toISOString(),
+        ),
+    )
+  ) {
+    return {
+      status: "error",
+      message:
+        "One of these games has closed. No bets in this batch were submitted. Your earlier bets and drafts are unchanged.",
     };
   }
   if (
@@ -1756,6 +1833,28 @@ export async function acceptStage1CardAction(
     p_idempotency_key: operationKey,
   });
   if (result.error) {
+    if (rolling) {
+      if (
+        await operationAlreadyCompleted(
+          supabase,
+          "ACCEPT_STAGE1_CARD",
+          operationKey,
+        )
+      ) {
+        const replay = await supabase.schema("api").rpc("accept_stage1_card", {
+          p_league_slug: context.data.leagueSlug,
+          p_positions: context.data.positions as unknown as Json,
+          p_idempotency_key: operationKey,
+        });
+        if (!replay.error)
+          return completed(
+            context.data.leagueSlug,
+            "Your original bets are saved; no bet was added twice.",
+          );
+        return mutationError(replay.error.message);
+      }
+      return mutationError(result.error.message);
+    }
     return reconcileCommandError({
       commandName: "ACCEPT_STAGE1_CARD",
       completedMessage:
@@ -1772,7 +1871,9 @@ export async function acceptStage1CardAction(
   }
   return finish(
     context.data.leagueSlug,
-    `${context.data.positions.length} positions accepted together. Your complete card is now sealed.`,
+    rolling
+      ? `${context.data.positions.length} ${context.data.positions.length === 1 ? "bet" : "bets"} submitted. Accepted terms are permanent. You can add more bets with your remaining credits.`
+      : `${context.data.positions.length} positions accepted together. Your complete card is now sealed.`,
   );
 }
 

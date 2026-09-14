@@ -22,6 +22,7 @@ export type StoredCardDraft = {
     Pick<
       RestoredCardDraft,
       | "eventId"
+      | "marketSnapshotId"
       | "marketType"
       | "outcomeKey"
       | "reviewedAmericanOdds"
@@ -67,7 +68,25 @@ export function restoreCardDrafts(
           candidate.marketType === draft.marketType &&
           candidate.outcomeKey === draft.outcomeKey,
       );
-      if (!event || !market) return [];
+      if (!event || !market)
+        return [
+          {
+            americanOdds: draft.reviewedAmericanOdds,
+            eventId: draft.eventId,
+            marketSnapshotId:
+              draft.marketSnapshotId ??
+              `unavailable:${draft.eventId}:${draft.marketType}`,
+            marketType: draft.marketType,
+            outcomeKey: draft.outcomeKey,
+            payloadHash: draft.reviewedPayloadHash,
+            proposition: draft.reviewedProposition,
+            quoteReviewRequired: true,
+            reviewedAmericanOdds: draft.reviewedAmericanOdds,
+            reviewedPayloadHash: draft.reviewedPayloadHash,
+            reviewedProposition: draft.reviewedProposition,
+            stakeCredits: draft.stakeCredits,
+          },
+        ];
 
       return [
         {

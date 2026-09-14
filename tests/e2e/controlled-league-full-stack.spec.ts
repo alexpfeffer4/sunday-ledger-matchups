@@ -50,6 +50,7 @@ type StageState = {
   } | null;
   members: Array<{ entryId: string | null; userId: string }>;
   season: { simulatedNow: string };
+  ownerCard: { positions: Array<{ id: string; receiptHash: string }> } | null;
   slate: Array<{
     scheduledStartAt: string;
     markets: Array<{
@@ -480,6 +481,9 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
       },
     ],
   });
+  const acceptedOpponent = await getState(opponentClient, slug);
+  const opponentReceipt = acceptedOpponent.ownerCard!.positions[0]!;
+  expect(opponentReceipt.id).toBeTruthy();
 
   await commissionerBrowser.page.reload();
   await commissionerBrowser.page
@@ -499,10 +503,18 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     .toBe("LOCKED");
 
   await page.goto(`/l/${slug}/matchup`);
-  await expect(page.getByText("Future picks sealed")).toBeVisible();
-  expect(await page.locator("body").innerText()).not.toContain(
-    opponentMarket.proposition,
+  const selectedOpponentGames = page.getByRole("region", {
+    name: `${opponent!.displayName} selected games`,
+  });
+  await expect(selectedOpponentGames.getByRole("listitem")).toHaveCount(1);
+  expect(await selectedOpponentGames.innerText()).not.toMatch(
+    /credits|odds|moneyline|spread|total/i,
   );
+  expect(
+    (await getState(invitedClient, slug)).matchup!.opponentRevealedPositions,
+  ).toEqual([]);
+  expect(await page.content()).not.toContain(opponentReceipt.id);
+  expect(await page.content()).not.toContain(opponentReceipt.receiptHash);
 
   const sameLeagueNonOpponent = knownIdentities.find(
     (identity) =>
@@ -514,8 +526,12 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     await browserSignIn(isolated.page, identity, "/leagues");
     const response = await isolated.page.goto(`/l/${slug}/matchup`);
     const body = await isolated.page.locator("body").innerText();
-    expect(body).not.toContain(opponentMarket.proposition);
+    expect(await isolated.page.content()).not.toContain(opponentReceipt.id);
+    expect(await isolated.page.content()).not.toContain(
+      opponentReceipt.receiptHash,
+    );
     if (identity !== sameLeagueNonOpponent) {
+      expect(body).not.toContain(opponentMarket.proposition);
       expect([200, 404]).toContain(response?.status());
       await expect(
         isolated.page.getByRole("heading", {

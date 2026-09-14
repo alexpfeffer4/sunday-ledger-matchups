@@ -60,8 +60,8 @@ export function InvitePreviewCard({
           Beat one friend every week
         </h2>
         <p className="text-graphite mt-3 leading-7">
-          Build a sealed card from real NFL markets. Picks stay private until
-          their games begin, and weekly results build the league season.
+          Build a weekly card from real NFL markets. Bet details stay private
+          until their games begin, and weekly results build the league season.
         </p>
 
         <dl className="border-boundary mt-6 grid gap-4 border-y py-5 text-sm sm:grid-cols-2">
@@ -95,7 +95,7 @@ export function InvitePreviewCard({
         {actions}
         <p className="text-muted mt-4 text-center text-xs leading-5">
           Sealed picks stay private until their games begin. Commissioners
-          cannot inspect sealed cards.
+          cannot inspect unrevealed bet details.
         </p>
       </div>
     </section>

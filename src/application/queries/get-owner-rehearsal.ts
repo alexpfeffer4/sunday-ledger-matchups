@@ -27,6 +27,7 @@ const ownerRehearsalSchema = z.object({
     "FINAL",
   ]),
   ownerCardSealed: z.boolean(),
+  rollingSubmissionsEnabled: z.boolean().optional(),
   ownerCardChoice: z.enum(["MANUAL", "SAMPLE"]).nullable(),
   quoteReviewPending: z.boolean(),
   startedAt: z.iso.datetime({ offset: true }),

@@ -8,6 +8,7 @@ import {
   useCardDraft,
 } from "@/components/card/use-card-draft";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { usesRollingSubmissions } from "@/rulesets/card-rules";
 import { formatCredits } from "@/domain/odds/american";
 
 export function SealedCardSummary({
@@ -62,6 +63,102 @@ export function OwnerCardProgress({
   const { drafts, hydrated, saved, sealed, status } = useCardDraft(context);
   const closed = useCardDeadline(context);
   if (!context.week || !context.ownerCard) return null;
+  if (usesRollingSubmissions(context.rules)) {
+    const card = context.ownerCard;
+    const unsettled = card.positions.filter((position) => !position.settlement);
+    const canSubmit =
+      !closed &&
+      card.canSubmit !== false &&
+      card.remainingCredits >= 50 &&
+      card.positions.length < 20;
+    const deadline = context.week.entryClosesAt;
+    return (
+      <section
+        aria-label="Your weekly card"
+        className="border-boundary bg-subtle rounded-lg border p-4"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-bold">
+            {closed ? "Submissions closed" : "Your weekly card"}
+          </h2>
+          <StatusBadge tone={card.positions.length ? "sealed" : "pending"}>
+            {card.positions.length ? "Submitted" : "Not submitted"}
+          </StatusBadge>
+        </div>
+        <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <dt className="text-muted">
+              {closed ? "Expired credits" : "Available to bet"}
+            </dt>
+            <dd className="mt-1 font-mono text-xl font-bold">
+              {formatCredits(card.remainingCredits)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted">In unsettled bets</dt>
+            <dd className="mt-1 font-mono text-xl font-bold">
+              {formatCredits(
+                unsettled.reduce(
+                  (sum, position) => sum + position.stakeCredits,
+                  0,
+                ),
+              )}
+            </dd>
+          </div>
+        </dl>
+        <p className="text-graphite mt-3 text-sm">
+          {card.positions.length} submitted{" "}
+          {card.positions.length === 1 ? "bet" : "bets"} ·{" "}
+          {formatCredits(card.allocatedCredits)} credits committed. Submitted
+          bets cannot be changed.
+        </p>
+        {!closed && deadline ? (
+          <p className="mt-2 text-sm">
+            Each game closes at kickoff. Unused credits expire{" "}
+            <time dateTime={deadline}>{easternTime(deadline)}</time>.
+          </p>
+        ) : null}
+        {!closed && card.remainingCredits > 0 && card.remainingCredits < 50 ? (
+          <p className="text-graphite mt-2 text-sm">
+            The remaining {card.remainingCredits} credits cannot fund the
+            50-credit minimum and will expire.
+          </p>
+        ) : null}
+        {hydrated && drafts.length ? (
+          <p className="text-graphite mt-2 text-sm">
+            {drafts.length} unsubmitted{" "}
+            {drafts.length === 1 ? "draft" : "drafts"} ·{" "}
+            {formatCredits(
+              drafts.reduce((sum, draft) => sum + draft.stakeCredits, 0),
+            )}{" "}
+            draft credits.{" "}
+            {saved
+              ? "Saved on this device."
+              : "Keep this page open; device storage is unavailable."}{" "}
+            Drafts never submit automatically.
+          </p>
+        ) : null}
+        {closed && !card.positions.length ? (
+          <p className="text-graphite mt-2 text-sm">
+            No bets were submitted. The missed-week result follows this week’s
+            rules.
+          </p>
+        ) : null}
+        {canSubmit && !onSlatePage ? (
+          <Link
+            className="bg-registry hover:bg-registry-hover mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-lg px-5 text-center font-semibold text-white sm:w-auto"
+            href={`/l/${context.leagueSlug}/slate`}
+          >
+            {drafts.length
+              ? "Continue picks"
+              : card.positions.length
+                ? "Add more bets"
+                : "Make picks"}
+          </Link>
+        ) : null}
+      </section>
+    );
+  }
   if (sealed)
     return (
       <SealedCardSummary

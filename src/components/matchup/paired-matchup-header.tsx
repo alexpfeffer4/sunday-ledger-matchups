@@ -31,12 +31,16 @@ function MemberScore({
   pregame = false,
   completed = false,
   spectator = false,
+  rolling = false,
+  entryClosed = false,
 }: {
   member: PairedMatchupDto["self"];
   opponent?: boolean;
   pregame?: boolean;
   completed?: boolean;
   spectator?: boolean;
+  rolling?: boolean;
+  entryClosed?: boolean;
 }) {
   return (
     <div className={`matchup-member ${opponent ? "text-right" : "text-left"}`}>
@@ -66,7 +70,7 @@ function MemberScore({
           {formatScore(member.scoreCenticredits)}
         </p>
       ) : null}
-      {!pregame ? (
+      {!pregame || (rolling && member.outstanding !== null) ? (
         <div
           role="group"
           aria-label={`${member.displayName} outstanding picks and credits`}
@@ -90,7 +94,30 @@ function MemberScore({
           )}
         </div>
       ) : null}
-      {!completed && (!pregame || opponent) && !(spectator && pregame) ? (
+      {rolling &&
+      member.availableCredits !== null &&
+      member.availableCredits !== undefined ? (
+        <p
+          className="text-muted mt-2 text-sm leading-5 tabular-nums"
+          aria-label={`${member.displayName} unused credits`}
+        >
+          {entryClosed ? (
+            <>
+              <strong>
+                {(member.expiredCredits ?? 0).toLocaleString("en-US")}
+              </strong>{" "}
+              credits expired
+            </>
+          ) : (
+            <>
+              <strong>{member.availableCredits.toLocaleString("en-US")}</strong>{" "}
+              credits available to bet
+            </>
+          )}
+        </p>
+      ) : null}
+      {!completed &&
+      (rolling || ((!pregame || opponent) && !(spectator && pregame))) ? (
         <div
           role="group"
           aria-label={`${member.displayName} card status`}
@@ -98,7 +125,11 @@ function MemberScore({
         >
           {pregame ? (
             <StatusBadge
-              tone={member.cardStatus === "Sealed" ? "sealed" : "pending"}
+              tone={
+                ["Sealed", "Submitted"].includes(member.cardStatus)
+                  ? "sealed"
+                  : "pending"
+              }
             >
               {member.cardStatus}
             </StatusBadge>
@@ -183,6 +214,8 @@ export function PairedMatchupHeader({
           pregame={matchup.phase === "PREGAME"}
           completed={completed || matchup.resultStatus !== null}
           spectator={matchup.spectator}
+          rolling={matchup.week.rollingSubmissionsEnabled}
+          entryClosed={matchup.week.entryClosed}
         />
         <p
           aria-hidden="true"
@@ -196,6 +229,8 @@ export function PairedMatchupHeader({
           pregame={matchup.phase === "PREGAME"}
           completed={completed || matchup.resultStatus !== null}
           spectator={matchup.spectator}
+          rolling={matchup.week.rollingSubmissionsEnabled}
+          entryClosed={matchup.week.entryClosed}
         />
       </div>
 

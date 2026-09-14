@@ -71,6 +71,7 @@ const checkedFunctions = [
   "get_owner_rehearsal",
   "has_owner_rehearsal_entitlement",
   "prepare_owner_rehearsal_quote_review",
+  "prepare_simulation_card_quotes",
   "reset_owner_rehearsal",
   "start_owner_rehearsal",
   "use_owner_rehearsal_sample_card",

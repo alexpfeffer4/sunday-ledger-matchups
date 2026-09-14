@@ -118,6 +118,10 @@ export type Database = {
         Args: { p_idempotency_key: string; p_league_slug: string };
         Returns: Json;
       };
+      prepare_simulation_card_quotes: {
+        Args: { p_league_slug: string };
+        Returns: Json;
+      };
       reset_owner_rehearsal: {
         Args: { p_confirmation_name: string; p_idempotency_key: string };
         Returns: Json;

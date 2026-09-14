@@ -5,7 +5,7 @@ import type { PersistedSeasonRuleset } from "@/rulesets/schema";
 // New constraints require versioned compatibility here and in season_card_rules.
 const snapshotSchema = z.object({
   rulesetId: z.string(),
-  rulesetVersion: z.enum(["1.0", "1.1", "1.2"]),
+  rulesetVersion: z.enum(["1.0", "1.1", "1.2", "1.3"]),
   productBibleId: z.string(),
   productBibleVersion: z.string(),
   mode: z.enum(["LIVE", "SIMULATION"]),
@@ -15,7 +15,7 @@ const snapshotSchema = z.object({
   canonicalJson: z
     .object({
       id: z.string(),
-      version: z.enum(["1.0", "1.1", "1.2"]),
+      version: z.enum(["1.0", "1.1", "1.2", "1.3"]),
       productBibleId: z.string(),
       productBibleVersion: z.string(),
       mode: z.enum(["LIVE", "SIMULATION"]),
@@ -69,6 +69,15 @@ const atomicCardRulesSchema = historicalCardRulesSchema.extend({
   }),
 });
 
+const rollingCardRulesSchema = atomicCardRulesSchema.extend({
+  card: atomicCardRulesSchema.shape.card.extend({
+    acceptanceUnit: z.literal("BATCH_ATOMIC"),
+    irreversibleAction: z.literal("SUBMIT_BETS"),
+    requireFullAllocation: z.literal(false),
+    unusedCredits: z.literal("EXPIRE_AT_WEEK_ENTRY_CLOSE"),
+  }),
+});
+
 export type CardRules = Pick<
   PersistedSeasonRuleset,
   "card" | "concentration" | "markets"
@@ -80,7 +89,11 @@ export function resolveSeasonCardRules(
   snapshot: unknown,
   mode: "LIVE" | "SIMULATION",
 ):
-  | { supported: true; rules: CardRules; version: "1.0" | "1.1" | "1.2" }
+  | {
+      supported: true;
+      rules: CardRules;
+      version: "1.0" | "1.1" | "1.2" | "1.3";
+    }
   | { supported: false; message: string } {
   const parsed = snapshotSchema.safeParse(snapshot);
   if (!parsed.success || parsed.data.mode !== mode) {
@@ -102,7 +115,11 @@ export function resolveSeasonCardRules(
     canonical.id !== expectedId ||
     canonical.productBibleId !== "SUNDAY-LEDGER-PRODUCT-BIBLE-V3" ||
     canonical.productBibleVersion !==
-      (canonical.version === "1.2" ? "3.1" : "3.0")
+      (canonical.version === "1.3"
+        ? "3.2"
+        : canonical.version === "1.2"
+          ? "3.1"
+          : "3.0")
   )
     return { supported: false, message: unavailableCardRulesMessage };
 
@@ -110,11 +127,23 @@ export function resolveSeasonCardRules(
   // reinterpret standings/playoff history or replace any snapshot with a bundle.
   const raw = (snapshot as { canonicalJson: unknown }).canonicalJson;
   const rules = (
-    canonical.version === "1.0"
-      ? historicalCardRulesSchema
-      : atomicCardRulesSchema
+    canonical.version === "1.3"
+      ? rollingCardRulesSchema
+      : canonical.version === "1.0"
+        ? historicalCardRulesSchema
+        : atomicCardRulesSchema
   ).safeParse(raw);
   return rules.success
     ? { supported: true, rules: rules.data, version: canonical.version }
     : { supported: false, message: unavailableCardRulesMessage };
+}
+
+export function usesRollingSubmissions(
+  rules: Pick<CardRules, "card"> | null,
+): boolean {
+  return Boolean(
+    rules &&
+    "acceptanceUnit" in rules.card &&
+    rules.card.acceptanceUnit === "BATCH_ATOMIC",
+  );
 }
