@@ -217,6 +217,12 @@ a {
   container-type: inline-size;
 }
 
+@container (min-width: 32em) {
+  .record-bridge-facts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @container (max-width: 16em) {
   .paired-scores {
     grid-template-columns: minmax(0, 1fr);
@@ -269,20 +275,6 @@ a {
   }
   .standings-eligibility {
     grid-column: 2;
-  }
-  .record-bridge-facts > div,
-  .record-bridge-facts dd {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .record-bridge-facts dd > span:not([aria-hidden]) {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.5rem;
-  }
-  .record-bridge-facts [aria-hidden] {
-    display: none;
   }
   .position-ledger-top {
     flex-direction: column;

@@ -43,7 +43,7 @@ test.beforeEach(async ({ page }) => {
 
 test("corrected close is mobile, keyboard, zoom, and reduced-motion safe", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 640, height: 900 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await mount(page, "CORRECTED");
@@ -75,9 +75,21 @@ test("corrected close is mobile, keyboard, zoom, and reduced-motion safe", async
   ).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
   await expectNoSeriousAccessibilityViolations(page);
+  await page.screenshot({
+    path: testInfo.outputPath("standings-recap-mobile.png"),
+    fullPage: true,
+  });
+  await page.evaluate(() => {
+    document.documentElement.style.zoom = "1";
+  });
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.screenshot({
+    path: testInfo.outputPath("standings-recap-desktop.png"),
+    fullPage: true,
+  });
 });
 
-test("provisional close states only supported cutline and preserves next access", async ({
+test("settled picks wait for final standings and preserve next access", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 320, height: 800 });
@@ -86,8 +98,8 @@ test("provisional close states only supported cutline and preserves next access"
   await expect(
     page.getByTestId("weekly-close-module").getByText(/Picks settled/),
   ).toBeVisible();
-  await expect(page.getByText("Playoff picture")).toBeVisible();
-  await expect(page.getByText(/not a clinch or elimination/)).toBeVisible();
+  await expect(page.getByText("Standings impact")).toHaveCount(0);
+  await expect(page.getByText("Playoff picture")).toHaveCount(0);
   await expect(
     page.getByRole("link", { name: "View result in history" }),
   ).toBeVisible();

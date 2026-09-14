@@ -160,14 +160,10 @@ export function WeeklyCloseModule({
             Next: Week {bridge.nextOpponent.nflWeek} vs.{" "}
             {bridge.nextOpponent.name}
           </Link>
-        ) : (
-          <span className="text-muted inline-flex min-h-11 items-center text-sm">
-            No later matchup has been published yet.
-          </span>
-        )}
+        ) : null}
         <nav
           aria-label="Completed result destinations"
-          className="mt-2 flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:gap-5"
+          className={`flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:gap-5 ${bridge.nextOpponent ? "mt-2" : ""}`}
         >
           <Link
             className="text-action inline-flex min-h-11 items-center text-sm font-semibold hover:underline"
