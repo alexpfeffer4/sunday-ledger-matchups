@@ -228,6 +228,16 @@ select lives_ok(
   $$select api.use_owner_rehearsal_sample_card('owner-sample-week-01')$$,
   'a sample owner card seals through whole-card acceptance'
 );
+create function pg_temp.rehearsal_week_one_cards() returns jsonb language sql stable as $$
+  select api.get_league_matchup_cards(pg_temp.rehearsal_slug(), week.id)
+  from private.season_weeks week
+  join private.owner_rehearsals rehearsal on rehearsal.season_id = week.season_id
+  where rehearsal.status = 'ACTIVE' and week.nfl_week = 1;
+$$;
+select ok(
+  not exists(select 1 from jsonb_array_elements(pg_temp.rehearsal_week_one_cards()->'cards') card
+    where card->'outstanding' <> 'null'::jsonb),
+  'Simulation totals follow its pre-lock clock, regardless of wall time');
 select lives_ok(
   $$select api.advance_owner_rehearsal(
     'WEEK_1_OPEN', 'owner-advance-week-01-partial'
@@ -256,6 +266,15 @@ select is(
   6,
   'six later events remain hidden at partial reveal'
 );
+select is(
+  (select count(*)::integer from jsonb_array_elements(pg_temp.rehearsal_week_one_cards()->'cards') card
+    where (card#>>'{outstanding,credits}')::integer = 1000
+      and (card#>>'{outstanding,picks}')::integer > 0),
+  10, 'after simulated lock all ten sealed cards expose their unsettled totals');
+select pg_temp.rehearsal_actor('0a000000-0000-4000-8000-000000000003'::uuid);
+select throws_ok($$select pg_temp.rehearsal_week_one_cards()$$, '42501', 'League membership required.',
+  'outstanding totals do not grant an outsider rehearsal access');
+select pg_temp.rehearsal_owner();
 set local role authenticated;
 select is(
   (select count(*)::integer from private.position_receipts),

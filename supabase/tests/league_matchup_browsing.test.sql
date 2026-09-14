@@ -295,10 +295,29 @@ select is(jsonb_array_length(pg_temp.cards()->'cards'),4,'same-league spectator 
 select ok(not (pg_temp.cards()::text like '%Buffalo Bills to win%'),'scheduled receipt hidden even after scheduled kickoff');
 select ok(not (pg_temp.cards()::text like '%8b000000%'),'unrevealed receipt identifier absent');
 select is(pg_temp.cards()#>'{cards,0,scoreCenticredits}','null'::jsonb,'no score before reliable start');
-update private.season_weeks set state='OPEN',locked_at=null where id='85000000-0000-4000-8000-000000000001';
+select is(pg_temp.cards()#>'{cards,0,outstanding}', '{"picks":1,"credits":1000}'::jsonb,
+  'after lock, totals appear even while every pick is hidden');
+select is(pg_temp.cards()#>'{cards,1,outstanding}', '{"picks":0,"credits":0}'::jsonb,
+  'confirmed incomplete card has no outstanding positions');
+update private.season_weeks set common_lock_at=now()+interval '1 hour'
+  where id='85000000-0000-4000-8000-000000000001';
+select is(pg_temp.cards()#>'{cards,0,outstanding}', 'null'::jsonb,
+  'even a LOCKED state cannot disclose totals before the common deadline');
+
+update private.season_weeks set state='OPEN',locked_at=null,common_lock_at=now()+interval '1 hour' where id='85000000-0000-4000-8000-000000000001';
 select is(pg_temp.cards()#>'{cards,0,readiness}','null'::jsonb,'pregame compliance and submission facts stay private');
+select is(pg_temp.cards()#>'{cards,0,outstanding}', 'null'::jsonb, 'pregame totals stay private');
+update private.season_weeks set common_lock_at=now()
+  where id='85000000-0000-4000-8000-000000000001';
+update private.weekly_cards set compliance='PENDING'
+  where id='8a000000-0000-4000-8000-000000000001';
+select is(pg_temp.cards()#>'{cards,0,outstanding}', '{"picks":1,"credits":1000}'::jsonb,
+  'exact deadline exposes a fully sealed card even before lock job completes');
+update private.weekly_cards set compliance='COMPLIANT'
+  where id='8a000000-0000-4000-8000-000000000001';
+
 select ok(not (pg_temp.cards()::text ~ 'allocated|remaining|receiptHash|acceptedAt|owner_user_id|sealed'),'no hidden metadata fields');
-update private.season_weeks set state='LOCKED',locked_at=clock_timestamp() where id='85000000-0000-4000-8000-000000000001';
+update private.season_weeks set state='LOCKED',locked_at=clock_timestamp(),common_lock_at=now()-interval '5 hours' where id='85000000-0000-4000-8000-000000000001';
 update private.sports_events set state='LIVE',actual_started_at=clock_timestamp()+interval '1 hour' where id='88000000-0000-4000-8000-000000000001';
 select is(jsonb_array_length(pg_temp.cards()#>'{cards,0,positions}'),0,'future start evidence does not reveal');
 update private.sports_events set actual_started_at=clock_timestamp()-interval '1 minute' where id='88000000-0000-4000-8000-000000000001';
@@ -320,13 +339,22 @@ from private.market_snapshots where id='89000000-0000-4000-8000-000000000002';
 insert into private.position_receipts(id,card_id,week_id,league_id,entry_id,owner_user_id,event_id,market_snapshot_id,market_type,outcome_key,proposition,line_milli,american_odds,stake_credits,quote_observed_at,accepted_at,ruleset_snapshot_id,idempotency_key,request_hash,receipt_hash)
 select '8b000000-0000-4000-8000-000000000002',card_id,week_id,league_id,entry_id,owner_user_id,'88000000-0000-4000-8000-000000000003','89000000-0000-4000-8000-000000000002',market_type,outcome_key,'SECRET FUTURE PICK',line_milli,american_odds,50,quote_observed_at,accepted_at,ruleset_snapshot_id,'future-read-test',repeat('7',64),repeat('8',64)
 from private.position_receipts where id='8b000000-0000-4000-8000-000000000001';
-select is(pg_temp.cards(),(select value from prior_reveal),'hidden pick cannot affect payload or any derived score/metadata');
+select is(
+  (select jsonb_agg(c - 'outstanding') from jsonb_array_elements(pg_temp.cards()->'cards') c),
+  (select jsonb_agg(c - 'outstanding') from prior_reveal, jsonb_array_elements(value->'cards') c),
+  'hidden picks affect only the two newly authorized aggregate totals');
+select is(pg_temp.cards()#>'{cards,0,outstanding}', '{"picks":2,"credits":1050}'::jsonb,
+  'live and hidden future stakes are both outstanding');
+select ok(not (pg_temp.cards()::text like '%SECRET FUTURE PICK%'), 'hidden selection remains absent');
+select ok(not (pg_temp.cards()::text like '%8b000000-0000-4000-8000-000000000002%'), 'hidden receipt remains absent');
 -- Latest append-only settlement is used, including a correction.
 insert into private.event_result_versions(id,event_id,week_id,league_id,version,status,away_score,home_score,source,reason,recorded_by,input_hash)
 values('8c000000-0000-4000-8000-000000000001','88000000-0000-4000-8000-000000000001','85000000-0000-4000-8000-000000000001','82000000-0000-4000-8000-000000000001',1,'FINAL',20,10,'MANUAL_OBJECTIVE','test result','81000000-0000-4000-8000-000000000001',repeat('5',64));
 insert into private.settlement_versions(receipt_id,result_version_id,week_id,league_id,owner_user_id,outcome,returned_centicredits)
 values('8b000000-0000-4000-8000-000000000001','8c000000-0000-4000-8000-000000000001','85000000-0000-4000-8000-000000000001','82000000-0000-4000-8000-000000000001','81000000-0000-4000-8000-000000000001','WIN',200000);
 select is(pg_temp.cards()#>>'{cards,0,scoreCenticredits}','200000','score reproduces visible settlement');
+select is(pg_temp.cards()#>'{cards,0,outstanding}', '{"picks":1,"credits":50}'::jsonb,
+  'settled win removes the original stake, not its return');
 insert into private.event_result_versions(id,event_id,week_id,league_id,version,status,away_score,home_score,source,reason,recorded_by,input_hash,supersedes_id)
 select '8c000000-0000-4000-8000-000000000002',event_id,week_id,league_id,2,'FINAL',10,20,source,'test correction',recorded_by,repeat('6',64),id
 from private.event_result_versions where id='8c000000-0000-4000-8000-000000000001';
@@ -335,8 +363,24 @@ select receipt_id,'8c000000-0000-4000-8000-000000000002',week_id,league_id,owner
 from private.settlement_versions where result_version_id='8c000000-0000-4000-8000-000000000001';
 select is(pg_temp.cards()#>>'{cards,0,scoreCenticredits}','0','latest correction replaces the earlier return without double-counting');
 select is(pg_temp.cards()#>>'{cards,0,positions,0,settlement,outcome}','LOSS','revealed pick shows the corrected outcome');
+select is(pg_temp.cards()#>'{cards,0,outstanding}', '{"picks":1,"credits":50}'::jsonb,
+  'loss correction leaves that pick settled and does not double-count versions');
 update private.sports_events set state='VOID',actual_started_at=null where id='88000000-0000-4000-8000-000000000003';
 select is(jsonb_array_length(pg_temp.cards()#>'{cards,0,positions}'),2,'authoritatively voided event is public without kickoff');
+insert into private.event_result_versions(id,event_id,week_id,league_id,version,status,away_score,home_score,source,reason,recorded_by,input_hash)
+values('8c000000-0000-4000-8000-000000000003','88000000-0000-4000-8000-000000000003','85000000-0000-4000-8000-000000000001','82000000-0000-4000-8000-000000000001',1,'FINAL',10,10,'MANUAL_OBJECTIVE','push test','81000000-0000-4000-8000-000000000001',repeat('4',64));
+insert into private.settlement_versions(receipt_id,result_version_id,week_id,league_id,owner_user_id,outcome,returned_centicredits)
+values('8b000000-0000-4000-8000-000000000002','8c000000-0000-4000-8000-000000000003','85000000-0000-4000-8000-000000000001','82000000-0000-4000-8000-000000000001','81000000-0000-4000-8000-000000000001','PUSH',5000);
+select is(pg_temp.cards()#>'{cards,0,outstanding}', '{"picks":0,"credits":0}'::jsonb,
+  'a push settles the final outstanding pick');
+insert into private.event_result_versions(id,event_id,week_id,league_id,version,status,source,reason,recorded_by,input_hash,supersedes_id)
+select '8c000000-0000-4000-8000-000000000004',event_id,week_id,league_id,2,'VOID',source,'void correction',recorded_by,repeat('3',64),id
+from private.event_result_versions where id='8c000000-0000-4000-8000-000000000003';
+insert into private.settlement_versions(receipt_id,result_version_id,week_id,league_id,owner_user_id,outcome,returned_centicredits,supersedes_id)
+select receipt_id,'8c000000-0000-4000-8000-000000000004',week_id,league_id,owner_user_id,'VOID',5000,id
+from private.settlement_versions where result_version_id='8c000000-0000-4000-8000-000000000003';
+select is(pg_temp.cards()#>'{cards,0,outstanding}', '{"picks":0,"credits":0}'::jsonb,
+  'void correction remains settled without subtracting twice');
 -- Exercise the real API role. Active members cannot be deleted because their
 -- competition records reference the membership; test loss of authentication instead.
 set local role authenticated;

@@ -45,6 +45,7 @@ type MatchupMember = {
   seed: number | null;
   seedKind: "PLAYOFF" | "REGULAR";
   scoreCenticredits: number | null;
+  outstanding: { picks: number; credits: number } | null;
   cardStatus: string;
   decision: "WIN" | "LOSS" | "TIE" | null;
 };
@@ -483,6 +484,11 @@ export function projectPairedMatchup(
   const opponentPlayoffSeed = usesPlayoffSeeds
     ? (qualificationSeeds.get(state.matchup.opponentEntryId) ?? null)
     : null;
+  const cardsByEntry = new Map(
+    (leagueCards?.weekId === state.week.id ? leagueCards.cards : []).map(
+      (card) => [card.entryId, card],
+    ),
+  );
   const self: MatchupMember = {
     entryId: state.viewer.entryId,
     displayName: state.viewer.displayName,
@@ -490,6 +496,7 @@ export function projectPairedMatchup(
     seed: selfPlayoffSeed ?? selfStanding?.seed ?? null,
     seedKind: selfPlayoffSeed === null ? "REGULAR" : "PLAYOFF",
     scoreCenticredits: scoresAvailable ? selfScore : null,
+    outstanding: cardsByEntry.get(state.viewer.entryId)?.outstanding ?? null,
     cardStatus: cardStatus(state.ownerCard, state.week.state),
     decision: result?.selfDecision ?? null,
   };
@@ -500,6 +507,8 @@ export function projectPairedMatchup(
     seed: opponentPlayoffSeed ?? opponentStanding?.seed ?? null,
     seedKind: opponentPlayoffSeed === null ? "REGULAR" : "PLAYOFF",
     scoreCenticredits: scoresAvailable ? opponentScore : null,
+    outstanding:
+      cardsByEntry.get(state.matchup.opponentEntryId)?.outstanding ?? null,
     cardStatus: opponentCardStatus(
       state.matchup.opponentReadiness,
       state.matchup.opponentSealed,
@@ -507,11 +516,6 @@ export function projectPairedMatchup(
     decision: result?.opponentDecision ?? null,
   };
 
-  const cardsByEntry = new Map(
-    (leagueCards?.weekId === state.week.id ? leagueCards.cards : []).map(
-      (card) => [card.entryId, card],
-    ),
-  );
   const scoreboardState = (
     selected: boolean,
     scheduleResult: Stage1StateDto["schedule"][number]["result"],

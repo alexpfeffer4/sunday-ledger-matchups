@@ -7,6 +7,15 @@ export const leagueMatchupCardsSchema = z.object({
       entryId: z.uuid(),
       readiness: z.enum(["PENDING", "COMPLIANT", "INCOMPLETE"]).nullable(),
       scoreCenticredits: z.number().int().nonnegative().nullable(),
+      // Only card-wide unsettled totals are authorized after common lock.
+      // Optional during staggered application/database rollout; never assume zero.
+      outstanding: z
+        .object({
+          picks: z.number().int().nonnegative(),
+          credits: z.number().int().nonnegative(),
+        })
+        .nullable()
+        .optional(),
       positions:
         stage1StateSchema.shape.matchup.unwrap().shape
           .opponentRevealedPositions,

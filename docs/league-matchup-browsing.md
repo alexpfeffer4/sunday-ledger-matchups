@@ -21,3 +21,10 @@ The owner approved branch publication and PR creation after the local checks. PR
 On September 14, the owner explicitly approved the production database update, merge, and deployment. A transactionally rolled-back permission dry run passed before applying the exact reviewed SQL to the hosted Sunday Ledger database. Supabase recorded the migration as `20260914010340_league_matchup_browsing.sql`; only the repository filename was aligned, with no SQL changes. The hosted statement hash matches the reviewed file, anonymous execution is denied, and authenticated execution is granted subject to the function's membership checks.
 
 The branch is based on main `bb5010209198b4825ce98d66cc922b3e032e193d`. The pre-release application deployment was `5e6721a`; the intervening PR #43 changed only already-applied SQL, documentation, and tests, not application code. The release-alignment commit repeats CI before merge. PR #44 records the final merge, deployment alignment, and production verification status.
+
+# September 14 amendment
+
+Read the original implementation record below with the owner-approved
+[outstanding-totals exception](governance/2026-09-14-outstanding-totals.md).
+Post-lock whole-card unsettled count and stake totals are now permitted; the
+earlier blanket statements about hidden aggregates are superseded to that extent.

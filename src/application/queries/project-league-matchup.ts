@@ -45,6 +45,7 @@ export function projectLeagueMatchup(
         (side === "A"
           ? game.result?.sideAPointsForCenticredits
           : game.result?.sideBPointsForCenticredits) ?? card.scoreCenticredits,
+      outstanding: card.outstanding ?? null,
       cardStatus:
         card.readiness === "COMPLIANT"
           ? "Sealed"

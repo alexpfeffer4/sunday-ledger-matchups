@@ -28,7 +28,7 @@ const sections: Array<{
   {
     id: "REMAINING",
     title: "Remaining",
-    empty: "No picks remain unsettled.",
+    empty: "No visible picks are waiting to start.",
   },
 ];
 
