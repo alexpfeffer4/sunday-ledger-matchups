@@ -170,6 +170,9 @@ export function PairedMatchupHeader({
       aria-labelledby="paired-matchup-heading"
       className="paired-matchup-card border-boundary bg-surface rounded-xl border p-4 shadow-[var(--shadow-card)] sm:p-6"
     >
+      <h2 className="sr-only" id="paired-matchup-heading">
+        {matchup.self.displayName} versus {matchup.opponent.displayName}
+      </h2>
       <div className="matchup-secondary border-boundary flex flex-wrap items-center justify-between gap-3 border-b pb-3">
         <div>
           <p className="text-muted text-sm font-semibold">
@@ -179,9 +182,6 @@ export function PairedMatchupHeader({
                 ? "Regular season"
                 : matchup.week.scope.toLowerCase())}
           </p>
-          <h2 className="sr-only" id="paired-matchup-heading">
-            {matchup.self.displayName} versus {matchup.opponent.displayName}
-          </h2>
         </div>
         <StatusBadge tone={phaseTones[matchup.phase]}>
           {matchup.phase === "CORRECTED" && matchup.resultStatus

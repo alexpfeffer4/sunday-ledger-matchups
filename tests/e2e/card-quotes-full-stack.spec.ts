@@ -769,7 +769,7 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
       await expect(
         page
           .locator(".paired-matchup-card .status-badge")
-          .filter({ hasText: /^Final$/ }),
+          .filter({ hasText: "Final" }),
       ).toBeVisible();
     });
     await page.screenshot({

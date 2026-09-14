@@ -20,6 +20,7 @@ export function MatchupNavigation({
       <label className="min-w-0 text-xs font-semibold">
         Week
         <select
+          aria-label="Week"
           className="border-control bg-surface mt-1 block min-h-11 w-full min-w-0 rounded-lg border px-3 text-sm"
           value={weeks.find((week) => week.current)?.href ?? ""}
           onChange={(event) => window.location.assign(event.target.value)}
@@ -35,6 +36,7 @@ export function MatchupNavigation({
       <label className="min-w-0 text-xs font-semibold">
         Matchup
         <select
+          aria-label="Matchup"
           className="border-control bg-surface mt-1 block min-h-11 w-full min-w-0 rounded-lg border px-3 text-sm"
           value={games.find((game) => game.selected)?.id ?? ""}
           onChange={(event) => {
