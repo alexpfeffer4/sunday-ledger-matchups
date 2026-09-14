@@ -3,7 +3,7 @@ import type {
   PairedMatchupDto,
   PairedMatchupPhase,
 } from "@/application/queries/project-paired-matchup";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCenticredits } from "@/domain/odds/american";
 
@@ -66,6 +66,14 @@ function MemberScore({
             member.scoreCenticredits === null
               ? `${member.displayName} score unavailable`
               : `${member.displayName} score ${formatScore(member.scoreCenticredits)} credits`
+          }
+          style={
+            {
+              "--score-length": Math.max(
+                formatScore(member.scoreCenticredits).length,
+                4,
+              ),
+            } as CSSProperties
           }
           className="matchup-score mt-4 text-[2.125rem] leading-9 font-bold tracking-[-0.04em] tabular-nums sm:text-[2.5rem] sm:leading-10"
         >
@@ -283,21 +291,24 @@ export function PairedMatchupHeader({
               </p>
             ) : null}
           </div>
-          <span className="sr-only" role="status" aria-atomic="true">
-            {matchup.phaseLabel}.{" "}
-            {matchup.spectator ? matchup.self.displayName : "Your"} score{" "}
-            {matchup.self.scoreCenticredits === null
-              ? "unavailable"
-              : formatScore(matchup.self.scoreCenticredits)}
-            . {matchup.spectator ? matchup.opponent.displayName : "Opponent"}{" "}
-            score{" "}
-            {matchup.opponent.scoreCenticredits === null
-              ? "unavailable"
-              : formatScore(matchup.opponent.scoreCenticredits)}
-            .
-          </span>
+
           {refreshControl}
         </div>
+      ) : null}
+      {matchup.phase !== "PREGAME" && !completed ? (
+        <span className="sr-only" role="status" aria-atomic="true">
+          {matchup.phaseLabel}.{" "}
+          {matchup.spectator ? matchup.self.displayName : "Your"} score{" "}
+          {matchup.self.scoreCenticredits === null
+            ? "unavailable"
+            : formatScore(matchup.self.scoreCenticredits)}
+          . {matchup.spectator ? matchup.opponent.displayName : "Opponent"}{" "}
+          score{" "}
+          {matchup.opponent.scoreCenticredits === null
+            ? "unavailable"
+            : formatScore(matchup.opponent.scoreCenticredits)}
+          .
+        </span>
       ) : null}
     </section>
   );

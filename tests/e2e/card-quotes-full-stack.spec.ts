@@ -482,6 +482,9 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
       .toEqual([]);
     await otherDevice.close();
     await page.goto(`/l/${slug}/matchup`);
+    await page
+      .getByText("Your card is sealed · View details", { exact: true })
+      .click();
     await expect(
       page.getByRole("heading", { name: "Card sealed" }),
     ).toBeVisible();

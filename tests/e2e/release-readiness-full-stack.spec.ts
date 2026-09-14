@@ -543,7 +543,7 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
   await measure(info, "ten-member-matchup-read", async () => {
     await page.goto(`/l/${slug}/matchup`);
     await expect(
-      page.getByRole("heading", { name: "Card sealed" }),
+      page.getByText("Your card is sealed · View details", { exact: true }),
     ).toBeVisible();
   });
   // An independently authenticated opponent sees submission and distinct games in

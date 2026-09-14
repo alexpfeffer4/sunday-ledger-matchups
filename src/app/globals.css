@@ -372,7 +372,10 @@ a {
 }
 .matchup-comparison .matchup-score {
   font-family: var(--font-geist-mono), monospace;
-  font-size: clamp(0.75rem, 7cqw, 2.5rem);
+  font-size: min(
+    var(--matchup-score-size, 2.5rem),
+    calc(100cqw / var(--score-length, 8) * 1.55)
+  );
   line-height: 1.25;
   overflow-wrap: normal;
 }
@@ -392,7 +395,7 @@ a {
 }
 .matchup-sticky[data-compact="true"]:not(:focus-within) .matchup-score {
   margin-top: 0.2rem;
-  font-size: clamp(1rem, 5cqw, 1.65rem);
+  --matchup-score-size: 1.65rem;
 }
 .lineup-game {
   margin-top: 1rem;
@@ -512,6 +515,8 @@ a {
 .matchup-comparison .matchup-member {
   display: grid;
   grid-template-rows: subgrid;
+  grid-template-columns: minmax(0, 1fr);
+  container-type: inline-size;
   grid-row: span 7;
   align-items: start;
 }
@@ -535,4 +540,9 @@ a {
 }
 .matchup-member > [aria-label$="card status"] {
   grid-row: 7;
+}
+
+.matchup-comparison .matchup-member > * {
+  min-width: 0;
+  max-width: 100%;
 }

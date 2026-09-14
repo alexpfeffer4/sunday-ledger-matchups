@@ -257,6 +257,13 @@ test("Live remains paired, mobile-safe, keyboard-visible, and reduced-motion saf
 
   await expectNoHorizontalOverflow(page);
   await expectNoSeriousAccessibilityViolations(page);
+  await page.getByRole("combobox", { name: /^Week/ }).focus();
+  await page.locator(".matchup-sticky").evaluate((element) => {
+    element.setAttribute("data-compact", "true");
+  });
+  await expect(page.getByRole("status")).toContainText("Your score");
+  await expect(page.getByLabel("Alex Ledger score 0.00 credits")).toBeVisible();
+  await expectNoSeriousAccessibilityViolations(page);
 });
 
 test("stored Live updates preserve identity and progress to provisional and final", async ({
