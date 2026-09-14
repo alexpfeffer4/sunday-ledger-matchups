@@ -264,6 +264,17 @@ test("Live remains paired, mobile-safe, keyboard-visible, and reduced-motion saf
   await page.locator(".matchup-sticky").evaluate((element) => {
     element.setAttribute("data-compact", "true");
   });
+  await expect(page.locator(".matchup-compact-card")).toBeVisible();
+  expect(
+    await page.locator(".matchup-sticky").getAttribute("aria-hidden"),
+  ).toBe("true");
+  expect(
+    await page
+      .locator(".matchup-compact-card")
+      .evaluate((element) =>
+        Number.parseFloat(getComputedStyle(element).transitionDuration),
+      ),
+  ).toBeLessThanOrEqual(0.001);
   await expect(page.getByRole("status")).toContainText("Your score");
   await expect(
     page.getByRole("region", {

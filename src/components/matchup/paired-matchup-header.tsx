@@ -25,6 +25,36 @@ function formatScore(value: number | null): string {
   return value === null ? "—" : formatCenticredits(BigInt(value), true);
 }
 
+function scoreStyle(value: number | null): CSSProperties {
+  return {
+    "--score-length": Math.max(formatScore(value).length, 4),
+  } as CSSProperties;
+}
+
+export function CompactMatchupScore({
+  matchup,
+}: {
+  matchup: PairedMatchupDto;
+}) {
+  return (
+    <div className="matchup-compact-card">
+      {[matchup.self, matchup.opponent].map((member, index) => (
+        <div className="matchup-compact-member" key={index}>
+          <p className="matchup-compact-name">{member.displayName}</p>
+          {matchup.phase !== "PREGAME" ? (
+            <p
+              className="matchup-compact-score"
+              style={scoreStyle(member.scoreCenticredits)}
+            >
+              {formatScore(member.scoreCenticredits)}
+            </p>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MemberScore({
   member,
   opponent = false,
@@ -67,14 +97,7 @@ function MemberScore({
               ? `${member.displayName} score unavailable`
               : `${member.displayName} score ${formatScore(member.scoreCenticredits)} credits`
           }
-          style={
-            {
-              "--score-length": Math.max(
-                formatScore(member.scoreCenticredits).length,
-                4,
-              ),
-            } as CSSProperties
-          }
+          style={scoreStyle(member.scoreCenticredits)}
           className="matchup-score mt-4 text-[2.125rem] leading-9 font-bold tracking-[-0.04em] tabular-nums sm:text-[2.5rem] sm:leading-10"
         >
           {formatScore(member.scoreCenticredits)}

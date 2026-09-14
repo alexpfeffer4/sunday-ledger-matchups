@@ -3,7 +3,10 @@ import type { PairedMatchupDto } from "@/application/queries/project-paired-matc
 import { resultChangingScenario } from "@/application/presentation/matchup-lineup";
 import type { ReactNode } from "react";
 import { LeagueScoreboard } from "@/components/matchup/league-scoreboard";
-import { PairedMatchupHeader } from "@/components/matchup/paired-matchup-header";
+import {
+  CompactMatchupScore,
+  PairedMatchupHeader,
+} from "@/components/matchup/paired-matchup-header";
 import { ScorePath } from "@/components/matchup/score-path";
 import { PageFrame } from "@/components/league/page-frame";
 import { MatchupLineup } from "./matchup-lineup";
@@ -57,7 +60,7 @@ export function PairedMatchupView({
             Back to your matchup
           </Link>
         ) : null}
-        <StickyMatchupScore>
+        <StickyMatchupScore summary={<CompactMatchupScore matchup={matchup} />}>
           <PairedMatchupHeader
             matchup={matchup}
             refreshControl={refreshControl}

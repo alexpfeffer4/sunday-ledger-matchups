@@ -354,6 +354,8 @@ a {
   position: sticky;
   top: var(--matchup-header-offset, 4rem);
   z-index: 20;
+  height: 0;
+  pointer-events: none;
 }
 .matchup-comparison .paired-matchup-card {
   padding: 1rem 0 0;
@@ -373,7 +375,8 @@ a {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
 }
-.matchup-comparison .matchup-score {
+.matchup-comparison .matchup-score,
+.matchup-compact-score {
   font-family: var(--font-geist-mono), monospace;
   font-size: min(
     var(--matchup-score-size, 2.5rem),
@@ -389,19 +392,50 @@ a {
   font-size: 1rem;
   line-height: 1.4;
 }
-.matchup-sticky[data-compact="true"]:not(:focus-within) .matchup-secondary {
-  display: none;
-}
-.matchup-sticky[data-compact="true"]:not(:focus-within) .paired-matchup-card {
-  padding-top: 0;
+.matchup-compact-card {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-block: 0.65rem;
+  border: 1px solid var(--border-subtle);
   border-radius: 0 0 0.75rem 0.75rem;
+  background: var(--app-surface);
+  box-shadow: var(--shadow-card);
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-0.35rem);
+  transition:
+    opacity 160ms ease-out,
+    transform 160ms ease-out,
+    visibility 160ms;
 }
-.matchup-sticky[data-compact="true"]:not(:focus-within) .paired-scores {
-  padding-block: 0.6rem;
+.matchup-sticky[data-compact="true"] .matchup-compact-card {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
 }
-.matchup-sticky[data-compact="true"]:not(:focus-within) .matchup-score {
-  margin-top: 0.2rem;
+.matchup-compact-member {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 2;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  padding-inline: var(--matchup-lane-padding);
+  overflow-wrap: anywhere;
+}
+.matchup-compact-member + .matchup-compact-member {
+  border-left: 1px solid var(--border-subtle);
+}
+.matchup-compact-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.matchup-compact-score {
   --matchup-score-size: 1.65rem;
+  margin-top: 0.2rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
 }
 .lineup-game {
   margin-top: 1rem;
@@ -471,6 +505,26 @@ a {
 .lineup-empty {
   padding-block: 1rem;
 }
+.lineup-hidden-side {
+  background: var(--app-subtle);
+}
+.lineup-hidden {
+  padding-block: 1rem;
+  overflow-wrap: anywhere;
+}
+.lineup-hidden-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.lineup-hidden-title svg {
+  flex: none;
+}
 .matchup-comparison :is(a, button, summary, select) {
   scroll-margin-block: 16rem 5rem;
 }
@@ -493,7 +547,7 @@ a {
 }
 @media (max-height: 480px) {
   .matchup-sticky {
-    position: static;
+    display: none;
   }
 }
 

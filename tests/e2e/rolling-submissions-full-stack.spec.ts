@@ -436,17 +436,72 @@ commit;
     await expect(
       completedGame.locator("[data-position-id]").first(),
     ).toBeVisible();
-    await page.locator(".lineup-game").last().scrollIntoViewIfNeeded();
+    // Crossing the score boundary must not resize the header or pull bets up.
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    await expect(page.locator(".matchup-sticky")).toHaveAttribute(
+      "data-compact",
+      "false",
+    );
+    const layout = () =>
+      page.evaluate(() => ({
+        gameTop:
+          document.querySelector(".lineup-game")!.getBoundingClientRect().top +
+          window.scrollY,
+        documentHeight: document.documentElement.scrollHeight,
+        scrollY: window.scrollY,
+      }));
+    const before = await layout();
+    const boundary = await page.evaluate(
+      () =>
+        document.querySelector(".matchup-score")!.getBoundingClientRect()
+          .bottom +
+        window.scrollY -
+        document.querySelector("[data-league-header]")!.getBoundingClientRect()
+          .height,
+    );
+    await page.evaluate(
+      (top) => window.scrollTo({ top, behavior: "instant" }),
+      boundary + 4,
+    );
     await expect(page.locator(".matchup-sticky")).toHaveAttribute(
       "data-compact",
       "true",
     );
-    const pinnedScore = await page.locator(".matchup-sticky").boundingBox();
+    await expect(page.locator(".matchup-compact-card")).toHaveCSS(
+      "opacity",
+      "1",
+    );
+    await expect(page.locator(".matchup-compact-card")).toHaveCSS(
+      "transform",
+      "matrix(1, 0, 0, 1, 0, 0)",
+    );
+    const after = await layout();
+    expect(Math.abs(after.gameTop - before.gameTop)).toBeLessThanOrEqual(1);
+    expect(after.documentHeight).toBe(before.documentHeight);
+    expect(Math.abs(after.scrollY - (boundary + 4))).toBeLessThanOrEqual(1);
+    const pinnedScore = await page
+      .locator(".matchup-compact-card")
+      .boundingBox();
     const shellHeader = await page
       .locator("[data-league-header]")
       .boundingBox();
     expect(pinnedScore!.y).toBeGreaterThanOrEqual(shellHeader!.height - 1);
     expect(pinnedScore!.y).toBeLessThanOrEqual(shellHeader!.height + 1);
+    await page.screenshot({
+      path: testInfo.outputPath("compact-score-stable-scroll.png"),
+    });
+    await page.evaluate(
+      (top) => window.scrollTo({ top, behavior: "instant" }),
+      boundary - 4,
+    );
+    await expect(page.locator(".matchup-sticky")).toHaveAttribute(
+      "data-compact",
+      "false",
+    );
+    const restored = await layout();
+    expect(Math.abs(restored.gameTop - before.gameTop)).toBeLessThanOrEqual(1);
+    expect(restored.documentHeight).toBe(before.documentHeight);
+    expect(Math.abs(restored.scrollY - (boundary - 4))).toBeLessThanOrEqual(1);
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
     await expect(page.locator(".matchup-sticky")).toHaveAttribute(
       "data-compact",
