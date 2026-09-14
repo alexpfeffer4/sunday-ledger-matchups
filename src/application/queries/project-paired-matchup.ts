@@ -61,7 +61,7 @@ export type LeagueScoreboardItem = {
     | "Locked"
     | "Live"
     | "Delayed"
-    | "Provisional"
+    | "Picks settled"
     | "Final"
     | "Corrected";
   competition: string;
@@ -448,7 +448,7 @@ export function projectPairedMatchup(
     PARTIAL_REVEAL: "Partial reveal",
     LIVE: "Live",
     DELAYED: "Updates delayed",
-    PROVISIONAL: "Provisional",
+    PROVISIONAL: "Picks settled",
     FINAL: "Final",
     CORRECTED: "Corrected",
   };
@@ -463,11 +463,11 @@ export function projectPairedMatchup(
           ...state.slate.map((event) => event.actualStartedAt),
         ]);
   const freshnessMessage = hasDegradedProvider
-    ? "The feed is delayed. Stored facts remain visible."
+    ? "Game updates are delayed. Your last confirmed scores are shown."
     : state.league.mode === "LIVE" && operations
       ? scoreUpdate.message
       : hasUnconfirmedPastStart
-        ? "Scheduled kickoff has passed, but reliable Live state has not arrived. Future picks remain sealed."
+        ? "Start confirmation is delayed. Picks stay sealed until play is confirmed."
         : null;
 
   const selfStanding = state.standings.find(
@@ -522,7 +522,7 @@ export function projectPairedMatchup(
   ): LeagueScoreboardItem["state"] => {
     if (selected && phase === "CORRECTED") return "Corrected";
     if (scheduleResult?.status === "FINAL") return "Final";
-    if (scheduleResult?.status === "PROVISIONAL") return "Provisional";
+    if (scheduleResult?.status === "PROVISIONAL") return "Picks settled";
     if (delayed) return "Delayed";
     if (hasLiveEvent || hasRevealedEvent) return "Live";
     if (phase === "PREGAME") return "Not started";

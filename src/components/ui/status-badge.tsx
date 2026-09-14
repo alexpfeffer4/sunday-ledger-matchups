@@ -19,9 +19,9 @@ const tones: Record<StatusTone, string> = {
   corrected: "border-corrected/25 bg-corrected/10 text-corrected",
 };
 
-const cues: Record<StatusTone, string> = {
-  positive: "✓",
-  negative: "!",
+const cues: Record<StatusTone, string | null> = {
+  positive: null,
+  negative: null,
   pending: "…",
   void: "○",
   live: "●",
@@ -42,7 +42,8 @@ export function StatusBadge({
     <span
       className={`status-badge inline-flex min-h-7 max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border px-2.5 py-1 text-center text-xs font-semibold [overflow-wrap:anywhere] ${tones[tone]}`}
     >
-      {icon ?? <span aria-hidden="true">{cues[tone]}</span>}
+      {icon ??
+        (cues[tone] ? <span aria-hidden="true">{cues[tone]}</span> : null)}
       {children}
     </span>
   );

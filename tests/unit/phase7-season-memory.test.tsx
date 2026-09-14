@@ -25,7 +25,7 @@ describe("Phase 7 weekly close surfaces", () => {
       />,
     );
 
-    expect(screen.getByText("Provisional")).toBeVisible();
+    expect(screen.getByText("Picks settled")).toBeVisible();
     expect(screen.getByText("What Week 2 changed")).toBeVisible();
     expect(screen.getByText("Playoff picture")).toBeVisible();
     expect(screen.getByText(/not a clinch or elimination/)).toBeVisible();

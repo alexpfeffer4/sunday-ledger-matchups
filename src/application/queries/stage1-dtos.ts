@@ -97,6 +97,7 @@ export const stage1StateSchema = z.object({
       commonLockAt: z.string(),
       lockedAt: z.string().nullable(),
       correctionWindowClosesAt: z.string().nullable(),
+      finalizationMode: z.enum(["MANUAL_24H", "AFTER_RESULTS"]).optional(),
     })
     .nullable(),
   schedule: z.array(

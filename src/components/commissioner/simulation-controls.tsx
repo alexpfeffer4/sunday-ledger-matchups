@@ -158,7 +158,9 @@ export function SimulationCommissionerControls({
         </section>
       ) : null}
 
-      {week && ["OPEN", "LOCKED", "PROVISIONAL"].includes(week.state) ? (
+      {week &&
+      (["OPEN", "LOCKED", "PROVISIONAL"].includes(week.state) ||
+        week.finalizationMode === "AFTER_RESULTS") ? (
         <section className="border-boundary bg-surface rounded-xl border p-5">
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
             Practice/test Week {week.nflWeek} · {week.state.toLowerCase()}
@@ -296,16 +298,23 @@ export function SimulationCommissionerControls({
               </button>
             </form>
           ) : null}
-          <form action={finalizeAction} className="mt-3">
-            <ContextFields state={state} />
-            <button
-              className={buttonClass}
-              disabled={finalizing || week.state !== "PROVISIONAL"}
-              type="submit"
-            >
-              Finalize Week {week.nflWeek}
-            </button>
-          </form>
+          {week.finalizationMode !== "AFTER_RESULTS" ? (
+            <form action={finalizeAction} className="mt-3">
+              <ContextFields state={state} />
+              <button
+                className={buttonClass}
+                disabled={finalizing || week.state !== "PROVISIONAL"}
+                type="submit"
+              >
+                Finalize Week {week.nflWeek}
+              </button>
+            </form>
+          ) : (
+            <p className="text-muted mt-3 text-sm">
+              The week becomes final automatically when all games and picks are
+              settled.
+            </p>
+          )}
           <ActionFeedback state={clockState} />
           <ActionFeedback state={lockState} />
           <ActionFeedback state={resultState} />

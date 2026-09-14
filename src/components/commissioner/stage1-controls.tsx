@@ -29,7 +29,12 @@ export type Stage1CommissionerControlState = {
   >;
   week: Pick<
     NonNullable<Stage1StateDto["week"]>,
-    "nflWeek" | "scope" | "state" | "commonLockAt" | "correctionWindowClosesAt"
+    | "nflWeek"
+    | "scope"
+    | "state"
+    | "commonLockAt"
+    | "correctionWindowClosesAt"
+    | "finalizationMode"
   > | null;
   slate: Array<
     Pick<
@@ -191,6 +196,13 @@ function commissionerNextStep({
   }
 
   if (state.week.state === "PROVISIONAL") {
+    if (state.week.finalizationMode === "AFTER_RESULTS")
+      return {
+        detail:
+          "The week closes automatically once all published games and picks are settled.",
+        prerequisites: "Review any unresolved game result",
+        title: "Check weekly settlement",
+      };
     return {
       detail:
         "Review any correction, then finalize the week after the correction window closes.",

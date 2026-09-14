@@ -83,6 +83,7 @@ export const weeklyCloseStateSchema = z.object({
       scope: matchupScopeSchema,
       state: z.enum(["PLANNED", "OPEN", "LOCKED", "PROVISIONAL", "FINAL"]),
       correctionWindowClosesAt: z.string().nullable(),
+      finalizationMode: z.enum(["MANUAL_24H", "AFTER_RESULTS"]).optional(),
     }),
   ),
   matchups: z.array(

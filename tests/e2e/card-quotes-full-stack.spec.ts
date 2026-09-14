@@ -742,7 +742,7 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
     const afterScores = await rpc(members[1]!, "get_stage1_state", {
       p_league_slug: slug,
     });
-    expect(afterScores.week.state).toBe("PROVISIONAL");
+    expect(afterScores.week.state).toBe("FINAL");
     expect(afterScores.ownerCard.positions[0].receiptHash).toBe(
       originalReceipt[0].receiptHash,
     );
@@ -760,10 +760,10 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
         `select count(*) from private.event_result_versions where league_id='${leagueId}'`,
       ),
     ).toBe("1");
-    await measure(info, "stored-score-to-visible-provisional", async () => {
+    await measure(info, "stored-score-to-visible-final", async () => {
       await page.reload();
       await expect(
-        page.getByText("Provisional", { exact: true }).first(),
+        page.getByText("Final", { exact: true }).first(),
       ).toBeVisible();
     });
     await page.screenshot({

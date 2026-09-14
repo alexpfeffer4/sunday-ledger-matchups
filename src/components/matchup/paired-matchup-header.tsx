@@ -144,7 +144,7 @@ export function PairedMatchupHeader({
           {matchup.phase === "CORRECTED" && matchup.resultStatus
             ? completed
               ? "Corrected final"
-              : "Corrected provisional"
+              : "Corrected · picks settled"
             : matchup.phaseLabel}
         </StatusBadge>
       </div>
@@ -154,7 +154,6 @@ export function PairedMatchupHeader({
           <h3
             className={`text-2xl font-bold break-words ${matchup.spectator ? "text-graphite" : matchup.self.decision === "WIN" ? "text-positive" : matchup.self.decision === "LOSS" ? "text-negative" : "text-graphite"}`}
           >
-            {matchup.resultStatus === "PROVISIONAL" ? "Provisional: " : ""}
             {matchup.spectator
               ? matchup.self.decision === "TIE"
                 ? "Matchup tied"
@@ -172,7 +171,7 @@ export function PairedMatchupHeader({
                 : `Season record: ${matchup.self.record}.`
               : "This result does not change the regular-season standings."}
             {matchup.resultStatus === "PROVISIONAL"
-              ? " Scores can still change during the correction window."
+              ? " Both cards are settled. The week becomes final when all its games finish and picks settle."
               : ""}
           </p>
         </div>
@@ -182,7 +181,7 @@ export function PairedMatchupHeader({
         <MemberScore
           member={matchup.self}
           pregame={matchup.phase === "PREGAME"}
-          completed={completed}
+          completed={completed || matchup.resultStatus !== null}
           spectator={matchup.spectator}
         />
         <p
@@ -195,7 +194,7 @@ export function PairedMatchupHeader({
           member={matchup.opponent}
           opponent
           pregame={matchup.phase === "PREGAME"}
-          completed={completed}
+          completed={completed || matchup.resultStatus !== null}
           spectator={matchup.spectator}
         />
       </div>
@@ -234,15 +233,13 @@ export function PairedMatchupHeader({
                 "Scores not checked yet"
               )}
             </p>
-            {matchup.freshness.message ? (
+            {matchup.freshness.delayed &&
+            matchup.freshness.message &&
+            !matchup.resultStatus ? (
               <p className="text-pending mt-1 max-w-3xl text-sm leading-5">
                 {matchup.freshness.message}
               </p>
-            ) : (
-              <p className="text-muted mt-1 text-xs">
-                Refresh shows the latest saved result.
-              </p>
-            )}
+            ) : null}
           </div>
           <span className="sr-only" role="status" aria-atomic="true">
             {matchup.phaseLabel}.{" "}

@@ -130,7 +130,7 @@ export function CurrentPlayoffContest({
                   : round?.state === "LOCKED"
                     ? "Cards locked"
                     : round?.state === "PROVISIONAL"
-                      ? "Provisional"
+                      ? "Picks settled"
                       : "Final"}
             </StatusBadge>
             <span className="text-graphite text-sm">
@@ -151,7 +151,6 @@ export function CurrentPlayoffContest({
             <p
               className={`mt-3 text-lg font-semibold tabular-nums ${decision === "WIN" ? "text-positive" : decision === "LOSS" ? "text-negative" : "text-graphite"}`}
             >
-              {!isFinal ? "Provisional: " : ""}
               {miss
                 ? "Exhibition miss"
                 : decision === "WIN"

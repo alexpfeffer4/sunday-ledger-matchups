@@ -506,7 +506,8 @@ export function LiveWeekCommissionerControls({
                 ) : null}
 
                 {event.result?.status === "FINAL" &&
-                state.week?.state !== "FINAL" ? (
+                (state.week?.state !== "FINAL" ||
+                  liveWeekOperations?.correctionsOpen === true) ? (
                   <details className="mt-3">
                     <summary className="text-action inline-flex min-h-11 cursor-pointer items-center text-sm font-semibold">
                       Record an objective correction
@@ -604,20 +605,27 @@ export function LiveWeekCommissionerControls({
           <h2 className="font-bold">
             {state.week.state === "FINAL"
               ? `Week ${weekNumber} is final`
-              : "24-hour correction window"}
+              : state.week.finalizationMode === "AFTER_RESULTS"
+                ? "Weekly settlement"
+                : "24-hour correction window"}
           </h2>
           <p className="text-graphite mt-2 text-sm leading-6">
             {state.week.state === "FINAL"
-              ? "The matchup score and standings are final."
-              : "Initial settlement is provisional through " +
-                (state.week.correctionWindowClosesAt
-                  ? timestampFormatter.format(
-                      new Date(state.week.correctionWindowClosesAt),
-                    )
-                  : "the published closing time") +
-                " ET. The week cannot be finalized before then."}
+              ? state.week.finalizationMode === "AFTER_RESULTS"
+                ? "This week finalized automatically when all published games and picks settled."
+                : "The matchup score and standings are final."
+              : state.week.finalizationMode === "AFTER_RESULTS"
+                ? "The week closes automatically once every published game and pick is settled."
+                : "Initial settlement is provisional through " +
+                  (state.week.correctionWindowClosesAt
+                    ? timestampFormatter.format(
+                        new Date(state.week.correctionWindowClosesAt),
+                      )
+                    : "the published closing time") +
+                  " ET. The week cannot be finalized before then."}
           </p>
-          {state.week.state === "PROVISIONAL" ? (
+          {state.week.state === "PROVISIONAL" &&
+          state.week.finalizationMode !== "AFTER_RESULTS" ? (
             <form action={finalizeAction} className="mt-4">
               <ContextFields state={state} />
               <button

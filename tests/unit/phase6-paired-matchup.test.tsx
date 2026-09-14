@@ -21,6 +21,58 @@ afterEach(() => {
 });
 
 describe("Phase 6 paired matchup surface", () => {
+  it("keeps the check timestamp without routine polling copy and shows real delays", () => {
+    const matchup = makePhase6Matchup("LIVE");
+    matchup.freshness.delayed = false;
+    matchup.freshness.message =
+      "Results are checked about four hours after kickoff.";
+    const { rerender } = render(
+      <PairedMatchupView
+        matchup={matchup}
+        refreshControl={<MatchupStateRefresh />}
+      />,
+    );
+    expect(screen.getByText(/Scores checked/)).toBeVisible();
+    expect(
+      screen.queryByText(/four hours after kickoff/),
+    ).not.toBeInTheDocument();
+    matchup.freshness = {
+      ...matchup.freshness,
+      delayed: true,
+      message:
+        "A game result is delayed. Your last confirmed scores are shown.",
+    };
+    rerender(
+      <PairedMatchupView
+        matchup={matchup}
+        refreshControl={<MatchupStateRefresh />}
+      />,
+    );
+    expect(screen.getByText(/A game result is delayed/)).toBeVisible();
+  });
+
+  it("uses settled wording before weekly close and removes redundant settled-card details", () => {
+    const matchup = makePhase6Matchup("PROVISIONAL");
+    const { container } = render(
+      <PairedMatchupView
+        matchup={matchup}
+        refreshControl={<MatchupStateRefresh />}
+      />,
+    );
+    expect(screen.getAllByText("Picks settled").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "You won" })).toBeVisible();
+    expect(
+      screen.queryByRole("heading", { name: "What can still be added" }),
+    ).not.toBeInTheDocument();
+    expect(container).not.toHaveTextContent(
+      /Provisional|correction deadline unavailable/,
+    );
+    for (const badge of container.querySelectorAll(".status-badge")) {
+      if (/^(Won|Lost)$/.test(badge.textContent ?? ""))
+        expect(badge.querySelector("[aria-hidden]")).toBeNull();
+    }
+  });
+
   it("shows pregame opponent status and refreshes without exposing picks", () => {
     const matchup = makePhase6Matchup("PREGAME");
     matchup.opponent.cardStatus = "Not sealed";

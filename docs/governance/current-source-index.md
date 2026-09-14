@@ -1,5 +1,9 @@
 # Sunday Ledger — current governing source index
 
+September 14 approved amendment: [automatic weekly results and matchup cleanup](2026-09-14-automatic-weekly-finalization.md)
+supersedes the mandatory 24-hour wait before weekly finalization for unfinished
+and future weeks. Verified corrections retain their review period and history.
+
 September 14 owner decision: [outstanding matchup totals](2026-09-14-outstanding-totals.md)
 permits whole-card unsettled pick counts and original stake totals after common
 lock, including hidden picks. This is the bounded exception to historical

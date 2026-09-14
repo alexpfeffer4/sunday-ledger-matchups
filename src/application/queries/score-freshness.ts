@@ -86,15 +86,11 @@ export function scoreFreshness(
     latestFetch,
     nextCheckAt: next,
     message: stopped
-      ? "Automatic checks have ended for an unresolved game. Commissioner review is required."
+      ? "Commissioner review is required for an unresolved game."
       : delayed
         ? unknownStart
           ? "Start confirmation is delayed. Picks stay sealed until play is confirmed."
-          : "A scheduled result update is delayed. Confirmed starts and stored results remain visible."
-        : unknownStart
-          ? "Waiting for confirmed play. Scheduled kickoff alone does not reveal picks."
-          : unfinished.length > 0
-            ? "Scores settle after games finish. Results are checked about four hours after kickoff; longer games are checked again."
-            : "Final game results are captured. The weekly result follows its correction window.",
+          : "A game result is delayed. Your last confirmed scores are shown."
+        : null,
   };
 }

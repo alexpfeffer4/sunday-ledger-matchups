@@ -225,7 +225,7 @@ test("stored Live updates preserve identity and progress to provisional and fina
 
   await mountMatchup(page, "PROVISIONAL");
   await expect(
-    page.getByText("Provisional", { exact: true }).first(),
+    page.getByText("Picks settled", { exact: true }).first(),
   ).toBeVisible();
   await expect(
     page.getByLabel("Alex Ledger score 400.00 credits"),
