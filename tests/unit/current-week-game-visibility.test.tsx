@@ -64,6 +64,7 @@ describe("immediate current-week game visibility with legacy betting rules", () 
     const games = screen.getAllByLabelText(/^Jordan Rival · .*Club$/);
     expect(games).toHaveLength(2);
     for (const lane of games) {
+      expect(within(lane).getAllByText("Bet placed")).toHaveLength(1);
       expect(lane).toHaveTextContent("Bets hidden until confirmed kickoff");
       expect(lane).not.toHaveTextContent(
         /credits|moneyline|spread|total|[+]100|2 bets/i,

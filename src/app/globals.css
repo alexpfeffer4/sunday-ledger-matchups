@@ -471,6 +471,26 @@ a {
 .lineup-empty {
   padding-block: 1rem;
 }
+.lineup-hidden-side {
+  background: var(--app-subtle);
+}
+.lineup-hidden {
+  padding-block: 1rem;
+  overflow-wrap: anywhere;
+}
+.lineup-hidden-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.lineup-hidden-title svg {
+  flex: none;
+}
 .matchup-comparison :is(a, button, summary, select) {
   scroll-margin-block: 16rem 5rem;
 }

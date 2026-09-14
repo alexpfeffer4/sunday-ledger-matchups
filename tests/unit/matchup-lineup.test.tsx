@@ -51,7 +51,7 @@ describe("paired game lineups", () => {
     );
     expect(lane).toHaveTextContent("Picks hidden until confirmed kickoff");
     expect(lane).not.toHaveTextContent(
-      /No bet|credits|moneyline|spread|total/i,
+      /Bet placed|No bet|credits|moneyline|spread|total/i,
     );
   });
 

@@ -132,9 +132,12 @@ export function MatchupLineup({ matchup }: { matchup: PairedMatchupDto }) {
           );
           const selected =
             side === "SELF" ? game.selfSelected : game.opponentSelected;
+          const hidden =
+            rows.length === 0 &&
+            (selected || (unrevealed && member.selectedGames === undefined));
           return (
             <div
-              className={`lineup-side ${side === "SELF" ? "lineup-self" : "lineup-opponent"}`}
+              className={`lineup-side ${side === "SELF" ? "lineup-self" : "lineup-opponent"} ${hidden ? "lineup-hidden-side" : ""}`}
               key={side}
               role="group"
               data-member-name={member.displayName}
@@ -148,15 +151,35 @@ export function MatchupLineup({ matchup }: { matchup: PairedMatchupDto }) {
                     <Bet row={row} key={row.id} />
                   ))}
                 </ul>
+              ) : hidden ? (
+                <div className="lineup-hidden">
+                  <p className="lineup-hidden-title">
+                    <svg
+                      aria-hidden="true"
+                      focusable="false"
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect x="5" y="10" width="14" height="11" rx="2" />
+                      <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" />
+                    </svg>
+                    <span>{selected ? "Bet placed" : "Picks hidden"}</span>
+                  </p>
+                  <p className="text-muted mt-1 text-xs leading-5">
+                    {selected
+                      ? "Bets hidden until confirmed kickoff"
+                      : "Picks hidden until confirmed kickoff"}
+                  </p>
+                </div>
               ) : (
                 <p className="lineup-empty text-muted text-xs leading-5">
-                  {selected
-                    ? "Bets hidden until confirmed kickoff"
-                    : unrevealed && member.selectedGames === undefined
-                      ? "Picks hidden until confirmed kickoff"
-                      : market
-                        ? "No bet in this market"
-                        : "No bet on this game"}
+                  {market ? "No bet in this market" : "No bet on this game"}
                 </p>
               )}
             </div>
