@@ -642,6 +642,11 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   ).toBeVisible();
 
   await page.reload();
-  await expect(page.getByText("Final").first()).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(
+    page
+      .locator(".paired-matchup-card .status-badge")
+      .filter({ hasText: /^Final$/ }),
+  ).toBeVisible();
   await commissionerBrowser.context.close();
 });

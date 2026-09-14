@@ -684,10 +684,8 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
       .click();
     await observerPage.waitForURL(`**/l/${slug}/matchup`);
     await observerPage
-      .getByRole("link", {
-        name: `View ${target.sideAName} versus ${target.sideBName}`,
-      })
-      .click();
+      .getByRole("combobox", { name: "Matchup", exact: true })
+      .selectOption(target.id);
     await expect(observerPage).toHaveURL(
       new RegExp(`matchup\\?matchup=${target.id}$`),
     );

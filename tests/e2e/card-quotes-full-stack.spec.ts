@@ -765,8 +765,11 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
     ).toBe("1");
     await measure(info, "stored-score-to-visible-final", async () => {
       await page.reload();
+      await page.evaluate(() => window.scrollTo(0, 0));
       await expect(
-        page.getByText("Final", { exact: true }).first(),
+        page
+          .locator(".paired-matchup-card .status-badge")
+          .filter({ hasText: /^Final$/ }),
       ).toBeVisible();
     });
     await page.screenshot({
