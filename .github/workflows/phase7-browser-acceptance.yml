@@ -55,3 +55,11 @@ jobs:
 
       - name: Run Phase 7 browser acceptance
         run: npx playwright test tests/e2e/phase7-weekly-close.spec.tsx --reporter=github
+
+      - name: Retain weekly recap browser evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: phase7-weekly-recap-evidence
+          path: test-results/
+          retention-days: 7

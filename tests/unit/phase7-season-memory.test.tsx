@@ -14,7 +14,7 @@ import { makePhase7State, phase7Ids } from "../fixtures/phase7-season-memory";
 afterEach(cleanup);
 
 describe("Phase 7 weekly close surfaces", () => {
-  it("renders provisional facts, explicit before/after, cutline, and next opponent", () => {
+  it("keeps settled picks and next access visible while standings await finalization", () => {
     const memory = projectSeasonMemory(makePhase7State());
     if (!memory.recordBridge) throw new Error("Missing RecordBridge fixture.");
     render(
@@ -26,9 +26,8 @@ describe("Phase 7 weekly close surfaces", () => {
     );
 
     expect(screen.getByText("Picks settled")).toBeVisible();
-    expect(screen.getByText("What Week 2 changed")).toBeVisible();
-    expect(screen.getByText("Playoff picture")).toBeVisible();
-    expect(screen.getByText(/not a clinch or elimination/)).toBeVisible();
+    expect(screen.queryByText("Standings impact")).not.toBeInTheDocument();
+    expect(screen.queryByText("Playoff picture")).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Next: Week 3 vs. Devon Next" }),
     ).toHaveAttribute("href", "/l/sunday-ledger/matchup");

@@ -18,18 +18,6 @@ function seed(standing: StandingFact | null): string {
   return standing?.seed ? `No. ${standing.seed}` : "—";
 }
 
-function deltaLabel(
-  before: StandingFact | null,
-  after: StandingFact | null,
-): string {
-  if (!after?.seed) return "Standings pending";
-  if (!before?.seed) return `Now No. ${after.seed}`;
-  if (before.seed === after.seed) return `Still No. ${after.seed}`;
-  return after.seed < before.seed
-    ? `Up ${before.seed - after.seed} · now No. ${after.seed}`
-    : `Down ${after.seed - before.seed} · now No. ${after.seed}`;
-}
-
 function Cutline({ cutline }: { cutline: PlayoffCutlineFact }) {
   const viewerLabel = {
     CURRENTLY_INSIDE: `Inside the top ${cutline.qualifierCount}`,
@@ -74,6 +62,8 @@ export function RecordBridge({
   bridge: RecordBridgeFact;
   cutline: PlayoffCutlineFact | null;
 }) {
+  if (bridge.matchup.status !== "FINAL") return null;
+
   if (bridge.standingsEffect === "NONE") {
     return (
       <section aria-labelledby="record-bridge-heading" className="py-2">
@@ -92,67 +82,53 @@ export function RecordBridge({
     );
   }
 
+  if (!bridge.after) return null;
+
   const facts = [
     {
       label: "Record",
-      before: record(bridge.before),
+      before: bridge.before ? record(bridge.before) : null,
       after: record(bridge.after),
     },
     {
       label: "Points For",
-      before: bridge.before ? score(bridge.before.pointsForCenticredits) : "—",
-      after: bridge.after ? score(bridge.after.pointsForCenticredits) : "—",
+      before: bridge.before ? score(bridge.before.pointsForCenticredits) : null,
+      after: score(bridge.after.pointsForCenticredits),
     },
     {
       label: "Standings position",
-      before: seed(bridge.before),
+      before: bridge.before?.seed ? seed(bridge.before) : null,
       after: seed(bridge.after),
     },
   ];
 
   return (
     <section aria-labelledby="record-bridge-heading" className="record-bridge">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-            Standings impact
-          </p>
-          <h3 className="mt-1 text-lg font-bold" id="record-bridge-heading">
-            What Week {bridge.matchup.nflWeek} changed
-          </h3>
-        </div>
-        <p className="text-graphite text-sm font-semibold">
-          {deltaLabel(bridge.before, bridge.after)}
-        </p>
-      </div>
-      <dl className="record-bridge-facts border-boundary mt-3 divide-y border-y">
+      <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
+        Standings impact
+      </p>
+      <h3 className="mt-1 text-lg font-bold" id="record-bridge-heading">
+        What Week {bridge.matchup.nflWeek} changed
+      </h3>
+      <dl className="record-bridge-facts mt-3 grid gap-3">
         {facts.map((fact) => (
-          <div
-            className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] items-center gap-2 py-3"
-            key={fact.label}
-          >
+          <div className="min-w-0" key={fact.label}>
             <dt className="text-muted text-xs font-bold tracking-[0.06em] uppercase">
               {fact.label}
             </dt>
-            <dd className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-3">
+            <dd className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 font-mono text-sm font-semibold tabular-nums">
+              {fact.before !== null ? (
+                <span className="text-muted inline-flex items-baseline gap-2">
+                  <span>
+                    <span className="sr-only">Before: </span>
+                    {fact.before}
+                  </span>
+                  <span aria-hidden="true">→</span>
+                </span>
+              ) : null}
               <span>
-                <span className="text-muted block text-xs font-bold tracking-[0.05em] uppercase">
-                  Before
-                </span>
-                <span className="text-muted mt-1 block font-mono text-sm font-semibold tabular-nums">
-                  {fact.before}
-                </span>
-              </span>
-              <span aria-hidden="true" className="pb-0.5">
-                →
-              </span>
-              <span>
-                <span className="text-muted block text-xs font-bold tracking-[0.05em] uppercase">
-                  After
-                </span>
-                <span className="mt-1 block font-mono text-sm font-semibold tabular-nums">
-                  {fact.after}
-                </span>
+                <span className="sr-only">After: </span>
+                {fact.after}
               </span>
             </dd>
           </div>
