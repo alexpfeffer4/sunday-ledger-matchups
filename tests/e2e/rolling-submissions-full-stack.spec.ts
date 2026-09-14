@@ -437,6 +437,11 @@ commit;
       completedGame.locator("[data-position-id]").first(),
     ).toBeVisible();
     // Crossing the score boundary must not resize the header or pull bets up.
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    await expect(page.locator(".matchup-sticky")).toHaveAttribute(
+      "data-compact",
+      "false",
+    );
     const layout = () =>
       page.evaluate(() => ({
         gameTop:
