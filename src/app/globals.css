@@ -341,6 +341,9 @@ a {
 }
 
 /* Matchup: the same two member lanes from scoreboard through every game. */
+.matchup-comparison {
+  --matchup-lane-padding: 1rem;
+}
 .matchup-navigation {
   display: grid;
   grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr);
@@ -361,7 +364,7 @@ a {
 }
 .matchup-comparison .matchup-member {
   min-width: 0;
-  padding-inline: 1rem;
+  padding-inline: var(--matchup-lane-padding);
 }
 .matchup-comparison .matchup-opponent {
   border-left: 1px solid var(--border-subtle);
@@ -374,7 +377,10 @@ a {
   font-family: var(--font-geist-mono), monospace;
   font-size: min(
     var(--matchup-score-size, 2.5rem),
-    calc(100cqw / var(--score-length, 8) * 1.55)
+    calc(
+      (50cqw - var(--matchup-lane-padding) * 2 - 1px) / var(--score-length, 8) *
+        1.55
+    )
   );
   line-height: 1.25;
   overflow-wrap: normal;
@@ -469,11 +475,13 @@ a {
   scroll-margin-block: 16rem 5rem;
 }
 @media (max-width: 480px) {
+  .matchup-comparison {
+    --matchup-lane-padding: 0.65rem;
+  }
   .matchup-navigation {
     gap: 0.6rem;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
   }
-  .matchup-comparison .matchup-member,
   .lineup-side {
     padding-inline: 0.65rem;
   }
@@ -516,7 +524,6 @@ a {
   display: grid;
   grid-template-rows: subgrid;
   grid-template-columns: minmax(0, 1fr);
-  container-type: inline-size;
   grid-row: span 7;
   align-items: start;
 }
