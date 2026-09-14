@@ -1,5 +1,9 @@
 # Sunday Ledger — current governing source index
 
+## Matchup presentation amendment — 2026-09-14
+
+The owner approved implementing and releasing the paired desktop/mobile matchup preview. [Paired matchup lineups](../paired-matchup-lineups.md) records the presentation scope and its unchanged privacy/scoring boundaries. This adds no season rules or database mutation.
+
 September 14 owner-approved implementation:
 [rolling submissions and immediate game visibility](2026-09-14-rolling-submissions.md)
 prepares Ruleset 1.3 / Product Bible 3.2. Members may submit immutable batches

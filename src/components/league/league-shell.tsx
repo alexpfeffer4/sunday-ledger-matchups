@@ -121,7 +121,10 @@ export function LeagueShell({
       </aside>
 
       <div className="min-w-0">
-        <header className="border-boundary bg-canvas/95 sticky top-0 z-30 border-b backdrop-blur-sm">
+        <header
+          data-league-header
+          className="border-boundary bg-canvas/95 sticky top-0 z-30 border-b backdrop-blur-sm"
+        >
           <div className="mx-auto flex min-h-16 max-w-[1480px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
             <Link
               aria-label={`Switch leagues. Current league: ${leagueName}. ${nflYear}, Week ${week}, ${phaseLabel}, ${exampleMode ? "Example Season read-only" : mode === "LIVE" ? "Live season" : "Practice/test Simulation"}`}

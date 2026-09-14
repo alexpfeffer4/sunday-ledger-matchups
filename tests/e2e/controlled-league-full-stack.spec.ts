@@ -503,10 +503,10 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     .toBe("LOCKED");
 
   await page.goto(`/l/${slug}/matchup`);
-  const selectedOpponentGames = page.getByRole("region", {
-    name: `${opponent!.displayName} selected games`,
-  });
-  await expect(selectedOpponentGames.getByRole("listitem")).toHaveCount(1);
+  const selectedOpponentGames = page.locator(
+    `[data-member-name="${opponent!.displayName}"][data-game-selected="true"]`,
+  );
+  await expect(selectedOpponentGames).toHaveCount(1);
   expect(await selectedOpponentGames.innerText()).not.toMatch(
     /credits|odds|moneyline|spread|total/i,
   );

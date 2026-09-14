@@ -86,9 +86,25 @@ export default async function MatchupPage({
     return matchup ? (
       <PairedMatchupView
         matchup={matchup}
+        weeks={[
+          ...(memory?.activeHistory ?? [])
+            .filter((result) => result.nflWeek !== matchup.week.nflWeek)
+            .map((result) => ({
+              week: result.nflWeek,
+              href: `/l/${leagueSlug}/history#result-${result.versionId}`,
+            })),
+          {
+            week: matchup.week.nflWeek,
+            href: `/l/${leagueSlug}/matchup`,
+            current: true,
+          },
+        ].sort((a, b) => b.week - a.week)}
         cardProgress={
           matchup.spectator ? undefined : (
-            <OwnerCardProgress context={ownerCardContext(live)} />
+            <OwnerCardProgress
+              context={ownerCardContext(live)}
+              presentation="matchup"
+            />
           )
         }
         refreshControl={

@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { unrevealableReceiptText } from "../fixtures/phase6-paired-matchup";
 
 type FixtureName =
+  | "STRESS"
   | "FINAL"
   | "LIVE"
   | "LIVE_UPDATE"
@@ -55,6 +56,9 @@ test("remaining-return values align when metric labels wrap", async ({
 }, info) => {
   await page.setViewportSize({ width: 640, height: 900 });
   await mountMatchup(page, "LIVE");
+  await page
+    .getByText("Score details & remaining returns", { exact: true })
+    .click();
   const labelHeights = await page
     .locator(".score-path-facts dt")
     .evaluateAll((labels) =>
@@ -216,8 +220,8 @@ test("Live remains paired, mobile-safe, keyboard-visible, and reduced-motion saf
   ).toHaveCount(1);
   await expect(page.getByText("Live", { exact: true }).first()).toBeVisible();
 
-  await page.keyboard.press("Tab");
   const refresh = page.getByRole("button", { name: "Refresh matchup" });
+  await refresh.focus();
   await expect(refresh).toBeFocused();
   expect(
     await refresh.evaluate((element) => getComputedStyle(element).outlineStyle),
@@ -265,4 +269,54 @@ test("stored Live updates preserve identity and progress to provisional and fina
   await expect(
     page.getByLabel("Jordan Rival score 200.00 credits"),
   ).toBeVisible();
+});
+
+test("two player lanes align from score to bets on desktop, mobile, and large text", async ({
+  page,
+}, info) => {
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    await mountMatchup(page, "STRESS");
+    for (const scale of [100, 200]) {
+      await page.locator("html").evaluate((element, value) => {
+        element.style.fontSize = `${value}%`;
+      }, scale);
+      await expect(page.locator('[data-side="SELF"]')).toHaveCount(20);
+      await expect(page.locator('[data-side="OPPONENT"]')).toHaveCount(1);
+      const geometry = await page.evaluate(() => {
+        const self = document
+          .querySelector(".matchup-self")!
+          .getBoundingClientRect();
+        const opponent = document
+          .querySelector(".matchup-opponent")!
+          .getBoundingClientRect();
+        const left = document
+          .querySelector(".lineup-self")!
+          .getBoundingClientRect();
+        const right = document
+          .querySelector(".lineup-opponent")!
+          .getBoundingClientRect();
+        return {
+          selfTop: self.top,
+          opponentTop: opponent.top,
+          selfLeft: self.left,
+          betLeft: left.left,
+          opponentLeft: opponent.left,
+          betRight: right.left,
+        };
+      });
+      expect(geometry.selfTop).toBe(geometry.opponentTop);
+      expect(
+        Math.abs(geometry.selfLeft - geometry.betLeft),
+      ).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(geometry.opponentLeft - geometry.betRight),
+      ).toBeLessThanOrEqual(1);
+      await expectNoHorizontalOverflow(page);
+      await expectNoSeriousAccessibilityViolations(page);
+      await page.screenshot({
+        path: info.outputPath(`paired-lineup-${width}-${scale}.png`),
+      });
+    }
+  }
 });

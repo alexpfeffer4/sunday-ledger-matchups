@@ -569,13 +569,11 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
       `${state.viewer.displayName} card status`,
     );
     await expect(opponentBadge).toContainText("Sealed");
-    const gamePreview = opponentPage.getByRole("region", {
-      name: `${state.viewer.displayName} selected games`,
-    });
-    await expect(gamePreview.getByRole("listitem")).toHaveCount(
-      selectedEventIds.length,
+    const gamePreview = opponentPage.locator(
+      `[data-member-name="${state.viewer.displayName}"][data-game-selected="true"]`,
     );
-    expect(await gamePreview.innerText()).not.toMatch(
+    await expect(gamePreview).toHaveCount(selectedEventIds.length);
+    expect((await gamePreview.allTextContents()).join(" ")).not.toMatch(
       /credits|odds|moneyline|spread|total/i,
     );
     await expect(
@@ -583,7 +581,7 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     ).toHaveCount(0);
     await expect(
       opponentPage.getByRole("heading", { name: "Picks by game" }),
-    ).toHaveCount(0);
+    ).toBeVisible();
     const beforeRefreshCalls = readFileSync(`${fixture}.calls`, "utf8");
     // Capture before fulfillment, as in the rehearsal privacy lane. Chromium
     // can discard a streamed navigation body before Response.text() reads it.

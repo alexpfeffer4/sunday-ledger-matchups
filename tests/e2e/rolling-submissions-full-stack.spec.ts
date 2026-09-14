@@ -221,13 +221,14 @@ commit;
     expect(opponentState.matchup!.opponentRevealedPositions).toEqual([]);
     expect(opponentState.matchup!.opponentAvailableCredits).toBeNull();
     await spectator.reload();
-    const gamePreview = spectator.getByRole("region", {
-      name: "Rolling Member 0 selected games",
-    });
-    await expect(gamePreview).toContainText(
-      `${early.awayTeam} at ${early.homeTeam}`,
+    const gamePreview = spectator.locator(
+      '[data-member-name="Rolling Member 0"][data-game-selected="true"]',
     );
-    await expect(gamePreview.getByRole("listitem")).toHaveCount(1);
+    await expect(gamePreview).toHaveAttribute(
+      "aria-label",
+      `Rolling Member 0 · ${early.awayTeam} at ${early.homeTeam}`,
+    );
+    await expect(gamePreview).toHaveCount(1);
     await expect(
       spectator.getByLabel("Rolling Member 0 outstanding picks and credits"),
     ).toHaveCount(0);
@@ -260,7 +261,7 @@ commit;
     expect(publicOwner.availableCredits).toBeNull();
     expect(publicOwner.positions).toEqual([]);
     await spectator.reload();
-    await expect(gamePreview.getByRole("listitem")).toHaveCount(1);
+    await expect(gamePreview).toHaveCount(1);
 
     // Cross the early cutoff with NO start flag. Entry closes; actual terms do
     // not reveal until separate confirmed-start evidence passes the real RPC.
@@ -296,9 +297,9 @@ commit;
     });
     await spectator.reload();
     await expect(
-      spectator.getByRole("region", {
-        name: "Rolling Member 0 selected games",
-      }),
+      spectator.locator(
+        '[data-member-name="Rolling Member 0"][data-game-selected="true"]',
+      ),
     ).toHaveCount(0);
     expect(
       (await state(opponent, slug)).matchup!.opponentRevealedPositions,
@@ -319,17 +320,20 @@ commit;
     expect(ownerState.matchup!.result).toBeNull();
     await spectator.reload();
     await expect(
-      spectator.getByRole("region", {
-        name: "Rolling Member 0 selected games",
-      }),
-    ).toContainText(`${later.awayTeam} at ${later.homeTeam}`);
+      spectator.locator(
+        '[data-member-name="Rolling Member 0"][data-game-selected="true"]',
+      ),
+    ).toHaveAttribute(
+      "aria-label",
+      `Rolling Member 0 · ${later.awayTeam} at ${later.homeTeam}`,
+    );
     await expect(
       spectator.getByLabel("Rolling Member 0 unused credits"),
-    ).toContainText("350 credits available to bet");
+    ).toHaveCount(0);
     await expect(
       spectator.getByRole("heading", { name: /You won|You lost/ }),
     ).toHaveCount(0);
-    await expect(gamePreview.getByRole("listitem")).toHaveCount(1);
+    await expect(gamePreview).toHaveCount(1);
     expect(await gamePreview.innerText()).not.toMatch(
       /credits|moneyline|spread|total/i,
     );
@@ -420,6 +424,34 @@ commit;
     await expect(
       page.getByRole("heading", { name: "You won", exact: true }),
     ).toBeVisible();
+    const completedGame = page.locator(".lineup-game").first();
+    const toggle = completedGame.getByRole("button");
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(
+      completedGame.locator("[data-position-id]").first(),
+    ).toBeHidden();
+    await toggle.click();
+    await expect(
+      completedGame.locator("[data-position-id]").first(),
+    ).toBeVisible();
+    await page.locator(".lineup-game").last().scrollIntoViewIfNeeded();
+    await expect(page.locator(".matchup-sticky")).toHaveAttribute(
+      "data-compact",
+      "true",
+    );
+    const pinnedScore = await page.locator(".matchup-sticky").boundingBox();
+    const shellHeader = await page
+      .locator("[data-league-header]")
+      .boundingBox();
+    expect(pinnedScore!.y).toBeGreaterThanOrEqual(shellHeader!.height - 1);
+    expect(pinnedScore!.y).toBeLessThanOrEqual(shellHeader!.height + 1);
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    await expect(page.locator(".matchup-sticky")).toHaveAttribute(
+      "data-compact",
+      "false",
+    );
     await page.screenshot({
       path: testInfo.outputPath("rolling-partial-final.png"),
       fullPage: true,

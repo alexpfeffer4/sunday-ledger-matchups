@@ -55,10 +55,12 @@ export function OwnerCardProgress({
   context,
   onCardPage = false,
   onSlatePage = false,
+  presentation = "full",
 }: {
   context: OwnerCardContext;
   onCardPage?: boolean;
   onSlatePage?: boolean;
+  presentation?: "full" | "matchup";
 }) {
   const { drafts, hydrated, saved, sealed, status } = useCardDraft(context);
   const closed = useCardDeadline(context);
@@ -72,6 +74,50 @@ export function OwnerCardProgress({
       card.remainingCredits >= 50 &&
       card.positions.length < 20;
     const deadline = context.week.entryClosesAt;
+    if (presentation === "matchup")
+      return (
+        <section
+          aria-label="Your weekly card"
+          className="matchup-next-action border-boundary bg-subtle flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4"
+        >
+          <div className="min-w-0 text-sm">
+            <p className="font-semibold">
+              {closed
+                ? "Weekly betting is closed"
+                : canSubmit
+                  ? `${formatCredits(card.remainingCredits)} credits available to bet`
+                  : "Your bets are submitted"}
+            </p>
+            <p className="text-muted mt-1 text-xs">
+              {closed
+                ? "Submitted bets settle normally."
+                : canSubmit
+                  ? "Choose from games that have not started."
+                  : "Follow your selections below."}
+            </p>
+            {hydrated && drafts.length ? (
+              <p className="text-muted mt-1 text-xs">
+                {drafts.length} unsubmitted{" "}
+                {drafts.length === 1 ? "draft" : "drafts"}.{" "}
+                {saved
+                  ? "Saved on this device."
+                  : "Device storage is unavailable."}{" "}
+                Drafts never submit automatically.
+              </p>
+            ) : null}
+          </div>
+          <Link
+            className={`${canSubmit ? "bg-registry hover:bg-registry-hover text-white" : "text-action"} inline-flex min-h-11 items-center justify-center rounded-lg px-4 text-sm font-semibold`}
+            href={`/l/${context.leagueSlug}/${canSubmit ? "slate" : "card"}`}
+          >
+            {canSubmit
+              ? drafts.length
+                ? "Continue picks"
+                : "Make picks"
+              : "View card"}
+          </Link>
+        </section>
+      );
     return (
       <section
         aria-label="Your weekly card"
@@ -159,6 +205,21 @@ export function OwnerCardProgress({
       </section>
     );
   }
+  if (sealed && presentation === "matchup")
+    return (
+      <details className="border-boundary rounded-lg border px-4">
+        <summary className="text-action min-h-11 cursor-pointer py-3 text-sm font-semibold">
+          Your card is sealed · View details
+        </summary>
+        <div className="pb-4">
+          <SealedCardSummary
+            leagueSlug={context.leagueSlug}
+            lockAt={context.week.commonLockAt}
+            credits={context.ownerCard.allocatedCredits}
+          />
+        </div>
+      </details>
+    );
   if (sealed)
     return (
       <SealedCardSummary

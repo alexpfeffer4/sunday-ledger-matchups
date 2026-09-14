@@ -74,16 +74,22 @@ describe("rolling submission matchup presentation", () => {
     hidden.selectedGames!.push({ ...hidden.selectedGames![0]! });
     const projected = f.project();
     render(<PairedMatchupView matchup={projected} refreshControl={null} />);
-    const opponentGames = screen.getByRole("region", {
-      name: "Jordan Rival selected games",
+    const game = screen.getByRole("region", {
+      name: "Harbor Club at Lake Club",
     });
-    expect(within(opponentGames).getAllByRole("listitem")).toHaveLength(2);
-    expect(
-      within(opponentGames).getAllByText("Harbor Club at Lake Club"),
-    ).toHaveLength(1);
+    expect(within(game).getAllByText("Harbor Club at Lake Club")).toHaveLength(
+      1,
+    );
+    const opponentGames = within(game).getByLabelText(
+      "Jordan Rival · Harbor Club at Lake Club",
+    );
+    expect(opponentGames).toHaveTextContent(
+      "Bets hidden until confirmed kickoff",
+    );
     expect(opponentGames).not.toHaveTextContent(
       /credits|MONEYLINE|SPREAD|TOTAL|3 bets|[+]100/,
     );
+    expect(screen.getAllByLabelText(/^Jordan Rival · .*Club$/)).toHaveLength(2);
     expect(projected.opponent.outstanding).toBeNull();
     expect(projected.opponent.availableCredits).toBeNull();
     expect(screen.queryByLabelText("Jordan Rival unused credits")).toBeNull();
@@ -179,10 +185,12 @@ describe("rolling submission matchup presentation", () => {
     expect(
       screen.getByLabelText("Jordan Rival outstanding picks and credits"),
     ).toHaveTextContent("100 credits outstanding");
+    expect(screen.queryByLabelText("Jordan Rival unused credits")).toBeNull();
     expect(
-      screen.getByLabelText("Jordan Rival unused credits"),
-    ).toHaveTextContent("800 credits available to bet");
-    expect(screen.getByText("More bets can still be submitted")).toBeVisible();
+      screen.getByText(
+        "More bets can still be submitted. This matchup remains open.",
+      ),
+    ).toBeVisible();
     expect(screen.queryByText(/clinched|remaining upside/)).toBeNull();
   });
 
@@ -197,7 +205,11 @@ describe("rolling submission matchup presentation", () => {
     expect(projected.scorePath.furtherSubmissionsPossible).toBe(true);
     render(<PairedMatchupView matchup={projected} refreshControl={null} />);
     expect(screen.queryByRole("heading", { name: "You won" })).toBeNull();
-    expect(screen.getByText("More bets can still be submitted")).toBeVisible();
+    expect(
+      screen.getByText(
+        "More bets can still be submitted. This matchup remains open.",
+      ),
+    ).toBeVisible();
   });
 
   it("shows unused allocation as expired alongside normal partial-card final scores", () => {
@@ -210,9 +222,7 @@ describe("rolling submission matchup presentation", () => {
     expect(
       screen.getByLabelText("Alex Ledger unused credits"),
     ).toHaveTextContent("800 credits expired");
-    expect(
-      screen.getByLabelText("Jordan Rival unused credits"),
-    ).toHaveTextContent("800 credits expired");
+    expect(screen.queryByLabelText("Jordan Rival unused credits")).toBeNull();
   });
 
   it("never marks an absent member incomplete before weekly entry closes", () => {
@@ -254,8 +264,8 @@ describe("rolling submission matchup presentation", () => {
     )!;
     render(<PairedMatchupView matchup={projected} refreshControl={null} />);
     expect(
-      screen.getByRole("region", { name: "Soup selected games" }),
-    ).toHaveTextContent("River Club at Capital Club");
+      screen.getByLabelText("Soup · River Club at Capital Club"),
+    ).toHaveTextContent("Bets hidden until confirmed kickoff");
     expect(
       screen.queryByRole("region", { name: "Alex Ledger selected games" }),
     ).toBeNull();
