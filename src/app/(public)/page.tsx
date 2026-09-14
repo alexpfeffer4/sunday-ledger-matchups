@@ -165,12 +165,12 @@ export default async function HomePage() {
             [
               "01",
               "Build your card",
-              "Use all 1,000 credits across winner, spread, and total picks before cards lock.",
+              "Choose winner, spread, and total picks from your weekly 1,000-credit allocation.",
             ],
             [
               "02",
               "Beat one opponent",
-              "Cards stay sealed until kickoff. Returned credits become your weekly score, and the higher score wins.",
+              "Bet details stay hidden until kickoff. Returned credits become your weekly score, and the higher score wins.",
             ],
             [
               "03",

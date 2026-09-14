@@ -544,7 +544,7 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
       .first()
       .click();
     await expect(
-      thirdPage.getByText(/Nothing was sealed.*draft has been kept/),
+      thirdPage.getByText(/Nothing new was submitted.*draft has been kept/),
     ).toBeVisible();
     expect(
       await thirdPage.evaluate(() =>

@@ -194,8 +194,15 @@ commit;
   const opponentIndex = userIds.indexOf(opponentUser);
   expect(opponentIndex).toBeGreaterThan(0);
   const opponent = connections[opponentIndex]!;
+  const { viewport, deviceScaleFactor, isMobile, hasTouch, userAgent } =
+    testInfo.project.use;
   const spectatorContext = await browser.newContext({
     baseURL: "http://127.0.0.1:3000",
+    viewport,
+    deviceScaleFactor,
+    isMobile,
+    hasTouch,
+    userAgent,
   });
   const spectator = await spectatorContext.newPage();
   try {
@@ -322,7 +329,27 @@ commit;
     await expect(
       spectator.getByRole("heading", { name: /You won|You lost/ }),
     ).toHaveCount(0);
+    await expect(gamePreview.getByRole("listitem")).toHaveCount(1);
+    expect(await gamePreview.innerText()).not.toMatch(
+      /credits|moneyline|spread|total/i,
+    );
+    await spectator.screenshot({
+      path: testInfo.outputPath("rolling-opponent-game-preview.png"),
+      fullPage: true,
+    });
     await page.goto(`/l/${slug}/matchup`);
+    await expect(
+      page.getByRole("heading", { name: "Week 1 matchup", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Rolling Member 0 unused credits")).toHaveText(
+      "350 credits available to bet",
+    );
+    await expect(
+      page.getByRole("region", { name: "Matchup remains open" }),
+    ).toContainText("More bets can still be submitted");
+    await expect(
+      page.getByRole("heading", { name: /You won|You lost/ }),
+    ).toHaveCount(0);
     const dimensions = await page.evaluate(() => ({
       client: document.documentElement.clientWidth,
       scroll: document.documentElement.scrollWidth,

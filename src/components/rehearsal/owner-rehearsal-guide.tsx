@@ -251,7 +251,11 @@ export function OwnerRehearsalGuide({
               intent={manualFirst ? "secondary" : "primary"}
               type="submit"
             >
-              {sampling ? "Submitting sample…" : "Use a sample card"}
+              {sampling
+                ? rehearsal.rollingSubmissionsEnabled
+                  ? "Submitting sample…"
+                  : "Sealing sample…"
+                : "Use a sample card"}
             </Button>
           </OperationForm>
         </div>
