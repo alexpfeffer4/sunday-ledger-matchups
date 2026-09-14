@@ -36,9 +36,9 @@ can run the exact file. Do not paste their transaction wrappers into an existing
 transaction. `inventory.sql` works on the current pre-release schema;
 `preflight.sql` and `activate.sql` require all three support migrations:
 
-1. `20260914172554_rolling_submission_contract.sql`
-2. `20260914172601_rolling_submission_lifecycle.sql`
-3. `20260914172609_rolling_submission_visibility.sql`
+1. `20260914184154_rolling_submission_contract.sql`
+2. `20260914184209_rolling_submission_lifecycle.sql`
+3. `20260914184223_rolling_submission_visibility.sql`
 
 Apply those only in their reviewed, authorized environment. They prepare
 rolling-entry support while the catalog remains 1.2; the visibility migration

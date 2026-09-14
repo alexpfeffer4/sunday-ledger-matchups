@@ -1,10 +1,11 @@
 # Rolling submissions — implementation and rollout
 
-Prepared September 14, 2026. **Implementation and local verification complete, including
-the current-week visibility exception. PR #48 is published. Native database, concurrency and shared-browser CI passed;
-the first desktop run found three outdated wording checks. Those are corrected
-with legacy rehearsal wording preserved. Full Auth/submission reverification
-and conditional Production release remain pending as recorded below.**
+Updated September 14, 2026. **PR #48 revision R2 passed all six workflows,
+including native database, concurrency and real Auth/submission browser checks.
+Public Preview checks passed. The three Production support migrations were
+applied and verified while retaining the 1.2 catalogs. The final release
+revision, merge, Production application deployment and explicit 1.3 activation
+remain pending as recorded below.**
 
 The [governing amendment](governance/2026-09-14-rolling-submissions.md) records
 the owner's approved behavior and reconciliation with all six historical
@@ -73,20 +74,34 @@ all-published-games gate and adds the rolling-entry guard. Downstream
 qualification, bracket, champion and archive publications still respect score
 review. Legacy weeks use their historical acceptance and attendance contract.
 
-## Prepared migration and activation inventory
+## Applied support migrations and pending activation
 
-| Deliverable                                        | Status                                                                                                                                                                                               |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `20260914172554_rolling_submission_contract.sql`   | Local PostgreSQL verification passed; prepares support without activating the catalog                                                                                                                |
-| `20260914172601_rolling_submission_lifecycle.sql`  | Local lifecycle and full-season rehearsal passed; native CI pending                                                                                                                                  |
-| `20260914172609_rolling_submission_visibility.sql` | Local authorized projections and privacy regression passed; native CI pending                                                                                                                        |
-| Explicit catalog activation                        | [Operator SQL and safeguards](../scripts/rolling-submissions/README.md); exact scripts verified in an isolated embedded PostgreSQL rehearsal                                                         |
-| First eligible week                                | Pilot Week 2 at the September 14 17:36 UTC read-only observation; refresh the complete private metadata inventory before approval/activation                                                         |
-| Week-opening/activation serialization              | Catalog row locks match the existing week-pinning `FOR SHARE`; independent code review and sequential activation proof complete; concurrent-session/required Supabase gate evidence remains separate |
+| Deliverable                                        | Status                                                                                                                                                                            |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `20260914184154_rolling_submission_contract.sql`   | Applied to Production September 14 at 18:41 UTC; exact reviewed SQL unchanged; catalog activation not performed                                                                   |
+| `20260914184209_rolling_submission_lifecycle.sql`  | Applied to Production September 14 at 18:42 UTC; native lifecycle and full-season rehearsal checks passed                                                                         |
+| `20260914184223_rolling_submission_visibility.sql` | Applied to Production September 14 at 18:42 UTC; current legacy and rolling visibility/privacy regressions passed                                                                 |
+| Explicit catalog activation                        | Pending compatible Production application deployment and final release checks; [operator SQL and safeguards](../scripts/rolling-submissions/README.md) prepared and verified      |
+| First eligible week                                | Pilot Week 1 retained its 1.2 binding and Week 2 remained the next unopened week at the 18:42:58 UTC post-migration preflight; refresh before activation                          |
+| Week-opening/activation serialization              | Catalog row locks match existing week-pinning `FOR SHARE`; independent review, operator-script activation proof and all four native separate-session concurrency scenarios passed |
 
-Do not apply an unreviewed filename or assume this inventory is final. Record
-any additional additive migration and the tested order before release approval.
-Applied historical migrations must not be rewritten.
+The hosted migration tool assigned the filenames above. Their SQL is byte-for-byte
+the reviewed support SQL; the final repository revision must align these filenames
+with the hosted ledger. Applied historical SQL must not be rewritten or reapplied
+under a second identity.
+
+The 18:42:58 UTC post-migration preflight passed. Aggregate hashes of opened-week
+bindings, snapshots, accepted receipts, settlements and results were identical
+before and after the support migrations. Both active catalogs remained 1.2.
+This verifies the preparatory database release; it does not establish Production
+application deployment or 1.3 activation.
+
+A read-only Production smoke check covered six current-week card projections.
+Their distinct selected games matched accepted receipt event identities, and
+each game exposed only `eventId`, `eventLabel` and `scheduledStartAt`. Legacy
+projections contained only `submitted` and `selectedGames`, without 1.3 budget
+fields. All six cards belonged to the unchanged legacy week; rolling submissions remained disabled. No member
+identity, receipt terms or private league identifier is included in this record.
 
 The catalog contains one active row per mode. Activation is global for LIVE
 and SIMULATION: it affects new seasons and each existing season's next unopened
@@ -110,37 +125,52 @@ updates an existing snapshot, week, receipt or result.
 
 ## Verification record
 
-| Gate                                                                       | Status / evidence                                                                                                                                                                                                                          |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Batch acceptance, budget races, replay and immutable receipts              | 42 rolling submission assertions passed; immutable and revoked-access retry cases covered. Native concurrency script prepared; all four native separate-session scenarios passed in PR #48 CI                                              |
-| Kickoff boundaries, current/changed quotes and later-game refresh          | 18 rolling Live quote assertions passed, including late-only events, incomplete-market rejection, quota preservation and draft compatibility                                                                                               |
-| Immediate game identity and selection/aggregate privacy matrix             | 59 rolling and 40 new legacy visibility assertions passed, plus existing authorization regressions; game identities are public without actual details or new legacy budget fields                                                          |
-| Partial/zero participation, correction and finalization races              | 54 rolling lifecycle assertions passed. Native acceptance/settlement race passed in PR #48 CI                                                                                                                                              |
-| Future-week activation and legacy-week regression                          | Exact operator scripts passed isolated embedded PostgreSQL: dry run, stale-inventory refusal, atomic activation, immutable old evidence, repeat no-op, real rehearsal 1.2 Week 1 → 1.3 Week 2; native Supabase migration/pgTAP CI passed   |
-| Authoritative full-season Simulation/rehearsal through Week 18 and archive | Passed all 18 weeks with partial participants, incremental bots, zero-submission lessons, postseason, corrections and archive                                                                                                              |
-| Mobile/browser core submission journey and WebKit coverage                 | Real Auth/UI/RPC desktop and mobile journeys added to required CI; SQL fixture sequence independently passed 12 checks. Browser execution pending publication                                                                              |
-| Required local checks, generated types, CI and build                       | npm run verify passed after the visibility exception: identity assets, Prettier, ESLint, strict TypeScript, 527 tests in 85 files and Production build. Native generated-type and quality gates passed; real Auth/browser journeys pending |
-| Independent integrity/privacy/lifecycle review                             | Independent review completed; fixed revoked-access replay and strengthened per-game quote completeness. Fresh embedded PostgreSQL passed 35 suites and 1,294 assertions, including the current-week visibility exception                   |
-| Hosted authenticated Preview                                               | Waived by owner on September 14 to avoid a paid plan. Real isolated Supabase/Auth/browser/concurrency CI remains required and pending.                                                                                                     |
-| Physical iPhone and screen-reader evidence                                 | Not observed in this implementation                                                                                                                                                                                                        |
-| Production rollout                                                         | Conditionally authorized by the owner after all checks and blockers are cleared; not performed                                                                                                                                             |
+| Gate                                                                       | Status / evidence                                                                                                                                                                                                                                            |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Batch acceptance, budget races, replay and immutable receipts              | 42 rolling submission assertions passed; immutable and revoked-access retry cases covered. Native concurrency script prepared; all four native separate-session scenarios passed in PR #48 CI                                                                |
+| Kickoff boundaries, current/changed quotes and later-game refresh          | 18 rolling Live quote assertions passed, including late-only events, incomplete-market rejection, quota preservation and draft compatibility                                                                                                                 |
+| Immediate game identity and selection/aggregate privacy matrix             | 59 rolling and 40 new legacy visibility assertions passed, plus existing authorization regressions; authorized members see game identities without actual details or new legacy budget fields. Six Production card projections passed read-only smoke checks |
+| Partial/zero participation, correction and finalization races              | 54 rolling lifecycle assertions passed. Native acceptance/settlement race passed in PR #48 CI                                                                                                                                                                |
+| Future-week activation and legacy-week regression                          | Exact operator scripts passed isolated embedded PostgreSQL: dry run, stale-inventory refusal, atomic activation, immutable old evidence, repeat no-op, real rehearsal 1.2 Week 1 → 1.3 Week 2; native Supabase migration/pgTAP CI passed                     |
+| Authoritative full-season Simulation/rehearsal through Week 18 and archive | Passed all 18 weeks with partial participants, incremental bots, zero-submission lessons, postseason, corrections and archive                                                                                                                                |
+| Mobile/browser core submission journey and WebKit coverage                 | R2 real Auth/UI/RPC: desktop 14, mobile Auth 8 and mobile member 2 passed with zero failures, skips or retries. Shared-browser checks: Chromium 62 passed; WebKit 61 passed with one existing forced-colors skip. Six screenshots inspected                  |
+| Required local checks, generated types, CI and build                       | npm run verify passed: identity assets, Prettier, ESLint, strict TypeScript, 527 tests in 85 files and Production build. All six R2 workflows green, including native generated types and full-stack Auth/browser submission                                 |
+| Independent integrity/privacy/lifecycle review                             | Independent review completed; fixed revoked-access replay and strengthened per-game quote completeness. Native Supabase CI passed 35 suites and 1,294 assertions, including current-week visibility; all four native concurrency scenarios passed            |
+| Public Preview                                                             | R2 deployment READY; Home rechecked on R2. Home, Rules, Trust and sign-in rendered in the Preview verification sequence; Rules, Trust and sign-in checks were on the initial deployment. Backend-isolation guard checks passed                               |
+| Hosted authenticated Preview                                               | Waived by owner on September 14 to avoid a paid plan. Required disposable Supabase/Auth/browser/concurrency CI passed on R2                                                                                                                                  |
+| Physical iPhone and screen-reader evidence                                 | Not observed in this implementation                                                                                                                                                                                                                          |
+| Production rollout                                                         | Conditional release clearance recorded for R2 checks; three support migrations applied and verified with catalogs still 1.2. Final revision, merge, Production app deployment and activation remain pending                                                  |
 
-Use actual command/run/commit evidence when filling this table. Browser emulation
+These results belong to R2 commit
+[`e3b441ed761fa4cf1cac3e35c406f164fe5041a3`](https://github.com/alexpfeffer4/sunday-ledger-matchups/commit/e3b441ed761fa4cf1cac3e35c406f164fe5041a3),
+tree `be171b26fc74d4f98cd442be0fdfa0c40f68d58e`. All six workflows were green;
+the full-stack browser evidence is recorded in
+[Phase 8C run 34881119508](https://github.com/alexpfeffer4/sunday-ledger-matchups/actions/runs/34881119508).
+The initial desktop wording failures were corrected and the complete R2 desktop
+and mobile journeys passed. Migration filename alignment and this release record
+still require a final revision; do not represent R2's status as that future
+revision's completed checks.
+
+Browser emulation
 does not establish a physical-device result, and synthetic fixtures do not
 establish production provider latency or a real weekly pilot.
 
 ## Verification environment decision — September 14 update
 
 The owner asked to skip the paid hosted test database and proceed. The release
-will use the existing disposable Supabase CI stack for real PostgreSQL,
+used the existing disposable Supabase CI stack for real PostgreSQL,
 authentication, RLS/RPC, desktop/mobile submission and native multi-session
-concurrency verification. Those gates must pass before release clearance. The
+concurrency verification. Those gates passed on R2 before support-migration
+release clearance. The
 embedded PostgreSQL results alone do not substitute for them.
 
 Authenticated hosted Preview verification is waived to avoid new spending.
-The Vercel Preview will still be built and checked for public-page rendering and
-backend isolation. Its public-page checks do not prove authenticated submission;
-that evidence must come from the disposable full-stack CI lane.
+The [R2 Vercel Preview](https://sunday-ledger-matchups-qowkgb5vd-pfeffer.vercel.app)
+is READY, and its Home page was rechecked. Home, Rules, Trust and sign-in rendered
+without observed application console errors in the initial Preview checks.
+Backend-isolation guard checks passed. These public-page checks do not prove
+authenticated submission; that evidence comes from the passing disposable
+full-stack CI lane.
 
 The Preview guard remains: an explicitly separate `PREVIEW_SUPABASE_REF` and
 matching public URL are required for a Preview backend; Production is refused.
@@ -153,36 +183,35 @@ $25/month) and possible other usage. The prior under-$1 proposal is withdrawn.
 See [Supabase pricing](https://supabase.com/pricing) and
 [branch billing](https://supabase.com/docs/guides/platform/manage-your-usage/branching).
 
-## Proposed production sequence — conditional release authorization
+## Production sequence — conditional release authorization
 
-1. Finish the reviewed PR, required full-stack CI, public Preview checks, independent
-   review and exact activation artifact. Record the final head, migrations,
-   provider-call impact and any remaining limitation.
-2. Read current main/Production/migration state and the intended seasons' week
-   bindings. Identify the first week that has not opened for each target;
-   preserve all already-open betting and credit rules. Confirm the pilot split
-   is still current Week 1 visibility and unopened Week 2 rolling entry/credits.
-   Record concrete release clearance under the owner's existing conditional
-   merge/deployment authorization; do not request the same approval again.
-3. Once those conditions are met, apply the additive support migrations in their
-   tested order while retaining the active 1.2 catalog. The visibility migration
-   permits current-week game identities even before catalog activation. Verify
-   compatibility, grants, canonical rules, legacy detail/aggregate privacy and
-   unchanged existing competitive evidence.
-4. Merge the reviewed PR and verify the normal Production deployment and domain
-   aliases. Confirm the deployed code supports both old weeks and prepared 1.3
-   before activation.
-5. Run only the separately reviewed activation, serialized against week opening.
-   Verify catalog version/hash and the resulting adoption boundary. Do not open
-   a real week or submit a real bet merely to create smoke-test evidence.
-6. Verify current-week accepted game lists through authorized read paths, while
+1. **Completed for R2:** reviewed PR, required full-stack CI, public Preview
+   checks, independent review and prepared activation artifact. All six workflows
+   passed. Record the final revision and its required checks after aligning
+   migration filenames and release evidence.
+2. **Release clearance recorded:** R2 satisfied the owner's conditional checks
+   for applying the reviewed support migrations. The verified boundary preserves
+   current Week 1 betting/credit rules and targets unopened Week 2 for rolling
+   entry/credits. No repeated approval is required for this approved scope.
+3. **Completed at 18:41–18:42 UTC:** applied the three support migrations in order
+   while retaining both 1.2 catalogs. The 18:42:58 UTC preflight and unchanged
+   competitive-evidence hashes passed. The visibility migration permits
+   current-week game identities independently of catalog activation.
+4. **Pending:** complete and check the final revision, merge the reviewed PR and
+   verify the normal Production deployment and domain aliases. Confirm deployed
+   code supports legacy weeks and prepared 1.3 before activation.
+5. **Pending:** refresh the private adoption inventory, then run the reviewed
+   activation serialized against week opening. Verify catalog version/hash and
+   the resulting adoption boundary. Do not open a real week or submit a real bet
+   merely to create smoke-test evidence.
+6. **Pending application release:** verify current-week accepted game lists through authorized read paths, while
    preserving detailed selections until their existing reveal gate. Verify the
    actual week-rule identity when the next eligible week opens. Record both
    effective dates and the completed release.
 
 The [operator SQL instructions](../scripts/rolling-submissions/README.md) supply
-the exact metadata, readiness and transactional activation files. Complete the
-remaining CI/public Preview evidence before release clearance. Never point
+the exact metadata, readiness and transactional activation files. Preserve the
+passing R2 evidence and verify the final revision before merge. Never point
 Preview at Production to substitute for the disposable test environment.
 
 ## Recovery boundaries
@@ -205,14 +234,14 @@ requires its own supported transition and cannot rewrite an active week.
 
 ## Completion fields
 
-- Initial local implementation commit before the latest visibility exception: `2bb8dfcfc974471271762632241c375db063a01a`; tree `c95ebb91c64010122c0045f59b85b1cbf7d13426`. The published implementation at `9830abbaa88c563060ead45c4f34a26668237b2f` has tested tree `7b9d672e09235f8d9a4db2438c6070429d161f23`; final release revision pending.
+- Verified R2 commit: `e3b441ed761fa4cf1cac3e35c406f164fe5041a3`; tree `be171b26fc74d4f98cd442be0fdfa0c40f68d58e`; all six workflows green. Final migration-filename/evidence revision pending.
 - PR: [#48](https://github.com/alexpfeffer4/sunday-ledger-matchups/pull/48), published under the owner's explicit public-repository authorization.
-- Public Preview: [initial deployment](https://sunday-ledger-matchups-dc5sh164v-pfeffer.vercel.app), READY at commit `9830abbaa88c563060ead45c4f34a26668237b2f`. Home, Rules, Trust and sign-in pages rendered; no application console errors observed. Preview backend guard passed its rejection tests. Paid hosted authenticated Preview waived by owner.
-- Local test/review evidence: implementation and current-week visibility passed as above. Native PostgreSQL: 35 suites, 1,294 assertions; all four separate-session concurrency scenarios and generated types passed. Initial desktop run: new rolling journey and 10 other tests passed; three legacy wording checks failed and are corrected in the next revision. Full desktop/mobile reverification pending.
-- Migration/activation artifacts: prepared above; final PR verification pending.
-- First eligible unopened week(s): observed above; fresh private inventory required at activation.
-- Reason not to merge yet: the final revision must pass the complete Auth/browser submission gates, including mobile; the initial run stopped on the corrected wording checks.
-- Owner authorized merge/deployment once everything is complete and no release blocker remains. This condition has not been met; no Production change has been performed.
+- Public Preview: [R2 deployment](https://sunday-ledger-matchups-qowkgb5vd-pfeffer.vercel.app), READY at the verified R2 commit; Home rechecked. Initial Preview covered Home, Rules, Trust and sign-in without observed application console errors. Preview backend guard passed its rejection tests. Paid hosted authenticated Preview waived by owner.
+- Test/review evidence: 527 tests in 85 files; native PostgreSQL 35 suites and 1,294 assertions; four separate-session concurrency scenarios; desktop 14, mobile Auth 8 and mobile member 2 all passed with zero failures, skips or retries. Shared-browser Chromium 62 and WebKit 61 passed; one existing WebKit forced-colors skip. Six screenshots inspected.
+- Production support migrations: all three applied at 18:41–18:42 UTC using the hosted filenames above and unchanged reviewed SQL; 18:42:58 UTC preflight passed with competitive-evidence aggregate hashes unchanged. Catalogs remain 1.2.
+- First eligible unopened week: pilot Week 2 reconfirmed after support migrations; fresh private inventory required at activation.
+- Remaining before merge: finish migration filename alignment and evidence revision, and record its required checks. R2's previous Auth/browser failures are resolved.
+- Owner's conditional release clearance: R2 satisfied the required verification for the completed support-migration step. Final revision, merge, Production application deployment and explicit catalog activation are pending; this record does not claim the complete release is finished.
 
 ## Publication authorization — September 14 update
 
