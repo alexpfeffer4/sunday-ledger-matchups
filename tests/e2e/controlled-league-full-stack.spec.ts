@@ -351,7 +351,10 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   await page.getByRole("button", { name: "Join league" }).click();
   await page.waitForURL(`**/l/${slug}/matchup`);
   await expect(
-    page.getByText("Practice/test · Simulation").first(),
+    page
+      .locator("[data-league-header]")
+      .getByText("Practice/test · Simulation")
+      .filter({ visible: true }),
   ).toBeVisible();
 
   const invitedUsers = await admin.auth.admin.listUsers({
