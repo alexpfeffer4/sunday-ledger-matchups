@@ -164,6 +164,22 @@ export const stage1StateSchema = z.object({
   ownerCard: z
     .object({
       id: z.uuid(),
+      cardGeneration: z.number().int().nonnegative().optional(),
+      resetAt: z.string().nullable().optional(),
+      resetReceipts: z
+        .array(
+          z.object({
+            id: z.uuid(),
+            receiptHash: z.string().length(64),
+            eventLabel: z.string(),
+            marketType: marketTypeSchema,
+            proposition: z.string(),
+            americanOdds: z.number().int(),
+            stakeCredits: z.number().int().positive(),
+            acceptedAt: z.string(),
+          }),
+        )
+        .optional(),
       entryId: z.uuid(),
       grantedCredits: z.literal(1000),
       grantedAt: z.string(),

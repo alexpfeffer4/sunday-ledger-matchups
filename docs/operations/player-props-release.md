@@ -1,9 +1,49 @@
 # Player props: owner setup and controlled release
 
+## September 15 continuation: approved Week 2 exception
+
+PR #51's compatible application and five additive migrations are deployed with
+props offers disabled. The secure Production account check verified the NFL key
+and a 100-request daily allowance. This proves account access, not full provider
+coverage or use/retention permission. Key creation and release approval do not
+need to be repeated. The original preparation sequence below is retained for
+its readiness gates and future-week path.
+
+The owner subsequently requested props in the already-open pilot Week 2 and a
+reset of the designated accepted card. Follow the
+[Week 2 cutover amendment](../governance/2026-09-15-week2-props-cutover.md) for
+that scope: immutable old receipts, recorded cancellation, a replacement card
+generation and the same 1,000-credit allocation. Reset only in the transaction
+that activates and freezes the reviewed complete props menu before every
+published game's cutoff. Use the
+[Week 2 operator runbook](week2-props-cutover.md) and its separate stage, catalog
+and cutover phases; the ordinary future-week acquisition hold below does not
+apply to this already-open week.
+Until then, preserve existing play. This exception is being prepared; its
+implementation, tests and execution must be reported separately.
+
+The owner now reports completing the Odds API **20K subscription** setup and
+installing its replacement key in the existing server-only Vercel variable.
+Do not request another upgrade or key setup. The agent must verify a fresh
+deployment and its live account allowance headers before the cap transition;
+keep actual application caps at **90/day and 450/month** until that verification
+passes. The protected account check is being prepared with a shared lease and
+a zero-credit provider endpoint; its results must not expose the key or alter
+usage history. The owner also authorized the dashboard verification check, but the site rejected the
+attempt. No request was sent. The
+[ready support draft](api-sports-permission-request.md) uses only the verified
+official dashboard route. A provider response and the single commissioner menu
+review remain readiness gates; neither requires another generic release
+approval. No purchase is authorized.
+
+## Original controlled-release preparation
+
 This is the prepared release for [PR #51](https://github.com/alexpfeffer4/sunday-ledger-matchups/pull/51).
 The September 15 owner response approves the combined release plan below and
-authorizes provider use/retention clarification. It confirms the Odds API account
-is still free and that `API_SPORTS_NFL_KEY` was created. Preserve this approval:
+authorizes provider use/retention clarification. That initial response reported
+a free Odds API account and creation of `API_SPORTS_NFL_KEY`; the completed
+20K setup and verified NFL-key status above supersede those setup tasks.
+Preserve this approval:
 merge, additive migrations, compatible deployment, configuration and conditional
 future-week activation no longer require another release-approval request.
 Purchases remain excluded. The paid-budget transition and live offers remain
@@ -16,18 +56,19 @@ the final tested head, actual deployment and remaining validation separately.
 
 ## Account actions and retained approvals
 
-Current owner status supersedes the original checklist table: the Odds API
-upgrade remains outstanding; NFL key creation is confirmed but Production scope
-and usability require a secure runtime check; provider clarification is
-authorized; combined release is approved; commissioner menu review follows
+Current owner status: Odds API 20K purchase/key installation is complete by owner
+report and awaits the agent's secure verification against a fresh deployment;
+the NFL key and its 100-request daily allowance are already verified in
+Production; provider clarification is authorized but unsent after the rejected
+dashboard check; combined release is approved; commissioner menu review follows
 source validation. Do not request completed setup or approval again.
 
-| Action                                                                                                                                                                                                                                        | Exact account or settings page                                                                                                                                                                                                                 | Cost and launch effect                                                                                                                                                | Agent's next step                                                                                                                                                                                                       |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Confirm the existing Odds API subscription is 20K; upgrade that subscription if it is still the free tier. Use **Manage Subscription**, retaining the existing key. Do not buy a duplicate subscription.                                      | [Existing Odds API dashboard](https://dash.the-odds-api.com/), [upgrade instructions](https://the-odds-api.com/manage/upgrade-downgrade-cancel-a-subscription.html)                                                                            | Advertised $30/month for 20K. Required for the prepared live budget. The owner confirmed the account remains on the free tier on September 15.                        | Verify actual entitlement, remaining allowance and reset evidence securely; apply the tested application-cap transition without resetting usage.                                                                        |
-| Supply a usable API-Sports **NFL** account/key. Reuse an existing account if available; otherwise create the advertised free account. Store the key only as server variable `API_SPORTS_NFL_KEY` in the approved Production deployment scope. | [NFL free plan](https://api-sports.io/sports/nfl), [Account / My Access](https://dashboard.api-football.com/profile?access=), [Vercel environment variables](https://vercel.com/pfeffer/sunday-ledger-matchups/settings/environment-variables) | Target $0, advertised no card. The owner confirmed key creation on September 15. Secure runtime verification remains; the disabled release can proceed.               | Verify the key and free allowance; test 2026 game/player coverage, mapping, complete individual totals and participation. Never paste a key in chat or put it in a `NEXT_PUBLIC_` variable.                             |
-| Provide an existing applicable API-Sports permission covering this league's display and permanent normalized settlement evidence, or authorize the agent to obtain clarification.                                                             | [API-Sports terms](https://api-sports.io/terms)                                                                                                                                                                                                | Cost unresolved; no purchase proposed. Blocks selection of this source for live settlement. The published terms alone do not settle the exact use/retention question. | Assess the specific permission against the implemented retained fields; keep source-validation flags false until resolved. The owner authorized clarification on September 15; provider access remains to be completed. |
-| Approve the concrete tested release and its compatible disable plan after the required code gates pass. Approval may authorize a disabled deployment while retaining live-activation readiness gates.                                         | [PR #51](https://github.com/alexpfeffer4/sunday-ledger-matchups/pull/51) and this release plan                                                                                                                                                 | No separate release fee. The owner approved this combined release on September 15; retain its source/readiness gates.                                                 | Execute the approved operations in the order below; do not ask the owner to edit SQL, code or quota rows.                                                                                                               |
+| Action                                                                                                                                                               | Exact account or settings page                                                                                                                                                  | Cost and launch effect                                                                                                                                                | Agent's next step                                                                                                                                             |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Completed by owner report: 20K Odds API subscription and replacement key installed in the existing server-only Vercel variable. No repeat purchase or setup request. | [Existing Odds API dashboard](https://dash.the-odds-api.com/), [Vercel environment variables](https://vercel.com/pfeffer/sunday-ledger-matchups/settings/environment-variables) | Advertised $30/month for 20K. Actual entitlement remains an agent verification gate; caps stay 90/day and 450/month until it passes.                                  | Verify fresh deployment, live allowance headers, remaining credits and reset evidence securely; then apply the tested cap transition without resetting usage. |
+| Completed: usable API-Sports **NFL** key installed and verified in Production as server variable `API_SPORTS_NFL_KEY`.                                               | [NFL free plan](https://api-sports.io/sports/nfl), [Account / My Access](https://dashboard.api-football.com/profile?access=)                                                    | Target $0. The protected runtime check verified account access and a 100-request daily allowance. Coverage and source permission are separate gates.                  | Test 2026 game/player coverage, mapping, complete individual totals and participation. Never paste a key in chat or put it in a `NEXT_PUBLIC_` variable.      |
+| Provider clarification and the verification attempt are authorized. An applicable permission response remains outstanding after the site's rejected dashboard check. | [API-Sports terms](https://api-sports.io/terms), [prepared official-dashboard request](api-sports-permission-request.md)                                                        | Cost unresolved; no purchase proposed. Blocks selection of this source for live settlement. The published terms alone do not settle the exact use/retention question. | Assess the response against the retained fields; keep source-validation flags false until resolved. Do not request outreach approval again.                   |
+| Completed: release and compatible recovery approved, including the later conditional Week 2 reset/props exception.                                                   | [PR #51](https://github.com/alexpfeffer4/sunday-ledger-matchups/pull/51), [Week 2 amendment](../governance/2026-09-15-week2-props-cutover.md)                                   | No separate release fee. Source/readiness gates remain.                                                                                                               | Execute the approved operations after their required checks; do not ask the owner to edit SQL, code or quota rows or repeat release approval.                 |
 
 The NFL account's real free coverage and source completeness remain unknown until
 the secure checks run. A provider subscription purchase cannot establish them.
@@ -49,7 +90,12 @@ plus existing hosting. Any additional statistics permission/coverage cost is
 unresolved. This is not a claim that $30 covers every automatic-settlement
 dependency.
 
-## Agent execution after setup and approval
+## Ordinary future-week execution after setup and approval
+
+This sequence is for unopened weeks. The approved already-open Week 2 uses the
+[separate operator runbook](week2-props-cutover.md), with no acquisition hold and
+a reviewed menu frozen in its atomic cutover. Do not run the future-week
+activation or hold-abort helpers against Week 2.
 
 1. Recheck that current main, the reviewed PR head and the intended deployment
    match the approval. Confirm the pilot's current season and first eligible

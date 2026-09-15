@@ -14,6 +14,7 @@ on:
       - "scripts/check-full-stack-report.mjs"
       - "scripts/run-disposable-database-tests.sh"
       - "scripts/verify-rolling-concurrency.mjs"
+      - "scripts/verify-card-reset-concurrency.mjs"
       - "scripts/verify-player-props-concurrency.mjs"
       - "scripts/verify-player-result-concurrency.mjs"
       - "scripts/verify-quote-sharing-concurrency.mjs"
@@ -103,6 +104,9 @@ jobs:
       - name: Verify rolling submission concurrency on native Postgres
         run: node scripts/verify-rolling-concurrency.mjs
 
+      - name: Verify recorded card reset concurrency on native Postgres
+        run: node scripts/verify-card-reset-concurrency.mjs
+
       - name: Verify player-prop native concurrency
         run: node scripts/verify-player-props-concurrency.mjs
 
@@ -134,6 +138,11 @@ jobs:
           supabase gen types typescript --local --schema api,public > /tmp/sunday-ledger-database.types.ts
           npm run types:supabase:check -- /tmp/sunday-ledger-database.types.ts
 
+      - name: Isolate Auth journeys from committed native race fixtures
+        # Native races intentionally commit LIVE events. The global score worker
+        # must see only the browser lane's own provider-backed fixtures.
+        run: supabase db reset --local --no-seed
+
       - name: Install full-stack browser
         run: npx playwright install --with-deps chromium webkit
 
@@ -163,6 +172,7 @@ jobs:
           tests/e2e/release-readiness-full-stack.spec.ts
           tests/e2e/rolling-submissions-full-stack.spec.ts
           tests/e2e/player-props-full-stack.spec.ts
+          tests/e2e/card-reset-full-stack.spec.ts
           --project=desktop --workers=1 --reporter=github,json --output=test-results/desktop
 
       - name: Require zero skipped desktop full-stack tests
@@ -188,6 +198,7 @@ jobs:
           tests/e2e/rolling-submissions-full-stack.spec.ts
           tests/e2e/player-props-full-stack.spec.ts
           tests/e2e/controlled-league-full-stack.spec.ts
+          tests/e2e/card-reset-full-stack.spec.ts
           --project=mobile --workers=1 --reporter=github,json --output=test-results/mobile-member
 
       - name: Require zero skipped mobile member tests

@@ -7,6 +7,7 @@ export type AppActionState = {
   hrefLabel?: string;
   value?: string;
   requiresConfirmation?: boolean;
+  cardReset?: boolean;
   quoteReview?: Extract<CardQuoteReviewResult, { status: "ready" }>["review"];
   quoteChanges?: Array<{
     selectionKey: string;

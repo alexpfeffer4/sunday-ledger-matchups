@@ -38,6 +38,8 @@ export function PlayerPropMenuReview({
   refreshAction,
   slots,
   frozen,
+  amendmentPending = false,
+  amendmentApplied = false,
   prepareAction,
   confirmAction,
   canOpen = false,
@@ -48,6 +50,8 @@ export function PlayerPropMenuReview({
   refreshAction: FormAction;
   slots: PlayerPropMenuSlot[];
   frozen: boolean;
+  amendmentPending?: boolean;
+  amendmentApplied?: boolean;
   prepareAction: FormAction;
   confirmAction: FormAction;
   canOpen?: boolean;
@@ -94,9 +98,13 @@ export function PlayerPropMenuReview({
         {frozen ? "This week’s player menu" : "Review the proposed player menu"}
       </h2>
       <p className="text-graphite mt-2 text-sm leading-6">
-        {frozen
-          ? "The first accepted bet fixed the players for this week. Lines may appear later for these players; unavailable player slots cannot be replaced."
-          : "Check the proposed quarterback, running back and receiver for each team. Resolve flagged choices, then confirm the whole slate once. The first accepted bet fixes these players for everyone."}
+        {amendmentPending
+          ? "Review the proposed player menu for the Week 2 update. Current picks stay in place until the reviewed update is activated. Activating it will fix this player menu for everyone."
+          : frozen && amendmentApplied
+            ? "The reviewed Week 2 update fixed this player menu. Lines may appear later for these players; unavailable player slots cannot be replaced."
+            : frozen
+              ? "The first accepted bet fixed the players for this week. Lines may appear later for these players; unavailable player slots cannot be replaced."
+              : "Check the proposed quarterback, running back and receiver for each team. Resolve flagged choices, then confirm the whole slate once. The first accepted bet fixes these players for everyone."}
       </p>
       {slots.length ? (
         <p className="mt-3 text-sm font-semibold">
@@ -248,7 +256,7 @@ export function PlayerPropMenuReview({
             <>
               <p className="text-graphite mt-4 text-sm leading-6">
                 {unresolved
-                  ? `${unresolved} unresolved slots will remain unavailable once the first bet is accepted. `
+                  ? `${unresolved} unresolved slots will remain unavailable once ${amendmentPending ? "the Week 2 update is activated" : "the first bet is accepted"}. `
                   : ""}
                 A missing line for a verified player can appear later. No player
                 is replaced after the menu freezes.
@@ -277,7 +285,7 @@ export function PlayerPropMenuReview({
           ) : null}
         </form>
       ) : null}
-      {canOpen && openAction ? (
+      {canOpen && openAction && !amendmentPending ? (
         <form action={openWeek} className="border-boundary mt-5 border-t pt-5">
           <input type="hidden" name="leagueSlug" value={leagueSlug} />
           <p className="text-graphite text-sm leading-6">

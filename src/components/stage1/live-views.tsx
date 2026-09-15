@@ -9,6 +9,10 @@ import {
 import { MatchupStateRefresh } from "@/components/matchup/matchup-state-refresh";
 import { ownerCardContext } from "@/components/card/owner-card-context";
 import { OwnerCardProgress } from "@/components/card/owner-card-progress";
+import {
+  CardResetHistory,
+  CardResetNotice,
+} from "@/components/card/card-reset-history";
 import { PickReturn, ReturnExplanation } from "@/components/card/pick-return";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -596,6 +600,15 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
       <div className="mt-4">
         <OwnerCardProgress context={ownerCardContext(state)} onCardPage />
       </div>
+      {state.ownerCard.resetAt ? (
+        <div className="mt-4">
+          <CardResetNotice week={state.week.nflWeek} />
+        </div>
+      ) : null}
+      <CardResetHistory
+        leagueSlug={state.league.slug}
+        receipts={state.ownerCard.resetReceipts ?? []}
+      />
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div>
           {state.ownerCard.positions.length === 0 ? (
@@ -1351,7 +1364,41 @@ export function Stage1ReceiptView({
   const receipt = state.ownerCard?.positions.find(
     (position) => position.id === receiptId,
   );
-  if (!receipt) return null;
+  if (!receipt) {
+    const reset = state.ownerCard?.resetReceipts?.find(
+      (item) => item.id === receiptId,
+    );
+    if (!reset) return null;
+    return (
+      <PageFrame
+        eyebrow="Original accepted terms"
+        title="Reset pick receipt"
+        description="This pick was superseded by the recorded Week 2 reset and no longer counts toward the card or score."
+      >
+        <p className="mt-5 font-semibold">{reset.eventLabel}</p>
+        <p className="mt-2">
+          {formatMarketProposition(reset.proposition)} at{" "}
+          {formatOdds(reset.americanOdds)} for{" "}
+          {formatCredits(reset.stakeCredits)} credits.
+        </p>
+        <p className="text-muted mt-2 text-sm">
+          Originally accepted {formatDate(reset.acceptedAt)}
+        </p>
+        <AuditDetails
+          className="mt-5"
+          context="The original receipt remains unchanged. The reset superseded this pick without grading it as a win, loss or void."
+        >
+          <p className="font-mono text-xs break-all">{reset.receiptHash}</p>
+        </AuditDetails>
+        <Link
+          className="text-action mt-4 inline-flex min-h-11 items-center font-semibold underline"
+          href={`/l/${state.league.slug}/card`}
+        >
+          Back to your card
+        </Link>
+      </PageFrame>
+    );
+  }
   const event = state.slate.find(
     (candidate) => candidate.id === receipt.eventId,
   );

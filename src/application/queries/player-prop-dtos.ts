@@ -47,5 +47,7 @@ export const playerPropMenuSchema = z.object({
   frozen: z.boolean(),
   slots: z.array(playerPropSlotSchema),
   canOpen: z.boolean().optional(),
+  amendmentPending: z.boolean().optional(),
+  amendmentApplied: z.boolean().optional(),
 });
 export type PlayerPropMenu = z.infer<typeof playerPropMenuSchema>;

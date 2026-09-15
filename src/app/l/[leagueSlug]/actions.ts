@@ -22,7 +22,10 @@ import type { Json } from "@/adapters/supabase/database.types";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import type { AppActionState } from "@/application/actions/action-state";
 import { stableOperationKey } from "@/application/actions/stable-operation-key";
-import { submitCardIntent } from "@/application/actions/submit-card-intent";
+import {
+  isResetSubmission,
+  submitCardIntent,
+} from "@/application/actions/submit-card-intent";
 import { selectionIdentityKey } from "@/domain/cards/selection-identity";
 import type { MarketType } from "@/rulesets/schema";
 import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
@@ -128,6 +131,13 @@ async function requestOrigin(): Promise<string> {
 }
 
 function mutationError(message: string): AppActionState {
+  if (message.includes("CARD_RESET_REVIEW_REQUIRED"))
+    return {
+      status: "error",
+      cardReset: true,
+      message:
+        "Your earlier picks were reset. They are preserved in the audit history and no longer count toward this card. Choose and review new picks before submitting.",
+    };
   if (
     /ENTRY_CLOSED|EVENT_CLOSED|kickoff cutoff|entry cutoff|closed for new bets/i.test(
       message,
@@ -1661,6 +1671,10 @@ export async function acceptStage1CardAction(
         submissionId: context.data.submissionId,
         positions: context.data.positions,
       });
+      if (submission.status === "reset") {
+        revalidatePath(`/l/${context.data.leagueSlug}`, "layout");
+        return mutationError("CARD_RESET_REVIEW_REQUIRED");
+      }
       if (submission.status === "already-sealed")
         return completed(
           context.data.leagueSlug,
@@ -1714,6 +1728,10 @@ export async function acceptStage1CardAction(
       p_idempotency_key: operationKey,
     });
     if (replay.error) return mutationError(replay.error.message);
+    if (isResetSubmission(replay.data)) {
+      revalidatePath(`/l/${context.data.leagueSlug}`, "layout");
+      return mutationError("CARD_RESET_REVIEW_REQUIRED");
+    }
     return completed(
       context.data.leagueSlug,
       "Your original bets are saved; no bet was added twice.",
@@ -1893,6 +1911,10 @@ export async function acceptStage1CardAction(
     p_positions: context.data.positions as unknown as Json,
     p_idempotency_key: operationKey,
   });
+  if (!result.error && isResetSubmission(result.data)) {
+    revalidatePath(`/l/${context.data.leagueSlug}`, "layout");
+    return mutationError("CARD_RESET_REVIEW_REQUIRED");
+  }
   if (result.error) {
     if (rolling) {
       if (
@@ -1907,6 +1929,10 @@ export async function acceptStage1CardAction(
           p_positions: context.data.positions as unknown as Json,
           p_idempotency_key: operationKey,
         });
+        if (!replay.error && isResetSubmission(replay.data)) {
+          revalidatePath(`/l/${context.data.leagueSlug}`, "layout");
+          return mutationError("CARD_RESET_REVIEW_REQUIRED");
+        }
         if (!replay.error)
           return completed(
             context.data.leagueSlug,

@@ -57,7 +57,7 @@ async function fetchProviderJson(
   onUsage?.(Number.isInteger(remaining) && remaining >= 0 ? remaining : null);
   const count = (name: string) => {
     const raw = response.headers.get(name);
-    const n = raw === null ? NaN : Number(raw);
+    const n = raw !== null && /^\d+$/.test(raw) ? Number(raw) : NaN;
     return Number.isInteger(n) && n >= 0 ? n : null;
   };
   onUsageDetail?.({

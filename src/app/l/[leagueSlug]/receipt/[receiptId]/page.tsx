@@ -13,7 +13,8 @@ export default async function ReceiptPage({
   const { leagueSlug, receiptId } = await params;
   const live = await getAuthoritativeLeagueState(leagueSlug);
   if (
-    !live?.ownerCard?.positions.some((position) => position.id === receiptId)
+    !live?.ownerCard?.positions.some((position) => position.id === receiptId) &&
+    !live?.ownerCard?.resetReceipts?.some((receipt) => receipt.id === receiptId)
   ) {
     notFound();
   }
