@@ -62,6 +62,7 @@ type StageState = {
     }>;
   }>;
   week: {
+    nflWeek: number;
     commonLockAt: string;
     correctionWindowClosesAt: string | null;
     state: string;
@@ -648,5 +649,98 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
       .locator(".paired-matchup-card .status-badge")
       .filter({ hasText: "Final" }),
   ).toBeVisible();
+  // Historical navigation must read the selected week's authorized receipts
+  // after the current-week query has moved on to a new, empty card.
+  await commissionerBrowser.page
+    .getByRole("button", { name: "Advance to Week 2 publication time" })
+    .click();
+  await expect(
+    commissionerBrowser.page.getByRole("button", {
+      name: "Advance to Week 2 publication time",
+    }),
+  ).toBeEnabled();
+  await commissionerBrowser.page
+    .getByRole("button", { name: "Make reviewed Week 2 available" })
+    .click();
+  await expect
+    .poll(async () => (await getState(invitedClient, slug)).week?.nflWeek)
+    .toBe(2);
+  await page.goto(`/l/${slug}/matchup`);
+  await expect(
+    page.getByRole("heading", { name: "Week 2 matchup", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("combobox", { name: "Week", exact: true })
+    .selectOption({ label: "Week 1 · Final" });
+  await expect(page).toHaveURL(`/l/${slug}/matchup?week=1`);
+  await expect(
+    page.getByRole("heading", { name: "Week 1 matchup", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(opponentMarket.proposition, { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Completed week · Read-only")).toBeVisible();
+  expect(await page.content()).not.toContain(opponentReceipt.receiptHash);
+  const ownHistoricalUrl = page.url();
+  const otherMatchup = await page
+    .getByRole("combobox", { name: "Matchup", exact: true })
+    .locator("option")
+    .evaluateAll((options) =>
+      options
+        .filter((option) => !option.textContent?.includes(" · You"))
+        .map((option) => (option as HTMLOptionElement).value),
+    );
+  expect(otherMatchup).toHaveLength(1);
+  await page
+    .getByRole("combobox", { name: "Matchup", exact: true })
+    .selectOption(otherMatchup[0]!);
+  await expect(page).toHaveURL(new RegExp(`week=1&matchup=${otherMatchup[0]}`));
+  await expect(page.getByText("Completed week · Read-only")).toBeVisible();
+  await page.getByRole("link", { name: "Back to your matchup" }).click();
+  await expect(page).toHaveURL(ownHistoricalUrl);
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth,
+      ),
+    ).toBe(true);
+  }
+  await page.screenshot({
+    path: test.info().outputPath("historical-matchup-320.png"),
+    fullPage: true,
+  });
+  await page.getByRole("link", { name: "Back to current week" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Week 2 matchup", exact: true }),
+  ).toBeVisible();
+  await page.goto(`/l/${slug}/history`);
+  await page.getByRole("link", { name: "View matchup and bets" }).click();
+  await expect(
+    page.getByText(opponentMarket.proposition, { exact: true }),
+  ).toBeVisible();
+  await page.goto(`/l/${slug}/schedule`);
+  await page
+    .getByRole("combobox", { name: "Selected week", exact: true })
+    .selectOption("1");
+  await page
+    .getByRole("link", { name: /View .* matchup and bets/ })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Week 1 matchup", exact: true }),
+  ).toBeVisible();
+  const denied = await newPage(browser);
+  await browserSignIn(denied.page, outsider, "/leagues");
+  await denied.page.goto(ownHistoricalUrl);
+  expect(await denied.page.content()).not.toContain(opponentMarket.proposition);
+  await expect(
+    denied.page.getByRole("heading", {
+      name: /This league is not available|There is no Ledger page here/,
+    }),
+  ).toBeVisible();
+  await denied.context.close();
   await commissionerBrowser.context.close();
 });

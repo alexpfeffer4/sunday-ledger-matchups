@@ -6,6 +6,7 @@ export type MatchupWeekOption = {
   week: number;
   href: string;
   current?: boolean;
+  selected?: boolean;
 };
 
 export function MatchupNavigation({
@@ -22,13 +23,15 @@ export function MatchupNavigation({
         <select
           aria-label="Week"
           className="border-control bg-surface mt-1 block min-h-11 w-full min-w-0 rounded-lg border px-3 text-sm"
-          value={weeks.find((week) => week.current)?.href ?? ""}
+          value={
+            weeks.find((week) => week.selected ?? week.current)?.href ?? ""
+          }
           onChange={(event) => window.location.assign(event.target.value)}
         >
           {weeks.map((week) => (
             <option key={week.week} value={week.href}>
               Week {week.week}
-              {week.current ? " · Current" : " · Result history"}
+              {week.current ? " · Current" : " · Final"}
             </option>
           ))}
         </select>

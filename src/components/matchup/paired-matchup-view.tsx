@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { matchupHref } from "@/application/presentation/matchup-link";
 import type { PairedMatchupDto } from "@/application/queries/project-paired-matchup";
 import { resultChangingScenario } from "@/application/presentation/matchup-lineup";
 import type { ReactNode } from "react";
@@ -22,12 +23,14 @@ export function PairedMatchupView({
   weeklyClose,
   cardProgress,
   weeks,
+  seasonArchived = false,
 }: {
   matchup: PairedMatchupDto;
   refreshControl: ReactNode;
   weeklyClose?: ReactNode;
   cardProgress?: ReactNode;
   weeks?: MatchupWeekOption[];
+  seasonArchived?: boolean;
 }) {
   const pregame = matchup.phase === "PREGAME";
   const completed =
@@ -52,9 +55,26 @@ export function PairedMatchupView({
             ]
           }
         />
+        {matchup.historical ? (
+          <div className="text-muted mb-3 flex flex-wrap items-center gap-x-5 text-sm">
+            <span>Completed week · Read-only</span>
+            <Link
+              href={`/l/${matchup.league.slug}/matchup`}
+              className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
+            >
+              {seasonArchived
+                ? "Back to season overview"
+                : "Back to current week"}
+            </Link>
+          </div>
+        ) : null}
         {matchup.spectator ? (
           <Link
-            href={`/l/${matchup.league.slug}/matchup`}
+            href={
+              matchup.historical
+                ? matchupHref(matchup.league.slug, matchup.week.nflWeek)
+                : `/l/${matchup.league.slug}/matchup`
+            }
             className="text-action mb-3 inline-flex min-h-11 items-center text-sm font-semibold hover:underline"
           >
             Back to your matchup

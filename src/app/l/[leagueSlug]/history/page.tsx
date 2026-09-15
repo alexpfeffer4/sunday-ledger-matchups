@@ -21,7 +21,8 @@ export default async function HistoryPage({
     getSeasonArchive(leagueSlug),
     getWeeklyCloseState(leagueSlug),
   ]);
-  if (archive) return <SeasonArchiveHistory archive={archive} />;
+  if (archive)
+    return <SeasonArchiveHistory archive={archive} leagueSlug={leagueSlug} />;
   if (weeklyCloseState) {
     return (
       <HistoryLedger

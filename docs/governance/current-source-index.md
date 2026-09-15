@@ -1,5 +1,10 @@
 # Sunday Ledger — current governing source index
 
+September 15 owner-approved [historical matchup browsing](../historical-matchup-browsing.md)
+connects completed weeks, Schedule and History to the paired bet details. This is
+a read-only navigation/presentation change using existing authorized queries;
+no rules, data permissions or stored competition records change.
+
 ## Matchup presentation amendment — 2026-09-14
 
 The owner approved implementing and releasing the paired desktop/mobile matchup preview. [Paired matchup lineups](../paired-matchup-lineups.md) records the presentation scope and its unchanged privacy/scoring boundaries. This adds no season rules or database mutation.
