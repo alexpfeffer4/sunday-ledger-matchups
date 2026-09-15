@@ -1661,6 +1661,12 @@ export async function acceptStage1CardAction(
         submissionId: context.data.submissionId,
         positions: context.data.positions,
       });
+      if (submission.status === "already-sealed")
+        return completed(
+          context.data.leagueSlug,
+          "Your card is already sealed. Your saved picks and receipts are unchanged.",
+          { href: `/l/${context.data.leagueSlug}/card`, label: "View card" },
+        );
       if (submission.status === "accepted")
         return finish(
           context.data.leagueSlug,
@@ -1678,13 +1684,9 @@ export async function acceptStage1CardAction(
           quoteChanges: submission.quoteChanges,
         };
       if (submission.status === "error") {
-        // A successful public refresh may withdraw a selected offer even when a
-        // complete new review cannot be issued. Refresh its availability so the
-        // preserved draft identifies the unavailable selection.
-        if (/QUOTE_|market|quote/i.test(submission.code)) {
-          revalidatePath(`/l/${context.data.leagueSlug}/slate`);
-          revalidatePath(`/l/${context.data.leagueSlug}/card`);
-        }
+        // Reconcile both withdrawn quotes and another device's accepted bets,
+        // allocation or cutoff. Unaccepted drafts remain in the client tray.
+        revalidatePath(`/l/${context.data.leagueSlug}`, "layout");
         return mutationError(submission.code);
       }
       operationKey = submission.operationKey;

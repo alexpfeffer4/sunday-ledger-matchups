@@ -46,13 +46,46 @@ export async function fetchApiSportsBoxScore(
   gameId: string,
   onUsage: (usage: StatisticsUsage) => void,
 ) {
-  const key = process.env.API_SPORTS_NFL_KEY;
-  if (!key) throw new Error("PLAYER_STATISTICS_UNCONFIGURED");
   if (!/^\d+$/.test(gameId)) throw new Error("INVALID_STATISTICS_GAME_ID");
   const url = new URL(
     "https://v1.american-football.api-sports.io/games/statistics/players",
   );
   url.searchParams.set("id", gameId);
+  return fetchApiSportsJson(url, onUsage);
+}
+
+/** Public catalog acquisition uses a fixed provider endpoint and a separately
+ * reserved metadata request. Keys and unvalidated URLs never enter the payload. */
+export async function fetchApiSportsCatalog(
+  kind: "COVERAGE" | "GAMES" | "ROSTER",
+  season: number,
+  teamId: string | null,
+  onUsage: (usage: StatisticsUsage) => void,
+) {
+  if (!Number.isInteger(season) || season < 2000 || season > 2100)
+    throw new Error("INVALID_STATISTICS_SEASON");
+  if (!["COVERAGE", "GAMES", "ROSTER"].includes(kind))
+    throw new Error("INVALID_STATISTICS_CATALOG_KIND");
+  if (kind === "ROSTER" ? !teamId || !/^\d+$/.test(teamId) : teamId !== null)
+    throw new Error("INVALID_STATISTICS_TEAM_ID");
+  const endpoint = { COVERAGE: "leagues", GAMES: "games", ROSTER: "players" }[
+    kind
+  ];
+  const url = new URL(`https://v1.american-football.api-sports.io/${endpoint}`);
+  url.searchParams.set(
+    kind === "COVERAGE" ? "id" : kind === "GAMES" ? "league" : "team",
+    kind === "ROSTER" ? teamId! : "1",
+  );
+  url.searchParams.set("season", String(season));
+  return fetchApiSportsJson(url, onUsage);
+}
+
+async function fetchApiSportsJson(
+  url: URL,
+  onUsage: (usage: StatisticsUsage) => void,
+) {
+  const key = process.env.API_SPORTS_NFL_KEY;
+  if (!key) throw new Error("PLAYER_STATISTICS_UNCONFIGURED");
   const response = await fetch(url, {
     headers: { "x-apisports-key": key, Accept: "application/json" },
     cache: "no-store",

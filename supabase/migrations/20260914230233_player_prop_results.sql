@@ -429,7 +429,18 @@ returns void language plpgsql security definer set search_path='' as $$
 begin
  if not exists(select 1 from private.sports_events e where e.fixture_event_key=p_mapping->>'externalEventId' and e.away_team=p_mapping->>'awayTeam' and e.home_team=p_mapping->>'homeTeam' and (e.scheduled_start_at at time zone 'America/New_York')::date=(p_mapping->>'gameDate')::date) then raise exception using errcode='22023',message='Result crosswalk must match a published event.';end if;
  insert into private.player_result_event_mappings(external_event_id,api_sports_event_id,nflverse_event_id,game_date,away_team,home_team,verified_at,evidence_hash)
- values(p_mapping->>'externalEventId',p_mapping->>'apiSportsEventId',p_mapping->>'nflverseEventId',(p_mapping->>'gameDate')::date,p_mapping->>'awayTeam',p_mapping->>'homeTeam',clock_timestamp(),p_mapping->>'evidenceHash');
+ values(p_mapping->>'externalEventId',p_mapping->>'apiSportsEventId',p_mapping->>'nflverseEventId',(p_mapping->>'gameDate')::date,p_mapping->>'awayTeam',p_mapping->>'homeTeam',clock_timestamp(),p_mapping->>'evidenceHash')
+ on conflict (external_event_id) do nothing;
+ -- A durable acquisition retry reuses identical identity without rewriting its
+ -- original evidence. Conflicting provider IDs must never silently remap a game.
+ if not exists(select 1 from private.player_result_event_mappings m
+  where m.external_event_id=p_mapping->>'externalEventId'
+   and m.api_sports_event_id is not distinct from (p_mapping->>'apiSportsEventId')
+   and m.nflverse_event_id is not distinct from (p_mapping->>'nflverseEventId')
+   and m.game_date=(p_mapping->>'gameDate')::date
+   and m.away_team=p_mapping->>'awayTeam' and m.home_team=p_mapping->>'homeTeam') then
+  raise exception using errcode='22000',message='Result crosswalk identity conflicts with the registered event.';
+ end if;
 end; $$;
 
 do $grants$

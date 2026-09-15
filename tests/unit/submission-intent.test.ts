@@ -52,6 +52,28 @@ beforeEach(() => {
 });
 
 describe("explicit Submit consent orchestration", () => {
+  it("shows an already sealed legacy card from another device without accepting new terms or fetching", async () => {
+    const c = client([{ data: { ...binding, cardSealed: true } }]);
+    expect(await submitCardIntent(c.value, input)).toEqual({
+      status: "already-sealed",
+    });
+    expect(c.rpc).toHaveBeenCalledTimes(1);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+  it("recovers a legacy card sealed on another device during the first attempt", async () => {
+    const c = client([
+      { data: binding },
+      { error: { message: "The card has already been sealed." } },
+      { data: { ...binding, cardSealed: true } },
+    ]);
+    expect(await submitCardIntent(c.value, input)).toEqual({
+      status: "already-sealed",
+    });
+    expect(refresh).not.toHaveBeenCalled();
+    expect(
+      c.rpc.mock.calls.filter(([name]) => name === "accept_stage1_card"),
+    ).toHaveLength(1);
+  });
   it("recovers a committed intent before quote freshness or provider work", async () => {
     const c = client([{ data: { ...binding, committed: true } }]);
     expect(await submitCardIntent(c.value, input)).toEqual({

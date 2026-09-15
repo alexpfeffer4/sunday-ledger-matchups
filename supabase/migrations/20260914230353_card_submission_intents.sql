@@ -94,7 +94,12 @@ begin
   select s.mode into mode from private.seasons s join private.season_weeks w on w.season_id=s.id
     where w.id=(terms->0->>'weekId')::uuid;
   return jsonb_build_object('intentId',p_intent_id,'leagueId',league,'mode',mode,
-    'operationKey','intent:'||p_intent_id::text,'committed',response is not null,'result',response);
+    'operationKey','intent:'||p_intent_id::text,'committed',response is not null,'result',response,
+    -- Another device may have completed a legacy whole card under a different
+    -- intent. This is an authoritative read, never acceptance of this new batch.
+    'cardSealed',not private.is_rolling_week((terms->0->>'weekId')::uuid)
+      and exists(select 1 from private.weekly_cards c where c.id=(terms->0->>'cardId')::uuid
+        and (select coalesce(sum(r.stake_credits),0) from private.position_receipts r where r.card_id=c.id)=c.granted_credits));
 end;
 $$;
 

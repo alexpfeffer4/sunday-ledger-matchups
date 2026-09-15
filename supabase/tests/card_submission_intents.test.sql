@@ -62,10 +62,17 @@ with expired as (
 ) update rolling_quote_context set review=jsonb_set(review,'{reviewId}',to_jsonb(expired.id::text)) from expired;
 select throws_ok($$select api.accept_stage1_card('rolling-quotes',jsonb_set(positions,'{0}',(positions->0)||jsonb_build_object('intentId','b0000000-0000-4000-8000-000000000001','reviewId',review->>'reviewId')),'intent:b0000000-0000-4000-8000-000000000001') from rolling_quote_context$$,'P0001','QUOTE_REVIEW_EXPIRED','expired proof cannot accept before renewal');
 select is((select count(*) from private.position_receipts),0::bigint,'expired proof spends nothing');
+update private.live_quote_refreshes set attempted_at=clock_timestamp()-interval '2 minutes',fetched_at=clock_timestamp()-interval '2 minutes';
+update private.odds_refresh_policy set next_request_at='-infinity';
+update rolling_quote_context set lease_id=(api.claim_live_quote_refresh(league_id)->>'leaseId')::uuid;
+select api.complete_live_quote_refresh(lease_id,pg_temp.rolling_quote_import(),494) from rolling_quote_context;
+select isnt(pg_temp.rolling_live_positions(1,300)->0->>'marketSnapshotId',positions->0->>'marketSnapshotId','identical economics are independently imported under a new snapshot identity') from rolling_quote_context;
 update rolling_quote_context set review=api.review_live_card_quotes('rolling-quotes',positions);
 select is((api.revalidate_card_submission_intent('b0000000-0000-4000-8000-000000000001',(review->>'reviewId')::uuid)->>'status'),'UNCHANGED','replacement proof supports identical confirmed economics') from rolling_quote_context;
+select isnt(api.revalidate_card_submission_intent('b0000000-0000-4000-8000-000000000001',(review->>'reviewId')::uuid)#>>'{positions,0,marketSnapshotId}',positions->0->>'marketSnapshotId','renewal replaces evidence identity without replacing confirmed intent') from rolling_quote_context;
 select lives_ok($$update rolling_quote_context set first_response=api.accept_stage1_card('rolling-quotes',api.revalidate_card_submission_intent('b0000000-0000-4000-8000-000000000001',(review->>'reviewId')::uuid)->'positions','intent:b0000000-0000-4000-8000-000000000001')$$,'same explicit intent accepts with new proof');
 select ok((api.bind_card_submission_intent('rolling-quotes','b0000000-0000-4000-8000-000000000001',positions)->>'committed')::boolean,'lost response recovers original committed batch') from rolling_quote_context;
+select ok((api.bind_card_submission_intent('rolling-quotes','b0000000-0000-4000-8000-000000000001',pg_temp.rolling_live_positions(1,300))->>'committed')::boolean,'committed replay also accepts a renewed snapshot with identical economics');
 select is((select count(*) from private.position_receipts),1::bigint,'recovery never inserts another receipt');
 select throws_ok($$select api.bind_card_submission_intent('rolling-quotes','b0000000-0000-4000-8000-000000000001',jsonb_set(positions,'{0,stakeCredits}','301')) from rolling_quote_context$$,'22000','Idempotency key was reused with a different request.','changed stake cannot reuse an intent');
 create temporary table saved_intent_receipts as select to_jsonb(r) receipt from private.position_receipts r;
@@ -74,7 +81,7 @@ select api.bind_card_submission_intent('rolling-quotes','b0000000-0000-4000-8000
 update private.live_quote_refreshes set attempted_at=clock_timestamp()-interval '2 minutes',fetched_at=clock_timestamp()-interval '2 minutes';
 update private.odds_refresh_policy set next_request_at='-infinity';
 update rolling_quote_context set lease_id=(api.claim_live_quote_refresh(league_id)->>'leaseId')::uuid;
-select api.complete_live_quote_refresh(lease_id,pg_temp.rolling_quote_import(false,160),494) from rolling_quote_context;
+select api.complete_live_quote_refresh(lease_id,pg_temp.rolling_quote_import(false,160),491) from rolling_quote_context;
 update rolling_quote_context set review=api.review_live_card_quotes('rolling-quotes',positions);
 select is(api.revalidate_card_submission_intent('b0000000-0000-4000-8000-000000000002',(review->>'reviewId')::uuid)->>'status','CHANGED','even favorable price changes require new consent') from rolling_quote_context;
 select is((api.revalidate_card_submission_intent('b0000000-0000-4000-8000-000000000002',(review->>'reviewId')::uuid)#>>'{changes,0,before,americanOdds}')::integer,140,'difference retains the exact confirmed price') from rolling_quote_context;

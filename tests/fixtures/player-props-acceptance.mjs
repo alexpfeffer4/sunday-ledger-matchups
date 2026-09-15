@@ -5,7 +5,12 @@
  */
 export const quoteSql = (value) => `'${String(value).replaceAll("'", "''")}'`;
 
-export function playerPropsLeagueSql({ slug, userIds, games }) {
+export function playerPropsLeagueSql({
+  slug,
+  userIds,
+  games,
+  preserveCanonicalEventKeys = false,
+}) {
   if (![14, 16].includes(games) || userIds.length !== 4)
     throw new Error(
       "Player-props acceptance requires four members and 14/16 games.",
@@ -13,13 +18,14 @@ export function playerPropsLeagueSql({ slug, userIds, games }) {
   const pack = `props-acceptance-${slug}`;
   return `begin;
 -- Expand the immutable canonical fixture into a separate disposable pack. All
--- event times/results remain deterministic, with unique game and team identities.
+-- event times/results remain deterministic. Original event keys preserve the
+-- reviewed authenticated Simulation result contract; added games get unique keys.
 with original as (select manifest_json from private.simulation_fixture_manifests where pack_id='sunday-ledger-authoritative-2026-v1'),
  expanded as (
  select jsonb_set(jsonb_set(manifest_json,'{packId}',to_jsonb(${quoteSql(pack)}::text)),'{weeks,0,events}',(
   select jsonb_agg(jsonb_set(jsonb_set(jsonb_set(
     manifest_json->'weeks'->0->'events'->((n-1)%8),
-    '{externalEventId}',to_jsonb(${quoteSql(pack)}::text||'-game-'||n::text)),
+    '{externalEventId}',to_jsonb(case when ${preserveCanonicalEventKeys ? "n<=8" : "false"} then manifest_json->'weeks'->0->'events'->((n-1)%8)->>'externalEventId' else ${quoteSql(pack)}::text||'-game-'||n::text end)),
     '{awayTeam}',to_jsonb((manifest_json->'weeks'->0->'events'->((n-1)%8)->>'awayTeam')||case when n>8 then ' North' else '' end)),
     '{homeTeam}',to_jsonb((manifest_json->'weeks'->0->'events'->((n-1)%8)->>'homeTeam')||case when n>8 then ' South' else '' end)) order by n)
   from generate_series(1,${games}) n)) as payload from original

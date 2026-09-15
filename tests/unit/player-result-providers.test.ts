@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import {
   fetchApiSportsBoxScore,
+  fetchApiSportsCatalog,
   fetchApiSportsQuotaStatus,
 } from "@/adapters/providers/api-sports/client";
 import { fetchNflverseSeasonEvidence } from "@/adapters/providers/nflverse/client";
@@ -128,4 +129,78 @@ it("fetches the two allowed nflverse artifacts once and preserves independent re
       ),
     ),
   ).toBe(true);
+});
+
+it.each([
+  ["COVERAGE", null, "leagues?id=1&season=2026"],
+  ["GAMES", null, "games?league=1&season=2026"],
+  ["ROSTER", "42", "players?team=42&season=2026"],
+] as const)(
+  "acquires %s only through the fixed server catalog endpoint",
+  async (kind, team, suffix) => {
+    vi.stubEnv("API_SPORTS_NFL_KEY", "fixture-secret");
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ response: [] }), {
+        headers: {
+          "x-ratelimit-requests-remaining": "79",
+          "last-modified": "Mon, 14 Sep 2026 02:00:00 GMT",
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    const usage = vi.fn();
+    const result = await fetchApiSportsCatalog(kind, 2026, team, usage);
+    expect(String(fetcher.mock.calls[0][0])).toBe(
+      `https://v1.american-football.api-sports.io/${suffix}`,
+    );
+    expect(fetcher.mock.calls[0][1]).toMatchObject({
+      cache: "no-store",
+      headers: { "x-apisports-key": "fixture-secret" },
+    });
+    expect(result.sourceUpdatedAt).toBe("2026-09-14T02:00:00.000Z");
+    expect(usage).toHaveBeenCalledWith({
+      remaining: 79,
+      rateLimit: null,
+      retryAfterSeconds: null,
+    });
+  },
+);
+
+it("rejects invalid catalog seasons and team identities before network usage", async () => {
+  const fetcher = vi.fn();
+  vi.stubGlobal("fetch", fetcher);
+  await expect(
+    fetchApiSportsCatalog("COVERAGE", 2026.5, null, vi.fn()),
+  ).rejects.toThrow("INVALID_STATISTICS_SEASON");
+  await expect(
+    fetchApiSportsCatalog("ROSTER", 2026, "42&league=2", vi.fn()),
+  ).rejects.toThrow("INVALID_STATISTICS_TEAM_ID");
+  await expect(
+    fetchApiSportsCatalog("GAMES", 2026, "42", vi.fn()),
+  ).rejects.toThrow("INVALID_STATISTICS_TEAM_ID");
+  expect(fetcher).not.toHaveBeenCalled();
+});
+
+it("charges catalog response usage before rejecting a failed provider request", async () => {
+  vi.stubEnv("API_SPORTS_NFL_KEY", "fixture-secret");
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValue(
+        new Response("unavailable", {
+          status: 429,
+          headers: { "x-ratelimit-requests-remaining": "0" },
+        }),
+      ),
+  );
+  const usage = vi.fn();
+  await expect(
+    fetchApiSportsCatalog("GAMES", 2026, null, usage),
+  ).rejects.toThrow("PROVIDER_UNAVAILABLE");
+  expect(usage).toHaveBeenCalledWith({
+    remaining: 0,
+    rateLimit: null,
+    retryAfterSeconds: 60,
+  });
 });

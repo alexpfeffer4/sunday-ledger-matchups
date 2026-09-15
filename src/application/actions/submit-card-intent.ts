@@ -20,6 +20,7 @@ const bindingSchema = z.object({
   mode: z.enum(["LIVE", "SIMULATION"]),
   operationKey: z.string(),
   committed: z.boolean(),
+  cardSealed: z.boolean().optional().default(false),
 });
 const renewalSchema = z.discriminatedUnion("status", [
   z.object({
@@ -57,6 +58,7 @@ const renewalSchema = z.discriminatedUnion("status", [
 
 export type SubmissionIntentResult =
   | { status: "accepted"; replayed: boolean }
+  | { status: "already-sealed" }
   | { status: "simulation"; operationKey: string; intentId: string }
   | { status: "error"; code: string }
   | {
@@ -86,6 +88,7 @@ export async function submitCardIntent(
   // Authorization and exact consent comparison already happened in the RPC.
   // Do this before any refresh, quote read, expiry or current-week check.
   if (binding.committed) return { status: "accepted", replayed: true };
+  if (binding.cardSealed) return { status: "already-sealed" };
   if (binding.mode === "SIMULATION")
     return {
       status: "simulation",
@@ -112,8 +115,9 @@ export async function submitCardIntent(
   });
   if (recovered.error)
     return { status: "error", code: recovered.error.message };
-  if (bindingSchema.parse(recovered.data).committed)
-    return { status: "accepted", replayed: true };
+  const recovery = bindingSchema.parse(recovered.data);
+  if (recovery.committed) return { status: "accepted", replayed: true };
+  if (recovery.cardSealed) return { status: "already-sealed" };
   if (
     !/QUOTE_(REVIEW_EXPIRED|REVIEW_REQUIRED|CHANGED|SOURCE_STALE)|quote is stale/i.test(
       first.error.message,
@@ -157,8 +161,11 @@ export async function submitCardIntent(
       p_intent_id: input.submissionId,
       p_positions: input.positions as unknown as Json,
     });
-    if (!last.error && bindingSchema.parse(last.data).committed)
-      return { status: "accepted", replayed: true };
+    if (!last.error) {
+      const recovery = bindingSchema.parse(last.data);
+      if (recovery.committed) return { status: "accepted", replayed: true };
+      if (recovery.cardSealed) return { status: "already-sealed" };
+    }
     return {
       status: "error",
       code: last.error?.message ?? accepted.error.message,

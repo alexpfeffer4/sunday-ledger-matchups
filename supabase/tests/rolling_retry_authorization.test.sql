@@ -42,6 +42,10 @@ select is(api.get_owner_rehearsal()->>'rollingSubmissionsEnabled','true','owner 
 update rolling_context set batch=pg_temp.rolling_positions(1,array[300]);
 select lives_ok($$update rolling_context set response=api.accept_stage1_card(slug,batch,'rolling-authorized-retry')$$,'owner submits an authorized partial batch');
 select is(api.get_owner_rehearsal()->>'ownerCardSealed','true','owner guide recognizes partial submission');
+create temporary table retry_intent as select gen_random_uuid() id,pg_temp.rolling_positions(4,array[300]) positions;
+select lives_ok($$select api.bind_card_submission_intent(c.slug,i.id,i.positions) from rolling_context c,retry_intent i$$,'Simulation also binds durable submission consent through the shared authority');
+select lives_ok($$select api.accept_stage1_card(c.slug,jsonb_set(i.positions,'{0}',(i.positions->0)||jsonb_build_object('intentId',i.id)),'intent:'||i.id::text) from rolling_context c,retry_intent i$$,'Simulation accepts its bound intent through the existing transaction');
+select ok((api.bind_card_submission_intent(c.slug,i.id,i.positions)->>'committed')::boolean,'Simulation recovers a committed intent before further processing') from rolling_context c,retry_intent i;
 create temporary table retry_receipts as select to_jsonb(r) value from private.position_receipts r where r.card_id=(select card_id from rolling_context);
 -- A controlled fixture clock change is rolled back with the test. Read/replay
 -- authorization and all immutable receipt guards remain real.
@@ -54,6 +58,8 @@ update private.owner_rehearsal_entitlements set revoked_at=clock_timestamp() whe
 select throws_ok($$select api.get_owner_rehearsal()$$,'42501','Not found.','revoked owner cannot read the rehearsal');
 select throws_ok($$select api.accept_stage1_card(slug,batch,'rolling-authorized-retry') from rolling_context$$,
  '42501','Owner rehearsal not found.','revoked entitlement also denies exact replay of a previously accepted batch');
+select throws_ok($$select api.bind_card_submission_intent(c.slug,i.id,i.positions) from rolling_context c,retry_intent i$$,
+ '42501','Owner rehearsal not found.','revoked entitlement denies recovery of the same previously committed intent');
 select is((select jsonb_agg(to_jsonb(r) order by r.id) from private.position_receipts r where r.card_id=(select card_id from rolling_context)),
  (select jsonb_agg(value order by value->>'id') from retry_receipts),'failed or rejected retries never change accepted receipt evidence');
 select * from finish();

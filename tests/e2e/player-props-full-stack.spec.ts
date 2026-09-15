@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -11,6 +11,7 @@ import { leagueMatchupCardsSchema } from "../../src/application/queries/league-m
 import {
   playerPropsLeagueSql,
   playerPropsQuoteSql,
+  quoteSql,
 } from "../fixtures/player-props-acceptance.mjs";
 
 const url = process.env.TEST_SUPABASE_URL;
@@ -132,6 +133,50 @@ async function submitDraft(page: Page, count: number) {
   ).toBeVisible();
 }
 
+async function atNarrowEnlargedText(page: Page, check: () => Promise<void>) {
+  const viewport = page.viewportSize();
+  const fontSize = await page.evaluate(
+    () => document.documentElement.style.fontSize,
+  );
+  try {
+    await page.setViewportSize({ width: 320, height: 700 });
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = "200%";
+    });
+    await check();
+  } finally {
+    await page.evaluate((previous) => {
+      document.documentElement.style.fontSize = previous;
+    }, fontSize);
+    if (viewport) await page.setViewportSize(viewport);
+  }
+}
+
+async function expectNoHorizontalOverflow(page: Page) {
+  const dimensions = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    document: document.documentElement.scrollWidth,
+    body: document.body.scrollWidth,
+  }));
+  expect(dimensions.document).toBeLessThanOrEqual(dimensions.client + 1);
+  expect(dimensions.body).toBeLessThanOrEqual(dimensions.client + 1);
+}
+
+async function expectReachableAt320(locator: Locator) {
+  await locator.scrollIntoViewIfNeeded();
+  await expect(locator).toBeVisible();
+  await expect(locator).toBeInViewport();
+  const bounds = await locator.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.x).toBeGreaterThanOrEqual(-1);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(321);
+  const textWidth = await locator.evaluate((element) => ({
+    client: element.clientWidth,
+    scroll: element.scrollWidth,
+  }));
+  expect(textWidth.scroll).toBeLessThanOrEqual(textWidth.client + 1);
+}
+
 for (const games of [14, 16]) {
   test(`${games}-game player menu, mixed batches, late lines and hidden-game privacy use real Auth/UI/RPC`, async ({
     page,
@@ -177,6 +222,7 @@ for (const games of [14, 16]) {
       playerPropsLeagueSql({
         slug,
         games,
+        preserveCanonicalEventKeys: true,
         userIds: identities.slice(0, 4).map((identity) => identity.userId),
       }),
     );
@@ -192,17 +238,21 @@ for (const games of [14, 16]) {
     const events = [...owner.slate].sort(
       (a, b) =>
         a.scheduledStartAt.localeCompare(b.scheduledStartAt) ||
+        Number(a.key.startsWith("props-acceptance-")) -
+          Number(b.key.startsWith("props-acceptance-")) ||
         a.id.localeCompare(b.id),
     );
     const early = events[0]!;
     const records = events.flatMap((event, eventIndex) =>
       [event.awayTeam, event.homeTeam].flatMap((team, teamIndex) =>
         ["QB", "RB", "WR"].flatMap((position) => {
-          const canonicalKey = `props:${run}:${eventIndex}:${teamIndex}:${position}`;
+          const canonicalKey = event.key.startsWith("props-acceptance-")
+            ? `props:${run}:${eventIndex}:${teamIndex}:${position}`
+            : `props-auth:${event.key}:${teamIndex}:${position}`;
           const displayName =
             eventIndex === 0 && teamIndex === 0 && position === "QB"
               ? "Alexanderson Montgomery-Smith Jr."
-              : `Fixture ${eventIndex + 1} ${teamIndex + 1} ${position}`;
+              : `Fixture ${event.key} ${teamIndex + 1} ${position}`;
           return ["THE_ODDS_API", "API_SPORTS"].map((provider) => ({
             provider,
             canonicalKey,
@@ -226,15 +276,6 @@ for (const games of [14, 16]) {
       ),
     );
     await rpc(admin, "import_player_catalog", { p_records: records });
-    await rpc(commissioner, "prepare_player_prop_menu", {
-      p_league_slug: slug,
-    });
-    const proposed = playerPropMenuSchema.parse(
-      await rpc(commissioner, "get_player_prop_menu", { p_league_slug: slug }),
-    );
-    expect(proposed.slots).toHaveLength(games * 6);
-    expect(proposed.slots.every((slot) => slot.subjectId !== null)).toBe(true);
-    expect(proposed.frozen).toBe(false);
     let opponentIndex = 1;
     let opponent = members[opponentIndex]!;
     const { viewport, deviceScaleFactor, isMobile, hasTouch, userAgent } =
@@ -256,6 +297,25 @@ for (const games of [14, 16]) {
           exact: true,
         }),
       ).toBeVisible();
+      await page
+        .getByRole("button", { name: "Prepare player menu", exact: true })
+        .click();
+      await expect
+        .poll(async () => {
+          const menu = playerPropMenuSchema.parse(
+            await rpc(commissioner, "get_player_prop_menu", {
+              p_league_slug: slug,
+            }),
+          );
+          return menu.slots.filter((slot) => slot.subjectId !== null).length;
+        })
+        .toBe(games * 6);
+      const proposed = playerPropMenuSchema.parse(
+        await rpc(commissioner, "get_player_prop_menu", {
+          p_league_slug: slug,
+        }),
+      );
+      expect(proposed.frozen).toBe(false);
       await expect(
         page.getByText(
           `${games} games · ${games * 6} of ${games * 6} player slots selected`,
@@ -358,6 +418,43 @@ for (const games of [14, 16]) {
       expect(rejected.error!.message).toMatch(/frozen/i);
       sql(playerPropsQuoteSql({ weekId: owner.week!.id }));
       await page.goto(`/l/${slug}/slate`);
+      // 320 CSS pixels and doubled root text exercise long names and actual
+      // authenticated quote/editor controls beyond the default phone profile.
+      await atNarrowEnlargedText(page, async () => {
+        await page
+          .getByRole("button", { name: "Player props", exact: true })
+          .click();
+        const game = page.locator("details").filter({
+          has: page.locator("summary").filter({
+            hasText: `${early.awayTeam} at ${early.homeTeam}`,
+          }),
+        });
+        await game.locator("summary").click();
+        const player = game.locator("article").filter({
+          has: page.getByRole("heading", {
+            name: lateLine.subjectLabel!,
+            exact: true,
+          }),
+        });
+        await expectReachableAt320(player.getByRole("heading"));
+        await expectNoHorizontalOverflow(page);
+        const choice = player.locator("button:not([disabled])").first();
+        await expectReachableAt320(choice);
+        await choice.click();
+        const dialog = page.getByRole("dialog");
+        await expectReachableAt320(dialog.getByRole("heading"));
+        await expectReachableAt320(page.getByLabel("Stake in credits"));
+        await expectReachableAt320(
+          dialog.getByRole("button", { name: "Add to card", exact: true }),
+        );
+        await expectNoHorizontalOverflow(page);
+        await page.screenshot({
+          path: info.outputPath(`props-${games}-320px-200pct-editor.png`),
+        });
+        await dialog
+          .getByRole("button", { name: "Close pick editor", exact: true })
+          .click();
+      });
       await addPlayerDraft(page, early, lateLine.subjectLabel!, 150);
       await addPlayerDraft(page, early, existingLine.subjectLabel!, 200);
       await submitDraft(page, 2);
@@ -445,18 +542,41 @@ for (const games of [14, 16]) {
       await expect(
         spectator.getByText(lateLine.subjectLabel!, { exact: false }).first(),
       ).toBeVisible();
+      await atNarrowEnlargedText(spectator, async () => {
+        const longName = spectator
+          .getByText(lateLine.subjectLabel!, { exact: false })
+          .first();
+        await expectReachableAt320(longName);
+        await expectNoHorizontalOverflow(spectator);
+        await spectator.screenshot({
+          path: info.outputPath(`props-${games}-320px-200pct-revealed.png`),
+        });
+      });
+      const finalResult = JSON.parse(
+        sql(`
+        select result.value::text
+        from private.simulation_fixture_manifests manifest
+        cross join lateral jsonb_array_elements(manifest.manifest_json->'weeks') week
+        cross join lateral jsonb_array_elements(week->'events') event
+        cross join lateral jsonb_array_elements(event->'resultVersions') result(value)
+        where manifest.pack_id='sunday-ledger-authoritative-2026-v1'
+          and (week->>'week')::integer=1
+          and event->>'externalEventId'=${quoteSql(early.key)}
+          and (result.value->>'version')::integer=2;
+      `),
+      );
+      expect(finalResult.status).toBe("FINAL");
       await rpc(commissioner, "advance_simulated_time", {
         p_league_id: owner.league.id,
-        p_target: "2026-09-13T19:00:00Z",
+        p_target: finalResult.availableAt,
         p_idempotency_key: `props-finished-${run}`,
       });
       await rpc(commissioner, "record_stage1_result", {
         p_event_id: early.id,
         p_status: "FINAL",
-        p_away_score: 10,
-        p_home_score: 20,
-        p_reason:
-          "Final team score; player evidence is intentionally missing in this fixture.",
+        p_away_score: finalResult.awayScore,
+        p_home_score: finalResult.homeScore,
+        p_reason: finalResult.reason,
         p_source: "SIMULATION_FIXTURE",
         p_idempotency_key: `props-team-final-${run}`,
       });

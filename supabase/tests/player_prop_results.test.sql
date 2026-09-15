@@ -126,6 +126,12 @@ select is((select count(*) from private.grade_player_prop_receipt('OVER',50000,-
 
 select api.register_player_result_event(jsonb_build_object('externalEventId',e.fixture_event_key,'apiSportsEventId','99001','nflverseEventId','2026_01_TEST_TEST','gameDate',(e.scheduled_start_at at time zone 'America/New_York')::date,'awayTeam',e.away_team,'homeTeam',e.home_team,'evidenceHash',repeat('b',64)))
  from private.sports_events e where e.id=(select event_id from props_context);
+select lives_ok($$select api.register_player_result_event(jsonb_build_object('externalEventId',e.fixture_event_key,'apiSportsEventId','99001','nflverseEventId','2026_01_TEST_TEST','gameDate',(e.scheduled_start_at at time zone 'America/New_York')::date,'awayTeam',e.away_team,'homeTeam',e.home_team,'evidenceHash',repeat('d',64))) from private.sports_events e where e.id=(select event_id from props_context)$$,
+ 'durable catalog retries recover identical registered event identity');
+select is((select m.evidence_hash from private.player_result_event_mappings m join private.sports_events e on e.fixture_event_key=m.external_event_id where e.id=(select event_id from props_context)),repeat('b',64),
+ 'an identical event retry preserves the original crosswalk evidence');
+select throws_ok($$select api.register_player_result_event(jsonb_build_object('externalEventId',e.fixture_event_key,'apiSportsEventId','99002','nflverseEventId','2026_01_TEST_TEST','gameDate',(e.scheduled_start_at at time zone 'America/New_York')::date,'awayTeam',e.away_team,'homeTeam',e.home_team,'evidenceHash',repeat('d',64))) from private.sports_events e where e.id=(select event_id from props_context)$$,'22000',null,
+ 'a catalog retry cannot remap an existing event to another provider identity');
 select api.import_player_catalog((select jsonb_agg(jsonb_build_object('canonicalKey',s.canonical_key,'displayName',s.display_name,'position',s.position,'provider',p.provider,'externalEventId',e.fixture_event_key,'externalPlayerId',s.id::text||':'||p.provider,'team',r.subject_team,'gameDate',(e.scheduled_start_at at time zone 'America/New_York')::date,'verifiedAt',clock_timestamp(),'evidenceHash',repeat('c',64),'roleRank',1,'roleEvidence','Verified result fixture identity','resultPathVerified',true))
  from private.position_receipts r join private.player_subjects s on s.id=r.subject_id join private.sports_events e on e.id=r.event_id cross join(values('API_SPORTS'),('NFLVERSE'))p(provider) where r.card_id=(select card_id from props_context)));
 create temporary table result_test_subject as select subject_id from private.position_receipts where card_id=(select card_id from props_context) and subject_id is not null order by subject_id limit 1;
@@ -202,10 +208,17 @@ select throws_ok($$select api.resolve_finalized_week17_player_candidate((select 
 -- Independent 80-result/20-metadata budget; unknown network failures stay charged.
 select is(api.claim_player_result_jobs()->>'status','DISABLED','empty disabled scheduler is a cheap no-provider run');
 update private.player_result_policy set processing_enabled=true,api_sports_contract_validated=true;
+-- The synthetic daily reservations must be both in this UTC day and outside
+-- the rolling minute. During the first two UTC minutes those fixture conditions
+-- cannot hold; rollover itself is verified above without a wall-clock wait.
+create temporary table player_daily_budget_clock as select
+ clock_timestamp()>=(date_trunc('day',clock_timestamp() at time zone 'UTC') at time zone 'UTC')+interval '2 minutes' ready;
+select skip('Daily/minute budget separation fixture is not representable immediately after UTC rollover.',3)
+ from player_daily_budget_clock where not ready;
 insert into private.player_result_requests(request_class,reserved_at) select 'RESULT',clock_timestamp()-interval '2 minutes' from generate_series(1,80);
-select is(api.claim_player_result_jobs()->>'status','BUDGET','80 reserved result calls exhaust only result budget');
-select lives_ok($$select api.reserve_player_metadata_request()$$,'the separate metadata reserve remains available after 80 result attempts');
+select is(api.claim_player_result_jobs()->>'status','BUDGET','80 reserved result calls exhaust only result budget') from player_daily_budget_clock where ready;
+select lives_ok($$select api.reserve_player_metadata_request()$$,'the separate metadata reserve remains available after 80 result attempts') from player_daily_budget_clock where ready;
 insert into private.player_result_requests(request_class,reserved_at) select 'METADATA',clock_timestamp()-interval '2 minutes' from generate_series(1,19);
-select throws_ok($$select api.reserve_player_metadata_request()$$,'55000',null,'all metadata calls share enforced 20/day reserve');
+select throws_ok($$select api.reserve_player_metadata_request()$$,'55000',null,'all metadata calls share enforced 20/day reserve') from player_daily_budget_clock where ready;
 select * from finish();
 rollback;
