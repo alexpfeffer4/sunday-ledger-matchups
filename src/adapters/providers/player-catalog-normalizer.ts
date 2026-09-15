@@ -647,7 +647,9 @@ export function normalizeNflversePrimaryCatalog(input: {
           player.status === "ACT" &&
           /^\d{2}-\d{7}$/.test(player.gsis_id) &&
           /^[1-9]\d*$/.test(player.espn_id ?? "") &&
-          /^[A-Za-z][A-Za-z0-9]{3,19}$/.test(player.pfr_id ?? "") &&
+          // Published PFR identities retain punctuation (for example MoorD.00
+          // and Ya-SRo00); neither stripping nor rejecting it is a safe join.
+          /^[A-Za-z][A-Za-z0-9.-]{3,19}$/.test(player.pfr_id ?? "") &&
           player.full_name,
       );
       for (const player of current) {

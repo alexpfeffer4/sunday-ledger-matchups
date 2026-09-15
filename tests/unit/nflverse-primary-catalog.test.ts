@@ -45,6 +45,25 @@ function addPlayer(
 }
 
 describe("nflverse primary featured-player catalog", () => {
+  it.each(["MoorD.00", "Ya-SRo00"])(
+    "preserves published punctuation in PFR identity %s",
+    (pfrId) => {
+      const input = fixture();
+      input.nflverse.rosterCsv = input.nflverse.rosterCsv.replace(
+        "Player02",
+        pfrId,
+      );
+      const normalized = normalizeNflversePrimaryCatalog(input);
+      expect(
+        normalized.mappings.find((row) => row.externalPlayerId === "00-0000002")
+          ?.secondaryPlayerId,
+      ).toBe(pfrId);
+      expect(
+        buildPlayerCatalogBootstrap(normalized).proposals[2]
+          .proposedCanonicalKey,
+      ).toBe("nflverse:00-0000002");
+    },
+  );
   it("expires nominations at the earliest real source deadline instead of refreshing old roster evidence", () => {
     const input = fixture();
     input.nflverse.sourceUpdatedAt = "2026-09-19T00:00:00.000Z";
