@@ -67,9 +67,17 @@ export default async function LeagueRulesPage({
         ? "game winner"
         : market === "SPREAD"
           ? "spread"
-          : "total",
+          : market === "TOTAL"
+            ? "game total"
+            : market === "PLAYER_PASSING_YARDS"
+              ? "player passing yards"
+              : market === "PLAYER_RUSHING_YARDS"
+                ? "player rushing yards"
+                : "player receiving yards",
     )
     .join(", ");
+  const playerProps =
+    "playerProps" in ruleset.markets ? ruleset.markets.playerProps : null;
   const rules = [
     {
       title: "Weekly card",
@@ -79,6 +87,17 @@ export default async function LeagueRulesPage({
       title: "Markets and big-favorite limit",
       body: `${marketNames}. A favorite shorter than ${odds(ruleset.concentration.heavyFavoriteThresholdAmerican)} may use at most ${formatCredits(ruleset.concentration.heavyFavoriteSinglePositionCapCredits)} credits; a price at ${odds(ruleset.concentration.heavyFavoriteThresholdAmerican)} or longer may use up to ${formatCredits(ruleset.concentration.standardSinglePositionCapCredits)}. There is no blanket odds band or aggregate favorite cap.${hasExpandedLifecycle ? " This package is settled for POC V1." : ""}`,
     },
+    ...(playerProps
+      ? [
+          {
+            title: "Featured players and availability",
+            body:
+              playerProps.menuFreeze === "FIRST_PUBLICATION_PER_SLOT"
+                ? "Each team’s featured QB, RB and WR or TE is selected from the highest available standard passing, rushing or receiving line among verified players in that role. Ties and unresolved identities stay unavailable. The commissioner reviews the available choices and approves automatic additions to eligible empty slots before each game’s betting cutoff. Each player stays fixed from first publication, including players added automatically. Existing bets keep their player, line, odds and stake. A posted line does not guarantee participation."
+                : "The commissioner reviews each team’s featured players and unavailable slots. The first accepted submission fixes the weekly player menu, except where a separately approved current-week activation fixes it earlier. Lines may appear later for those players, but unavailable player slots cannot be replaced after the menu freezes. A posted line does not guarantee participation.",
+          },
+        ]
+      : []),
     {
       title: rolling ? "Game cutoffs and reveal" : "Card lock and reveal",
       body: rolling

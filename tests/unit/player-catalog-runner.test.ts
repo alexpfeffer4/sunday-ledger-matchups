@@ -16,7 +16,16 @@ afterEach(() => vi.useRealTimers());
 
 function harness(
   wire = playerCatalogWireFixture(),
-  options: { primary?: boolean; selectionPolicy?: string } = {},
+  options: {
+    primary?: boolean;
+    selectionPolicy?: string;
+    progressiveSlots?: {
+      externalEventId: string;
+      team: string;
+      slot: "QB_PASS" | "RB_RUSH" | "RECEIVER";
+    }[];
+    progressiveResult?: unknown;
+  } = {},
 ) {
   const sources = new Map<string, unknown>();
   const calls: { name: string; args?: Record<string, unknown> }[] = [];
@@ -46,11 +55,17 @@ function harness(
           apiSportsContractValidated: wire.apiSportsContractValidated,
           nflverseContractValidated: wire.nflverseContractValidated,
           cachedSources: Object.fromEntries(sources),
+          progressiveSlots: options.progressiveSlots,
         },
         error: null,
       };
     if (name === "claim_player_statistics_status")
       return { data: { status: "IDLE" }, error: null };
+    if (
+      name === "record_player_catalog_nominations" &&
+      options.progressiveSlots
+    )
+      return { data: options.progressiveResult ?? null, error: null };
     if (name === "claim_player_catalog_source") {
       const key = args!.p_cache_key as string;
       return {
@@ -261,6 +276,179 @@ describe("durable automatic catalog preparation", () => {
 });
 
 describe("nflverse primary pilot acquisition", () => {
+  it("imports and publishes only claimed empty slots while another game has already started", async () => {
+    const wire = nflversePrimaryCatalogFixture(fullSlateCatalogWireFixture());
+    const startedEvent = wire.events[0];
+    startedEvent.scheduledStartAt = wire.now;
+    const futureEvent = wire.events[1];
+    // The database claim excludes closed games and already published slots.
+    wire.events = [futureEvent];
+    const targets = [
+      {
+        externalEventId: futureEvent.externalEventId,
+        team: futureEvent.awayTeam,
+        slot: "QB_PASS" as const,
+      },
+      {
+        externalEventId: futureEvent.externalEventId,
+        team: futureEvent.homeTeam,
+        slot: "RB_RUSH" as const,
+      },
+    ];
+    const state = harness(wire, {
+      primary: true,
+      progressiveSlots: targets,
+      progressiveResult: {
+        progressive: true,
+        publishedSlots: 2,
+        remainingSlots: 0,
+        replayed: false,
+      },
+    });
+    expect(await executePlayerCatalogJob(state.port, state.fetchers)).toEqual({
+      status: "READY",
+      missingSources: 0,
+    });
+    const proposals = state.calls.find(
+      (call) => call.name === "record_player_catalog_nominations",
+    )!.args!.p_proposals as {
+      externalEventId: string;
+      team: string;
+      slot: string;
+      candidates: { canonicalKey: string }[];
+    }[];
+    expect(
+      proposals.map(({ externalEventId, team, slot }) => ({
+        externalEventId,
+        team,
+        slot,
+      })),
+    ).toEqual(targets);
+    const records = state.calls.find(
+      (call) => call.name === "import_player_catalog",
+    )!.args!.p_records as { externalEventId: string; canonicalKey: string }[];
+    expect(records).toHaveLength(4);
+    expect(new Set(records.map((record) => record.canonicalKey))).toEqual(
+      new Set(
+        proposals.flatMap((proposal) =>
+          proposal.candidates.map((candidate) => candidate.canonicalKey),
+        ),
+      ),
+    );
+    expect(
+      state.calls
+        .filter((call) => call.name === "register_player_result_event")
+        .map(
+          (call) =>
+            (call.args!.p_mapping as { externalEventId: string })
+              .externalEventId,
+        ),
+    ).toEqual([futureEvent.externalEventId]);
+    expect(
+      records.some(
+        (record) => record.externalEventId === startedEvent.externalEventId,
+      ),
+    ).toBe(false);
+  });
+  it("keeps a tied proposed player pending until authoritative publication succeeds", async () => {
+    const wire = nflversePrimaryCatalogFixture();
+    wire.nflverse.rosterCsv +=
+      "\n2026,ARI,TE,Cardinal Alternative,00-0000099,Other99,ACT,1099";
+    wire.quotes[0].events[0].markets.push(
+      ...wire.quotes[0].events[0].markets.slice(4, 6).map((market) => ({
+        ...market,
+        externalPlayerId: "Cardinal Alternative",
+        proposition: "Cardinal Alternative",
+      })),
+    );
+    const options = {
+      primary: true,
+      progressiveSlots: [
+        {
+          externalEventId: wire.events[0].externalEventId,
+          team: wire.events[0].awayTeam,
+          slot: "RECEIVER" as const,
+        },
+      ],
+      progressiveResult: {
+        progressive: true,
+        publishedSlots: 0,
+        remainingSlots: 1,
+        replayed: false,
+      },
+    };
+    const state = harness(wire, options);
+    expect(await executePlayerCatalogJob(state.port, state.fetchers)).toEqual({
+      status: "PENDING",
+      missingSources: 1,
+    });
+    const proposed = state.calls.find(
+      (call) => call.name === "record_player_catalog_nominations",
+    )!.args!.p_proposals as {
+      warnings: string[];
+      proposedCanonicalKey: string | null;
+    }[];
+    expect(proposed[0].proposedCanonicalKey).not.toBeNull();
+    expect(proposed[0].warnings).toContain(
+      "Equally ranked candidates; confirm the proposed choice.",
+    );
+    wire.quotes[0].events[0].markets = wire.quotes[0].events[0].markets.filter(
+      (market) => market.externalPlayerId !== "Cardinal Alternative",
+    );
+    options.progressiveResult = {
+      progressive: true,
+      publishedSlots: 1,
+      remainingSlots: 0,
+      replayed: false,
+    };
+    expect(await executePlayerCatalogJob(state.port, state.fetchers)).toEqual({
+      status: "READY",
+      missingSources: 0,
+    });
+    expect(state.fetchers.nflverse).toHaveBeenCalledTimes(1);
+  });
+  it.each(["duplicate", "wrong-team", "wrong-event"])(
+    "rejects a %s progressive slot claim before acquisition",
+    async (failure) => {
+      const wire = nflversePrimaryCatalogFixture();
+      const target = {
+        externalEventId: wire.events[0].externalEventId,
+        team: wire.events[0].awayTeam,
+        slot: "QB_PASS" as const,
+      };
+      if (failure === "wrong-team") target.team = "Buffalo Bills";
+      if (failure === "wrong-event") target.externalEventId = "other-event";
+      const state = harness(wire, {
+        primary: true,
+        progressiveSlots: failure === "duplicate" ? [target, target] : [target],
+      });
+      expect(await executePlayerCatalogJob(state.port, state.fetchers)).toEqual(
+        { status: "UNAVAILABLE", missingSources: 1 },
+      );
+      expect(state.fetchers.nflverse).not.toHaveBeenCalled();
+      expect(state.fetchers.quotes).not.toHaveBeenCalled();
+    },
+  );
+  it("does not mark a progressive job ready without a valid database publication result", async () => {
+    const wire = nflversePrimaryCatalogFixture();
+    const state = harness(wire, {
+      primary: true,
+      progressiveSlots: [
+        {
+          externalEventId: wire.events[0].externalEventId,
+          team: wire.events[0].awayTeam,
+          slot: "QB_PASS",
+        },
+      ],
+    });
+    expect(await executePlayerCatalogJob(state.port, state.fetchers)).toEqual({
+      status: "PENDING",
+      missingSources: 1,
+    });
+    expect(state.calls.at(-1)?.args?.p_error).toBe(
+      "CATALOG_PROGRESSIVE_RESULT_INVALID",
+    );
+  });
   it("deducts elapsed source work from the absolute quote acquisition deadline", async () => {
     const state = harness(nflversePrimaryCatalogFixture(), { primary: true });
     const startedAt = Date.parse(state.wire.now);

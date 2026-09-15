@@ -28,6 +28,9 @@ export const playerPropSlotSchema = z.object({
   confirmed: z.boolean(),
   frozen: z.boolean(),
   unavailableReason: z.string().nullable(),
+  lateFillEligible: z.boolean().optional(),
+  publicationMode: z.enum(["COMMISSIONER", "AUTOMATIC"]).nullable().optional(),
+  publishedAt: z.iso.datetime({ offset: true }).nullable().optional(),
   candidates: z
     .array(
       z.object({
@@ -49,5 +52,7 @@ export const playerPropMenuSchema = z.object({
   canOpen: z.boolean().optional(),
   amendmentPending: z.boolean().optional(),
   amendmentApplied: z.boolean().optional(),
+  progressiveAvailability: z.boolean().optional(),
+  progressiveActivated: z.boolean().optional(),
 });
 export type PlayerPropMenu = z.infer<typeof playerPropMenuSchema>;

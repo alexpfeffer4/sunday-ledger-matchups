@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { hashRuleset } from "@/rulesets/canonicalize";
 import { simulationSeason11Ruleset } from "@/rulesets/simulation-season-1-1";
+import { simulationSeason14Ruleset } from "@/rulesets/simulation-season-1-4";
+import { simulationSeason15Ruleset } from "@/rulesets/simulation-season-1-5";
 import { frozenCardRulesFixture } from "../fixtures/card-rules";
 
 const mocks = vi.hoisted(() => ({ rpc: vi.fn() }));
@@ -39,6 +41,31 @@ describe("official current and historical rules reads", () => {
     expect(result?.canonicalJson).toEqual(data.canonicalJson);
     expect(result?.priorRules?.[0].canonicalJson).toEqual(
       data.priorRules[0].canonicalJson,
+    );
+  });
+
+  it("reads progressive rules alongside the unchanged earlier props contract", async () => {
+    const current = frozenCardRulesFixture(
+      "SIMULATION",
+      simulationSeason15Ruleset,
+    );
+    const previous = frozenCardRulesFixture(
+      "SIMULATION",
+      simulationSeason14Ruleset,
+    );
+    current.sha256Hash = await hashRuleset(current.canonicalJson);
+    previous.sha256Hash = await hashRuleset(previous.canonicalJson);
+    const data = { ...current, priorRules: [previous] };
+    mocks.rpc.mockResolvedValueOnce({ data, error: null });
+    const result = await getSeasonRuleset("member-league");
+    expect(result?.rulesetVersion).toBe("1.5");
+    expect(result?.canonicalJson).toEqual(simulationSeason15Ruleset);
+    expect(result?.priorRules?.[0].rulesetVersion).toBe("1.4");
+    expect(result?.priorRules?.[0].canonicalJson).toEqual(
+      simulationSeason14Ruleset,
+    );
+    expect(result?.priorRules?.[0].sha256Hash).toBe(
+      "c9e9d9c049a57dbab45de23f1b6e6e3b7d8abcf52ba1854b3c496fd230bc653c",
     );
   });
 

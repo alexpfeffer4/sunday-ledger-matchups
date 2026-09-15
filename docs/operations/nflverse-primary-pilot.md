@@ -1,5 +1,7 @@
 # nflverse primary pilot: release and exception handling
 
+For the newly authorized empty-slot continuation, also apply the [progressive availability amendment](../governance/2026-09-15-progressive-player-props.md). Its scoped successor rules and partial initial review supersede the complete-menu gate below; already offered identities remain fixed and future additions carry separate system provenance.
+
 Read with the [September 15 governing amendment](../governance/2026-09-15-nflverse-primary-pilot.md).
 Use the explicit `NFLVERSE_PRIMARY` policy only for its approved scope. The
 existing Odds API remains the source for the reviewed DraftKings lines and team

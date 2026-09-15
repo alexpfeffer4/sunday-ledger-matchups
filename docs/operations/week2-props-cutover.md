@@ -1,5 +1,7 @@
 # Approved Week 2 props cutover: operator runbook
 
+The subsequent [progressive availability amendment](../governance/2026-09-15-progressive-player-props.md) introduces a separate 1.5 path for an initially partial menu. Do not apply the complete-nomination 1.4 cutover below to that path or globally disable its guards. Follow the [successor operator procedure](progressive-player-props.md); it retains the same exact reset and pre-cutover no-new-picks boundary.
+
 This runbook implements the
 [September 15 one-time amendment](../governance/2026-09-15-week2-props-cutover.md).
 The exact independently approved reset has completed; do not execute it again.

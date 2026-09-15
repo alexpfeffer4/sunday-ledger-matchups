@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   seasonRulesetV14Schema,
+  seasonRulesetV15Schema,
   type PersistedSeasonRuleset,
 } from "@/rulesets/schema";
 
@@ -8,7 +9,7 @@ import {
 // New constraints require versioned compatibility here and in season_card_rules.
 const snapshotSchema = z.object({
   rulesetId: z.string(),
-  rulesetVersion: z.enum(["1.0", "1.1", "1.2", "1.3", "1.4"]),
+  rulesetVersion: z.enum(["1.0", "1.1", "1.2", "1.3", "1.4", "1.5"]),
   productBibleId: z.string(),
   productBibleVersion: z.string(),
   mode: z.enum(["LIVE", "SIMULATION"]),
@@ -18,7 +19,7 @@ const snapshotSchema = z.object({
   canonicalJson: z
     .object({
       id: z.string(),
-      version: z.enum(["1.0", "1.1", "1.2", "1.3", "1.4"]),
+      version: z.enum(["1.0", "1.1", "1.2", "1.3", "1.4", "1.5"]),
       productBibleId: z.string(),
       productBibleVersion: z.string(),
       mode: z.enum(["LIVE", "SIMULATION"]),
@@ -95,7 +96,7 @@ export function resolveSeasonCardRules(
   | {
       supported: true;
       rules: CardRules;
-      version: "1.0" | "1.1" | "1.2" | "1.3" | "1.4";
+      version: "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5";
     }
   | { supported: false; message: string } {
   const parsed = snapshotSchema.safeParse(snapshot);
@@ -118,13 +119,15 @@ export function resolveSeasonCardRules(
     canonical.id !== expectedId ||
     canonical.productBibleId !== "SUNDAY-LEDGER-PRODUCT-BIBLE-V3" ||
     canonical.productBibleVersion !==
-      (canonical.version === "1.4"
-        ? "3.3"
-        : canonical.version === "1.3"
-          ? "3.2"
-          : canonical.version === "1.2"
-            ? "3.1"
-            : "3.0")
+      (canonical.version === "1.5"
+        ? "3.4"
+        : canonical.version === "1.4"
+          ? "3.3"
+          : canonical.version === "1.3"
+            ? "3.2"
+            : canonical.version === "1.2"
+              ? "3.1"
+              : "3.0")
   )
     return { supported: false, message: unavailableCardRulesMessage };
 
@@ -132,15 +135,19 @@ export function resolveSeasonCardRules(
   // reinterpret standings/playoff history or replace any snapshot with a bundle.
   const raw = (snapshot as { canonicalJson: unknown }).canonicalJson;
   const rules = (
-    canonical.version === "1.4"
+    canonical.version === "1.5"
       ? rollingCardRulesSchema.extend({
-          markets: seasonRulesetV14Schema.shape.markets,
+          markets: seasonRulesetV15Schema.shape.markets,
         })
-      : canonical.version === "1.3"
-        ? rollingCardRulesSchema
-        : canonical.version === "1.0"
-          ? historicalCardRulesSchema
-          : atomicCardRulesSchema
+      : canonical.version === "1.4"
+        ? rollingCardRulesSchema.extend({
+            markets: seasonRulesetV14Schema.shape.markets,
+          })
+        : canonical.version === "1.3"
+          ? rollingCardRulesSchema
+          : canonical.version === "1.0"
+            ? historicalCardRulesSchema
+            : atomicCardRulesSchema
   ).safeParse(raw);
   return rules.success
     ? { supported: true, rules: rules.data, version: canonical.version }

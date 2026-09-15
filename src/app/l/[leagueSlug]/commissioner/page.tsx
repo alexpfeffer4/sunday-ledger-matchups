@@ -72,6 +72,8 @@ export default async function CommissionerPage({
             frozen={menu.frozen}
             amendmentPending={menu.amendmentPending ?? false}
             amendmentApplied={menu.amendmentApplied ?? false}
+            progressiveAvailability={menu.progressiveAvailability ?? false}
+            progressiveActivated={menu.progressiveActivated ?? false}
             prepareAction={preparePlayerPropMenuAction}
             confirmAction={confirmPlayerPropMenuAction}
             refreshAction={refreshPlayerPropQuotesAction}

@@ -123,19 +123,36 @@ export async function confirmPlayerPropMenuAction(
     return failure("");
   }
   const choices = choicesSchema.safeParse(raw);
-  if (!slug.success || !choices.success || form.get("confirmed") !== "true")
+  const policy = form.get("emptySlotPublication");
+  const progressive = policy === "AUTOMATIC_BEFORE_EVENT_CUTOFF";
+  if (
+    !slug.success ||
+    !choices.success ||
+    (policy !== null && !progressive) ||
+    (!progressive && form.get("confirmed") !== "true")
+  )
     return failure("");
   const client = await createSupabaseServerClient();
-  const result = await client.schema("api").rpc("confirm_player_prop_menu", {
-    p_league_slug: slug.data,
-    p_choices: choices.data,
-  });
+  // The distinct policy value comes from the actual acknowledgement checkbox.
+  // An old form stays on the legacy RPC, which rejects progressive scopes.
+  const result = progressive
+    ? await client.schema("api").rpc("confirm_progressive_player_prop_menu", {
+        p_league_slug: slug.data,
+        p_choices: choices.data,
+        p_empty_slot_publication: policy,
+      })
+    : await client.schema("api").rpc("confirm_player_prop_menu", {
+        p_league_slug: slug.data,
+        p_choices: choices.data,
+      });
   if (result.error) return failure(result.error.message);
   revalidatePath(`/l/${slug.data}/commissioner`);
   revalidatePath(`/l/${slug.data}/slate`);
   return {
     status: "success",
-    message: "Player choices confirmed for this week.",
+    message: progressive
+      ? "Available players and the automatic pending-slot policy confirmed."
+      : "Player choices confirmed for this week.",
   };
 }
 

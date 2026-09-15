@@ -126,7 +126,11 @@ export function PlayerPropsGame({
               sameSelection(position, identity),
             );
             const unavailable = !slot.subjectId
-              ? "Player unavailable for this week"
+              ? !bettingOpen
+                ? "Unavailable for this game."
+                : slot.lateFillEligible
+                  ? "Unavailable now · Check back before kickoff."
+                  : "Player unavailable for this week"
               : outcomes.length === 0
                 ? "Awaiting line"
                 : outcomes.every((market) => market.qualityStatus !== "HEALTHY")
@@ -158,6 +162,11 @@ export function PlayerPropsGame({
                   {accepted || selectedDraft ? (
                     <p className="text-positive mt-1 text-xs font-semibold">
                       {accepted ? "Submitted" : "In your drafts"}
+                    </p>
+                  ) : null}
+                  {slot.subjectId && slot.publicationMode === "AUTOMATIC" ? (
+                    <p className="text-muted mt-1 text-xs">
+                      Added automatically before kickoff.
                     </p>
                   ) : null}
                 </div>
