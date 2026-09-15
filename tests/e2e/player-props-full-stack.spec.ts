@@ -329,7 +329,23 @@ for (const games of [14, 16]) {
         name: /^(Prepare player menu|Update proposed choices)$/,
       });
       await expect(prepareMenu).toBeVisible();
-      await prepareMenu.click({ timeout: 10_000 });
+      // Canonical games can already expose 48 players from an earlier fixture.
+      // Wait for this real Prepare action to finish before polling its committed
+      // menu; the action itself can occupy most of the assertion's five seconds.
+      const [preparedResponse] = await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.request().method() === "POST" &&
+            new URL(response.url()).pathname === `/l/${slug}/commissioner`,
+        ),
+        prepareMenu.click({ timeout: 10_000 }),
+      ]);
+      expect(preparedResponse.ok()).toBe(true);
+      await expect(
+        page.getByRole("status").filter({
+          hasText: "The proposed players are ready to review.",
+        }),
+      ).toBeVisible();
       await expect
         .poll(async () => {
           const menu = playerPropMenuSchema.parse(
