@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { diagnoseSmokeSourceFailure } from "./source-smoke-diagnostics";
 import {
   normalizeCatalogGames,
   normalizeCatalogRoster,
@@ -46,18 +47,32 @@ export type SourceSmokeReport = z.infer<typeof sourceSmokeReportSchema>;
 
 export function validateSmokeCoverage(source: CatalogSource, season = 2026) {
   if (season !== 2026) throw new Error("SMOKE_SEASON_UNSUPPORTED");
-  sanitizeCatalogSource(
-    "COVERAGE",
-    source,
-    season,
-    null,
-    new Date().toISOString(),
-  );
+  try {
+    sanitizeCatalogSource(
+      "COVERAGE",
+      source,
+      season,
+      null,
+      new Date().toISOString(),
+    );
+  } catch (error) {
+    throw diagnoseSmokeSourceFailure(source, error);
+  }
 }
 
 /** Choose from the actual response, before catalog sanitization removes status.
  * A completed sample is evidence of access, not permission or completeness. */
 export function selectSmokeGame(source: CatalogSource, now: string): SmokeGame {
+  try {
+    return selectSmokeGameSource(source, now);
+  } catch (error) {
+    if (error instanceof z.ZodError)
+      throw diagnoseSmokeSourceFailure(source, error);
+    throw error;
+  }
+}
+
+function selectSmokeGameSource(source: CatalogSource, now: string): SmokeGame {
   if (!Number.isFinite(Date.parse(now))) throw new Error("SMOKE_TIME_INVALID");
   const games = normalizeCatalogGames(source, 2026, now);
   const statuses = z
@@ -99,6 +114,19 @@ export function selectSmokeGame(source: CatalogSource, now: string): SmokeGame {
   );
   if (!candidates.length) throw new Error("SMOKE_COMPLETED_GAME_UNAVAILABLE");
   return candidates[0];
+}
+
+export function validateSmokeRoster(source: CatalogSource, teamId: string) {
+  try {
+    return normalizeCatalogRoster(
+      source,
+      2026,
+      teamId,
+      new Date().toISOString(),
+    );
+  } catch (error) {
+    throw diagnoseSmokeSourceFailure(source, error);
+  }
 }
 
 const boxSchema = z.object({
@@ -151,12 +179,18 @@ export function summarizeSmokeSample(input: {
     throw new Error("SMOKE_GAME_IDENTITY_UNVERIFIED");
   const teams = [game.away, game.home];
   const rosters = input.rosters.map((source, index) =>
-    normalizeCatalogRoster(source, 2026, teams[index].id, now),
+    validateSmokeRoster(source, teams[index].id),
   );
   const rosterIds = rosters.flat().map((row) => row.id);
   if (new Set(rosterIds).size !== rosterIds.length)
     throw new Error("SMOKE_ROSTER_TEAMS_AMBIGUOUS");
-  const box = boxSchema.parse(input.boxScore.payload);
+  const box = (() => {
+    try {
+      return boxSchema.parse(input.boxScore.payload);
+    } catch (error) {
+      throw diagnoseSmokeSourceFailure(input.boxScore, error);
+    }
+  })();
   const fetchedAt = Date.parse(input.boxScore.fetchedAt);
   if (
     !Number.isFinite(fetchedAt) ||

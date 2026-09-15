@@ -74,3 +74,33 @@ it("does not log or return raw errors containing provider secrets", async () => 
   expect(log).not.toHaveBeenCalled();
   log.mockRestore();
 });
+
+it("returns bounded source diagnostics only through the authorized uncached response", async () => {
+  vi.stubEnv("SCORE_JOB_SECRET", "fixture-secret");
+  const result = {
+    status: "UNAVAILABLE",
+    failureStage: "COVERAGE",
+    failureCode: "SOURCE_SHAPE_UNSUPPORTED",
+    sourceDiagnostic: {
+      reason: "SCHEMA_MISMATCH",
+      providerErrorCategories: [],
+      issues: [
+        {
+          path: ["*", "league"],
+          code: "invalid_type",
+          expectedType: "object",
+          observedType: "undefined",
+        },
+      ],
+    },
+  };
+  mocks.check.mockResolvedValue(result);
+  const unauthorized = await POST(request("Bearer wrong"));
+  expect(unauthorized.status).toBe(401);
+  expect(await unauthorized.json()).toEqual({ error: "Unauthorized" });
+  expect(mocks.check).not.toHaveBeenCalled();
+  const authorized = await POST(request());
+  expect(authorized.status).toBe(503);
+  expect(authorized.headers.get("cache-control")).toBe("private, no-store");
+  expect(await authorized.json()).toEqual(result);
+});

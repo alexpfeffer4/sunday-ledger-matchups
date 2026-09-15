@@ -2,10 +2,15 @@ import { z } from "zod";
 import type { CatalogSource } from "@/adapters/providers/player-catalog-normalizer";
 import type { StatisticsUsage } from "@/adapters/providers/api-sports/client";
 import {
+  sourceSmokeDiagnosticSchema,
+  SmokeSourceFailure,
+} from "@/adapters/providers/api-sports/source-smoke-diagnostics";
+import {
   selectSmokeGame,
   sourceSmokeReportSchema,
   summarizeSmokeSample,
   validateSmokeCoverage,
+  validateSmokeRoster,
   type SmokeGame,
 } from "@/adapters/providers/api-sports/source-smoke-normalizer";
 
@@ -177,10 +182,12 @@ export async function executePlayerSourceSmoke(
     const away = await request((usage) =>
       fetchers.catalog("ROSTER", 2026, game!.away.id, usage),
     );
+    validateSmokeRoster(away, game.away.id);
     stage = "HOME_ROSTER";
     const home = await request((usage) =>
       fetchers.catalog("ROSTER", 2026, game!.home.id, usage),
     );
+    validateSmokeRoster(home, game.home.id);
     stage = "BOX_SCORE";
     const box = await request((usage) => fetchers.boxScore(game!.id, usage));
     stage = "SUMMARY";
@@ -193,6 +200,18 @@ export async function executePlayerSourceSmoke(
   } catch (error) {
     if (error instanceof SmokeBudgetDeferred)
       return complete({ status: "DEFERRED", failureCode: "BUDGET_DEFERRED" });
+    if (error instanceof SmokeSourceFailure) {
+      const completed = await complete({
+        status: "UNAVAILABLE",
+        failureCode: error.failureCode,
+      });
+      // Do not persist payload-derived diagnostics or replay provider reads to
+      // reproduce them. Only this authenticated first response includes them.
+      return {
+        ...completed,
+        sourceDiagnostic: sourceSmokeDiagnosticSchema.parse(error.diagnostic),
+      };
+    }
     const message = error instanceof Error ? error.message : "";
     const failureCode =
       message === "CATALOG_CURRENT_SEASON_UNAVAILABLE"
