@@ -89,6 +89,7 @@ export type LeagueScoreboardItem = {
 };
 
 export type PairedMatchupDto = {
+  historical?: boolean;
   spectator?: boolean;
   gameIdentitiesVisible?: boolean;
   league: {

@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { fetchApiSportsQuotaStatus } from "@/adapters/providers/api-sports/client";
 import { processPlayerResults } from "@/adapters/providers/player-result-worker";
 import { processPendingPlayerCatalog } from "@/application/players/catalog-preparation";
 
@@ -16,6 +17,32 @@ export async function POST(request: Request) {
     !timingSafeEqual(actual, expected)
   ) {
     return Response.json({ error: "Unauthorized" }, { status: 401, headers });
+  }
+  if (new URL(request.url).searchParams.get("check") === "statistics-account") {
+    if (!process.env.API_SPORTS_NFL_KEY) {
+      return Response.json(
+        { status: "UNCONFIGURED" },
+        { status: 503, headers },
+      );
+    }
+    try {
+      // This protected, quota-free check reads only normalized account status.
+      // It cannot dispatch work, change readiness, or expose provider account data.
+      const { active, dailyLimit, used, observedAt } =
+        await fetchApiSportsQuotaStatus();
+      return Response.json(
+        {
+          status: active ? "READY" : "UNAVAILABLE",
+          active,
+          dailyLimit,
+          used,
+          observedAt,
+        },
+        { status: active ? 200 : 503, headers },
+      );
+    } catch {
+      return Response.json({ status: "UNAVAILABLE" }, { status: 503, headers });
+    }
   }
   try {
     // Start accepted-result work first. The database also gives due results

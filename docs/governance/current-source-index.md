@@ -1,5 +1,20 @@
 # Sunday Ledger — current governing source index
 
+## Player props release approval — September 15, 2026
+
+The owner approved PR #51's combined additive migration, merge/deployment,
+server/scheduler configuration and conditional future-week activation plan,
+including the bounded source-validation allowance and compatible recovery plan.
+The owner authorized obtaining API-Sports use/retention clarification and reported
+creating `API_SPORTS_NFL_KEY`. The existing Odds API account is still on the free
+tier; purchases remain excluded and upgraded caps/live offers remain gated on
+verified entitlement, source readiness and commissioner menu review.
+
+This release incorporates current main `6be1f0efb22ea303ebff09196d0a0cd6b6a6dc04`,
+preserving PR #52's scheduled-day filters and PR #53's historical matchups.
+Release approval is retained; outstanding account access is not a request to
+repeat that approval. The dated build boundary below records the earlier state.
+
 ## Full-slate player props preparation — September 14, 2026
 
 The owner authorized the prospective [full-slate props and Submit recovery contract](../player-props.md),
@@ -14,6 +29,11 @@ Read-only checks for this build verified main and Production at PR #50,
 superseded by that verified rollout. It must not trigger duplicate activation or
 downgrade. The feature release record distinguishes fixture/code evidence from
 provider readiness and actual settlement latency.
+
+September 15 owner-approved [historical matchup browsing](../historical-matchup-browsing.md)
+connects completed weeks, Schedule and History to the paired bet details. This is
+a read-only navigation/presentation change using existing authorized queries;
+no rules, data permissions or stored competition records change.
 
 ## Matchup presentation amendment — 2026-09-14
 

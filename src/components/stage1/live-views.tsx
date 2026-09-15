@@ -1,3 +1,5 @@
+import { projectScheduleWeeks } from "@/application/presentation/schedule-weeks";
+import type { WeeklyCloseStateDto } from "@/application/queries/weekly-close-dtos";
 import type { LeagueMatchupCards } from "@/application/queries/league-matchup-dtos";
 import { competitionLabel } from "@/application/presentation/competition-label";
 import {
@@ -26,10 +28,7 @@ import { LeagueSettings } from "@/components/commissioner/league-settings";
 import type { MyLeagueSummary } from "@/application/queries/get-my-league-summary";
 import { PageFrame } from "@/components/league/page-frame";
 import { StandingsTable } from "@/components/league/standings-table";
-import {
-  ScheduleNavigator,
-  type ScheduleWeekRecord,
-} from "@/components/league/schedule-navigator";
+import { ScheduleNavigator } from "@/components/league/schedule-navigator";
 import {
   StandingsRulesetSummary,
   type RulesetPresentation,
@@ -1192,107 +1191,20 @@ export function Stage1CommissionerView({
 export function Stage1ScheduleView({
   liveSchedule,
   state,
+  history,
 }: {
   liveSchedule?: LiveRegularSeasonSchedule | null;
   state: Stage1StateDto;
+  history?: WeeklyCloseStateDto | null;
 }) {
   const currentWeek = state.week?.nflWeek ?? 1;
-  const currentPair = new Map(
-    state.schedule.map((matchup) => [
-      [matchup.sideAEntryId, matchup.sideBEntryId].sort().join(":"),
-      matchup,
-    ]),
-  );
-  const weeks: ScheduleWeekRecord[] = liveSchedule
-    ? Array.from({ length: 14 }, (_, index) => index + 1).map((week) => ({
-        week,
-        label: `Week ${week}`,
-        status:
-          week === currentWeek
-            ? weekStatus(state)
-            : week < currentWeek
-              ? "Final"
-              : "Scheduled",
-        matchups: liveSchedule.matchups
-          .filter((matchup) => matchup.week === week)
-          .map((matchup) => {
-            const current = currentPair.get(
-              [matchup.sideAEntryId, matchup.sideBEntryId].sort().join(":"),
-            );
-            const sameOrder = current?.sideAEntryId === matchup.sideAEntryId;
-            return {
-              id: `${week}-${matchup.sideAEntryId}-${matchup.sideBEntryId}`,
-              sideAName: matchup.sideAName,
-              sideBName: matchup.sideBName,
-              sideAScoreCenticredits:
-                week === currentWeek
-                  ? sameOrder
-                    ? (current?.result?.sideAPointsForCenticredits ?? null)
-                    : (current?.result?.sideBPointsForCenticredits ?? null)
-                  : null,
-              sideBScoreCenticredits:
-                week === currentWeek
-                  ? sameOrder
-                    ? (current?.result?.sideBPointsForCenticredits ?? null)
-                    : (current?.result?.sideAPointsForCenticredits ?? null)
-                  : null,
-              status:
-                week === currentWeek
-                  ? (current?.result?.status ?? weekStatus(state))
-                  : week < currentWeek
-                    ? "Final"
-                    : "Scheduled",
-              competition: "Regular season",
-              currentMember: [
-                matchup.sideAEntryId,
-                matchup.sideBEntryId,
-              ].includes(state.viewer.entryId),
-              sideAWinner: sameOrder
-                ? current?.result?.sideADecision === "WIN"
-                : current?.result?.sideBDecision === "WIN",
-              sideBWinner: sameOrder
-                ? current?.result?.sideBDecision === "WIN"
-                : current?.result?.sideADecision === "WIN",
-            };
-          }),
-      }))
-    : [];
-
-  if (state.week && !weeks.some((week) => week.week === currentWeek)) {
-    weeks.push({
-      week: currentWeek,
-      label:
-        currentWeek === 18 ? "Week 18 · Exhibition" : `Week ${currentWeek}`,
-      status: weekStatus(state),
-      matchups: state.schedule.map((matchup) => ({
-        id: matchup.id,
-        sideAName: matchup.sideAName,
-        sideBName: matchup.sideBName,
-        sideAScoreCenticredits:
-          matchup.result?.sideAPointsForCenticredits ?? null,
-        sideBScoreCenticredits:
-          matchup.result?.sideBPointsForCenticredits ?? null,
-        status: matchup.result?.status ?? weekStatus(state),
-        competition: competitionLabel({
-          lifecycle: state.league.lifecycle,
-          postseasonRole: matchup.postseasonRole,
-          scope: matchup.scope,
-          week: currentWeek,
-        }),
-        currentMember: [matchup.sideAEntryId, matchup.sideBEntryId].includes(
-          state.viewer.entryId,
-        ),
-        sideAWinner: matchup.result?.sideADecision === "WIN",
-        sideBWinner: matchup.result?.sideBDecision === "WIN",
-      })),
-    });
-  }
+  const weeks = projectScheduleWeeks(state, liveSchedule, history);
 
   return (
     <PageFrame
       eyebrow="Published at roster lock"
       title="Schedule"
-      description="Choose one week to review its authoritative matchups. Private card terms are never included."
+      description="Choose a week, then open a matchup to see its score and revealed bets."
       aside={liveStatus(state)}
     >
       {!state.week && !liveSchedule ? (

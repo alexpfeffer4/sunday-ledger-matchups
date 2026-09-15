@@ -5,6 +5,7 @@ import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stag
 import { getSeasonArchive } from "@/application/queries/get-season-archive";
 import { SeasonArchiveSchedule } from "@/components/season/archive-views";
 import { Stage1ScheduleView } from "@/components/stage1/live-views";
+import { getWeeklyCloseState } from "@/application/queries/get-weekly-close-state";
 
 export const metadata: Metadata = { title: "Schedule" };
 
@@ -14,14 +15,22 @@ export default async function SchedulePage({
   params: Promise<{ leagueSlug: string }>;
 }) {
   const { leagueSlug } = await params;
-  const [live, archive, liveSchedule] = await Promise.all([
+  const [live, archive, liveSchedule, history] = await Promise.all([
     getAuthoritativeLeagueState(leagueSlug),
     getSeasonArchive(leagueSlug),
     getLiveRegularSeasonSchedule(leagueSlug),
+    getWeeklyCloseState(leagueSlug),
   ]);
-  if (archive) return <SeasonArchiveSchedule archive={archive} />;
+  if (archive)
+    return <SeasonArchiveSchedule archive={archive} leagueSlug={leagueSlug} />;
   if (live) {
-    return <Stage1ScheduleView liveSchedule={liveSchedule} state={live} />;
+    return (
+      <Stage1ScheduleView
+        liveSchedule={liveSchedule}
+        state={live}
+        history={history}
+      />
+    );
   }
   notFound();
 }

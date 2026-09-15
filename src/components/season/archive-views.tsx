@@ -1,3 +1,4 @@
+import { matchupHref } from "@/application/presentation/matchup-link";
 import Link from "next/link";
 import type { SeasonArchiveDto } from "@/application/queries/season-archive-dtos";
 import { PageFrame } from "@/components/league/page-frame";
@@ -178,6 +179,14 @@ export function SeasonArchiveHome({
             card, the playoff path, and the Week 18 exhibitions.
           </p>
           <div className="mt-5 flex flex-wrap gap-4">
+            {!isExample ? (
+              <Link
+                href={matchupHref(leagueSlug, 18)}
+                className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
+              >
+                Browse matchups and bets
+              </Link>
+            ) : null}
             <Link
               className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
               href={`/l/${leagueSlug}/schedule`}
@@ -404,8 +413,10 @@ export function SeasonArchiveMyCard({
 
 export function SeasonArchiveSchedule({
   archive,
+  leagueSlug,
 }: {
   archive: SeasonArchiveDto;
+  leagueSlug?: string;
 }) {
   const isExample = archive.illustrative === true;
   const modeLabel = archive.mode === "SIMULATION" ? "Simulation" : "Live";
@@ -451,6 +462,10 @@ export function SeasonArchiveSchedule({
           : "Final";
     return {
       id: matchup.id,
+      href:
+        leagueSlug && !isExample
+          ? matchupHref(leagueSlug, matchup.week, matchup.id)
+          : undefined,
       sideAName: line.sideA,
       sideBName: line.sideB,
       sideAScoreCenticredits: matchup.sideAScoreCenticredits,
@@ -785,8 +800,10 @@ export function SeasonArchivePlayoffs({
 
 export function SeasonArchiveHistory({
   archive,
+  leagueSlug,
 }: {
   archive: SeasonArchiveDto;
+  leagueSlug?: string;
 }) {
   const isExample = archive.illustrative === true;
   const modeLabel = archive.mode === "SIMULATION" ? "Simulation" : "Live";
@@ -856,6 +873,14 @@ export function SeasonArchiveHistory({
                     {viewer} vs {memberName(archive, opponentId)}
                   </p>
                   <p className="text-muted mt-1 text-xs">{game.label}</p>
+                  {leagueSlug && !isExample ? (
+                    <Link
+                      href={matchupHref(leagueSlug, game.week, game.id)}
+                      className="text-action inline-flex min-h-11 items-center text-sm font-semibold hover:underline"
+                    >
+                      View matchup and bets
+                    </Link>
+                  ) : null}
                 </div>
                 <p className="font-mono text-sm font-semibold">
                   {exhibitionMiss ? (

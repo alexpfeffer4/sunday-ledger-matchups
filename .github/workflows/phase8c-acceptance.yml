@@ -187,6 +187,7 @@ jobs:
           npx playwright test tests/e2e/release-readiness-full-stack.spec.ts
           tests/e2e/rolling-submissions-full-stack.spec.ts
           tests/e2e/player-props-full-stack.spec.ts
+          tests/e2e/controlled-league-full-stack.spec.ts
           --project=mobile --workers=1 --reporter=github,json --output=test-results/mobile-member
 
       - name: Require zero skipped mobile member tests
