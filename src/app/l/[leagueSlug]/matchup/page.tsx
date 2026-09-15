@@ -16,6 +16,8 @@ import { Stage1MatchupView } from "@/components/stage1/live-views";
 import { projectSeasonMemory } from "@/domain/history/project-season-memory";
 import { ownerCardContext } from "@/components/card/owner-card-context";
 import { OwnerCardProgress } from "@/components/card/owner-card-progress";
+import { projectHistoricalMatchup } from "@/application/queries/project-historical-matchup";
+import { matchupHref } from "@/application/presentation/matchup-link";
 
 export const metadata: Metadata = { title: "Matchup" };
 
@@ -24,26 +26,122 @@ export default async function MatchupPage({
   searchParams,
 }: {
   params: Promise<{ leagueSlug: string }>;
-  searchParams: Promise<{ matchup?: string | string[] }>;
+  searchParams: Promise<{
+    matchup?: string | string[];
+    week?: string | string[];
+  }>;
 }) {
   const { leagueSlug } = await params;
-  const requested = (await searchParams).matchup;
+  const query = await searchParams;
+  const requested = query.matchup;
+  if (
+    query.week !== undefined &&
+    (typeof query.week !== "string" || !/^(?:[1-9]|1[0-8])$/.test(query.week))
+  )
+    notFound();
+  const requestedWeek = query.week ? Number(query.week) : undefined;
   if (
     requested !== undefined &&
     (typeof requested !== "string" ||
       !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(requested))
   )
     notFound();
-  const [live, archive, operations, weeklyCloseState] = await Promise.all([
+  const [live, archive, weeklyCloseState] = await Promise.all([
     getAuthoritativeLeagueState(leagueSlug),
     getSeasonArchive(leagueSlug),
-    getLiveWeekOperations(leagueSlug),
     getWeeklyCloseState(leagueSlug),
   ]);
+  const selectedWeek = weeklyCloseState?.weeks.find(
+    (week) => week.nflWeek === requestedWeek,
+  );
+  const weekOptions = (selected: number) =>
+    [
+      ...(weeklyCloseState?.weeks ?? [])
+        .filter(
+          (week) =>
+            week.state === "FINAL" && week.nflWeek !== live?.week?.nflWeek,
+        )
+        .map((week) => ({
+          week: week.nflWeek,
+          href: matchupHref(leagueSlug, week.nflWeek),
+          selected: week.nflWeek === selected,
+          current: false,
+        })),
+      ...(live?.week
+        ? [
+            {
+              week: live.week.nflWeek,
+              href: archive
+                ? matchupHref(leagueSlug, live.week.nflWeek)
+                : `/l/${leagueSlug}/matchup`,
+              selected: live.week.nflWeek === selected,
+              current: !archive,
+            },
+          ]
+        : []),
+    ].sort((a, b) => b.week - a.week);
+  if (
+    requestedWeek !== undefined &&
+    selectedWeek?.state === "FINAL" &&
+    weeklyCloseState
+  ) {
+    const selectedGame = weeklyCloseState.matchups.find(
+      (game) =>
+        game.seasonId === weeklyCloseState.season.id &&
+        game.weekId === selectedWeek.id &&
+        (requested
+          ? game.id === requested
+          : [game.sideAEntryId, game.sideBEntryId].includes(
+              weeklyCloseState.viewer.entryId,
+            )),
+    );
+    if (!selectedGame || selectedGame.result?.status !== "FINAL") notFound();
+    const cards = await getLeagueMatchupCards(leagueSlug, selectedWeek.id);
+    const matchup = projectHistoricalMatchup(
+      weeklyCloseState,
+      cards,
+      requestedWeek,
+      requested,
+    );
+    if (!matchup)
+      throw new Error("Historical bets could not be loaded. Please try again.");
+    const corrections = weeklyCloseState.corrections.filter(
+      (correction) =>
+        correction.weekId === selectedWeek.id &&
+        correction.effects.some(
+          (effect) => effect.matchupId === selectedGame.id,
+        ),
+    );
+    return (
+      <PairedMatchupView
+        matchup={matchup}
+        seasonArchived={Boolean(archive)}
+        weeks={weekOptions(requestedWeek)}
+        refreshControl={null}
+        weeklyClose={
+          corrections.length ? (
+            <details className="border-boundary rounded-lg border px-4">
+              <summary className="min-h-11 cursor-pointer py-3 font-semibold">
+                Result corrections
+              </summary>
+              {corrections.map((correction) => (
+                <p key={correction.id} className="pb-3 text-sm">
+                  {correction.eventLabel}: {correction.reason}
+                </p>
+              ))}
+            </details>
+          ) : null
+        }
+      />
+    );
+  }
+  if (requestedWeek !== undefined && requestedWeek !== live?.week?.nflWeek)
+    notFound();
   if (archive) {
     return <SeasonArchiveHome archive={archive} leagueSlug={leagueSlug} />;
   }
   if (live) {
+    const operations = await getLiveWeekOperations(leagueSlug);
     const playoffState = [
       "PLAYOFFS",
       "CHAMPION_FINAL",
@@ -86,19 +184,7 @@ export default async function MatchupPage({
     return matchup ? (
       <PairedMatchupView
         matchup={matchup}
-        weeks={[
-          ...(memory?.activeHistory ?? [])
-            .filter((result) => result.nflWeek !== matchup.week.nflWeek)
-            .map((result) => ({
-              week: result.nflWeek,
-              href: `/l/${leagueSlug}/history#result-${result.versionId}`,
-            })),
-          {
-            week: matchup.week.nflWeek,
-            href: `/l/${leagueSlug}/matchup`,
-            current: true,
-          },
-        ].sort((a, b) => b.week - a.week)}
+        weeks={weekOptions(matchup.week.nflWeek)}
         cardProgress={
           matchup.spectator ? undefined : (
             <OwnerCardProgress

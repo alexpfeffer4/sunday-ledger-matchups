@@ -62,6 +62,7 @@ type StageState = {
     }>;
   }>;
   week: {
+    nflWeek: number;
     commonLockAt: string;
     correctionWindowClosesAt: string | null;
     state: string;
@@ -291,18 +292,27 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   confirmationUrl.searchParams.set("flow", "create-account");
   confirmationUrl.searchParams.set("next", invitePath);
   await page.goto(confirmationUrl.toString());
+  expect(
+    (await page.context().cookies(baseURL)).filter((cookie) =>
+      /^sb-.+-auth-token(?:\.\d+)?$/.test(cookie.name),
+    ),
+  ).toEqual([]);
   const confirmationResponsePromise = page.waitForResponse(
     (response) =>
       response.url() === `${baseURL}/auth/confirm` &&
       response.request().method() === "POST",
   );
   await page.getByRole("button", { name: "Confirm and continue" }).click();
-  const confirmationResponse = await confirmationResponsePromise;
+  await confirmationResponsePromise;
   await page.waitForURL(/\/account\/setup/);
-  const confirmationSetCookie =
-    await confirmationResponse.headerValue("set-cookie");
+  // WebKit omits Set-Cookie from the browser response headers. Verify the
+  // session the browser actually stored, then use it through setup and joining.
   const browserSessionCookies = (await page.context().cookies(baseURL))
-    .filter((cookie) => cookie.name.includes("auth-token"))
+    .filter(
+      (cookie) =>
+        /^sb-.+-auth-token(?:\.\d+)?$/.test(cookie.name) &&
+        cookie.value.length > 0,
+    )
     .map(({ domain, httpOnly, name, path, sameSite, secure }) => ({
       domain,
       httpOnly,
@@ -317,7 +327,6 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     error: confirmationDestination.searchParams.get("error"),
     hasTokenHash: confirmationDestination.searchParams.has("token_hash"),
     pathname: confirmationDestination.pathname,
-    setsSessionCookie: Boolean(confirmationSetCookie?.includes("auth-token")),
   }).toEqual({
     browserSessionCookies: expect.arrayContaining([
       expect.objectContaining({
@@ -330,7 +339,6 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     error: null,
     hasTokenHash: false,
     pathname: "/account/setup",
-    setsSessionCookie: true,
   });
   await expect(
     page.getByRole("heading", { name: "Finish account setup" }),
@@ -343,7 +351,10 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   await page.getByRole("button", { name: "Join league" }).click();
   await page.waitForURL(`**/l/${slug}/matchup`);
   await expect(
-    page.getByText("Practice/test · Simulation").first(),
+    page
+      .locator("[data-league-header]")
+      .getByText("Practice/test · Simulation")
+      .filter({ visible: true }),
   ).toBeVisible();
 
   const invitedUsers = await admin.auth.admin.listUsers({
@@ -648,5 +659,98 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
       .locator(".paired-matchup-card .status-badge")
       .filter({ hasText: "Final" }),
   ).toBeVisible();
+  // Historical navigation must read the selected week's authorized receipts
+  // after the current-week query has moved on to a new, empty card.
+  await commissionerBrowser.page
+    .getByRole("button", { name: "Advance to Week 2 publication time" })
+    .click();
+  await expect(
+    commissionerBrowser.page.getByRole("button", {
+      name: "Advance to Week 2 publication time",
+    }),
+  ).toBeEnabled();
+  await commissionerBrowser.page
+    .getByRole("button", { name: "Make reviewed Week 2 available" })
+    .click();
+  await expect
+    .poll(async () => (await getState(invitedClient, slug)).week?.nflWeek)
+    .toBe(2);
+  await page.goto(`/l/${slug}/matchup`);
+  await expect(
+    page.getByRole("heading", { name: "Week 2 matchup", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("combobox", { name: "Week", exact: true })
+    .selectOption({ label: "Week 1 · Final" });
+  await expect(page).toHaveURL(`/l/${slug}/matchup?week=1`);
+  await expect(
+    page.getByRole("heading", { name: "Week 1 matchup", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(opponentMarket.proposition, { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Completed week · Read-only")).toBeVisible();
+  expect(await page.content()).not.toContain(opponentReceipt.receiptHash);
+  const ownHistoricalUrl = page.url();
+  const otherMatchup = await page
+    .getByRole("combobox", { name: "Matchup", exact: true })
+    .locator("option")
+    .evaluateAll((options) =>
+      options
+        .filter((option) => !option.textContent?.includes(" · You"))
+        .map((option) => (option as HTMLOptionElement).value),
+    );
+  expect(otherMatchup).toHaveLength(1);
+  await page
+    .getByRole("combobox", { name: "Matchup", exact: true })
+    .selectOption(otherMatchup[0]!);
+  await expect(page).toHaveURL(new RegExp(`week=1&matchup=${otherMatchup[0]}`));
+  await expect(page.getByText("Completed week · Read-only")).toBeVisible();
+  await page.getByRole("link", { name: "Back to your matchup" }).click();
+  await expect(page).toHaveURL(ownHistoricalUrl);
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth,
+      ),
+    ).toBe(true);
+  }
+  await page.screenshot({
+    path: test.info().outputPath("historical-matchup-320.png"),
+    fullPage: true,
+  });
+  await page.getByRole("link", { name: "Back to current week" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Week 2 matchup", exact: true }),
+  ).toBeVisible();
+  await page.goto(`/l/${slug}/history`);
+  await page.getByRole("link", { name: "View matchup and bets" }).click();
+  await expect(
+    page.getByText(opponentMarket.proposition, { exact: true }),
+  ).toBeVisible();
+  await page.goto(`/l/${slug}/schedule`);
+  await page
+    .getByRole("combobox", { name: "Selected week", exact: true })
+    .selectOption("1");
+  await page
+    .getByRole("link", { name: /View .* matchup and bets/ })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Week 1 matchup", exact: true }),
+  ).toBeVisible();
+  const denied = await newPage(browser);
+  await browserSignIn(denied.page, outsider, "/leagues");
+  await denied.page.goto(ownHistoricalUrl);
+  expect(await denied.page.content()).not.toContain(opponentMarket.proposition);
+  await expect(
+    denied.page.getByRole("heading", {
+      name: /This league is not available|There is no Ledger page here/,
+    }),
+  ).toBeVisible();
+  await denied.context.close();
   await commissionerBrowser.context.close();
 });

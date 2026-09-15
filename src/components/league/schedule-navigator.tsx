@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { formatCenticredits } from "@/domain/odds/american";
 
 export type ScheduleMatchupRecord = {
@@ -14,6 +15,7 @@ export type ScheduleMatchupRecord = {
   currentMember: boolean;
   sideAWinner?: boolean;
   sideBWinner?: boolean;
+  href?: string;
 };
 
 export type ScheduleWeekRecord = {
@@ -73,6 +75,15 @@ export function MatchupRow({ matchup }: { matchup: ScheduleMatchupRecord }) {
       </div>
       <p className="text-graphite text-xs font-bold sm:text-right">
         {matchup.status}
+        {matchup.href ? (
+          <Link
+            href={matchup.href}
+            className="text-action mt-1 flex min-h-11 items-center font-semibold hover:underline"
+            aria-label={`View ${matchup.sideAName} versus ${matchup.sideBName} matchup and bets`}
+          >
+            View matchup & bets
+          </Link>
+        ) : null}
       </p>
     </li>
   );

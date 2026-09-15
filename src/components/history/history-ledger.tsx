@@ -4,6 +4,7 @@ import { matchupScopeLabel } from "@/domain/history/project-season-memory";
 import { formatCenticredits } from "@/domain/odds/american";
 import { PageFrame } from "@/components/league/page-frame";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { matchupHref } from "@/application/presentation/matchup-link";
 
 function score(value: number): string {
   return formatCenticredits(BigInt(value), true);
@@ -95,6 +96,12 @@ export function HistoryLedger({
                   {score(matchup.opponent.scoreCenticredits)}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+                  <Link
+                    className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
+                    href={matchupHref(leagueSlug, matchup.nflWeek, matchup.id)}
+                  >
+                    View matchup and bets
+                  </Link>
                   <Link
                     className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
                     href={`/l/${leagueSlug}/rivalry/${matchup.self.entryId}/${matchup.opponent.entryId}`}
