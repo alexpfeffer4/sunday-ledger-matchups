@@ -170,11 +170,38 @@ async function expectReachableAt320(locator: Locator) {
   expect(bounds).not.toBeNull();
   expect(bounds!.x).toBeGreaterThanOrEqual(-1);
   expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(321);
-  const textWidth = await locator.evaluate((element) => ({
-    client: element.clientWidth,
-    scroll: element.scrollWidth,
-  }));
-  expect(textWidth.scroll).toBeLessThanOrEqual(textWidth.client + 1);
+  const textWidth = await locator.evaluate((element) => {
+    if (element instanceof HTMLInputElement) {
+      // Native numeric controls include anonymous browser UI in scrollWidth.
+      // Measure the actual value in its rendered font against the content box.
+      const style = getComputedStyle(element);
+      const value = document.createElement("span");
+      Object.assign(value.style, {
+        position: "absolute",
+        visibility: "hidden",
+        whiteSpace: "pre",
+        font: style.font,
+        letterSpacing: style.letterSpacing,
+        fontVariantNumeric: style.fontVariantNumeric,
+      });
+      value.textContent = element.value;
+      document.body.append(value);
+      const rendered = value.getBoundingClientRect().width;
+      value.remove();
+      return {
+        available:
+          element.clientWidth -
+          Number.parseFloat(style.paddingLeft) -
+          Number.parseFloat(style.paddingRight),
+        rendered,
+      };
+    }
+    return {
+      available: element.clientWidth,
+      rendered: element.scrollWidth,
+    };
+  });
+  expect(textWidth.rendered).toBeLessThanOrEqual(textWidth.available + 1);
 }
 
 for (const games of [14, 16]) {
@@ -446,7 +473,18 @@ for (const games of [14, 16]) {
         await choice.click();
         const dialog = page.getByRole("dialog");
         await expectReachableAt320(dialog.getByRole("heading"));
-        await expectReachableAt320(page.getByLabel("Stake in credits"));
+        const stake = page.getByLabel("Stake in credits");
+        const initialStake = await stake.inputValue();
+        await stake.fill("1000");
+        await expect(stake).toHaveValue("1000");
+        await expectReachableAt320(stake);
+        await page.screenshot({
+          path: info.outputPath(
+            `props-${games}-320px-200pct-four-digit-stake.png`,
+          ),
+        });
+        await stake.fill(initialStake);
+        await expect(stake).toHaveValue(initialStake);
         await expectReachableAt320(
           dialog.getByRole("button", { name: "Add to card", exact: true }),
         );

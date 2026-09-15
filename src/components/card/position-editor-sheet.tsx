@@ -157,7 +157,7 @@ export function PositionEditorSheet({
               <input
                 aria-describedby={`${inputId}-copy${error ? ` ${errorId}` : ""}`}
                 aria-invalid={Boolean(error)}
-                className="min-h-12 min-w-0 flex-1 bg-transparent px-4 font-mono text-base font-semibold outline-none"
+                className="min-h-12 min-w-0 flex-1 bg-transparent px-[16px] font-mono text-base font-semibold outline-none"
                 disabled={!selectedOutcomeId}
                 id={inputId}
                 inputMode="numeric"
