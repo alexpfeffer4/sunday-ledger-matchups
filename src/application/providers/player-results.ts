@@ -42,13 +42,28 @@ export const playerObservationSchema = z
       });
     }
     if (
-      observation.sourceUpdatedAt !== null &&
-      Date.parse(observation.sourceUpdatedAt) >
-        Date.parse(observation.fetchedAt)
+      [
+        observation.sourceUpdatedAt,
+        observation.participationSourceUpdatedAt,
+      ].some(
+        (revision) =>
+          revision != null &&
+          Date.parse(revision) > Date.parse(observation.fetchedAt),
+      )
     ) {
       context.addIssue({
         code: "custom",
         message: "Source evidence cannot be newer than its fetch.",
+      });
+    }
+    if (
+      observation.participation === "NO_OFFENSE" &&
+      observation.value !== null &&
+      observation.value !== 0
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Nonzero offensive yardage contradicts zero offensive snaps.",
       });
     }
   });

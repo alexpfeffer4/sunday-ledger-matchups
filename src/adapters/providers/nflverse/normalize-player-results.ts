@@ -47,11 +47,13 @@ export function parseNflverseCsv(csv: string): CsvRow[] {
   });
 }
 function integer(value: string | undefined): number | null {
-  return value !== undefined && /^-?\d+(?:\.0+)?$/.test(value.trim())
-    ? Number(value)
-    : null;
+  if (value === undefined || !/^-?\d+(?:\.0+)?$/.test(value.trim()))
+    return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
 }
-export function normalizeNflversePlayerResults(context: {
+
+type NflverseResultContext = {
   externalEventId: string;
   sourceEventId: string;
   gameDate: string;
@@ -64,9 +66,162 @@ export function normalizeNflversePlayerResults(context: {
   statsCsv: string;
   snapsCsv: string;
   mappings: readonly (ResultPlayerMapping & { pfrPlayerId: string | null })[];
-}): PlayerObservation[] {
-  const stats = parseNflverseCsv(context.statsCsv);
-  const snaps = parseNflverseCsv(context.snapsCsv);
+};
+
+export function parseNflverseResultFiles(files: {
+  statsCsv: string;
+  snapsCsv: string;
+}) {
+  return {
+    stats: parseNflverseCsv(files.statsCsv),
+    snaps: parseNflverseCsv(files.snapsCsv),
+  };
+}
+
+/** The approved overnight contract covers explicit per-game published rows,
+ * never a complete roster. Finality comes from the reliable game-result job;
+ * both independent artifacts must have been revised after that final and must
+ * contain both correctly identified teams. These checks detect stale, partial
+ * and mis-scoped exports; they are not a proof that the publisher has no error
+ * or a substitute for the governed correction / verified-exception process. */
+export function normalizePublishedNflversePlayerResults(
+  context: Omit<
+    NflverseResultContext,
+    "statsComplete" | "snapsComplete" | "statsCsv" | "snapsCsv"
+  > & {
+    finalObservedAt: string;
+    scheduledStartAt: string;
+    awayTeam: string;
+    homeTeam: string;
+  },
+  rows: ReturnType<typeof parseNflverseResultFiles>,
+): PlayerObservation[] {
+  const game = /^(\d{4})_(\d{2})_([A-Z]{2,3})_([A-Z]{2,3})$/.exec(
+    context.sourceEventId,
+  );
+  const finalAt = Date.parse(context.finalObservedAt);
+  const startAt = Date.parse(context.scheduledStartAt);
+  const fetchedAt = Date.parse(context.fetchedAt);
+  const revisions = [
+    context.sourceUpdatedAt,
+    context.participationSourceUpdatedAt,
+  ].map((value) => (value === undefined ? NaN : Date.parse(value)));
+  const scheduledDate = Number.isFinite(startAt)
+    ? new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/New_York",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date(startAt))
+    : null;
+  if (
+    !context.final ||
+    !Number.isFinite(finalAt) ||
+    !Number.isFinite(fetchedAt) ||
+    !Number.isFinite(startAt) ||
+    finalAt <= startAt ||
+    finalAt > fetchedAt ||
+    revisions.some(
+      (revision) =>
+        !Number.isFinite(revision) ||
+        revision < finalAt ||
+        revision > fetchedAt,
+    )
+  )
+    throw new Error("NFLVERSE_POST_FINAL_REVISION_REQUIRED");
+  if (
+    !game ||
+    game[3] !== context.awayTeam ||
+    game[4] !== context.homeTeam ||
+    context.awayTeam === context.homeTeam ||
+    scheduledDate !== context.gameDate
+  )
+    throw new Error("NFLVERSE_GAME_SCOPE_MISMATCH");
+  const stats = rows.stats
+    .filter((row) => row.game_id === context.sourceEventId)
+    // nflverse can publish anonymous non-offensive aggregate rows. They are
+    // not player evidence and cannot establish either team's coverage. Only
+    // the observed all-zero offensive shape is excluded; ambiguous rows fail.
+    .filter(
+      (row) =>
+        row.player_id ||
+        !["passing_yards", "rushing_yards", "receiving_yards"].every(
+          (field) => integer(row[field]) === 0,
+        ),
+    );
+  const snaps = rows.snaps.filter(
+    (row) => row.game_id === context.sourceEventId,
+  );
+  const teams = [context.awayTeam, context.homeTeam];
+  const gameType = stats[0]?.season_type;
+  for (const [kind, gameRows] of [
+    ["stats", stats],
+    ["snaps", snaps],
+  ] as const) {
+    const ids = new Set<string>();
+    for (const row of gameRows) {
+      const team = row.team ?? row.recent_team;
+      const opponent = kind === "stats" ? row.opponent_team : row.opponent;
+      const id = kind === "stats" ? row.player_id : row.pfr_player_id;
+      const rowGameType = kind === "stats" ? row.season_type : row.game_type;
+      if (
+        !id ||
+        ids.has(id) ||
+        !teams.includes(team) ||
+        opponent !== teams.find((candidate) => candidate !== team) ||
+        integer(row.season) !== Number(game[1]) ||
+        integer(row.week) !== Number(game[2]) ||
+        !["REG", "POST"].includes(rowGameType) ||
+        rowGameType !== gameType ||
+        (kind === "stats" &&
+          ["passing_yards", "rushing_yards", "receiving_yards"].some(
+            (field) =>
+              row[field] === undefined ||
+              (row[field] !== "" && integer(row[field]) === null),
+          )) ||
+        (kind === "snaps" &&
+          (!row.pfr_game_id?.startsWith(context.gameDate.replaceAll("-", "")) ||
+            row.pfr_game_id !== snaps[0]?.pfr_game_id ||
+            integer(row.offense_snaps) === null ||
+            integer(row.offense_snaps)! < 0))
+      )
+        throw new Error("NFLVERSE_GAME_EVIDENCE_INVALID");
+      ids.add(id);
+    }
+    if (
+      teams.some(
+        (team) =>
+          !gameRows.some(
+            (row) =>
+              (row.team ?? row.recent_team) === team &&
+              (kind === "stats" || (integer(row.offense_snaps) ?? 0) > 0),
+          ),
+      )
+    )
+      throw new Error("NFLVERSE_BOTH_TEAMS_REQUIRED");
+  }
+  if (
+    context.mappings.some(
+      (mapping) => !teams.includes(mapping.sourceTeam ?? mapping.team),
+    )
+  )
+    throw new Error("RESULT_PLAYER_MAPPING_MISMATCH");
+  return normalizeRows(
+    { ...context, statsComplete: true, snapsComplete: true },
+    { stats, snaps },
+  );
+}
+
+export function normalizeNflversePlayerResults(
+  context: NflverseResultContext,
+): PlayerObservation[] {
+  return normalizeRows(context, parseNflverseResultFiles(context));
+}
+
+function normalizeRows(
+  context: Omit<NflverseResultContext, "statsCsv" | "snapsCsv">,
+  { stats, snaps }: ReturnType<typeof parseNflverseResultFiles>,
+): PlayerObservation[] {
   return context.mappings.map((mapping) => {
     const playerStats = stats.filter(
       (row) =>

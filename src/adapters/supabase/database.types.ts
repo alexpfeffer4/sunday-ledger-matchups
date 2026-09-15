@@ -205,6 +205,10 @@ export type Database = {
         Args: { p_league_slug: string };
         Returns: Json;
       };
+      record_player_catalog_nominations: {
+        Args: { p_lease_id: string; p_proposals: Json };
+        Returns: Json;
+      };
       register_player_result_event: {
         Args: { p_mapping: Json };
         Returns: undefined;
@@ -223,6 +227,22 @@ export type Database = {
           p_participation_observation_id: string;
           p_reason: string;
           p_statistic_observation_id: string;
+        };
+        Returns: Json;
+      };
+      resolve_verified_player_result_exception: {
+        Args: {
+          p_actor_user_id: string;
+          p_event_id: string;
+          p_evidence_hash: string;
+          p_idempotency_key: string;
+          p_offensive_snaps: number;
+          p_participation_source_url: string;
+          p_reason: string;
+          p_statistic: string;
+          p_statistic_source_url: string;
+          p_subject_id: string;
+          p_value: number;
         };
         Returns: Json;
       };

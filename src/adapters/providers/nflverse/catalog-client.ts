@@ -4,14 +4,18 @@ import type { NflverseCatalogFiles } from "@/adapters/providers/player-catalog-n
 /** Fixed public nflverse sources; URLs cannot be supplied by a caller. */
 export async function fetchNflverseCatalog(
   season: number,
+  options: { includeUsageStats?: boolean } = {},
 ): Promise<NflverseCatalogFiles> {
   if (!Number.isInteger(season) || season < 2020 || season > 2100)
     throw new Error("INVALID_CATALOG_SEASON");
   const urls = [
     `https://github.com/nflverse/nflverse-data/releases/download/rosters/roster_${season}.csv`,
     "https://github.com/nflverse/nfldata/raw/master/data/games.csv",
-    `https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_${season}.csv`,
   ];
+  if (options.includeUsageStats !== false)
+    urls.push(
+      `https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_${season}.csv`,
+    );
   const files = await Promise.all(
     urls.map(async (url, index) => {
       const response = await fetch(url, {
@@ -37,7 +41,11 @@ export async function fetchNflverseCatalog(
   return {
     rosterCsv: files[0].text,
     scheduleCsv: files[1].text,
-    statsCsv: files[2].text,
+    // Featured-line nomination needs a current directory and schedule only.
+    // Legacy usage-based selection retains the historical-statistics request.
+    statsCsv:
+      files[2]?.text ??
+      "player_id,season,week,recent_team,attempts,carries,targets\n",
     fetchedAt: new Date().toISOString(),
     sourceUpdatedAt: new Date(files[0].modified!).toISOString(),
   };

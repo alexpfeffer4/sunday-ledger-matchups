@@ -131,6 +131,13 @@ jobs:
               IF private.dispatch_score_checkpoints() IS NOT NULL THEN
                 RAISE EXCEPTION 'Disabled dispatch must make no HTTP request';
               END IF;
+              IF strpos(pg_get_functiondef('private.dispatch_score_checkpoints()'::regprocedure),
+                'perform private.dispatch_player_result_checkpoints();')=0 THEN
+                RAISE EXCEPTION 'Score initializer must preserve the tracked player hook';
+              END IF;
+              IF private.dispatch_player_result_checkpoints() IS NOT NULL THEN
+                RAISE EXCEPTION 'Disabled player dispatch must make no HTTP request';
+              END IF;
               IF has_function_privilege('authenticated', 'private.dispatch_score_checkpoints()', 'execute') THEN
                 RAISE EXCEPTION 'Members must not invoke the scheduler';
               END IF;

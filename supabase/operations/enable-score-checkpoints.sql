@@ -27,6 +27,17 @@ begin
 end;
 $$;
 revoke all on function private.dispatch_score_checkpoints() from public,anon,authenticated;
+-- Preserve the tracked dormant player hook when this reviewed initializer
+-- recreates the core score function. Earlier deployments without that migration
+-- remain supported; no player policy is activated by this operation.
+do $preserve_player_hook$
+begin
+ if to_regprocedure('private.attach_player_result_dispatch_hook()') is not null then
+  perform private.attach_player_result_dispatch_hook();
+ end if;
+end;
+$preserve_player_hook$;
+
 select cron.schedule('sunday-ledger-score-checkpoints','*/5 * * * *','select private.dispatch_score_checkpoints()');
 
 -- After verifying budget, secrets, endpoint authorization, and this job, activate

@@ -99,7 +99,7 @@ export function PlayerPropMenuReview({
       </h2>
       <p className="text-graphite mt-2 text-sm leading-6">
         {amendmentPending
-          ? "Review the proposed player menu for the Week 2 update. Current picks stay in place until the reviewed update is activated. Activating it will fix this player menu for everyone."
+          ? "Review the proposed player menu for the Week 2 update. Activating the reviewed update will fix this player menu for everyone."
           : frozen && amendmentApplied
             ? "The reviewed Week 2 update fixed this player menu. Lines may appear later for these players; unavailable player slots cannot be replaced."
             : frozen

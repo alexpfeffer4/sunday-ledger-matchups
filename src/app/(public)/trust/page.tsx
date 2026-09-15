@@ -36,6 +36,14 @@ export default function TrustPage() {
               "Every accepted pick keeps its original line, odds, stake, and acceptance time.",
             ],
             [
+              "Featured player choices",
+              "Where player props are enabled, each team’s featured QB, RB and WR or TE are chosen from the highest available standard passing, rushing and receiving lines in the reviewed pregame menu. They are not confirmed starters, and a posted line does not guarantee availability or participation. Players stay fixed once the menu freezes.",
+            ],
+            [
+              "Player results can take longer",
+              "Where player props are enabled, expect results overnight after games finish, with later updates possible. A bet stays awaiting player results until the evidence needed to grade or void it is verified. Missing data never counts as zero or proves that a player did not participate.",
+            ],
+            [
               "Corrections stay visible",
               "If an official result changes, the correction stays visible and is applied through the week’s correction rules. Protected postseason and historical results follow their governing review process.",
             ],
@@ -55,8 +63,8 @@ export default function TrustPage() {
           <section className="grid gap-2 py-6 sm:grid-cols-[190px_1fr] sm:gap-8">
             <h2 className="font-bold">Data attribution</h2>
             <p className="text-graphite leading-6">
-              Where player results are enabled, totals and participation data
-              include work by the{" "}
+              Where player props are enabled, roster, published player-total and
+              offensive-snap data include work by the{" "}
               <a
                 className="text-registry underline"
                 href="https://github.com/nflverse/nflverse-data"
@@ -70,8 +78,9 @@ export default function TrustPage() {
               >
                 Creative Commons Attribution 4.0
               </a>
-              . Sunday Ledger formats the published data and applies the
-              league’s settlement rules.
+              . Sunday Ledger normalizes player identities and data formats and
+              applies the league’s selection and settlement rules. The nflverse
+              project does not endorse Sunday Ledger.
             </p>
           </section>
         </div>

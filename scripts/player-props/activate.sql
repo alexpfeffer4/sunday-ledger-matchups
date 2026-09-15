@@ -42,7 +42,8 @@ begin
     and proof.started_at>=policy.provider_cycle_verified_at
     and proof.remaining::bigint+proof.used::bigint=policy.provider_entitlement_credits))) then
  raise exception 'Reviewed paid-plan budget and fresh verified entitlement are required before offers'; end if;
- if not exists(select 1 from private.player_result_policy where processing_enabled and api_sports_contract_validated and nflverse_contract_validated) then
+ if not exists(select 1 from private.player_result_policy where processing_enabled)
+ or not private.player_source_policy_validated() then
  raise exception 'Validated automatic player-result processing is required before offers'; end if;
  if to_regprocedure('private.dispatch_player_result_checkpoints()') is null then raise exception 'Player result dispatcher is not installed'; end if;
  if not exists(select 1 from cron.job where jobname='sunday-ledger-score-checkpoints' and schedule='*/5 * * * *' and active)

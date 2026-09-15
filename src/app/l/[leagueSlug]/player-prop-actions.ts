@@ -135,8 +135,7 @@ export async function confirmPlayerPropMenuAction(
   revalidatePath(`/l/${slug.data}/slate`);
   return {
     status: "success",
-    message:
-      "Player choices confirmed. The first submitted bet fixes this menu for the week.",
+    message: "Player choices confirmed for this week.",
   };
 }
 

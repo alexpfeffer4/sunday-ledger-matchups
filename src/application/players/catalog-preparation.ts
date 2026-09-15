@@ -43,8 +43,7 @@ export async function processPendingPlayerCatalog(
   weekId?: string,
 ): Promise<CatalogProgress> {
   const secret = getSupabaseServerSecret();
-  if (!secret || !process.env.API_SPORTS_NFL_KEY)
-    return { status: "DISABLED", missingSources: 1 };
+  if (!secret) return { status: "DISABLED", missingSources: 1 };
   const admin = createClient(getSupabasePublicConfig().url, secret, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: {
