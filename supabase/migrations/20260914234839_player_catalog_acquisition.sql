@@ -239,3 +239,109 @@ begin
 end; $$;
 revoke all on function api.claim_player_catalog_quote(uuid) from public,anon,authenticated;
 grant execute on function api.claim_player_catalog_quote(uuid) to service_role;
+
+-- Cold release preparation must precede rules activation without publishing an
+-- open game-only week that can no longer adopt props. The approved acquisition
+-- hold scopes only prospective publication. Existing opened weeks are untouched.
+alter table private.player_prop_leagues add column catalog_hold_from_week integer
+ check(catalog_hold_from_week between 1 and 18);
+create function private.player_catalog_staged_week(p_season_id uuid,p_nfl_week integer) returns boolean
+language sql stable security invoker set search_path='' as $$
+ select coalesce((select scope.catalog_enabled and scope.season_id=s.id
+ and p_nfl_week>=scope.catalog_hold_from_week from private.seasons s
+ join private.player_prop_leagues scope on scope.league_id=s.league_id where s.id=p_season_id),false);
+$$;
+revoke all on function private.player_catalog_staged_week(uuid,integer) from public,anon,authenticated;
+create function private.configure_player_catalog_hold(p_league_id uuid,p_season_id uuid) returns integer
+language plpgsql security invoker set search_path='' as $$
+declare s private.seasons%rowtype; boundary integer; held integer;
+begin
+ select * into strict s from private.seasons where id=p_season_id and league_id=p_league_id for update;
+ if s.mode<>'LIVE' or s.lifecycle not in('REGULAR','PLAYOFFS','CHAMPION_FINAL','WEEK_18_EXHIBITION') then
+ raise exception 'An already-open active Live season is required for this release hold'; end if;
+ if s.id<>(select current.id from private.seasons current where current.league_id=p_league_id order by current.created_at desc,current.id desc limit 1) then
+ raise exception 'The configured season is no longer current'; end if;
+ if exists(select 1 from private.player_prop_leagues where league_id=p_league_id and season_id is not null and season_id<>s.id) then
+  raise exception 'A different existing catalog/rules season scope requires explicit review'; end if;
+ select coalesce(max(nfl_week),0)+1 into boundary from private.season_weeks where season_id=s.id and state<>'PLANNED';
+ if boundary>18 then raise exception 'No eligible unopened week remains in this season'; end if;
+ insert into private.player_prop_leagues(league_id,enabled,rules_enabled,season_id,catalog_enabled,catalog_hold_from_week)
+ values(p_league_id,false,false,s.id,true,boundary)
+ on conflict(league_id) do update set catalog_enabled=true,season_id=excluded.season_id,
+ catalog_hold_from_week=coalesce(private.player_prop_leagues.catalog_hold_from_week,excluded.catalog_hold_from_week)
+ returning catalog_hold_from_week into held;
+ update private.player_result_policy set metadata_enabled=true where singleton;
+ -- An already-published future PLANNED slate needs no second publication or
+ -- visible props menu before its explicit approved setup can start acquisition.
+ insert into private.player_catalog_jobs(week_id)
+ select w.id from private.season_weeks w where w.season_id=s.id and w.state='PLANNED' and w.nfl_week>=held
+ and exists(select 1 from private.slate_items i where i.week_id=w.id and private.is_effective_slate_item(i.id))
+ on conflict(week_id) do nothing;
+ return held;
+end; $$;
+revoke all on function private.configure_player_catalog_hold(uuid,uuid) from public,anon,authenticated;
+create function private.abort_player_catalog_hold(p_league_id uuid,p_season_id uuid,p_week_id uuid) returns void
+language plpgsql security invoker set search_path='' as $$
+declare s private.seasons%rowtype; w private.season_weeks%rowtype; scope private.player_prop_leagues%rowtype;
+begin
+ -- Same order as publication, activation and rules pinning. The exact target
+ -- must still be a held unopened week; a stale script cannot alter later play.
+ select * into strict s from private.seasons where id=p_season_id and league_id=p_league_id for update;
+ if s.id<>(select current.id from private.seasons current where current.league_id=p_league_id order by current.created_at desc,current.id desc limit 1) then
+ raise exception 'The configured season is no longer current'; end if;
+ select * into strict w from private.season_weeks where id=p_week_id and season_id=s.id for update;
+ select * into strict scope from private.player_prop_leagues where league_id=s.league_id and season_id=s.id for update;
+ if s.mode<>'LIVE' or s.lifecycle not in('REGULAR','PLAYOFFS','CHAMPION_FINAL','WEEK_18_EXHIBITION')
+ or w.state<>'PLANNED' or scope.rules_enabled or not private.player_catalog_staged_week(s.id,w.nfl_week)
+ or exists(select 1 from private.season_weeks newer where newer.season_id=s.id and newer.nfl_week>w.nfl_week)
+ or exists(select 1 from private.position_receipts receipt where receipt.week_id=w.id)
+ then raise exception using errcode='55000',message='Only the exact staged unopened game-only week can release its catalog hold.'; end if;
+ if not exists(select 1 from private.authoritative_season_rulesets catalog where catalog.mode='LIVE'
+ and catalog.ruleset_version='1.3' and catalog.canonical_json=private.rolling_ruleset_package('LIVE')
+ and catalog.sha256_hash=encode(extensions.digest(private.canonical_ruleset_json(catalog.canonical_json),'sha256'),'hex')) then
+ raise exception using errcode='55000',message='The reviewed game-only rules catalog changed.'; end if;
+ if private.card_confirmation_time(s.id)>=private.week_entry_closes_at(w.id) then
+ raise exception using errcode='55000',message='The published entry window has closed.'; end if;
+ update private.player_prop_leagues set catalog_enabled=false,catalog_hold_from_week=null where league_id=s.league_id;
+ update private.player_catalog_jobs set state='UNAVAILABLE',last_error='ACQUISITION_HOLD_ABORTED',lease_id=null,lease_until=null where week_id=w.id;
+ -- Existing rules, state and historical immutability triggers remain active.
+ update private.season_weeks set state='OPEN',opens_at=least(private.card_confirmation_time(s.id),common_lock_at-interval '1 microsecond') where id=w.id;
+end; $$;
+revoke all on function private.abort_player_catalog_hold(uuid,uuid,uuid) from public,anon,authenticated;
+do $acquisition_hold$
+declare d text; f text; old text;
+begin
+ foreach f in array array['api.publish_next_live_week_slate(uuid,uuid,text[],text)',
+ 'api.publish_postseason_week(uuid,uuid,text[],text)'] loop
+  d:=pg_get_functiondef(f::regprocedure);
+  old:='case when private.player_props_target_week(v_season.id,v_next_week) then ''PLANNED'' else ''OPEN'' end';
+  if strpos(d,old)=0 then raise exception 'Acquisition hold publication baseline changed'; end if;
+  d:=replace(d,old,'case when private.player_props_target_week(v_season.id,v_next_week) or private.player_catalog_staged_week(v_season.id,v_next_week) then ''PLANNED'' else ''OPEN'' end');
+  d:=replace(d,'''weekState'', ''OPEN''','''weekState'', (select state from private.season_weeks where id=v_week_id)');
+  execute d;
+ end loop;
+ foreach f in array array['api.publish_live_week_slate(uuid,uuid,text[],text)',
+ 'api.publish_next_live_week_slate(uuid,uuid,text[],text)','api.publish_postseason_week(uuid,uuid,text[],text)'] loop
+  d:=pg_get_functiondef(f::regprocedure);
+  old:='  perform private.prepare_player_menu(v_week_id);';
+  if strpos(d,old)=0 then raise exception 'Acquisition hold queue baseline changed'; end if;
+  execute replace(d,old,old||$queue$
+  -- Publication is an explicit commissioner operation under the season lock.
+  -- Queue independently of menu/rules visibility; page reads do no acquisition.
+  if exists(select 1 from private.season_weeks published where published.id=v_week_id
+    and private.player_catalog_staged_week(published.season_id,published.nfl_week)) then
+    insert into private.player_catalog_jobs(week_id) values(v_week_id) on conflict(week_id) do nothing;
+  end if;
+$queue$);
+ end loop;
+ d:=pg_get_functiondef('private.require_player_menu_review_before_open()'::regprocedure);
+ old:=' if new.state=''OPEN'' and (tg_op=''INSERT'' or old.state=''PLANNED'')';
+ if strpos(d,old)=0 then raise exception 'Acquisition hold opening guard baseline changed'; end if;
+ execute replace(d,old,$guard$
+ if new.state='OPEN' and (tg_op='INSERT' or old.state='PLANNED')
+ and private.player_catalog_staged_week(new.season_id,new.nfl_week)
+ and not private.player_props_target_week(new.season_id,new.nfl_week) then
+  raise exception using errcode='55000',message='This future week is held for player-source readiness and prospective release approval.';
+ end if;
+$guard$||old);
+end; $acquisition_hold$;

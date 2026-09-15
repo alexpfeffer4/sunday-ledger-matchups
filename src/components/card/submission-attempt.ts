@@ -1,6 +1,17 @@
 // A logical batch keeps its identity through retries, navigation and reconnects.
 // No receipt or game visibility is inferred from this local intent.
 const memoryAttempts = new Map<string, { id: string; content: string }>();
+
+export function clearSubmissionAttempt(storageKey: string): void {
+  const key = `${storageKey}:submission-attempt`;
+  memoryAttempts.delete(key);
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // A terminal card must also forget its retry identity when storage fails.
+  }
+}
+
 export function submissionAttemptId(
   storageKey: string,
   content: string,

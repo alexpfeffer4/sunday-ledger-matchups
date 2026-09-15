@@ -8,6 +8,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { selectionKey } from "@/components/card/selection-identity";
+import { clearSubmissionAttempt } from "@/components/card/submission-attempt";
 import { usesRollingSubmissions } from "@/rulesets/card-rules";
 import {
   restoreCardDrafts,
@@ -132,11 +133,14 @@ export function useCardDraft(context: OwnerCardContext) {
     [key, sealed, incomplete, context.slate, acceptedMarkets],
   );
   const clearDrafts = useCallback(() => {
-    if (key) write(key, []);
+    if (key) {
+      clearSubmissionAttempt(key);
+      write(key, []);
+    }
   }, [key]);
   useEffect(() => {
-    if (key && (sealed || incomplete)) write(key, []);
-  }, [key, sealed, incomplete]);
+    if (sealed || incomplete) clearDrafts();
+  }, [clearDrafts, sealed, incomplete]);
   useEffect(() => {
     if (!key || !rolling || !acceptedMarkets.size || stored === "loading:")
       return;

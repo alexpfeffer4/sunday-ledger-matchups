@@ -240,6 +240,7 @@ for (const games of [14, 16]) {
         a.scheduledStartAt.localeCompare(b.scheduledStartAt) ||
         Number(a.key.startsWith("props-acceptance-")) -
           Number(b.key.startsWith("props-acceptance-")) ||
+        a.key.localeCompare(b.key) ||
         a.id.localeCompare(b.id),
     );
     const early = events[0]!;
@@ -297,9 +298,11 @@ for (const games of [14, 16]) {
           exact: true,
         }),
       ).toBeVisible();
-      await page
-        .getByRole("button", { name: "Prepare player menu", exact: true })
-        .click();
+      const prepareMenu = page.getByRole("button", {
+        name: /^(Prepare player menu|Update proposed choices)$/,
+      });
+      await expect(prepareMenu).toBeVisible();
+      await prepareMenu.click({ timeout: 10_000 });
       await expect
         .poll(async () => {
           const menu = playerPropMenuSchema.parse(

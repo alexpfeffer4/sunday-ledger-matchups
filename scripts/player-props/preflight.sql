@@ -27,7 +27,9 @@ begin
  'private.player_receipt_canonical(uuid,uuid,uuid,integer,timestamptz,uuid)',
  'api.import_player_catalog(jsonb)','api.confirm_player_prop_menu(text,jsonb)',
  'api.open_reviewed_player_prop_week(text,text)','api.configure_player_prop_odds_budget(jsonb)',
- 'private.player_props_menu_eligible(uuid)','private.player_props_menu_reviewed(uuid)'] loop
+ 'private.player_props_menu_eligible(uuid)','private.player_props_menu_reviewed(uuid)',
+ 'private.player_catalog_staged_week(uuid,integer)','private.configure_player_catalog_hold(uuid,uuid)',
+ 'private.abort_player_catalog_hold(uuid,uuid,uuid)'] loop
  if to_regprocedure(n) is null then raise exception 'Missing authority: %',n; end if;
  end loop;
  if strpos(pg_get_functiondef('private.pin_week_rules()'::regprocedure),'p.rules_enabled')=0
@@ -45,7 +47,7 @@ select processing_enabled,api_sports_contract_validated,nflverse_contract_valida
  results_daily_limit,metadata_daily_limit,requests_per_minute from private.player_result_policy;
 
 select mode,ruleset_version,product_bible_version,sha256_hash from private.authoritative_season_rulesets order by mode;
-select c.offers_enabled,p.league_id,p.season_id,p.enabled as league_offers_enabled,p.rules_enabled,p.first_enabled_week,p.activated_at,p.release_sha
+select c.offers_enabled,p.league_id,p.season_id,p.enabled as league_offers_enabled,p.rules_enabled,p.first_enabled_week,p.catalog_enabled,p.catalog_hold_from_week,p.activated_at,p.release_sha
  from private.player_prop_controls c left join private.player_prop_leagues p on true order by p.league_id;
 select s.id as season_id,s.league_id,l.slug,s.mode,s.lifecycle,
  (select max(w.nfl_week) from private.season_weeks w where w.season_id=s.id and w.state<>'PLANNED') as last_opened_week,

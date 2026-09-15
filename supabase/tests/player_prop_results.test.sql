@@ -211,6 +211,40 @@ select is((select count(*) from private.player_result_requests where id=(select 
 select function_privs_are('api','resolve_finalized_week17_player_candidate',array['uuid','uuid','uuid','text'],'anon',array[]::text[],'protected Week17 player corrections require authenticated commissioner authority');
 select throws_ok($$select api.resolve_finalized_week17_player_candidate((select id from private.player_result_candidates order by created_at desc,id desc limit 1),null,(select id from private.player_result_observations order by created_at desc,id desc limit 1),'Invalid nonterminal correction fixture.')$$,'55000',null,'protected Week17 path rejects ordinary closed regular-season weeks');
 
+-- A scheduler outage skips clock windows, not the obligation to raise an incident.
+-- Seed this shared external worker job explicitly because the accepted fixture
+-- is Simulation; production enqueue must continue to exclude Simulation.
+create temporary table player_window_evidence as select
+ (select count(*) from private.settlement_versions) settlements,
+ (select count(*) from private.player_result_requests) requests,
+ (select correction_window_closes_at from private.season_weeks where id=(select week_id from props_context)) deadline;
+insert into private.player_result_jobs(external_event_id,final_observed_at,next_reconcile_at,reconcile_attempts)
+ select fixture_event_key,clock_timestamp()-interval '48 hours 5 minutes',clock_timestamp()-interval '1 minute',2
+ from private.sports_events where id=(select event_id from props_context);
+update private.player_result_policy set processing_enabled=true,nflverse_contract_validated=true,api_sports_contract_validated=false,provider_remaining=0;
+create temporary table skipped_player_window as select api.claim_nflverse_reconciliation() claim;
+select is((select claim->>'status' from skipped_player_window),'CLAIMED','the final fallback window works without API entitlement or quota');
+select api.complete_nflverse_reconciliation((select (claim#>>'{jobs,0,leaseId}')::uuid from skipped_player_window),'[]');
+select is((select state from private.player_result_jobs),'INCIDENT','skipped intervals still end unresolved fallback as an incident');
+select is((select reconcile_attempts from private.player_result_jobs),3,'incident closure does not pretend all seven attempts occurred');
+select ok((select next_reconcile_at is null from private.player_result_jobs),'exhausted wall-clock windows stop automatic fallback requests');
+
+update private.player_result_jobs set state='RUNNING',incident_code=null,final_observed_at=clock_timestamp()-interval '50 hours',
+ reconcile_attempts=0,next_reconcile_at=clock_timestamp()-interval '2 hours',reconcile_lease_id=gen_random_uuid(),reconcile_lease_until=clock_timestamp()+interval '1 minute';
+select private.enqueue_player_result_jobs();
+select is((select state from private.player_result_jobs),'RUNNING','the outage sweep preserves a still-valid worker lease');
+update private.player_result_jobs set reconcile_lease_until=clock_timestamp()-interval '1 second';
+select private.enqueue_player_result_jobs();
+select is((select state from private.player_result_jobs),'INCIDENT','dispatcher housekeeping raises an incident after every window was missed');
+select is((select incident_code from private.player_result_jobs),'PLAYER_EVIDENCE_REQUIRES_VERIFIED_SOURCE','outage incident names the required verified-evidence recovery');
+select is(api.claim_nflverse_reconciliation()->>'status','IDLE','an aged incident causes no further automatic fallback request');
+select is((select attempts+reconcile_attempts from private.player_result_jobs),0,'outage housekeeping requires no provider attempt');
+select is((select count(*) from private.player_result_requests),(select requests from player_window_evidence),'incident closure consumes no provider quota');
+select is((select count(*) from private.settlement_versions),(select settlements from player_window_evidence),'retry exhaustion never invents a settlement or timeout void');
+select is((select correction_window_closes_at from private.season_weeks where id=(select week_id from props_context)),(select deadline from player_window_evidence),'outage handling never restarts correction authority');
+delete from private.player_result_jobs;
+update private.player_result_policy set processing_enabled=false,nflverse_contract_validated=false,provider_remaining=100;
+
 -- Independent 80-result/20-metadata budget; unknown network failures stay charged.
 select is(api.claim_player_result_jobs()->>'status','DISABLED','empty disabled scheduler is a cheap no-provider run');
 update private.player_result_policy set processing_enabled=true,api_sports_contract_validated=true;

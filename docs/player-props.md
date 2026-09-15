@@ -187,8 +187,11 @@ coverage and any associated additional cost remain unresolved.
 3. After a concrete release approval, apply the additive migrations in filename
    order, deploy the compatible app with props offers disabled, and verify parity.
 4. Agent verifies secure server keys, current entitlement and provider source
-   policy; configures the approved cap transition and scheduler; imports validated
-   bulk catalog/result mappings and proves quote/result readiness.
+   policy; configures the approved cap transition, scheduler and acquisition hold.
+   After ordinary preceding-week finality, the next eligible publication remains
+   PLANNED under its inherited rules and queues bounded catalog acquisition.
+   Agent validates bulk catalog/result mappings and proves quote/result readiness
+   before the held week may open.
 5. Agent runs pilot activation under the same locks as week opening. Select the
    first eligible unopened week at activation; if the intended week has opened,
    use the next eligible unopened week. Global game-only catalogs and all opened
@@ -205,16 +208,21 @@ use a compatible disable or forward fix.
 
 ## Evidence status
 
-The integrated local quality gate passed formatting, lint, TypeScript, 650 unit
-tests in 98 files and the production build. All 45 local SQL diagnostic suites
-passed 1,673 assertions with zero legacy receipt-hash drift. Final native CI
-and authenticated browser verification remain in progress. Local diagnostics
-use PostgreSQL-compatible PGlite because this workspace cannot start native
-PostgreSQL or Docker. The scheduler migration is omitted from those diagnostics;
-they are not native concurrency or authenticated end-to-end proof. Required CI
-uses real disposable Supabase/PostgreSQL/Auth, separate sessions and Playwright.
-Chromium download was blocked locally, so no physical-device or local screenshot
-certification is claimed. The disabled Preview has no writable Production backend.
+The integration milestone `3e2b087f` passed formatting, lint, TypeScript, 650 unit
+tests in 98 files, the production build, all 45 native SQL suites with 1,673
+assertions, all four native concurrency scripts, scheduler verification and
+generated-type parity. Final-head results, later regression additions and the
+real authenticated desktop/mobile gate are recorded on [PR #51](https://github.com/alexpfeffer4/sunday-ledger-matchups/pull/51).
+Use the exact head and CI result there when approving release.
+
+Local SQL diagnostics use PostgreSQL-compatible PGlite because this workspace
+cannot start native PostgreSQL or Docker. The scheduler migration is omitted
+from those diagnostics; they are not native concurrency or authenticated
+end-to-end proof. Required CI uses real disposable Supabase/PostgreSQL/Auth,
+separate sessions and Playwright. Physical-device certification is not claimed.
+The disabled Preview has no writable Production backend; its exact deployed
+commit, browser checks and screenshots are recorded in the
+[Preview report](operations/player-props-preview-verification.md).
 
 Real player coverage, source permissions, zero/DNP edge completeness and measured
 5–15-minute settlement remain activation gates even after CI passes. Buying odds

@@ -47,6 +47,12 @@ dependency.
 5. Prepare and verify the existing five-minute dispatcher using the reviewed
    SQL template, then enable the separately gated metadata acquisition for the
    approved pilot using `scripts/player-props/catalog-setup.sql`.
+   This records an acquisition hold at the first eligible unopened week without
+   enabling offers or new rules. This helper applies to the existing active LIVE
+   season and rejects initial drafts. Once the current week meets its ordinary FINAL
+   prerequisite, publish the next eligible slate through the existing authority.
+   The held week remains PLANNED under its inherited binding and atomically
+   queues catalog work. It cannot open before readiness and scoped activation.
    Acquire and validate shared source mappings and role proposals under the
    independent 20-metadata-request/day allowance. A cold full-slate bootstrap
    requires 34–36 API-Sports requests across at least two UTC quota days and
@@ -63,12 +69,31 @@ dependency.
    incidents and member-visible results; measure actual final-to-visible latency.
 8. Record a readiness manifest and run the scoped activation under the same
    season locks used by week opening. Use the immutable LIVE 1.4 / 3.3 package
-   only for the eligible future pilot week. Prepare the full menu for one
+   only for the eligible future pilot week. The held PLANNED week adopts the
+   prospective package when opened; no opened binding changes. Prepare the full menu for one
    commissioner review, confirm exceptions, then open entry. The first accepted
    bet freezes player identities; delayed quotes may serve those same players.
 9. Verify ordinary game lines, mixed submission/recovery, reliable-start privacy,
    pending player results, history, job delivery and budget protection. Monitor
    actual operation without placing synthetic bets in the real league.
+
+The five additive migration files, in execution order, are:
+
+1. `20260914230141_player_props_authority.sql`
+2. `20260914230233_player_prop_results.sql`
+3. `20260914230314_selective_player_prop_quotes.sql`
+4. `20260914230353_card_submission_intents.sql`
+5. `20260914234839_player_catalog_acquisition.sql`
+
+The acquisition hold is part of the combined release approval. It does not waive
+the ordinary preceding-week finality requirement or permit opening an unvalidated
+props week. If an eligible week opens before setup, select the next unopened
+week. If source validation fails while a week is held, the prepared
+`scripts/player-props/abort-catalog-hold.sql` can release that exact untouched
+PLANNED week for ordinary game-only play under 1.3. It requires the same combined
+approval, exact scope and recorded reason; it rejects activated props, receipts,
+stale targets and closed entry windows. A later attempt targets the next eligible
+unopened week. Never bypass the readiness guard or repin an opened week.
 
 ## Compatible disable and remaining validation
 

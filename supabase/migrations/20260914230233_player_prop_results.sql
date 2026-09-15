@@ -298,7 +298,8 @@ returns jsonb language sql stable security definer set search_path='' as $$
 $$;
 
 create function private.enqueue_player_result_jobs()
-returns void language sql security definer set search_path='' as $$
+returns void language plpgsql security definer set search_path='' as $$
+begin
  insert into private.player_result_jobs(external_event_id,final_observed_at,next_reconcile_at)
  select e.fixture_event_key,min(result.created_at),clock_timestamp() from private.sports_events e
  join private.seasons s on s.id=e.season_id and s.mode='LIVE'
@@ -306,6 +307,21 @@ returns void language sql security definer set search_path='' as $$
  join private.event_result_versions result on result.event_id=e.id and result.status='FINAL'
  where e.actual_started_at is not null and exists(select 1 from private.position_receipts r where r.event_id=e.id and r.subject_id is not null)
  group by e.fixture_event_key on conflict do nothing;
+ -- The dispatcher calls this before its no-due-work return. An outage may skip
+ -- every reconciliation window; reaching the time bound must not depend on an
+ -- API key, quota, seven actual claims or another network request. Never close
+ -- an in-flight lease or manufacture a settlement for missing evidence.
+ update private.player_result_jobs j set state='INCIDENT',
+  incident_code='PLAYER_EVIDENCE_REQUIRES_VERIFIED_SOURCE',next_reconcile_at=null,
+  lease_id=null,lease_until=null,reconcile_lease_id=null,reconcile_lease_until=null
+ where j.state in('WAITING','RUNNING')
+ and j.final_observed_at<=clock_timestamp()-interval '49 hours'
+ and (j.lease_until is null or j.lease_until<=clock_timestamp())
+ and (j.reconcile_lease_until is null or j.reconcile_lease_until<=clock_timestamp())
+ and exists(select 1 from private.position_receipts r join private.sports_events e on e.id=r.event_id
+  where e.fixture_event_key=j.external_event_id and r.subject_id is not null
+  and not exists(select 1 from private.settlement_versions sv where sv.receipt_id=r.id));
+end;
 $$;
 
 -- API-Sports documents daily reset at 00:00 UTC. A new date invalidates the
@@ -406,7 +422,7 @@ end; $$;
 
 create function api.complete_nflverse_reconciliation(p_lease_id uuid,p_observations jsonb default null)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare j private.player_result_jobs%rowtype;now_at timestamptz:=clock_timestamp();
+declare j private.player_result_jobs%rowtype;now_at timestamptz:=clock_timestamp();next_window timestamptz;unresolved boolean;
 begin
  if not exists(select 1 from private.player_result_jobs where reconcile_lease_id=p_lease_id and reconcile_lease_until>now_at) then return jsonb_build_object('status','EXPIRED');end if;
  if p_observations is not null then
@@ -414,10 +430,15 @@ begin
   perform api.import_player_result_observations(p_observations);
  end if;
  for j in select * from private.player_result_jobs where reconcile_lease_id=p_lease_id for update loop
+  select min(j.final_observed_at+make_interval(mins=>m)) into next_window
+   from unnest(array[60,120,360,720,1440,2880])m where j.final_observed_at+make_interval(mins=>m)>now_at;
+  select exists(select 1 from private.position_receipts r join private.sports_events e on e.id=r.event_id
+   where e.fixture_event_key=j.external_event_id and r.subject_id is not null
+   and not exists(select 1 from private.settlement_versions sv where sv.receipt_id=r.id)) into unresolved;
   update private.player_result_jobs set reconcile_lease_id=null,reconcile_lease_until=null,
-   next_reconcile_at=(select min(j.final_observed_at+make_interval(mins=>m)) from unnest(array[60,120,360,720,1440,2880])m where j.final_observed_at+make_interval(mins=>m)>now_at),
-   incident_code=case when j.reconcile_attempts>=7 then 'PLAYER_EVIDENCE_REQUIRES_VERIFIED_SOURCE' else incident_code end,
-   state=case when not exists(select 1 from private.position_receipts r join private.sports_events e on e.id=r.event_id where e.fixture_event_key=j.external_event_id and r.subject_id is not null and not exists(select 1 from private.settlement_versions sv where sv.receipt_id=r.id)) then 'COMPLETE' when j.reconcile_attempts>=7 then 'INCIDENT' else state end
+   next_reconcile_at=next_window,
+   incident_code=case when unresolved and (j.reconcile_attempts>=7 or next_window is null) then 'PLAYER_EVIDENCE_REQUIRES_VERIFIED_SOURCE' else incident_code end,
+   state=case when not unresolved then 'COMPLETE' when j.reconcile_attempts>=7 or next_window is null then 'INCIDENT' else state end
   where external_event_id=j.external_event_id;
  end loop;
  return jsonb_build_object('status','RECORDED');

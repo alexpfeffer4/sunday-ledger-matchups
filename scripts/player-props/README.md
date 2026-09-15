@@ -17,6 +17,10 @@ transaction locks the season before its scoped setting, matching week opening;
 if a target week has opened meanwhile, it selects the next unopened week.
 No opened week, receipt, result or standing is rewritten.
 
+The acquisition-hold release helper targets the existing active LIVE pilot.
+It requires REGULAR, PLAYOFFS, CHAMPION_FINAL or WEEK_18_EXHIBITION lifecycle;
+initial drafts fail atomically instead of entering an unsupported hold.
+
 | Package              | SHA-256                                                            |
 | -------------------- | ------------------------------------------------------------------ |
 | LIVE 1.4 / 3.3       | `7a2721afb0c0d366367cfbb8a90fba6e4061df0bd02893f5722c5ba838ecd8f5` |
@@ -31,40 +35,49 @@ Simulation verification; the Production activation script selects LIVE only.
 1. Verify final PR commit, CI including native separate-session concurrency and
    real Auth desktop/mobile RPC journeys, public Preview and the isolated-backend
    boundary. A disabled UI Preview alone is insufficient for live acceptance.
-2. Apply the reviewed additive migrations in filename order: player authority,
-   player results, selective quotes and submission intents, plus any later
-   explicitly reviewed support migration. Verify exact migration-ledger parity.
+2. Apply the five reviewed additive migrations in filename order:
+   `20260914230141_player_props_authority.sql`,
+   `20260914230233_player_prop_results.sql`,
+   `20260914230314_selective_player_prop_quotes.sql`,
+   `20260914230353_card_submission_intents.sql`, and
+   `20260914234839_player_catalog_acquisition.sql`. Verify exact migration-ledger parity.
    These migrations retain disabled offers and existing Production quota caps.
 3. Deploy the compatible prop-aware application and securely configure any
    missing server-only `API_SPORTS_NFL_KEY`; reuse the existing Odds API key if
-   valid. Prepare the existing five-minute scheduler using
-   `scripts/sql/prepare-player-results-dispatch.sql`. The compatible dispatcher
-   must run queued metadata independently of accepted-prop result processing.
-   Configure acquisition-only scope using `catalog-setup.sql`:
-   `props_catalog_apply=true`, the exact
-   `props_league_id`/`props_season_id`, and a recorded
-   `props_catalog_setup_reference` in the `sunday_ledger` settings namespace.
-   This enables bounded metadata acquisition only; offers and prospective rules
-   stay disabled. Use authorized isolated scope during build validation and
-   Production scope only after release approval. A cold NFL catalog may require
-   34–36 shared metadata requests over at least two UTC quota days under the
-   20/day allowance, depending on coverage/game cache expiry at the boundary.
-   Obtain real current-season identities, result completeness, participation,
-   correction and permitted retention/use evidence. An odds subscription upgrade
-   does not establish the statistics path.
+   valid.
 4. After the owner upgrades the existing odds subscription, securely verify its
    actual entitlement and usage/reset evidence. Run `quote-policy.sql` through
    `psql` with its structured `verified_entitlement_json` variable. It changes app
    caps from 90/day and 450/month to 1,000/day and 5,000/month, with 350/day and
    2,000/month protected for core lines/results. Existing recorded usage is never
    reset. The provider's 20K plan and app accounting boundaries are separate.
-5. After the metadata/source checks pass, enable
+5. Prepare the existing five-minute scheduler using
+   `scripts/sql/prepare-player-results-dispatch.sql`. The compatible dispatcher
+   must run queued metadata independently of accepted-prop result processing.
+   Configure acquisition-only scope using `catalog-setup.sql`:
+   `props_catalog_apply=true`, the exact
+   `props_league_id`/`props_season_id`, and a recorded
+   `props_catalog_setup_reference` in the `sunday_ledger` settings namespace.
+   This enables bounded metadata acquisition and records a hold at the first
+   eligible unopened week; offers and prospective rules stay disabled. Once the
+   prior week meets its ordinary FINAL prerequisite, publish the next eligible
+   slate through the existing publication authority. The held week stays PLANNED
+   under its inherited binding and automatically queues catalog acquisition.
+   Opening is blocked until readiness and scoped activation. Use authorized
+   isolated scope during build validation and Production scope only after release
+   approval. A cold NFL catalog may require
+   34–36 shared metadata requests over at least two UTC quota days under the
+   20/day allowance, depending on coverage/game cache expiry at the boundary.
+   Obtain real current-season identities, result completeness, participation,
+   correction and permitted retention/use evidence. An odds subscription upgrade
+   does not establish the statistics path.
+6. After the metadata/source checks pass, enable
    `private.player_result_policy.processing_enabled`,
    `api_sports_contract_validated` and `nflverse_contract_validated` only after
    their evidence passes. Retain the shared 80 result-attempt/20 metadata daily
    limits and maximum eight requests/minute. This uses the existing Supabase
    cron/Vault path, without assuming a Vercel upgrade.
-6. Run `preflight.sql`. Retain package, scope, migration and setting output
+   Run `preflight.sql`. Retain package, scope, migration and setting output
    privately. It is read-only and cannot verify a deployed commit, a secret,
    source rights or an observed provider latency.
 7. Record a readiness manifest covering the actual account/quote/result identity
@@ -74,7 +87,7 @@ Simulation verification; the Production activation script selects LIVE only.
    nothing; applying fails unless the paid-plan budget, an entitlement
    configuration or consistent successful zero-credit probe within ten minutes,
    validated result processing and five-minute dispatcher are installed.
-8. Publish the prospective slate. Scoped props weeks remain PLANNED while the
+8. The held prospective slate remains PLANNED while the
    automatically proposed six slots per eligible game are reviewed. Bootstrap
    verified mappings, prepare the full menu, confirm choices once, and open the
    week through `open_reviewed_player_prop_week`. First-week opening delegates
@@ -106,6 +119,25 @@ transaction. Review the current state before retrying. Do not supply fabricated
 readiness flags or edit guards to force activation.
 
 ## Compatible disable
+
+If validation fails before props activation, `abort-catalog-hold.sql` provides a
+separate game-only recovery for the exact staged PLANNED week. It refuses a week
+with receipts, an activated props scope, a later published week or an expired
+entry window. It releases the acquisition hold and uses the existing guarded
+opening/rules authority to adopt current 1.3. It does not modify any previously
+opened week. Supply the exact approved scope and reason:
+
+```sql
+set sunday_ledger.props_catalog_abort_apply = 'true';
+set sunday_ledger.props_league_id = '<configured LIVE pilot league UUID>';
+set sunday_ledger.props_season_id = '<verified current season UUID>';
+set sunday_ledger.props_catalog_abort_week_id = '<exact staged PLANNED week UUID>';
+set sunday_ledger.props_approval_reference = '<recorded combined owner approval>';
+set sunday_ledger.props_catalog_abort_reason = '<recorded source-readiness failure>';
+```
+
+Then execute `abort-catalog-hold.sql`. A later retry uses `catalog-setup.sql` to
+select the next eligible unopened week; no past binding is changed.
 
 `disable.sql` switches off new offers for the configured league. It leaves
 `rules_enabled` true, so future supported weeks keep opening without an

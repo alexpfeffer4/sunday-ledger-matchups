@@ -25,6 +25,8 @@ begin
  select * into strict s from private.seasons where id=sid and league_id=lid for update;
  if s.mode<>'LIVE' or s.lifecycle not in('ROSTER_LOCKED','REGULAR','PLAYOFFS','CHAMPION_FINAL','WEEK_18_EXHIBITION') then
  raise exception 'The configured live pilot season is not eligible'; end if;
+ if s.id<>(select current.id from private.seasons current where current.league_id=lid order by current.created_at desc,current.id desc limit 1) then
+ raise exception 'The configured season is no longer current'; end if;
  select * into strict p from private.prepared_player_props_rulesets where mode=s.mode;
  if p.sha256_hash<>'7a2721afb0c0d366367cfbb8a90fba6e4061df0bd02893f5722c5ba838ecd8f5'
  or encode(extensions.digest(private.canonical_ruleset_json(p.canonical_json),'sha256'),'hex')<>p.sha256_hash then
