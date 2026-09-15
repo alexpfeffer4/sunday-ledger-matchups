@@ -294,7 +294,7 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   await page.goto(confirmationUrl.toString());
   expect(
     (await page.context().cookies(baseURL)).filter((cookie) =>
-      cookie.name.includes("auth-token"),
+      /^sb-.+-auth-token(?:\.\d+)?$/.test(cookie.name),
     ),
   ).toEqual([]);
   const confirmationResponsePromise = page.waitForResponse(
@@ -309,7 +309,9 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   // session the browser actually stored, then use it through setup and joining.
   const browserSessionCookies = (await page.context().cookies(baseURL))
     .filter(
-      (cookie) => cookie.name.includes("auth-token") && cookie.value.length > 0,
+      (cookie) =>
+        /^sb-.+-auth-token(?:\.\d+)?$/.test(cookie.name) &&
+        cookie.value.length > 0,
     )
     .map(({ domain, httpOnly, name, path, sameSite, secure }) => ({
       domain,
