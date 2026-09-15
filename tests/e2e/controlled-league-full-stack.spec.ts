@@ -292,18 +292,25 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   confirmationUrl.searchParams.set("flow", "create-account");
   confirmationUrl.searchParams.set("next", invitePath);
   await page.goto(confirmationUrl.toString());
+  expect(
+    (await page.context().cookies(baseURL)).filter((cookie) =>
+      cookie.name.includes("auth-token"),
+    ),
+  ).toEqual([]);
   const confirmationResponsePromise = page.waitForResponse(
     (response) =>
       response.url() === `${baseURL}/auth/confirm` &&
       response.request().method() === "POST",
   );
   await page.getByRole("button", { name: "Confirm and continue" }).click();
-  const confirmationResponse = await confirmationResponsePromise;
+  await confirmationResponsePromise;
   await page.waitForURL(/\/account\/setup/);
-  const confirmationSetCookie =
-    await confirmationResponse.headerValue("set-cookie");
+  // WebKit omits Set-Cookie from the browser response headers. Verify the
+  // session the browser actually stored, then use it through setup and joining.
   const browserSessionCookies = (await page.context().cookies(baseURL))
-    .filter((cookie) => cookie.name.includes("auth-token"))
+    .filter(
+      (cookie) => cookie.name.includes("auth-token") && cookie.value.length > 0,
+    )
     .map(({ domain, httpOnly, name, path, sameSite, secure }) => ({
       domain,
       httpOnly,
@@ -318,7 +325,6 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     error: confirmationDestination.searchParams.get("error"),
     hasTokenHash: confirmationDestination.searchParams.has("token_hash"),
     pathname: confirmationDestination.pathname,
-    setsSessionCookie: Boolean(confirmationSetCookie?.includes("auth-token")),
   }).toEqual({
     browserSessionCookies: expect.arrayContaining([
       expect.objectContaining({
@@ -331,7 +337,6 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     error: null,
     hasTokenHash: false,
     pathname: "/account/setup",
-    setsSessionCookie: true,
   });
   await expect(
     page.getByRole("heading", { name: "Finish account setup" }),
