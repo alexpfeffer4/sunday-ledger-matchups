@@ -70,6 +70,8 @@ export default async function CommissionerPage({
               candidates: slot.candidates ?? [],
             }))}
             frozen={menu.frozen}
+            amendmentPending={menu.amendmentPending ?? false}
+            amendmentApplied={menu.amendmentApplied ?? false}
             prepareAction={preparePlayerPropMenuAction}
             confirmAction={confirmPlayerPropMenuAction}
             refreshAction={refreshPlayerPropQuotesAction}

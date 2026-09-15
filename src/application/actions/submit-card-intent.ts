@@ -20,6 +20,7 @@ const bindingSchema = z.object({
   mode: z.enum(["LIVE", "SIMULATION"]),
   operationKey: z.string(),
   committed: z.boolean(),
+  reset: z.boolean().optional().default(false),
   cardSealed: z.boolean().optional().default(false),
 });
 const renewalSchema = z.discriminatedUnion("status", [
@@ -58,6 +59,7 @@ const renewalSchema = z.discriminatedUnion("status", [
 
 export type SubmissionIntentResult =
   | { status: "accepted"; replayed: boolean }
+  | { status: "reset" }
   | { status: "already-sealed" }
   | { status: "simulation"; operationKey: string; intentId: string }
   | { status: "error"; code: string }
@@ -87,6 +89,7 @@ export async function submitCardIntent(
   const binding = bindingSchema.parse(bound.data);
   // Authorization and exact consent comparison already happened in the RPC.
   // Do this before any refresh, quote read, expiry or current-week check.
+  if (binding.reset) return { status: "reset" };
   if (binding.committed) return { status: "accepted", replayed: true };
   if (binding.cardSealed) return { status: "already-sealed" };
   if (binding.mode === "SIMULATION")
@@ -106,6 +109,7 @@ export async function submitCardIntent(
       p_idempotency_key: binding.operationKey,
     });
   const first = await accept(positions as unknown as Json);
+  if (!first.error && isResetSubmission(first.data)) return { status: "reset" };
   if (!first.error) return { status: "accepted", replayed: false };
   // A timeout may have happened after commit. Recover before provider work.
   const recovered = await api.rpc("bind_card_submission_intent", {
@@ -116,6 +120,7 @@ export async function submitCardIntent(
   if (recovered.error)
     return { status: "error", code: recovered.error.message };
   const recovery = bindingSchema.parse(recovered.data);
+  if (recovery.reset) return { status: "reset" };
   if (recovery.committed) return { status: "accepted", replayed: true };
   if (recovery.cardSealed) return { status: "already-sealed" };
   if (
@@ -154,6 +159,8 @@ export async function submitCardIntent(
         quoteChanges: renewed.changes,
       };
     const accepted = await accept(renewed.positions as unknown as Json);
+    if (!accepted.error && isResetSubmission(accepted.data))
+      return { status: "reset" };
     if (!accepted.error) return { status: "accepted", replayed: false };
     // One final recovery read; never another fetch/review or automatic retry loop.
     const last = await api.rpc("bind_card_submission_intent", {
@@ -163,6 +170,7 @@ export async function submitCardIntent(
     });
     if (!last.error) {
       const recovery = bindingSchema.parse(last.data);
+      if (recovery.reset) return { status: "reset" };
       if (recovery.committed) return { status: "accepted", replayed: true };
       if (recovery.cardSealed) return { status: "already-sealed" };
     }
@@ -176,4 +184,9 @@ export async function submitCardIntent(
       code: error instanceof Error ? error.message : "QUOTE_REFRESH_FAILED",
     };
   }
+}
+
+/** A superseded acceptance remains in audit but is no longer an active bet. */
+export function isResetSubmission(value: unknown): boolean {
+  return z.object({ status: z.literal("RESET") }).safeParse(value).success;
 }

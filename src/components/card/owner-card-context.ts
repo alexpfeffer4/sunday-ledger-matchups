@@ -38,9 +38,12 @@ export function ownerCardContext(state: Stage1StateDto): OwnerCardContext {
 }
 
 export function cardDraftStorageKey(context: OwnerCardContext): string | null {
-  return context.ownerCard && context.week
-    ? `sunday-ledger:card-draft:v1:${context.leagueId}:${context.week.id}:${context.ownerCard.id}`
-    : null;
+  if (!context.ownerCard || !context.week) return null;
+  const base = `sunday-ledger:card-draft:v1:${context.leagueId}:${context.week.id}:${context.ownerCard.id}`;
+  const generation = context.ownerCard.cardGeneration ?? 0;
+  // Keep existing drafts accessible until an explicit recorded reset. A reset
+  // starts fresh draft and submission identities even on another device.
+  return generation === 0 ? base : `${base}:generation:${generation}`;
 }
 
 export function cardIsSealed(context: OwnerCardContext): boolean {

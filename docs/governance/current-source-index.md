@@ -1,14 +1,42 @@
 # Sunday Ledger — current governing source index
 
+## Open Week 2 props exception — September 15, 2026
+
+The owner requested props in the already-open pilot Week 2 and authorized a
+reset of the designated accepted card so that member can choose again. The
+[Week 2 cutover amendment](2026-09-15-week2-props-cutover.md) narrowly supersedes
+the future-only/no-redeployment provisions for that private scope. It requires
+an auditable cancellation and replacement card generation, unchanged original
+receipts, the same 1,000-credit allocation and atomic reset with validated props
+activation before any published game starts. That transaction freezes the
+reviewed complete menu before replacement submissions. If readiness fails,
+existing play remains unchanged and no reset occurs. No general cancellation
+control is added.
+
+The owner subsequently reported completing the Odds API 20K subscription and
+installing the replacement key in the existing server-only Vercel variable.
+That completes the owner purchase/setup task; the agent must verify the fresh
+deployment and live account allowance before changing the current 90/day and
+450/month application caps. No repeat upgrade or key-setup request is needed.
+
+The owner also approved the API-Sports dashboard verification attempt. The site
+rejected the attempt and no support request was sent; the
+[prepared permission request](../operations/api-sports-permission-request.md)
+can be sent through official dashboard support. Retained release approval does
+not establish provider entitlement, coverage or permission. The earlier
+prospective-only instructions below remain effective outside this exception.
+
 ## Player props release approval — September 15, 2026
 
 The owner approved PR #51's combined additive migration, merge/deployment,
 server/scheduler configuration and conditional future-week activation plan,
 including the bounded source-validation allowance and compatible recovery plan.
 The owner authorized obtaining API-Sports use/retention clarification and reported
-creating `API_SPORTS_NFL_KEY`. The existing Odds API account is still on the free
-tier; purchases remain excluded and upgraded caps/live offers remain gated on
-verified entitlement, source readiness and commissioner menu review.
+creating `API_SPORTS_NFL_KEY`. That initial response reported a free Odds API
+account; the later owner-confirmed 20K subscription/key setup above supersedes
+that account status. Agent purchases remain excluded and upgraded caps/live
+offers remain gated on verified entitlement, source readiness and commissioner
+menu review.
 
 This release incorporates current main `6be1f0efb22ea303ebff09196d0a0cd6b6a6dc04`,
 preserving PR #52's scheduled-day filters and PR #53's historical matchups.

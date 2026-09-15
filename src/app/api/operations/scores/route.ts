@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { checkOddsAccount } from "@/adapters/providers/the-odds-api/account-check";
 import { reconcileOddsEntitlement } from "@/adapters/providers/the-odds-api/entitlement";
 import { refreshLiveScores } from "@/adapters/providers/the-odds-api/provider-requests";
 
@@ -18,6 +19,13 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401, headers });
   }
   try {
+    if (new URL(request.url).searchParams.get("check") === "odds-account") {
+      const result = await checkOddsAccount();
+      return Response.json(result, {
+        headers,
+        status: result.status === "READY" ? 200 : 503,
+      });
+    }
     const entitlement = await reconcileOddsEntitlement();
     // A completed free probe shares the same three-second launch spacing.
     if (entitlement !== "IDLE")

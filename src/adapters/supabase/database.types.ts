@@ -65,6 +65,10 @@ export type Database = {
         Args: never;
         Returns: Json;
       };
+      claim_odds_account_probe: {
+        Args: never;
+        Returns: Json;
+      };
       claim_odds_entitlement_probe: {
         Args: never;
         Returns: Json;
@@ -95,6 +99,10 @@ export type Database = {
       };
       complete_nflverse_reconciliation: {
         Args: { p_lease_id: string; p_observations?: Json };
+        Returns: Json;
+      };
+      complete_odds_account_probe: {
+        Args: { p_probe_id: string; p_usage?: Json };
         Returns: Json;
       };
       complete_odds_entitlement_probe: {

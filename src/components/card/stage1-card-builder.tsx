@@ -47,6 +47,7 @@ import {
 } from "@/components/card/outcome-selector";
 import { PositionEditorSheet } from "@/components/card/position-editor-sheet";
 import { ActionFeedback } from "@/components/forms/action-feedback";
+import { CardResetNotice } from "@/components/card/card-reset-history";
 import { validateDraftCard } from "@/domain/cards/validate-card-draft";
 import {
   maximumStakeForOdds,
@@ -136,6 +137,7 @@ function cardBuilderContextKey(state: Stage1StateDto): string {
     state.league.id,
     state.week?.id,
     state.ownerCard?.id,
+    state.ownerCard?.cardGeneration ?? 0,
     state.season?.rulesetSnapshot,
   ]);
 }
@@ -292,7 +294,14 @@ function Stage1CardBuilderEditor({
         );
       }
       submittedKeys.current = new Set(batchDrafts.map(selectionKey));
-      return acceptStage1CardAction(previous, formData);
+      const result = await acceptStage1CardAction(previous, formData);
+      if (result.cardReset) {
+        clearDrafts();
+        submittedKeys.current = new Set();
+        setReviewing(false);
+        setStoredReview(null);
+      }
+      return result;
     },
     initialAppActionState,
   );
@@ -1127,6 +1136,9 @@ function Stage1CardBuilderEditor({
       <div className="mt-4 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-3">
           <OwnerCardProgress context={context} onSlatePage />
+          {ownerCard.resetAt ? (
+            <CardResetNotice week={state.week.nflWeek} />
+          ) : null}
           {rolling ? <ActionFeedback state={actionState} /> : null}
 
           <nav

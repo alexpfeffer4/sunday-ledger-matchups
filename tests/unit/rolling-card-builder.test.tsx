@@ -81,6 +81,37 @@ function rollingState() {
   return state;
 }
 describe("rolling member submission flow", () => {
+  it("starts a clean draft and review after a recorded reset on the same card", async () => {
+    const state = rollingState();
+    const originalKey = cardDraftStorageKey(ownerCardContext(state))!;
+    localStorage.setItem(originalKey, savedStage3Draft(state));
+    const { rerender } = render(<Stage1CardBuilder state={state} />);
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("button", { name: /Review/ }).length,
+      ).toBeGreaterThan(0),
+    );
+    const resetState = {
+      ...state,
+      ownerCard: {
+        ...state.ownerCard!,
+        cardGeneration: 1,
+        resetAt: "2026-09-15T15:00:00Z",
+        allocatedCredits: 0,
+        remainingCredits: 1000,
+        positions: [],
+      },
+    };
+    const replacementKey = cardDraftStorageKey(ownerCardContext(resetState))!;
+    expect(replacementKey).not.toBe(originalKey);
+    rerender(<Stage1CardBuilder state={resetState} />);
+    expect(
+      screen.getByText(/picks were reset for the player-props launch/),
+    ).toBeInTheDocument();
+    expect(localStorage.getItem(replacementKey)).toBeNull();
+    expect(vi.mocked(acceptStage1CardAction)).not.toHaveBeenCalled();
+    expect(vi.mocked(reviewLiveCardQuotes)).not.toHaveBeenCalled();
+  });
   it("filters Thursday games using Eastern Time and restores the full slate", () => {
     const state = rollingState();
     state.slate[0].scheduledStartAt = "2026-09-18T00:15:00Z";

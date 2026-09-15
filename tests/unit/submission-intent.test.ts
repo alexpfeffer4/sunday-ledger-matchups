@@ -52,6 +52,48 @@ beforeEach(() => {
 });
 
 describe("explicit Submit consent orchestration", () => {
+  it("treats a reset committed intent as superseded before provider work", async () => {
+    const c = client([{ data: { ...binding, committed: true, reset: true } }]);
+    expect(await submitCardIntent(c.value, input)).toEqual({ status: "reset" });
+    expect(c.rpc).toHaveBeenCalledTimes(1);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+  it("recognizes an authoritative reset replay without presenting an accepted bet", async () => {
+    const c = client([{ data: binding }, { data: { status: "RESET" } }]);
+    expect(await submitCardIntent(c.value, input)).toEqual({ status: "reset" });
+    expect(c.rpc).toHaveBeenCalledTimes(2);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+  it("stops recovery when a recorded reset wins after an ambiguous acceptance response", async () => {
+    const c = client([
+      { data: binding },
+      { error: { message: "Response timeout" } },
+      { data: { ...binding, reset: true } },
+    ]);
+    expect(await submitCardIntent(c.value, input)).toEqual({ status: "reset" });
+    expect(refresh).not.toHaveBeenCalled();
+  });
+  it("rejects an obsolete card generation without renewing its consent", async () => {
+    const c = client([{ error: { message: "CARD_RESET_REVIEW_REQUIRED" } }]);
+    expect(await submitCardIntent(c.value, input)).toEqual({
+      status: "error",
+      code: "CARD_RESET_REVIEW_REQUIRED",
+    });
+    expect(c.rpc).toHaveBeenCalledTimes(1);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+  it("recognizes a reset after its one renewal without claiming active acceptance", async () => {
+    const c = client([
+      { data: binding },
+      { error: { message: "QUOTE_REVIEW_EXPIRED" } },
+      { data: binding },
+      { data: review },
+      { data: { status: "UNCHANGED", positions: input.positions } },
+      { data: { status: "RESET" } },
+    ]);
+    expect(await submitCardIntent(c.value, input)).toEqual({ status: "reset" });
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
   it("shows an already sealed legacy card from another device without accepting new terms or fetching", async () => {
     const c = client([{ data: { ...binding, cardSealed: true } }]);
     expect(await submitCardIntent(c.value, input)).toEqual({

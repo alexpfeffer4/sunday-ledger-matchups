@@ -1,9 +1,18 @@
 # Full-slate player props and explicit Submit recovery
 
-Implementation and release preparation for the owner's September 14, 2026
-handoff. This feature is **disabled for Production**. This document does not
-authorize a purchase, migration, merge, deployment, scheduler change, or rules
-activation. The public feature branch and isolated Preview are authorized.
+The September 15 [release approval and current status](operations/player-props-release.md)
+supersede the original build-only boundary below. The later
+[Week 2 cutover amendment](governance/2026-09-15-week2-props-cutover.md) permits
+only its designated pregame Week 2 exception to the future-only/no-cancellation
+rules. It does not relax provider readiness, immutable receipt retention or the
+weekly credit limit. Consult that amendment before applying the ordinary
+future-week activation instructions to the approved pilot scope.
+
+Implementation and release preparation began under the owner's September 14,
+2026 build-only handoff. PR #51 has since been deployed with props offers
+disabled under the September 15 release approval. Purchases by the agent remain
+excluded. The approved Week 2 exception is separately gated and is not activated
+merely by documenting or deploying its support.
 
 ## Contract and compatible behavior
 
@@ -37,10 +46,13 @@ Routine preparation does not require an operator-authored player manifest.
 Previously verified bookmaker aliases allow a known player to remain in the
 menu before this game's line appears. Missing or ambiguous identities fail closed.
 
-The first accepted bet by any member, including a game-line bet, freezes the
-week's player identities under the acceptance lock. A known frozen player can
-receive quotes later; an unresolved identity stays unavailable. Explicit
-per-game quote refresh handles late lines without substituting players.
+For the ordinary future-week path, the first accepted bet by any member,
+including a game-line bet, freezes the week's player identities under the
+acceptance lock. The approved already-open Week 2 exception freezes its reviewed
+complete menu inside the atomic reset/activation transaction, before any
+replacement submission. In either path, a known frozen player can receive
+quotes later; an unresolved identity stays unavailable. Explicit per-game quote
+refresh handles late lines without substituting players.
 
 Successful submission reveals one distinct game identity immediately. Player
 names, pick counts, prices, amounts and batches remain behind the existing
@@ -176,16 +188,27 @@ coverage and any associated additional cost remain unresolved.
 
 ## Release sequence and owner boundaries
 
+The sequence below describes the ordinary future-week path. For the approved
+already-open Week 2 exception, follow the
+[Week 2 operator runbook](operations/week2-props-cutover.md); do not apply an
+unopened-week hold or defer the menu freeze until a replacement bet.
+
 1. Finish the final-head quality, migration/pgTAP, native concurrency, real Auth
    desktop/mobile and regression gates. A rendered fixture Preview is separate
    from authenticated acceptance. See the Phase 8C workflow and retained artifacts.
-2. Owner upgrades the existing odds subscription, supplies any missing NFL stats
-   key securely, and resolves the concrete provider validation/access requirements.
+2. Owner setup is complete by the September 15 update: the owner reports the
+   Odds API 20K subscription and replacement server key installed, and the NFL
+   key has passed its secure Production check. The agent must verify fresh Odds
+   API allowance headers before the cap transition and resolve the remaining
+   concrete provider validation/access requirements. Do not repeat setup asks.
    Do not paste secrets into chat. The server setting route is
    [Vercel environment variables](https://vercel.com/pfeffer/sunday-ledger-matchups/settings/environment-variables).
    Production settings are not changed during build preparation.
-3. After a concrete release approval, apply the additive migrations in filename
-   order, deploy the compatible app with props offers disabled, and verify parity.
+3. Execute under the retained release approval: apply reviewed additive
+   migrations in filename order, deploy compatible code with props offers
+   disabled, and verify parity. PR #51's five migrations and disabled deployment
+   are complete; do not reapply them. The Week 2 amendment's new migration and
+   deployment evidence must be recorded separately.
 4. Agent verifies secure server keys, current entitlement and provider source
    policy; configures the approved cap transition, scheduler and acquisition hold.
    After ordinary preceding-week finality, the next eligible publication remains
@@ -213,7 +236,9 @@ tests in 98 files, the production build, all 45 native SQL suites with 1,673
 assertions, all four native concurrency scripts, scheduler verification and
 generated-type parity. Final-head results, later regression additions and the
 real authenticated desktop/mobile gate are recorded on [PR #51](https://github.com/alexpfeffer4/sunday-ledger-matchups/pull/51).
-Use the exact head and CI result there when approving release.
+Use the exact head and CI result there as PR #51's release evidence. Approval is
+already retained; the later Week 2 amendment requires its own tested-head and
+deployment evidence without repeating the owner approval.
 
 Local SQL diagnostics use PostgreSQL-compatible PGlite because this workspace
 cannot start native PostgreSQL or Docker. The scheduler migration is omitted
