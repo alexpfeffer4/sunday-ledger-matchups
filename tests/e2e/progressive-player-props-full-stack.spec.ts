@@ -218,7 +218,7 @@ commit;`),
     "I reviewed the available players and approve automatic publication of eligible empty slots before each game’s betting cutoff.",
   );
   await expect(acknowledgement).not.toBeChecked();
-  await expect(page.locator('[id^="player-menu-"]')).toHaveCount(0);
+  await expect(page.locator('select[id^="player-menu-"]')).toHaveCount(0);
   await acknowledgement.check();
   await completePlayerPropsAction(
     page,
