@@ -69,9 +69,9 @@ Simulation verification; the Production activation script selects LIVE only.
    It does not enable metadata, result processing, contract-validation flags or
    offers. Do not fabricate API-Sports IDs or set its validation flag for this mode.
 6. Enable nflverse contract validation only after its identity, completeness,
-   participation, correction and verified-exception checks pass. Prepare the
-   existing five-minute dispatcher using
-   `scripts/sql/prepare-player-results-dispatch.sql`; verify delivered catalog
+   participation, correction and verified-exception checks pass. After the tracked
+   dispatcher migration, verify the existing five-minute dispatcher with the
+   read-only `scripts/sql/prepare-player-results-dispatch.sql`; verify delivered catalog
    and result calls against the exact deployment. Enable bounded metadata for
    the selected source policy. For an ordinary unopened week, configure its
    acquisition hold using `catalog-setup.sql` with `props_catalog_apply=true`,

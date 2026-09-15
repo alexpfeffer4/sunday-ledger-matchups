@@ -139,6 +139,8 @@ select ok(catalog_enabled and not enabled and not rules_enabled and catalog_hold
 select is((select count(*) from private.card_reset_events),0::bigint,'catalog setup never resets the accepted card');
 select throws_ok($$select pg_temp.cutover_week2(c) from cutover_context$$,'55000','Validated player sources and protected request budgets are required.','result processing is independently required at cutover');
 update private.player_result_policy set processing_enabled=true;
+-- Remove the tracked dispatcher inside this rollback-only negative fixture.
+drop function private.dispatch_player_result_checkpoints();
 select throws_ok($$select pg_temp.cutover_week2(c) from cutover_context$$,'55000','The player result dispatcher is not installed.','the scheduler gate precedes reset');
 -- Transaction-local no-network dispatcher fixture; the original is restored by rollback.
 create function private.dispatch_player_result_checkpoints() returns bigint language sql as $$ select null::bigint $$;
