@@ -12,7 +12,7 @@ create table private.player_result_policy (
  results_daily_limit integer not null default 80 check(results_daily_limit between 1 and 80),
  metadata_daily_limit integer not null default 20 check(metadata_daily_limit between 0 and 20),
  requests_per_minute integer not null default 8 check(requests_per_minute between 1 and 8),
- provider_remaining integer check(provider_remaining>=0),
+ provider_remaining integer not null default 0 check(provider_remaining>=0),
  provider_window_date date not null default (clock_timestamp() at time zone 'UTC')::date,
  provider_observed_at timestamptz,
  blocked_until timestamptz,
@@ -308,13 +308,14 @@ returns void language sql security definer set search_path='' as $$
  group by e.fixture_event_key on conflict do nothing;
 $$;
 
--- API-Sports documents daily reset at 00:00 UTC. Reset only this provider's
--- conservative headroom, never reservation history or the independent Odds API.
+-- API-Sports documents daily reset at 00:00 UTC. A new date invalidates the
+-- prior account observation; the quota-free /status proof restores actual
+-- headroom. Never invent unused quota or clear reservation history.
 create function private.roll_player_result_budget_day()
 returns void language plpgsql security definer set search_path='' as $$
 begin
  update private.player_result_policy set provider_window_date=(clock_timestamp() at time zone 'UTC')::date,
- provider_remaining=100,provider_observed_at=null
+ provider_remaining=0,provider_observed_at=null
  where singleton and provider_window_date<(clock_timestamp() at time zone 'UTC')::date;
 end; $$;
 

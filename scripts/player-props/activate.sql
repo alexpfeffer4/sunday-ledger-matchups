@@ -31,10 +31,15 @@ begin
  raise exception 'Prepared package differs from tested application'; end if;
  if exists(select 1 from private.authoritative_season_rulesets a where a.ruleset_version<>'1.3'
  or a.canonical_json is distinct from private.rolling_ruleset_package(a.mode)) then raise exception 'Unexpected global catalog'; end if;
- if not exists(select 1 from private.odds_refresh_policy where enabled and daily_credit_limit=1000 and monthly_credit_limit=5000
+ if not exists(select 1 from private.odds_refresh_policy policy where policy.enabled and daily_credit_limit=1000 and monthly_credit_limit=5000
  and protected_core_daily_credits>=350 and protected_core_monthly_credits>=2000 and provider_entitlement_credits>=20000
- and provider_cycle_verified_at>clock_timestamp()-interval '24 hours') then
- raise exception 'Reviewed paid-plan budget and recent verified entitlement are required before offers'; end if;
+ and quota_reset_policy='FIRST_OF_MONTH_CONFIRMED_HEADERS' and next_quota_reset_at>clock_timestamp()
+ and (provider_cycle_verified_at between clock_timestamp()-interval '10 minutes' and clock_timestamp()
+   or exists(select 1 from private.odds_entitlement_probes proof where proof.state='SUCCEEDED'
+    and proof.completed_at between clock_timestamp()-interval '10 minutes' and clock_timestamp()
+    and proof.started_at>=policy.provider_cycle_verified_at
+    and proof.remaining::bigint+proof.used::bigint=policy.provider_entitlement_credits))) then
+ raise exception 'Reviewed paid-plan budget and fresh verified entitlement are required before offers'; end if;
  if not exists(select 1 from private.player_result_policy where processing_enabled and api_sports_contract_validated and nflverse_contract_validated) then
  raise exception 'Validated automatic player-result processing is required before offers'; end if;
  if to_regprocedure('private.dispatch_player_result_checkpoints()') is null then raise exception 'Player result dispatcher is not installed'; end if;

@@ -25,7 +25,9 @@ begin
  end loop;
  foreach n in array array['private.prop_snapshot_allowed(uuid,uuid,text,text)','private.is_player_props_week(uuid)',
  'private.player_receipt_canonical(uuid,uuid,uuid,integer,timestamptz,uuid)',
- 'api.import_player_catalog(jsonb)','api.confirm_player_prop_menu(text,jsonb)'] loop
+ 'api.import_player_catalog(jsonb)','api.confirm_player_prop_menu(text,jsonb)',
+ 'api.open_reviewed_player_prop_week(text,text)','api.configure_player_prop_odds_budget(jsonb)',
+ 'private.player_props_menu_eligible(uuid)','private.player_props_menu_reviewed(uuid)'] loop
  if to_regprocedure(n) is null then raise exception 'Missing authority: %',n; end if;
  end loop;
  if strpos(pg_get_functiondef('private.pin_week_rules()'::regprocedure),'p.rules_enabled')=0
@@ -34,6 +36,14 @@ begin
  raise notice 'Database support verified. Provider/account, deployed commit, tests and scheduler evidence remain separate checks.';
 end; $preflight$;
 select mode,sha256_hash as prepared_1_4_sha256 from private.prepared_player_props_rulesets order by mode;
+select p.enabled,daily_credit_limit,monthly_credit_limit,protected_core_daily_credits,protected_core_monthly_credits,
+ provider_entitlement_credits,provider_cycle_id,provider_cycle_verified_at,quota_reset_policy,next_quota_reset_at,
+ (select max(completed_at) from private.odds_entitlement_probes proof where proof.state='SUCCEEDED'
+ and proof.started_at>=p.provider_cycle_verified_at and proof.remaining::bigint+proof.used::bigint=p.provider_entitlement_credits) as latest_consistent_entitlement_probe_at
+ from private.odds_refresh_policy p;
+select processing_enabled,api_sports_contract_validated,nflverse_contract_validated,
+ results_daily_limit,metadata_daily_limit,requests_per_minute from private.player_result_policy;
+
 select mode,ruleset_version,product_bible_version,sha256_hash from private.authoritative_season_rulesets order by mode;
 select c.offers_enabled,p.league_id,p.season_id,p.enabled as league_offers_enabled,p.rules_enabled,p.first_enabled_week,p.activated_at,p.release_sha
  from private.player_prop_controls c left join private.player_prop_leagues p on true order by p.league_id;

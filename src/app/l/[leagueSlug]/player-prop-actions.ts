@@ -7,6 +7,7 @@ import type { AppActionState } from "@/application/actions/action-state";
 import { stableOperationKey } from "@/application/actions/stable-operation-key";
 import { getPlayerPropMenu } from "@/application/queries/get-player-prop-menu";
 import { refreshPlayerMenuQuotes } from "@/adapters/providers/the-odds-api/refresh-card-quotes";
+import { runPlayerCatalogPreparation } from "@/application/players/catalog-preparation";
 
 const slugSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
@@ -70,6 +71,14 @@ export async function preparePlayerPropMenuAction(
 ): Promise<AppActionState> {
   const slug = slugSchema.safeParse(form.get("leagueSlug"));
   if (!slug.success) return failure("");
+  let preparation;
+  try {
+    // The authenticated planner authorizes the commissioner before shared
+    // acquisition. Already verified fixtures/catalogs need no provider access.
+    preparation = await runPlayerCatalogPreparation(slug.data);
+  } catch {
+    return failure("");
+  }
   const client = await createSupabaseServerClient();
   const result = await client
     .schema("api")
@@ -77,6 +86,24 @@ export async function preparePlayerPropMenuAction(
   if (result.error) return failure(result.error.message);
   revalidatePath(`/l/${slug.data}/commissioner`);
   revalidatePath(`/l/${slug.data}/slate`);
+  if (preparation.status === "DISABLED")
+    return {
+      status: "error",
+      message:
+        "Automatic player preparation is not connected yet. Existing verified choices remain available; unresolved slots need attention before opening the week.",
+    };
+  if (preparation.status === "UNAVAILABLE")
+    return {
+      status: "error",
+      message:
+        "Some player identities or result sources could not be verified. Review the unavailable slots before confirming this week.",
+    };
+  if (preparation.status === "PENDING")
+    return {
+      status: "success",
+      message:
+        "The remaining player choices are still being prepared automatically. Refresh this page to view progress before confirming the full slate.",
+    };
   return {
     status: "success",
     message:

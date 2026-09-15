@@ -35,8 +35,20 @@ Simulation verification; the Production activation script selects LIVE only.
    player results, selective quotes and submission intents, plus any later
    explicitly reviewed support migration. Verify exact migration-ledger parity.
    These migrations retain disabled offers and existing Production quota caps.
-3. Deploy the compatible prop-aware application. Securely configure any missing
-   server-only `API_SPORTS_NFL_KEY`; reuse the existing Odds API key if valid.
+3. Deploy the compatible prop-aware application and securely configure any
+   missing server-only `API_SPORTS_NFL_KEY`; reuse the existing Odds API key if
+   valid. Prepare the existing five-minute scheduler using
+   `scripts/sql/prepare-player-results-dispatch.sql`. The compatible dispatcher
+   must run queued metadata independently of accepted-prop result processing.
+   Configure acquisition-only scope using `catalog-setup.sql`:
+   `props_catalog_apply=true`, the exact
+   `props_league_id`/`props_season_id`, and a recorded
+   `props_catalog_setup_reference` in the `sunday_ledger` settings namespace.
+   This enables bounded metadata acquisition only; offers and prospective rules
+   stay disabled. Use authorized isolated scope during build validation and
+   Production scope only after release approval. A cold NFL catalog may require
+   34–36 shared metadata requests over at least two UTC quota days under the
+   20/day allowance, depending on coverage/game cache expiry at the boundary.
    Obtain real current-season identities, result completeness, participation,
    correction and permitted retention/use evidence. An odds subscription upgrade
    does not establish the statistics path.
@@ -46,8 +58,7 @@ Simulation verification; the Production activation script selects LIVE only.
    caps from 90/day and 450/month to 1,000/day and 5,000/month, with 350/day and
    2,000/month protected for core lines/results. Existing recorded usage is never
    reset. The provider's 20K plan and app accounting boundaries are separate.
-5. Prepare the existing five-minute scheduler using
-   `scripts/sql/prepare-player-results-dispatch.sql`. Enable
+5. After the metadata/source checks pass, enable
    `private.player_result_policy.processing_enabled`,
    `api_sports_contract_validated` and `nflverse_contract_validated` only after
    their evidence passes. Retain the shared 80 result-attempt/20 metadata daily
@@ -60,7 +71,8 @@ Simulation verification; the Production activation script selects LIVE only.
    checks, unresolved cases, scheduler delivery, final application commit and
    approved target scope. Supply its SHA-256 and the approval reference to
    `activate.sql` using the exact settings below. The default script run changes
-   nothing; applying fails unless the paid-plan budget, fresh entitlement,
+   nothing; applying fails unless the paid-plan budget, an entitlement
+   configuration or consistent successful zero-credit probe within ten minutes,
    validated result processing and five-minute dispatcher are installed.
 8. Publish the prospective slate. Scoped props weeks remain PLANNED while the
    automatically proposed six slots per eligible game are reviewed. Bootstrap

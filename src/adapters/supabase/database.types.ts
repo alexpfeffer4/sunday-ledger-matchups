@@ -69,6 +69,18 @@ export type Database = {
         Args: never;
         Returns: Json;
       };
+      claim_player_catalog_job: {
+        Args: { p_week_id?: string };
+        Returns: Json;
+      };
+      claim_player_catalog_quote: {
+        Args: { p_week_id: string };
+        Returns: Json;
+      };
+      claim_player_catalog_source: {
+        Args: { p_cache_key: string };
+        Returns: Json;
+      };
       claim_player_result_jobs: {
         Args: never;
         Returns: Json;
@@ -88,6 +100,19 @@ export type Database = {
       complete_odds_entitlement_probe: {
         Args: { p_probe_id: string; p_usage?: Json };
         Returns: Json;
+      };
+      complete_player_catalog_job: {
+        Args: {
+          p_error?: string;
+          p_lease_id: string;
+          p_missing_sources?: number;
+          p_status: string;
+        };
+        Returns: undefined;
+      };
+      complete_player_catalog_source: {
+        Args: { p_cache_key: string; p_lease_id: string; p_payload?: Json };
+        Returns: undefined;
       };
       complete_player_result_request: {
         Args: {
@@ -119,6 +144,14 @@ export type Database = {
       };
       confirm_player_prop_menu: {
         Args: { p_choices: Json; p_league_slug: string };
+        Returns: Json;
+      };
+      enqueue_player_catalog: {
+        Args: { p_league_slug: string };
+        Returns: Json;
+      };
+      get_player_catalog_quotes: {
+        Args: { p_week_id: string };
         Returns: Json;
       };
       get_player_prop_menu: {

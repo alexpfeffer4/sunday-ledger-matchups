@@ -194,11 +194,17 @@ create temporary table protected_player_deadline as select correction_window_clo
 select throws_ok($$select private.publish_player_evidence((select event_id from props_context),(select subject_id from result_test_subject),'PASSING_YARDS',(select id from private.player_result_observations where provider='API_SPORTS' and value=50 limit 1),(select id from private.player_result_observations where provider='API_SPORTS' and value=50 limit 1),'Late protected correction fixture.')$$,'55000',null,'late player correction cannot silently change protected results');
 select is((select correction_window_closes_at from private.season_weeks where id=(select week_id from props_context)),(select deadline from protected_player_deadline),'player corrections do not restart the correction clock');
 
--- Provider daily rollover restores documented allowance, retaining every request.
+-- Provider daily rollover needs fresh quota-free account proof, retaining every request.
 update private.player_result_policy set provider_remaining=0,provider_window_date=(clock_timestamp() at time zone 'UTC')::date-1;
 create temporary table old_player_request as with inserted as (insert into private.player_result_requests(request_class,reserved_at) values('METADATA',clock_timestamp()-interval '1 day') returning id) select id from inserted;
 select private.roll_player_result_budget_day();
-select is((select provider_remaining from private.player_result_policy),100,'new documented UTC provider day restores bounded allowance');
+select is((select provider_remaining from private.player_result_policy),0,'UTC rollover holds paid requests until fresh account proof');
+-- Deterministic response to a leased quota-free status request; no provider call.
+create temporary table player_status_lease as with leased as (
+ update private.player_result_policy set status_probe_id=gen_random_uuid(),status_probe_until=clock_timestamp()+interval '1 minute'
+ where singleton returning status_probe_id) select status_probe_id id from leased;
+select api.complete_player_statistics_status((select id from player_status_lease),true,100,0,clock_timestamp());
+select is((select provider_remaining from private.player_result_policy),100,'fresh leased account proof restores observed current-day allowance');
 select api.complete_player_result_request((select id from old_player_request),null,0,null,null);
 select is((select provider_remaining from private.player_result_policy),100,'late response from old provider day cannot poison new allowance');
 select is((select count(*) from private.player_result_requests where id=(select id from old_player_request)),1::bigint,'provider rollover never clears historical request accounting');

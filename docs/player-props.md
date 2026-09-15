@@ -29,6 +29,14 @@ date, and result-path ambiguity fails closed. A highest-line fallback is labeled
 as a projection rather than starting-role evidence. Acquisition of a usable live
 crosswalk remains a provider validation gate; fictional fixtures are not one.
 
+The explicit commissioner Prepare action now queues shared automatic acquisition:
+API-Sports season coverage, games and team rosters; nflverse season roster,
+schedule and recent usage; and bounded bookmaker identity discovery. Persisted
+source leases/cache and job progress resume through the existing scheduler.
+Routine preparation does not require an operator-authored player manifest.
+Previously verified bookmaker aliases allow a known player to remain in the
+menu before this game's line appears. Missing or ambiguous identities fail closed.
+
 The first accepted bet by any member, including a game-line bet, freezes the
 week's player identities under the acceptance lock. A known frozen player can
 receive quotes later; an unresolved identity stays unavailable. Explicit
@@ -112,7 +120,12 @@ Vault are installed. Vercel is Hobby. No paid test database was created.
 Existing Production limits remain 90/day, 450/month and provider floor 30.
 At inspection, recorded app usage was 26/day and 94/month, with stored provider
 remaining 394. Stored remaining is historical accounting, not current entitlement.
-No new real provider request has been made by this implementation workflow.
+No Odds API or API-Sports request has been made by this implementation workflow.
+Read-only public nflverse checks returned current 2026 data from all three
+catalog URLs: 2,963 roster rows, 272 scheduled games and 1,041 player-stat rows.
+Required columns and the roster's less-than-48-hour source timestamp were
+verified. These checks do not establish API-Sports account access, complete
+participation coverage or cross-provider identity readiness.
 
 ## Candidate operating budget and costs
 
@@ -192,7 +205,10 @@ use a compatible disable or forward fix.
 
 ## Evidence status
 
-Implementation checks and independent review are in progress. Local diagnostics
+The integrated local quality gate passed formatting, lint, TypeScript, 650 unit
+tests in 98 files and the production build. All 45 local SQL diagnostic suites
+passed 1,673 assertions with zero legacy receipt-hash drift. Final native CI
+and authenticated browser verification remain in progress. Local diagnostics
 use PostgreSQL-compatible PGlite because this workspace cannot start native
 PostgreSQL or Docker. The scheduler migration is omitted from those diagnostics;
 they are not native concurrency or authenticated end-to-end proof. Required CI

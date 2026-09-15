@@ -29,7 +29,7 @@ export default function TrustPage() {
             ],
             [
               "Totals have their own timing",
-              "Whole-card unsettled bet counts and original stake totals become visible five minutes before the first eligible game, including hidden bets. Under v1.3, available or expired credits appear in that same window. These totals can reveal information when someone has selected only one game; drafts never become public.",
+              "Whole-card unsettled bet counts and original stake totals become visible five minutes before the first eligible game, including hidden bets. Under supported rolling rules, available or expired credits appear in that same window. These totals can reveal information when someone has selected only one game; drafts never become public.",
             ],
             [
               "Receipts do not change",
@@ -37,7 +37,7 @@ export default function TrustPage() {
             ],
             [
               "Corrections stay visible",
-              "If an official result changes, the correction stays visible and the affected scores and standings are recalculated.",
+              "If an official result changes, the correction stays visible and is applied through the week’s correction rules. Protected postseason and historical results follow their governing review process.",
             ],
             [
               "Commissioners host",
@@ -52,6 +52,28 @@ export default function TrustPage() {
               <p className="text-graphite leading-6">{body}</p>
             </section>
           ))}
+          <section className="grid gap-2 py-6 sm:grid-cols-[190px_1fr] sm:gap-8">
+            <h2 className="font-bold">Data attribution</h2>
+            <p className="text-graphite leading-6">
+              Where player results are enabled, totals and participation data
+              include work by the{" "}
+              <a
+                className="text-registry underline"
+                href="https://github.com/nflverse/nflverse-data"
+              >
+                nflverse project
+              </a>{" "}
+              under{" "}
+              <a
+                className="text-registry underline"
+                href="https://creativecommons.org/licenses/by/4.0/"
+              >
+                Creative Commons Attribution 4.0
+              </a>
+              . Sunday Ledger formats the published data and applies the
+              league’s settlement rules.
+            </p>
+          </section>
         </div>
       </div>
     </main>
