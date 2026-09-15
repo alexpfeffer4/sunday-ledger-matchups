@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { executePlayerSourceSmoke } from "@/application/players/source-smoke-runner";
 import type { StatisticsUsage } from "@/adapters/providers/api-sports/client";
+import { SmokeSourceFailure } from "@/adapters/providers/api-sports/source-smoke-diagnostics";
 const mocked = vi.hoisted(() => ({
   coverage: vi.fn(),
   game: vi.fn(),
   summary: vi.fn(),
+  roster: vi.fn(),
 }));
 vi.mock(
   "@/adapters/providers/api-sports/source-smoke-normalizer",
@@ -15,6 +17,7 @@ vi.mock(
     validateSmokeCoverage: mocked.coverage,
     selectSmokeGame: mocked.game,
     summarizeSmokeSample: mocked.summary,
+    validateSmokeRoster: mocked.roster,
   }),
 );
 const runId = "898f02eb-e502-4ccd-8d31-95f0c28ebbb0";
@@ -299,4 +302,118 @@ it("stops inside the bounded runtime instead of retrying provider calls", async 
     await executePlayerSourceSmoke(f.port, f.fetchers, "smoke-2026-1"),
   ).toMatchObject({ status: "DEFERRED", requestsReserved: 0 });
   expect(f.fetchers.catalog).not.toHaveBeenCalled();
+});
+
+it("returns sanitized first-response diagnostics, persists only existing failure enums, and stops after failed coverage", async () => {
+  const f = fixture();
+  const normalizer = await vi.importActual<
+    typeof import("@/adapters/providers/api-sports/source-smoke-normalizer")
+  >("@/adapters/providers/api-sports/source-smoke-normalizer");
+  mocked.coverage.mockImplementationOnce(normalizer.validateSmokeCoverage);
+  f.fetchers.catalog.mockResolvedValueOnce({
+    fetchedAt: new Date().toISOString(),
+    payload: {
+      get: "leagues",
+      parameters: { id: "1", season: "2026" },
+      errors: { headers: "private-provider-key-and-profile" },
+      results: 0,
+      response: [],
+    },
+  } as unknown as typeof source);
+  const result = await executePlayerSourceSmoke(
+    f.port,
+    f.fetchers,
+    "smoke-2026-2",
+  );
+  expect(result).toMatchObject({
+    status: "UNAVAILABLE",
+    failureStage: "COVERAGE",
+    failureCode: "SOURCE_UNAVAILABLE",
+    requestsReserved: 1,
+    report: null,
+    sourceDiagnostic: {
+      reason: "PROVIDER_ERROR",
+      providerErrorCategories: ["HEADERS"],
+      issues: [],
+    },
+  });
+  expect(f.fetchers.catalog).toHaveBeenCalledTimes(1);
+  expect(f.fetchers.boxScore).not.toHaveBeenCalled();
+  expect(mocked.roster).not.toHaveBeenCalled();
+  const stored = f.rpc.mock.calls.at(-1)![1]!;
+  expect(stored).toMatchObject({
+    p_status: "UNAVAILABLE",
+    p_failure_stage: "COVERAGE",
+    p_failure_code: "SOURCE_UNAVAILABLE",
+    p_report: null,
+    p_sample: null,
+  });
+  expect(JSON.stringify(f.rpc.mock.calls)).not.toContain("sourceDiagnostic");
+  expect(JSON.stringify([result, f.rpc.mock.calls])).not.toContain(
+    "private-provider",
+  );
+});
+
+it("replays a failed run without diagnostic payload or any provider calls", async () => {
+  const f = fixture();
+  f.rpc.mockResolvedValueOnce({
+    data: {
+      status: "UNAVAILABLE",
+      smokeRunId: runId,
+      season: 2026,
+      requestsReserved: 1,
+      requestCeiling: 20,
+      report: null,
+      checkedAt: "2026-09-15T12:00:00Z",
+      failureStage: "COVERAGE",
+      failureCode: "SOURCE_SHAPE_UNSUPPORTED",
+      sourceDiagnostic: { raw: "must-not-escape" },
+    },
+    error: null,
+  });
+  const result = await executePlayerSourceSmoke(
+    f.port,
+    f.fetchers,
+    "smoke-2026-2",
+  );
+  expect(result).toMatchObject({ status: "UNAVAILABLE", requestsReserved: 1 });
+  expect(result).not.toHaveProperty("sourceDiagnostic");
+  expect(f.rpc).toHaveBeenCalledTimes(1);
+  expect(f.fetchers.quota).not.toHaveBeenCalled();
+  expect(f.fetchers.catalog).not.toHaveBeenCalled();
+  expect(f.fetchers.boxScore).not.toHaveBeenCalled();
+});
+
+it("validates an away roster immediately and never fetches the home roster or box score after it fails", async () => {
+  const f = fixture();
+  const diagnostic = {
+    reason: "SCHEMA_MISMATCH" as const,
+    providerErrorCategories: [],
+    issues: [
+      {
+        path: ["*", "position"] as ("*" | "position")[],
+        code: "invalid_type" as const,
+        expectedType: "string" as const,
+        observedType: "null" as const,
+      },
+    ],
+  };
+  mocked.roster.mockImplementationOnce(() => {
+    throw new SmokeSourceFailure("SOURCE_SHAPE_UNSUPPORTED", diagnostic);
+  });
+  expect(
+    await executePlayerSourceSmoke(f.port, f.fetchers, "smoke-2026-3"),
+  ).toMatchObject({
+    status: "UNAVAILABLE",
+    failureStage: "AWAY_ROSTER",
+    failureCode: "SOURCE_SHAPE_UNSUPPORTED",
+    requestsReserved: 3,
+    sourceDiagnostic: diagnostic,
+  });
+  expect(f.fetchers.catalog.mock.calls.map(([kind]) => kind)).toEqual([
+    "COVERAGE",
+    "GAMES",
+    "ROSTER",
+  ]);
+  expect(f.fetchers.boxScore).not.toHaveBeenCalled();
 });

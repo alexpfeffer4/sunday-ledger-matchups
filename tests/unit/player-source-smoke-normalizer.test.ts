@@ -4,7 +4,9 @@ import {
   sourceSmokeReportSchema,
   summarizeSmokeSample,
   validateSmokeCoverage,
+  validateSmokeRoster,
 } from "@/adapters/providers/api-sports/source-smoke-normalizer";
+import { SmokeSourceFailure } from "@/adapters/providers/api-sports/source-smoke-diagnostics";
 
 const now = "2026-09-15T15:00:00.000Z";
 beforeEach(() => vi.useFakeTimers().setSystemTime(new Date(now)));
@@ -109,11 +111,67 @@ it("requires nonempty error-free current-season coverage before downstream calls
   );
   input.coverage.payload.response[0].seasons[0].coverage.games.statisitcs.players = false;
   expect(() => validateSmokeCoverage(input.coverage)).toThrow(
-    "CATALOG_CURRENT_SEASON_UNAVAILABLE",
+    "CURRENT_SEASON_UNAVAILABLE",
   );
   input.coverage.payload.response[0].seasons[0].coverage.games.statisitcs.players = true;
   input.coverage.payload.errors.push({ plan: "restricted" });
   expect(() => validateSmokeCoverage(input.coverage)).toThrow();
+});
+
+it("identifies malformed roster fields using that roster's payload", () => {
+  const input = fixture();
+  (input.rosters[0].payload.response[0] as Record<string, unknown>).position =
+    null;
+  try {
+    validateSmokeRoster(input.rosters[0], "1");
+    throw new Error("Expected invalid roster to fail");
+  } catch (error) {
+    expect(error).toBeInstanceOf(SmokeSourceFailure);
+    expect((error as SmokeSourceFailure).diagnostic.issues).toContainEqual({
+      path: ["*", "position"],
+      code: "invalid_type",
+      expectedType: "string",
+      observedType: "null",
+    });
+  }
+});
+
+it("identifies malformed game fields using the game envelope", () => {
+  const input = fixture();
+  (
+    input.games.payload.response[0].game.status as Record<string, unknown>
+  ).short = null;
+  try {
+    selectSmokeGame(input.games, now);
+    throw new Error("Expected invalid game to fail");
+  } catch (error) {
+    expect(error).toBeInstanceOf(SmokeSourceFailure);
+    expect((error as SmokeSourceFailure).diagnostic.issues).toContainEqual({
+      path: ["response", "*", "game", "status", "short"],
+      code: "invalid_type",
+      expectedType: "string",
+      observedType: "null",
+    });
+  }
+});
+
+it("identifies malformed box-score fields from the box payload rather than a prior roster", () => {
+  const input = sample();
+  (
+    input.boxScore.payload.response[0].players[0] as Record<string, unknown>
+  ).groups = null;
+  try {
+    summarizeSmokeSample(input);
+    throw new Error("Expected invalid box score to fail");
+  } catch (error) {
+    expect(error).toBeInstanceOf(SmokeSourceFailure);
+    expect((error as SmokeSourceFailure).diagnostic.issues).toContainEqual({
+      path: ["response", "*", "players", "*", "groups"],
+      code: "invalid_type",
+      expectedType: "array",
+      observedType: "null",
+    });
+  }
 });
 
 it("selects the latest completed regular-season game, then the lower numeric ID on ties", () => {
