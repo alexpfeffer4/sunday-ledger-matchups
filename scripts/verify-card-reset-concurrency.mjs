@@ -314,97 +314,157 @@ async function afterResetAudit(f) {
     ),
   );
 }
-{
-  const f = await preparedAfterResetFixture("committed-reset-then-cutover");
-  const result = json(
+async function captureAfterResetGlobals() {
+  return json(
     successful(
-      await sql(afterResetCutover(f)),
-      "Cutover reuses a reset committed by a genuinely earlier transaction",
+      await sql(`select jsonb_build_object(
+        'catalog',(select jsonb_agg(to_jsonb(r) order by r.mode) from private.authoritative_season_rulesets r),
+        'odds',(select to_jsonb(p) from private.odds_refresh_policy p),
+        'results',(select to_jsonb(p) from private.player_result_policy p),
+        'controls',(select to_jsonb(p) from private.player_prop_controls p),
+        'scoreDispatcher',pg_get_functiondef('private.dispatch_score_checkpoints()'::regprocedure),
+        'playerDispatcher',pg_get_functiondef(to_regprocedure('private.dispatch_player_result_checkpoints()')));`),
+      "Capture global state before committed prior-reset fixtures",
     ),
   );
-  assert.equal(result.status, "ACTIVATED");
-  assert.equal(result.resetId, f.resetId);
-  const state = await currentState(f);
-  assert.equal(state.generation, 1);
-  assert.equal(state.resets, 1);
-  assert.equal(state.activeCount, 0);
-  assert.deepEqual(state.originalReceipts, f.originalReceipts);
-  const audit = await afterResetAudit(f);
-  assert.equal(audit.differentTransactions, true);
-  assert.deepEqual(audit.reset, f.originalReset);
-  assert.equal(audit.cutover.reset_id, f.resetId);
-  assert.equal(audit.frozenSlots, 30);
-  assert.equal(audit.propsWeek, true);
-  const forbiddenRepin = await sql(`update private.season_weeks
-    set ruleset_snapshot_id=${quote(audit.cutover.previous_ruleset_snapshot_id)}::uuid
-    where id=${quote(f.week)}::uuid;`);
-  assert.notEqual(forbiddenRepin.code, 0);
-  assert.match(
-    forbiddenRepin.stderr,
-    /An opened week keeps its original rules/,
+}
+async function restoreAfterResetGlobals(original) {
+  const singletonTables = [
+    ["odds_refresh_policy", original.odds],
+    ["player_result_policy", original.results],
+    ["player_prop_controls", original.controls],
+  ];
+  const restoreSingletons = singletonTables.map(
+    ([table, value]) => `DO $restore$ DECLARE cols text; BEGIN
+      SELECT string_agg(quote_ident(attname),',' ORDER BY attnum) INTO cols FROM pg_attribute
+        WHERE attrelid='private.${table}'::regclass AND attnum>0 AND NOT attisdropped;
+      EXECUTE format('UPDATE private.${table} SET (%1$s)=(SELECT %1$s FROM jsonb_populate_record(NULL::private.${table},$1))',cols)
+        USING ${quote(JSON.stringify(value))}::jsonb;
+    END $restore$;`,
+  );
+  successful(
+    await sql(`BEGIN;
+      DO $restore$ DECLARE cols text; BEGIN
+        SELECT string_agg(quote_ident(attname),',' ORDER BY attnum) INTO cols FROM pg_attribute
+          WHERE attrelid='private.authoritative_season_rulesets'::regclass AND attnum>0 AND NOT attisdropped;
+        EXECUTE format('UPDATE private.authoritative_season_rulesets active SET (%1$s)=(SELECT %1$s FROM jsonb_populate_recordset(NULL::private.authoritative_season_rulesets,$1) prior WHERE prior.mode=active.mode)',cols)
+          USING ${quote(JSON.stringify(original.catalog))}::jsonb;
+      END $restore$;
+      ${restoreSingletons.join("\n")}
+      ${original.scoreDispatcher};
+      ${original.playerDispatcher ?? "DROP FUNCTION IF EXISTS private.dispatch_player_result_checkpoints()"};
+      COMMIT;`),
+    "Restore global catalog, policies, controls and dispatcher definitions",
+  );
+  assert.deepEqual(
+    await captureAfterResetGlobals(),
+    original,
+    "Committed prior-reset fixtures must preserve every captured global field and dispatcher definition.",
   );
   console.log(
-    "PASS: committed reset then later cutover; distinct transaction IDs, immutable audit, no second reset, full menu freeze, and later repin rejection.",
+    "PASS: prior-reset fixture cleanup restores the exact global catalog, policies, controls and dispatcher definitions.",
   );
 }
 
-for (const cutoverFirst of [false, true]) {
-  const label = cutoverFirst
-    ? "prior-reset-cutover-before-accept"
-    : "prior-reset-accept-before-cutover";
-  const f = await preparedAfterResetFixture(label);
-  const proof = json(
-    successful(
-      await sql(`with review as(insert into private.live_card_quote_reviews(card_id,actor_user_id,positions,reviewed_at,expires_at,fetched_at)
+// The earlier native reset scenarios retain their existing behavior. These new
+// committed cutover fixtures temporarily change global readiness and rules;
+// restore their exact entry state even if an assertion or fixture setup fails.
+const originalAfterResetGlobals = await captureAfterResetGlobals();
+try {
+  {
+    const f = await preparedAfterResetFixture("committed-reset-then-cutover");
+    const result = json(
+      successful(
+        await sql(afterResetCutover(f)),
+        "Cutover reuses a reset committed by a genuinely earlier transaction",
+      ),
+    );
+    assert.equal(result.status, "ACTIVATED");
+    assert.equal(result.resetId, f.resetId);
+    const state = await currentState(f);
+    assert.equal(state.generation, 1);
+    assert.equal(state.resets, 1);
+    assert.equal(state.activeCount, 0);
+    assert.deepEqual(state.originalReceipts, f.originalReceipts);
+    const audit = await afterResetAudit(f);
+    assert.equal(audit.differentTransactions, true);
+    assert.deepEqual(audit.reset, f.originalReset);
+    assert.equal(audit.cutover.reset_id, f.resetId);
+    assert.equal(audit.frozenSlots, 30);
+    assert.equal(audit.propsWeek, true);
+    const forbiddenRepin = await sql(`update private.season_weeks
+    set ruleset_snapshot_id=${quote(audit.cutover.previous_ruleset_snapshot_id)}::uuid
+    where id=${quote(f.week)}::uuid;`);
+    assert.notEqual(forbiddenRepin.code, 0);
+    assert.match(
+      forbiddenRepin.stderr,
+      /An opened week keeps its original rules/,
+    );
+    console.log(
+      "PASS: committed reset then later cutover; distinct transaction IDs, immutable audit, no second reset, full menu freeze, and later repin rejection.",
+    );
+  }
+
+  for (const cutoverFirst of [false, true]) {
+    const label = cutoverFirst
+      ? "prior-reset-cutover-before-accept"
+      : "prior-reset-accept-before-cutover";
+    const f = await preparedAfterResetFixture(label);
+    const proof = json(
+      successful(
+        await sql(`with review as(insert into private.live_card_quote_reviews(card_id,actor_user_id,positions,reviewed_at,expires_at,fetched_at)
         values(${quote(f.card)}::uuid,${quote(f.owner)}::uuid,${quote(JSON.stringify(f.sparePositions))}::jsonb,
           clock_timestamp(),clock_timestamp()+interval '30 seconds',clock_timestamp()) returning id,card_generation)
         select jsonb_build_object('reviewId',id,'generation',card_generation) from review;`),
-      "Prepare genuine generation-one consent under the original 1.3 rules",
-    ),
-  );
-  assert.equal(proof.generation, 1);
-  const positions = f.sparePositions.map((position, i) =>
-    i === 0 ? { ...position, reviewId: proof.reviewId } : position,
-  );
-  const accept = member(
-    f,
-    `select api.accept_stage1_card(${quote(f.slug)},${quote(JSON.stringify(positions))}::jsonb,${quote(`${f.slug}-fresh-bet`)})`,
-  );
-  const operations = cutoverFirst
-    ? [afterResetCutover(f), accept]
-    : [accept, afterResetCutover(f)];
-  const results = await race(f, ...operations, label);
-  successful(
-    results[0],
-    "First queued operation after the prior reset commits",
-  );
-  assert.notEqual(
-    results[1].code,
-    0,
-    "The later operation must recheck either new receipts or amended consent.",
-  );
-  if (cutoverFirst)
-    assert.match(results[1].stderr, /CARD_RESET_REVIEW_REQUIRED/);
-  else
-    assert.match(
-      results[1].stderr,
-      /The exact unstarted Week 2 card or original rules have changed/,
+        "Prepare genuine generation-one consent under the original 1.3 rules",
+      ),
     );
-  const state = await currentState(f);
-  assert.equal(state.generation, 1);
-  assert.equal(state.resets, 1);
-  assert.equal(state.activeCount, cutoverFirst ? 0 : 1);
-  assert.equal(state.activeCredits, cutoverFirst ? 0 : 100);
-  assert.deepEqual(state.originalReceipts, f.originalReceipts);
-  const audit = await afterResetAudit(f);
-  assert.deepEqual(audit.reset, f.originalReset);
-  assert.equal(audit.propsWeek, cutoverFirst);
-  assert.equal(audit.frozenSlots, cutoverFirst ? 30 : 0);
-  if (cutoverFirst) {
-    assert.equal(audit.differentTransactions, true);
-    assert.equal(audit.cutover.reset_id, f.resetId);
-  } else assert.equal(audit.cutover, null);
-  console.log(
-    `PASS: ${label}; new picks or stale rules consent fail atomically without another reset.`,
-  );
+    assert.equal(proof.generation, 1);
+    const positions = f.sparePositions.map((position, i) =>
+      i === 0 ? { ...position, reviewId: proof.reviewId } : position,
+    );
+    const accept = member(
+      f,
+      `select api.accept_stage1_card(${quote(f.slug)},${quote(JSON.stringify(positions))}::jsonb,${quote(`${f.slug}-fresh-bet`)})`,
+    );
+    const operations = cutoverFirst
+      ? [afterResetCutover(f), accept]
+      : [accept, afterResetCutover(f)];
+    const results = await race(f, ...operations, label);
+    successful(
+      results[0],
+      "First queued operation after the prior reset commits",
+    );
+    assert.notEqual(
+      results[1].code,
+      0,
+      "The later operation must recheck either new receipts or amended consent.",
+    );
+    if (cutoverFirst)
+      assert.match(results[1].stderr, /CARD_RESET_REVIEW_REQUIRED/);
+    else
+      assert.match(
+        results[1].stderr,
+        /The exact unstarted Week 2 card or original rules have changed/,
+      );
+    const state = await currentState(f);
+    assert.equal(state.generation, 1);
+    assert.equal(state.resets, 1);
+    assert.equal(state.activeCount, cutoverFirst ? 0 : 1);
+    assert.equal(state.activeCredits, cutoverFirst ? 0 : 100);
+    assert.deepEqual(state.originalReceipts, f.originalReceipts);
+    const audit = await afterResetAudit(f);
+    assert.deepEqual(audit.reset, f.originalReset);
+    assert.equal(audit.propsWeek, cutoverFirst);
+    assert.equal(audit.frozenSlots, cutoverFirst ? 30 : 0);
+    if (cutoverFirst) {
+      assert.equal(audit.differentTransactions, true);
+      assert.equal(audit.cutover.reset_id, f.resetId);
+    } else assert.equal(audit.cutover, null);
+    console.log(
+      `PASS: ${label}; new picks or stale rules consent fail atomically without another reset.`,
+    );
+  }
+} finally {
+  await restoreAfterResetGlobals(originalAfterResetGlobals);
 }
