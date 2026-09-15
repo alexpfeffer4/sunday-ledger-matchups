@@ -15,6 +15,7 @@ on:
       - "scripts/run-disposable-database-tests.sh"
       - "scripts/verify-rolling-concurrency.mjs"
       - "scripts/verify-card-reset-concurrency.mjs"
+      - "scripts/verify-player-source-smoke-concurrency.mjs"
       - "scripts/verify-player-props-concurrency.mjs"
       - "scripts/verify-player-result-concurrency.mjs"
       - "scripts/verify-quote-sharing-concurrency.mjs"
@@ -100,6 +101,9 @@ jobs:
 
       - name: Run complete pgTAP and Phase 8C isolation suite
         run: bash scripts/run-disposable-database-tests.sh
+
+      - name: Verify isolated source-smoke quota concurrency on native Postgres
+        run: node scripts/verify-player-source-smoke-concurrency.mjs
 
       - name: Verify rolling submission concurrency on native Postgres
         run: node scripts/verify-rolling-concurrency.mjs

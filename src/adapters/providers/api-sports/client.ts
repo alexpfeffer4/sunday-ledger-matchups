@@ -20,6 +20,7 @@ export async function fetchApiSportsQuotaStatus() {
     {
       headers: { "x-apisports-key": key, Accept: "application/json" },
       cache: "no-store",
+      redirect: "error",
       signal: AbortSignal.timeout(8_000),
     },
   );
@@ -89,6 +90,7 @@ async function fetchApiSportsJson(
   const response = await fetch(url, {
     headers: { "x-apisports-key": key, Accept: "application/json" },
     cache: "no-store",
+    redirect: "error",
     signal: AbortSignal.timeout(12_000),
   });
   onUsage({
