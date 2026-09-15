@@ -125,9 +125,7 @@ describe("reset receipt access and original terms", () => {
     const { state, active, original } = resetState();
     state.ownerCard!.positions = [active];
     render(await page(state, active.id));
-    expect(
-      screen.getByRole("heading", { name: "Pick receipt" }),
-    ).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Pick receipt" })).toBeVisible();
     expect(
       screen.queryByRole("heading", { name: "Reset pick receipt" }),
     ).not.toBeInTheDocument();
@@ -214,9 +212,10 @@ describe("owner reset history presentation", () => {
     expect(
       screen.getByRole("region", { name: "Your weekly card" }),
     ).toHaveTextContent("1 submitted bet · 300 credits committed");
-    expect(
-      screen.getByRole("link", { name: "View receipt" }),
-    ).toHaveAttribute("href", `/l/${state.league.slug}/receipt/${active.id}`);
+    expect(screen.getByRole("link", { name: "View receipt" })).toHaveAttribute(
+      "href",
+      `/l/${state.league.slug}/receipt/${active.id}`,
+    );
     const archivedHash = screen.getByText(original.receiptHash, {
       exact: true,
     });
