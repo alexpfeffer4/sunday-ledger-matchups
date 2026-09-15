@@ -84,7 +84,7 @@ async function hold(table, id) {
   holder.child.kill("SIGTERM");
   throw new Error("Failed to acquire native fixture lock");
 }
-async function waitForBoth(names) {
+async function waitForLocks(names) {
   for (let i = 0; i < 60; i++) {
     const result = successful(
       await sql(
@@ -92,11 +92,11 @@ async function waitForBoth(names) {
       ),
       "Observe native waiting sessions",
     );
-    if (result.stdout.trim() === "2") return;
+    if (Number(result.stdout.trim()) === names.length) return;
     await delay(50);
   }
   throw new Error(
-    "Both independent native sessions must reach the intended lock boundary",
+    `${names.length} independent native sessions must reach the intended lock boundary`,
   );
 }
 async function fixture(scenario) {
@@ -194,7 +194,7 @@ try {
       sql(accept(context, over, "native-prop-over"), names[0]),
       sql(accept(context, under, "native-prop-under"), names[1]),
     ];
-    await waitForBoth(names);
+    await waitForLocks(names);
     await release();
     const responses = await Promise.all(pending);
     assert.equal(responses.filter((response) => response.code === 0).length, 1);
@@ -211,7 +211,7 @@ try {
     const pending = names.map((name) =>
       sql(accept(context, selection, "native-prop-same-request"), name),
     );
-    await waitForBoth(names);
+    await waitForLocks(names);
     await release();
     const responses = (await Promise.all(pending)).map((response) =>
       json(successful(response, "Concurrent exact prop retry")),
@@ -240,7 +240,7 @@ try {
       sql(confirm, names[0]),
       sql(accept(context, main, "native-menu-freezing-game"), names[1]),
     ];
-    await waitForBoth(names);
+    await waitForLocks(names);
     await release();
     const responses = await Promise.all(pending);
     successful(responses[1], "Game-only batch freezes league-wide menu");
@@ -260,8 +260,8 @@ try {
       "PASS: commissioner publication and first game-only acceptance freeze one consistent 96-slot menu.",
     );
   }
-  {
-    const context = await fixture("settlement");
+  for (const order of ["result-first", "acceptance-first"]) {
+    const context = await fixture(`settlement-${order}`);
     const early = context.markets.find((market) => market.subjectId);
     successful(
       await sql(accept(context, early, "native-prop-before-final", 300)),
@@ -292,23 +292,33 @@ try {
     );
     assert.ok(later);
     const release = await hold("season_weeks", context.week);
-    const names = [`${prefix}-prop-team-final`, `${prefix}-later-prop`];
-    const pending = [
-      sql(
-        member(
-          context.owner,
-          `select api.record_stage1_result(${quote(early.eventId)}::uuid,'FINAL',10,20,'Native team final with player evidence pending','SIMULATION_FIXTURE','native-prop-team-final')`,
-        ),
-        names[0],
-      ),
-      sql(accept(context, later, "native-later-prop", 100), names[1]),
+    const names = [
+      `${prefix}-${order}-prop-team-final`,
+      `${prefix}-${order}-later-prop`,
     ];
-    await waitForBoth(names);
+    const operations = [
+      () =>
+        sql(
+          member(
+            context.owner,
+            `select api.record_stage1_result(${quote(early.eventId)}::uuid,'FINAL',10,20,'Native team final with player evidence pending','SIMULATION_FIXTURE','native-prop-team-final')`,
+          ),
+          names[0],
+        ),
+      () => sql(accept(context, later, "native-later-prop", 100), names[1]),
+    ];
+    // Queue the first actor before starting the second. Simultaneous process
+    // launch alone can let an opposite lock order pass by chance.
+    const first = order === "result-first" ? 0 : 1;
+    const pending = [operations[first]()];
+    await waitForLocks([names[first]]);
+    pending.push(operations[1 - first]());
+    await waitForLocks(names);
     await release();
     for (const response of await Promise.all(pending))
       successful(
         response,
-        "Concurrent pending prop final and later acceptance",
+        `Concurrent pending prop final and later acceptance (${order})`,
       );
     assert.deepEqual(await card(context), { count: 2, credits: 400 });
     const state = json(
@@ -322,7 +332,7 @@ try {
     assert.equal(state.settlements, 0);
     assert.notEqual(state.state, "FINAL");
     console.log(
-      "PASS: native team-final processing leaves missing props pending while a later prop submits without deadlock.",
+      `PASS: native team-final processing leaves missing props pending while a later prop submits without deadlock (${order}).`,
     );
   }
 } finally {
@@ -334,5 +344,5 @@ try {
   );
 }
 console.log(
-  "Native player-props concurrency verified: 4 separate-session lock scenarios.",
+  "Native player-props concurrency verified: 5 separate-session lock scenarios.",
 );

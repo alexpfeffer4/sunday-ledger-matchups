@@ -623,12 +623,37 @@ $player_history$;
 -- Stored complete evidence can arrive before the shared team-final observation.
 -- Resolve it when finality is first known, using the same event/week authority.
 do $player_results_after_final$
-declare d text;anchor text;
+declare d text;anchor text;lock_scope text;f regprocedure;
 begin
  d:=pg_get_functiondef('private.record_stage1_result_as(uuid,uuid,text,integer,integer,text,text,text)'::regprocedure);
+ -- Reconciliation acquires the season authority. Take it before the week/event,
+ -- matching acceptance and shared score imports, including legacy weeks.
+ lock_scope:=$locks$  perform 1 from private.seasons season where season.id = (
+    select event.season_id from private.sports_events event where event.id = p_event_id
+  ) for update;
+  perform 1 from private.season_weeks week where week.id = (
+    select event.week_id from private.sports_events event where event.id = p_event_id
+  ) for update;$locks$;
+ anchor:=$old$  perform 1 from private.season_weeks week where week.id = (
+    select event.week_id from private.sports_events event where event.id = p_event_id
+  ) and private.is_rolling_week(week.id) for update;$old$;
+ if strpos(d,anchor)=0 then raise exception 'Player result scope lock anchor changed';end if;
+ d:=replace(d,anchor,lock_scope);
  anchor:='  perform private.recompute_stage1_week(v_week.id, v_result_id);';
  if strpos(d,anchor)=0 then raise exception 'Player team-final reconciliation anchor changed';end if;
  d:=replace(d,anchor,'  perform private.reconcile_player_event(p_event_id);'||chr(10)||anchor);
  execute d;
+ -- These wrappers previously locked the event before entering the recorder.
+ -- Their outer scope must follow the same order to avoid reintroducing a cycle.
+ foreach f in array array[
+  'api.correct_live_event_result(uuid,text,integer,integer,text,text)'::regprocedure,
+  'api.void_live_event_after_postponement_window(uuid,text,text)'::regprocedure
+ ] loop
+  d:=pg_get_functiondef(f);
+  anchor:=$old$begin
+  select event.* into strict v_event$old$;
+  if strpos(d,anchor)=0 then raise exception 'Player result wrapper lock anchor changed: %',f;end if;
+  execute replace(d,anchor,'begin'||chr(10)||lock_scope||chr(10)||'  select event.* into strict v_event');
+ end loop;
 end;
 $player_results_after_final$;
