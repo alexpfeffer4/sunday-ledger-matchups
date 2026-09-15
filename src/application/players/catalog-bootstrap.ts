@@ -296,7 +296,10 @@ export function buildPlayerCatalogBootstrap(
       if (
         quote.awayTeam !== event.awayTeam ||
         quote.homeTeam !== event.homeTeam ||
-        quote.scheduledStartAt !== event.scheduledStartAt
+        // The database and provider serialize the same validated instant with
+        // different fractional-second precision. Compare time, not formatting.
+        Date.parse(quote.scheduledStartAt) !==
+          Date.parse(event.scheduledStartAt)
       ) {
         exception(
           event.externalEventId,
