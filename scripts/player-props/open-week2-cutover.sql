@@ -3,8 +3,9 @@
 -- approval, tested deployment SHA and completed readiness/menu evidence.
 -- phase: stage | catalog | cutover. Staging never resets a card, holds entry,
 -- enables acquisition or changes rules/offers. Catalog requires paid/source
--- readiness. Only cutover can reset the exact card, activate reviewed props
--- and freeze the complete reviewed menu inside that same atomic transaction.
+-- readiness. Cutover either resets the exact card or reuses its independently
+-- approved recorded reset when nobody has accepted a new bet. It activates
+-- reviewed props and freezes the complete menu in the same transaction.
 begin;
 set local lock_timeout='5s';
 set local statement_timeout='30s';

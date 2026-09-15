@@ -19,11 +19,33 @@ enables the selected `week2_phase`; omission is a no-change dry run. Supply only
 the reviewed values for that phase. Do not bypass the helper with direct card,
 receipt, rules-binding or menu updates.
 
-| Phase     | Required private settings, in addition to `week2_apply` and `week2_phase`                                                                                         | Effect and gates                                                                                                                                                                                                                                                           |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `stage`   | `props_league_id`, `props_season_id`, `props_week_id`, `week2_card_id`, `week2_receipt_ids` (UUID array), `week2_receipt_fingerprint`, `props_approval_reference` | Record the exact existing-card manifest and prepare menu slots. Entry remains open under 1.3; no reset, credit change, acquisition, hold or offers activation.                                                                                                             |
-| `catalog` | `props_week_id`                                                                                                                                                   | Queue the normal shared catalog path after verified paid entitlement, configured protected budgets, validated source flags and metadata policy. Enable catalog acquisition only; no hold, reset or rules/offers activation.                                                |
-| `cutover` | `props_week_id`, `week2_menu_hash`, `props_readiness_sha`, `props_release_sha`, `week2_operation_key`, `week2_reason`                                             | Under shared authority locks, revalidate the exact manifest, pregame window, fresh entitlement, complete reviewed menu, processing policy and scheduler. Atomically record cancellation/reset, adopt the supported 1.4 package for this week and freeze the reviewed menu. |
+| Phase     | Required private settings, in addition to `week2_apply` and `week2_phase`                                                                                         | Effect and gates                                                                                                                                                                                                                                                   |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `stage`   | `props_league_id`, `props_season_id`, `props_week_id`, `week2_card_id`, `week2_receipt_ids` (UUID array), `week2_receipt_fingerprint`, `props_approval_reference` | Record the exact existing-card manifest and prepare menu slots. Entry remains open under 1.3; no reset, credit change, acquisition, hold or offers activation.                                                                                                     |
+| `catalog` | `props_week_id`                                                                                                                                                   | Queue the normal shared catalog path after verified paid entitlement, configured protected budgets, validated source flags and metadata policy. Enable catalog acquisition only; no hold, reset or rules/offers activation.                                        |
+| `cutover` | `props_week_id`, `week2_menu_hash`, `props_readiness_sha`, `props_release_sha`, `week2_operation_key`, `week2_reason`                                             | Under shared authority locks, revalidate the exact manifest, pregame window, entitlement, complete reviewed menu, processing and scheduler. Reuse the exact independently approved reset or record it now, then atomically adopt 1.4 and freeze the reviewed menu. |
+
+## Independently approved reset
+
+The owner may explicitly authorize the exact staged card to be reset before
+props readiness is complete. Execute that instruction only through the existing
+guarded `private.reset_prestart_week2_card` authority with its securely inspected
+manifest and independently recorded approval. Staging must already identify the
+original card and binding. Preserve the stage and reset audit unchanged, even
+when their approval references differ.
+
+Immediately verify the restored original allocation, empty active card,
+unchanged original receipt hashes and visible reset history. Ordinary fresh game
+picks remain available under the original rules. Any new accepted pick by any
+member blocks the later props cutover; it never authorizes another cancellation.
+Do not impose an entry hold or change a receipt manifest to avoid that guard.
+
+After the separately approved reset, the catalog and cutover phases remain
+available only if the exact audit still matches the staged scope, original
+receipt IDs and fingerprint, unchanged rules binding, and empty replacement
+generation. The week must contain exactly that one reset and no new effective
+receipts. The cutover reuses the original reset ID and leaves its approval,
+timestamp, transaction identity, receipt audit and credit grant intact.
 
 ## Preparation and provider gates
 
@@ -66,9 +88,10 @@ record a review that did not happen.
 
 Immediately before execution, inspect the exact staged scope and verify every
 published game remains scheduled, unstarted and before its entry cutoff. The
-helper rejects changed receipts or binding, other accepted-card content,
+helper rejects changed receipts or binding, any new accepted-card content,
 result evidence, an incomplete/unreviewed/already-frozen menu, stale entitlement
-or missing processing/scheduler readiness. Concurrent submissions, results and
+or missing processing/scheduler readiness. A prior independent reset does not
+waive any of those guards. Concurrent submissions, results and
 cutover serialize under the same authoritative locks.
 
 A successful cutover freezes the **complete reviewed menu in that transaction**.
@@ -84,10 +107,14 @@ unrelated cards/history are unchanged and fresh mixed submissions work. Confirm
 the affected member sees the reset, authorized historical receipts remain
 readable with their canceled status, and stale intents/drafts cannot resurrect
 old active picks. An exact operation retry returns the completed cutover;
-different retry parameters must not create another reset.
+different retry parameters must not create another reset. For the independent
+path, also verify the cutover references the exact earlier reset ID and its
+unchanged audit rather than creating a second cancellation.
 
-If any readiness or pregame guard fails, leave accepted play and the Week 2
-binding unchanged. Do not reset first, disable guards, or widen the scope.
+If any props readiness or pregame guard fails, leave the current card generation,
+accepted play and Week 2 binding unchanged. A previously committed, independently
+approved reset remains effective. Do not disable guards, reset again, reactivate
+canceled picks, or widen the scope.
 If the window closes, report that the approved Week 2 cutover can no longer run.
 After success, use compatible offer disabling and forward fixes while retaining
 the cancellation audit, replacement receipts, processing and history. Never
