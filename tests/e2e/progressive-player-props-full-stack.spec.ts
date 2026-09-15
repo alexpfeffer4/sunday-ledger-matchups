@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import { completePlayerPropsAction } from "../fixtures/complete-player-props-action";
 import {
   stage1StateSchema,
   type Stage1StateDto,
@@ -219,12 +220,14 @@ commit;`),
   await expect(acknowledgement).not.toBeChecked();
   await expect(page.locator('[id^="player-menu-"]')).toHaveCount(0);
   await acknowledgement.check();
-  await page
-    .getByRole("button", {
+  await completePlayerPropsAction(
+    page,
+    page.getByRole("button", {
       name: "Confirm players and pending-slot policy",
       exact: true,
-    })
-    .click();
+    }),
+    "Available players and the automatic pending-slot policy confirmed.",
+  );
   await expect
     .poll(async () =>
       (await menu(owner, slug)).slots.every((slot) => slot.confirmed),
@@ -255,12 +258,14 @@ commit;`),
     }),
   ).toBeVisible();
   await expect(acknowledgement).toHaveCount(0);
-  await page
-    .getByRole("button", {
+  await completePlayerPropsAction(
+    page,
+    page.getByRole("button", {
       name: "Refresh full-slate player lines",
       exact: true,
-    })
-    .click();
+    }),
+    "Available player lines updated.",
+  );
   await expect
     .poll(
       async () =>
@@ -308,7 +313,11 @@ commit;`),
   await expect(
     page.getByRole("heading", { name: "Review your bets", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Submit bets", exact: true }).click();
+  await completePlayerPropsAction(
+    page,
+    page.getByRole("button", { name: "Submit bets", exact: true }),
+    /submitted|saved/,
+  );
   await expect
     .poll(async () => (await state(owner, slug)).ownerCard!.positions.length)
     .toBe(1);
@@ -405,9 +414,14 @@ update private.player_catalog_jobs set next_attempt_at=clock_timestamp() where w
       exact: true,
     }),
   ).toHaveCount(5);
-  await latePanel
-    .getByRole("button", { name: "Refresh player lines", exact: true })
-    .click();
+  await completePlayerPropsAction(
+    page,
+    latePanel.getByRole("button", {
+      name: "Refresh player lines",
+      exact: true,
+    }),
+    "Available player lines updated.",
+  );
   await expect
     .poll(
       async () =>
