@@ -78,6 +78,85 @@ function rollingState() {
   return state;
 }
 describe("rolling member submission flow", () => {
+  it("filters Thursday games using Eastern Time and restores the full slate", () => {
+    const state = rollingState();
+    state.slate[0].scheduledStartAt = "2026-09-18T00:15:00Z";
+    render(<Stage1CardBuilder state={state} />);
+    const filters = screen.getByRole("navigation", {
+      name: "Filter games by kickoff",
+    });
+    expect(
+      within(filters)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["All games", "Thursday", "Monday"]);
+
+    fireEvent.click(within(filters).getByRole("button", { name: "Thursday" }));
+    expect(
+      within(filters).getByRole("button", { name: "Thursday" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("region", { name: "Harbor Club at Lake Club" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("region", { name: "River Club at Capital Club" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(within(filters).getByRole("button", { name: "All games" }));
+    expect(
+      screen.getByRole("region", { name: "River Club at Capital Club" }),
+    ).toBeVisible();
+    expect(reviewLiveCardQuotes).not.toHaveBeenCalled();
+    expect(acceptStage1CardAction).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["Thursday", "2026-12-18T01:15:00Z"],
+    ["Friday", "2026-11-27T20:00:00Z"],
+    ["Saturday", "2026-12-20T01:15:00Z"],
+    ["Sun early", "2026-10-11T13:30:00Z"],
+    ["Sun late", "2026-09-20T20:25:00Z"],
+    ["Sun night", "2026-09-21T00:20:00Z"],
+    ["Tuesday", "2026-09-23T00:15:00Z"],
+    ["Wednesday", "2026-09-24T00:15:00Z"],
+  ])("offers %s only when that window is in the slate", (label, kickoff) => {
+    const state = rollingState();
+    state.slate[0].scheduledStartAt = kickoff;
+    render(<Stage1CardBuilder state={state} />);
+    const filters = screen.getByRole("navigation", {
+      name: "Filter games by kickoff",
+    });
+    expect(within(filters).getAllByRole("button")).toHaveLength(3);
+    fireEvent.click(within(filters).getByRole("button", { name: label }));
+    expect(
+      screen.getByRole("region", { name: "Harbor Club at Lake Club" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("region", { name: "River Club at Capital Club" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("returns to All games if a refreshed slate removes the selected day", () => {
+    const state = rollingState();
+    state.slate[0].scheduledStartAt = "2026-09-18T00:15:00Z";
+    const { rerender } = render(<Stage1CardBuilder state={state} />);
+    fireEvent.click(screen.getByRole("button", { name: "Thursday" }));
+
+    rerender(
+      <Stage1CardBuilder state={{ ...state, slate: [state.slate[1]] }} />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Thursday" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "All games" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(
+      screen.getByRole("region", { name: "River Club at Capital Club" }),
+    ).toBeVisible();
+  });
+
   it("reviews only the chosen batch and keeps the unsubmitted draft after successful submission", async () => {
     const state = rollingState();
     const key = cardDraftStorageKey(ownerCardContext(state))!;
