@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { stage1StateSchema } from "../../src/application/queries/stage1-dtos";
+import { normalizeTheOddsApiOdds } from "../../src/adapters/providers/the-odds-api/normalize";
 import { quoteSql } from "../fixtures/player-props-acceptance.mjs";
 
 const enabled = process.env.FULL_STACK_ACCEPTANCE === "1";
@@ -292,50 +293,52 @@ commit;`),
     "update private.odds_refresh_policy set enabled=true,daily_credit_limit=1000,monthly_credit_limit=5000,requests_remaining=20000,next_request_at='-infinity';",
   );
   const observedAt = new Date().toISOString();
-  writeFileSync(
-    providerFixture!,
-    JSON.stringify({
-      payload: before.slate.map((event) => ({
-        id: event.key,
-        sport_key: "americanfootball_nfl",
-        commence_time: event.scheduledStartAt,
-        away_team: event.awayTeam,
-        home_team: event.homeTeam,
-        bookmakers: [
+  const providerPayload = before.slate.map((event) => ({
+    id: event.key,
+    sport_key: "americanfootball_nfl",
+    // PostgreSQL JSON uses +00:00 while the provider contract uses Z.
+    // Preserve all fractional digits: Date.toISOString() would truncate
+    // the fixture's microseconds and fail the exact event identity guard.
+    commence_time: event.scheduledStartAt.replace(/\+00:00$/, "Z"),
+    away_team: event.awayTeam,
+    home_team: event.homeTeam,
+    bookmakers: [
+      {
+        key: "draftkings",
+        last_update: observedAt,
+        markets: [
           {
-            key: "draftkings",
+            key: "h2h",
             last_update: observedAt,
-            markets: [
-              {
-                key: "h2h",
-                last_update: observedAt,
-                outcomes: [
-                  { name: event.awayTeam, price: -110 },
-                  { name: event.homeTeam, price: 100 },
-                ],
-              },
-              {
-                key: "spreads",
-                last_update: observedAt,
-                outcomes: [
-                  { name: event.awayTeam, price: -110, point: -3.5 },
-                  { name: event.homeTeam, price: -110, point: 3.5 },
-                ],
-              },
-              {
-                key: "totals",
-                last_update: observedAt,
-                outcomes: [
-                  { name: "Over", price: -110, point: 44.5 },
-                  { name: "Under", price: -110, point: 44.5 },
-                ],
-              },
+            outcomes: [
+              { name: event.awayTeam, price: -110 },
+              { name: event.homeTeam, price: 100 },
+            ],
+          },
+          {
+            key: "spreads",
+            last_update: observedAt,
+            outcomes: [
+              { name: event.awayTeam, price: -110, point: -3.5 },
+              { name: event.homeTeam, price: -110, point: 3.5 },
+            ],
+          },
+          {
+            key: "totals",
+            last_update: observedAt,
+            outcomes: [
+              { name: "Over", price: -110, point: 44.5 },
+              { name: "Under", price: -110, point: 44.5 },
             ],
           },
         ],
-      })),
-    }),
-  );
+      },
+    ],
+  }));
+  // Fail at the fixture boundary if scripted data stops matching the real
+  // provider contract, before waiting for the browser's recovery message.
+  normalizeTheOddsApiOdds(providerPayload, observedAt);
+  writeFileSync(providerFixture!, JSON.stringify({ payload: providerPayload }));
   writeFileSync(`${providerFixture}.calls`, "");
   await page.goto(`/l/${slug}/slate`);
   const sameEvent = before.slate.find((event) => event.id === fixture.event)!;

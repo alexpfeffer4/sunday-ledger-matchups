@@ -138,6 +138,11 @@ jobs:
           supabase gen types typescript --local --schema api,public > /tmp/sunday-ledger-database.types.ts
           npm run types:supabase:check -- /tmp/sunday-ledger-database.types.ts
 
+      - name: Isolate Auth journeys from committed native race fixtures
+        # Native races intentionally commit LIVE events. The global score worker
+        # must see only the browser lane's own provider-backed fixtures.
+        run: supabase db reset --local --no-seed
+
       - name: Install full-stack browser
         run: npx playwright install --with-deps chromium webkit
 
