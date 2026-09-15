@@ -74,14 +74,28 @@ const marketLabels = {
 
 const marketTypes = ["MONEYLINE", "SPREAD", "TOTAL"] as const;
 
-type KickoffFilter = "ALL" | "SUN_EARLY" | "SUN_LATE" | "SUN_NIGHT" | "MON";
-
-const kickoffFilterLabels: Record<KickoffFilter, string> = {
+const kickoffFilterLabels = {
   ALL: "All games",
-  MON: "Monday",
+  THU: "Thursday",
+  FRI: "Friday",
+  SAT: "Saturday",
   SUN_EARLY: "Sun early",
   SUN_LATE: "Sun late",
   SUN_NIGHT: "Sun night",
+  MON: "Monday",
+  TUE: "Tuesday",
+  WED: "Wednesday",
+} as const;
+
+type KickoffFilter = keyof typeof kickoffFilterLabels;
+
+const weekdayFilters: Record<string, Exclude<KickoffFilter, "ALL">> = {
+  Thu: "THU",
+  Fri: "FRI",
+  Sat: "SAT",
+  Mon: "MON",
+  Tue: "TUE",
+  Wed: "WED",
 };
 
 const formatDate = easternTime;
@@ -106,7 +120,7 @@ function kickoffWindow(value: string): Exclude<KickoffFilter, "ALL"> | "OTHER" {
   }).formatToParts(new Date(value));
   const weekday = parts.find((part) => part.type === "weekday")?.value;
   const hour = Number(parts.find((part) => part.type === "hour")?.value);
-  if (weekday === "Mon") return "MON";
+  if (weekday && weekdayFilters[weekday]) return weekdayFilters[weekday];
   if (weekday !== "Sun" || !Number.isFinite(hour)) return "OTHER";
   if (hour < 16) return "SUN_EARLY";
   if (hour < 20) return "SUN_LATE";
@@ -514,16 +528,19 @@ function Stage1CardBuilderEditor({
   }
 
   const availableFilters = (
-    ["ALL", "SUN_EARLY", "SUN_LATE", "SUN_NIGHT", "MON"] as const
+    Object.keys(kickoffFilterLabels) as KickoffFilter[]
   ).filter(
     (filter) =>
       filter === "ALL" ||
       slate.some((event) => kickoffWindow(event.scheduledStartAt) === filter),
   );
+  const activeKickoffFilter = availableFilters.includes(kickoffFilter)
+    ? kickoffFilter
+    : "ALL";
   const visibleEvents = slate.filter(
     (event) =>
-      kickoffFilter === "ALL" ||
-      kickoffWindow(event.scheduledStartAt) === kickoffFilter,
+      activeKickoffFilter === "ALL" ||
+      kickoffWindow(event.scheduledStartAt) === activeKickoffFilter,
   );
   const quoteReviewCount = batchDrafts.filter(
     (draft) => draft.quoteReviewRequired,
@@ -954,9 +971,9 @@ function Stage1CardBuilderEditor({
           >
             {availableFilters.map((filter) => (
               <button
-                aria-pressed={kickoffFilter === filter}
+                aria-pressed={activeKickoffFilter === filter}
                 className={`min-h-11 rounded-full border px-4 text-sm font-semibold transition-colors ${
-                  kickoffFilter === filter
+                  activeKickoffFilter === filter
                     ? "border-registry bg-registry text-white"
                     : "border-control bg-surface hover:border-registry"
                 }`}
