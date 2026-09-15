@@ -1,11 +1,23 @@
 # Player props release preparation
 
-These scripts prepare a reviewed rollout. They authorize no purchase, Production
-write, merge, deployment or live activation. The release agent runs them only
-after the owner's concrete combined approval and the listed prerequisites.
+These scripts execute the reviewed rollout under the retained owner approval
+for additive migrations, merge, compatible deployment, configuration and
+conditional scoped activation. They do not themselves grant authority or waive
+readiness checks. The September 15 owner setup and verified Odds API 20K budget
+transition are complete; no repeat purchase, key setup or blanket release
+approval is required. Purchases remain excluded.
+
+Read the [nflverse primary amendment](../../docs/governance/2026-09-15-nflverse-primary-pilot.md)
+and [pilot runbook](../../docs/operations/nflverse-primary-pilot.md). The
+independently approved Week 2 reset has completed. Already-open Week 2 uses
+`open-week2-cutover.sql` and its [dedicated runbook](../../docs/operations/week2-props-cutover.md),
+not the future-week hold or activation helpers. Reuse its exact audit only while
+all cutover guards pass; do not reset again or cancel new accepted bets.
+
 Use a dedicated verified connection. Keep account metadata and league/season
 identifiers in private release evidence; never include secrets in script settings
-or a public PR.
+or a public PR. The mutating release scripts default to no-change dry runs unless
+the documented apply setting is explicitly supplied.
 
 ## Scope and package
 
@@ -32,73 +44,101 @@ Simulation verification; the Production activation script selects LIVE only.
 
 ## Reviewed execution order
 
-1. Verify final PR commit, CI including native separate-session concurrency and
-   real Auth desktop/mobile RPC journeys, public Preview and the isolated-backend
-   boundary. A disabled UI Preview alone is insufficient for live acceptance.
-2. Apply the five reviewed additive migrations in filename order:
-   `20260914230141_player_props_authority.sql`,
-   `20260914230233_player_prop_results.sql`,
-   `20260914230314_selective_player_prop_quotes.sql`,
-   `20260914230353_card_submission_intents.sql`, and
-   `20260914234839_player_catalog_acquisition.sql`. Verify exact migration-ledger parity.
-   These migrations retain disabled offers and existing Production quota caps.
-3. Deploy the compatible prop-aware application and securely configure any
-   missing server-only `API_SPORTS_NFL_KEY`; reuse the existing Odds API key if
-   valid.
-4. After the owner upgrades the existing odds subscription, securely verify its
-   actual entitlement and usage/reset evidence. Run `quote-policy.sql` through
-   `psql` with its structured `verified_entitlement_json` variable. It changes app
-   caps from 90/day and 450/month to 1,000/day and 5,000/month, with 350/day and
-   2,000/month protected for core lines/results. Existing recorded usage is never
-   reset. The provider's 20K plan and app accounting boundaries are separate.
-5. Prepare the existing five-minute scheduler using
-   `scripts/sql/prepare-player-results-dispatch.sql`. The compatible dispatcher
-   must run queued metadata independently of accepted-prop result processing.
-   Configure acquisition-only scope using `catalog-setup.sql`:
-   `props_catalog_apply=true`, the exact
-   `props_league_id`/`props_season_id`, and a recorded
+1. Verify current main, final PR commit, CI including native separate-session
+   concurrency and real Auth desktop/mobile journeys, Preview and its isolated
+   backend boundary. Preserve the owner's merged work. A disabled UI Preview
+   alone is insufficient for live acceptance.
+2. Apply only the reviewed unapplied additive migrations in filename order and
+   verify exact hosted version/content parity. The original PR #51 migrations
+   are already installed; do not reapply them, edit applied SQL or rewrite the
+   migration journal. New source-policy support must be installed before the
+   updated preflight and activation scripts can run.
+3. Deploy the compatible application with offers disabled. Reuse valid Odds API,
+   Supabase and dispatcher settings. `NFLVERSE_PRIMARY` requires no API-Sports
+   key, nflverse key or new statistics account.
+4. Recheck current odds entitlement and usage/reset evidence. The approved
+   `quote-policy.sql` transition already installed 1,000/day and 5,000/month
+   application caps with 350/day and 2,000/month protected for core lines/results.
+   Do not reset usage or rerun owner setup. Catalog/activation still require fresh
+   normalized entitlement evidence.
+5. After real-data validation, record the reviewed evidence SHA-256 and retained
+   approval using `private.configure_nflverse_primary_pilot(text,text)`. This
+   records immutable evidence and selects `NFLVERSE_PRIMARY` with
+   `FEATURED_HIGHEST_STANDARD_LINES`. Its guard rejects a source switch once
+   existing accepted/frozen player state, mappings or jobs would be reinterpreted.
+   It does not enable metadata, result processing, contract-validation flags or
+   offers. Do not fabricate API-Sports IDs or set its validation flag for this mode.
+6. Enable nflverse contract validation only after its identity, completeness,
+   participation, correction and verified-exception checks pass. Prepare the
+   existing five-minute dispatcher using
+   `scripts/sql/prepare-player-results-dispatch.sql`; verify delivered catalog
+   and result calls against the exact deployment. Enable bounded metadata for
+   the selected source policy. For an ordinary unopened week, configure its
+   acquisition hold using `catalog-setup.sql` with `props_catalog_apply=true`,
+   exact `props_league_id`/`props_season_id` and
    `props_catalog_setup_reference` in the `sunday_ledger` settings namespace.
-   This enables bounded metadata acquisition and records a hold at the first
-   eligible unopened week; offers and prospective rules stay disabled. Once the
-   prior week meets its ordinary FINAL prerequisite, publish the next eligible
-   slate through the existing publication authority. The held week stays PLANNED
-   under its inherited binding and automatically queues catalog acquisition.
-   Opening is blocked until readiness and scoped activation. Use authorized
-   isolated scope during build validation and Production scope only after release
-   approval. A cold NFL catalog may require
-   34–36 shared metadata requests over at least two UTC quota days under the
-   20/day allowance, depending on coverage/game cache expiry at the boundary.
-   Obtain real current-season identities, result completeness, participation,
-   correction and permitted retention/use evidence. An odds subscription upgrade
-   does not establish the statistics path.
-6. After the metadata/source checks pass, enable
-   `private.player_result_policy.processing_enabled`,
-   `api_sports_contract_validated` and `nflverse_contract_validated` only after
-   their evidence passes. Retain the shared 80 result-attempt/20 metadata daily
-   limits and maximum eight requests/minute. This uses the existing Supabase
-   cron/Vault path, without assuming a Vercel upgrade.
-   Run `preflight.sql`. Retain package, scope, migration and setting output
-   privately. It is read-only and cannot verify a deployed commit, a secret,
-   source rights or an observed provider latency.
-7. Record a readiness manifest covering the actual account/quote/result identity
-   checks, unresolved cases, scheduler delivery, final application commit and
-   approved target scope. Supply its SHA-256 and the approval reference to
-   `activate.sql` using the exact settings below. The default script run changes
-   nothing; applying fails unless the paid-plan budget, an entitlement
-   configuration or consistent successful zero-credit probe within ten minutes,
-   validated result processing and five-minute dispatcher are installed.
-8. The held prospective slate remains PLANNED while the
-   automatically proposed six slots per eligible game are reviewed. Bootstrap
-   verified mappings, prepare the full menu, confirm choices once, and open the
-   week through `open_reviewed_player_prop_week`. First-week opening delegates
-   to the existing roster-lock authority. Explicit unresolved slots can be
-   confirmed as unavailable; absent quotes do not prevent opening. A member's
-   first accepted game-only or mixed batch cannot beat this review. It freezes
-   the menu league-wide; later real lines can address only the same identities.
-9. Verify ordinary game lines, menu completeness/coverage exceptions, actual
-   member Submit recovery, reveal and result arrival. Record emulation separately
-   from physical-device evidence and measured latency separately from the
-   5–15-minute target. Do not create test receipts in the real pilot.
+   After preceding-week FINAL, publication keeps the held slate PLANNED while
+   catalog work runs. The already-open Week 2 uses its dedicated catalog phase.
+7. Verify current roster/schedule mappings and standard bookmaker lines. Each
+   team supplies its QB with the highest standard passing line, RB with the
+   highest standard rushing line and WR/TE with the highest standard receiving
+   line. Verify position from the roster; a QB rushing market cannot fill an
+   RB slot. Label these as featured players, not confirmed starters. A line
+   does not guarantee health, availability or offensive participation.
+   Depth-chart acquisition is not required by this policy.
+   Use a coherent per-game nomination snapshot within the twelve-hour discovery
+   window, with bookmaker observations no older than ten minutes at acquisition
+   and no future times; expose its timestamp to the commissioner. Member quotes
+   still require their separate 120-second fetch/ten-minute source freshness.
+   Show missing or ambiguous candidates honestly; no silent usage/depth or
+   alternate-line fallback and no fictional player fills the slate. Validate explicit numeric totals and offensive snap
+   evidence, including zero, negative and missing values. Obtain the actual
+   commissioner's one full-slate review; fixture menus are not that review.
+8. Enable `private.player_result_policy.processing_enabled` only for validated
+   processing. `private.player_source_policy_validated()` checks the selected
+   policy: nflverse-only needs matching immutable validation evidence and the
+   nflverse contract flag; the older dual-source mode also needs the API-Sports
+   flag. API-Sports budgets remain isolated and unchanged for that mode. Run
+   `preflight.sql` and retain private output. It exposes source/selection policy,
+   validation identity and readiness but does not prove a deployed commit,
+   source completeness or actual hosted timing.
+9. Record the readiness manifest with actual coverage, exceptions, scheduler
+   delivery, final commit and approved scope. Supply its hash and retained
+   approval reference to `activate.sql`. The default run changes nothing;
+   applying requires the protected odds budget, consistent entitlement evidence
+   within ten minutes, validated selected-source processing and dispatcher.
+10. For the ordinary future-week path, open the held reviewed slate through
+    `open_reviewed_player_prop_week` under the supported immutable package.
+    Permitted unresolved slots may be explicitly unavailable; absent quotes
+    alone do not erase a known player. The first accepted game-only or mixed
+    batch freezes identities across the week. Week 2 instead requires a complete
+    reviewed menu frozen inside its guarded cutover transaction.
+11. Verify ordinary lines, mixed Submit recovery, reliable-start privacy,
+    pending results, history and quota protection. The approved expectation is
+    overnight results with later evidence possible; measure the real hosted path
+    when genuine accepted props finish. Do not create test receipts in the pilot.
+
+The configure helper's evidence and approval arguments contain hashes/references,
+not provider credentials. It is an explicit mutating operator action, separate
+from read-only `preflight.sql` and the default no-change activation run.
+
+## Verified-result exceptions
+
+After bounded automatic attempts, follow the
+[exception runbook](../../docs/operations/nflverse-primary-pilot.md). The
+service-only `api.resolve_verified_player_result_exception` accepts the exact
+accepted event/subject/statistic, explicit offensive snaps and yardage for
+offensive participants, separate published source URLs, evidence hash, authorized actor, reason and idempotency
+key. Verified zero offense may retain null yardage; do not invent a zero. The
+path applies only to otherwise-unsettled accepted props. Verified exception
+evidence has its own `VERIFIED_EXCEPTION` provenance; it must not masquerade as
+an nflverse publication or override an already settled result through this path.
+
+Keep the source references, actor and idempotent audit. Missing rows do not imply
+zero; a timeout does not prove DNP. Ordinary source revisions and later changes
+use the existing correction authority and original review windows, including
+protected postseason/history. Do not extend retries or restart a clock to wait
+for Wednesday-night/Thursday corrections.
 
 ## Activation settings
 

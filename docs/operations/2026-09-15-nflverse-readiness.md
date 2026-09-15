@@ -1,5 +1,10 @@
 # NFLverse source verification — September 15, 2026
 
+The later [approved nflverse primary pilot](../governance/2026-09-15-nflverse-primary-pilot.md)
+supersedes this report’s earlier candidate/independent-source launch dependency.
+This report preserves its original sample and verification limits; it is not
+proof of a reviewed future menu or hosted settlement.
+
 Read-only public-source verification at **2026-09-15 15:52 UTC** confirmed that
 the current NFLverse adapter can parse current-season player totals and offensive
 snap evidence. This check made no paid API calls, changed no hosted data or

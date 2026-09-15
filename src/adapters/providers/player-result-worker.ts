@@ -10,7 +10,10 @@ import {
 } from "@/adapters/providers/api-sports/client";
 import { normalizeApiSportsPlayerResults } from "@/adapters/providers/api-sports/normalize-player-results";
 import { fetchNflverseSeasonEvidence } from "@/adapters/providers/nflverse/client";
-import { normalizeNflversePlayerResults } from "@/adapters/providers/nflverse/normalize-player-results";
+import {
+  normalizePublishedNflversePlayerResults,
+  parseNflverseResultFiles,
+} from "@/adapters/providers/nflverse/normalize-player-results";
 import {
   resultPlayerMappingSchema,
   type PlayerObservation,
@@ -32,6 +35,19 @@ const jobsSchema = z.object({
   jobs: z
     .array(z.object({ leaseId: z.uuid(), context: contextSchema }))
     .max(16),
+});
+const nflverseContextSchema = contextSchema.extend({
+  mappings: contextSchema.shape.mappings.min(1),
+  sourceEventId: z.string().regex(/^\d{4}_\d{2}_[A-Z]{2,3}_[A-Z]{2,3}$/),
+  finalObservedAt: z.iso.datetime({ offset: true }),
+  scheduledStartAt: z.iso.datetime({ offset: true }),
+  awayTeam: z.string().min(2).max(3),
+  homeTeam: z.string().min(2).max(3),
+});
+// Parse each persisted game context independently. A malformed mapping must
+// leave its own receipt pending without withholding unrelated valid games.
+const nflverseJobsSchema = jobsSchema.extend({
+  jobs: z.array(z.object({ leaseId: z.uuid(), context: z.unknown() })).max(16),
 });
 
 /** One bounded scheduler action: public evidence only, scopes from persisted DB
@@ -124,30 +140,46 @@ export async function processPlayerResults() {
   }
   const claimed = await admin.rpc("claim_nflverse_reconciliation");
   if (claimed.error) throw new Error("PLAYER_RECONCILIATION_CLAIM_FAILED");
-  const reconciliation = jobsSchema.parse(claimed.data);
+  const reconciliation = nflverseJobsSchema.parse(claimed.data);
   if (reconciliation.jobs.length > 0) {
     const lease = reconciliation.jobs[0].leaseId;
     let observations: PlayerObservation[] | null = null;
     try {
+      const contexts = reconciliation.jobs.flatMap((job) => {
+        const parsed = nflverseContextSchema.safeParse(job.context);
+        if (!parsed.success || job.leaseId !== lease) {
+          failures++;
+          return [];
+        }
+        return [parsed.data];
+      });
       const seasons = new Set(
-        reconciliation.jobs.map((job) =>
-          Number(job.context.sourceEventId.slice(0, 4)),
-        ),
+        contexts.map((context) => Number(context.sourceEventId.slice(0, 4))),
       );
       // NFL season year comes from the verified nflverse game ID, including Jan.
-      if (seasons.size !== 1) throw new Error("MULTI_SEASON_RESULT_BATCH");
-      const files = await fetchNflverseSeasonEvidence([...seasons][0]);
-      observations = reconciliation.jobs.flatMap((job) =>
-        normalizeNflversePlayerResults({
-          ...job.context,
-          ...files,
-          sourceUpdatedAt: files.statsSourceUpdatedAt,
-          participationSourceUpdatedAt: files.snapsSourceUpdatedAt,
-          statsComplete: true,
-          snapsComplete: true,
-        }),
-      );
-      reconciled = reconciliation.jobs.length;
+      if (seasons.size > 1) throw new Error("MULTI_SEASON_RESULT_BATCH");
+      if (contexts.length > 0) {
+        const files = await fetchNflverseSeasonEvidence([...seasons][0]);
+        const rows = parseNflverseResultFiles(files);
+        observations = contexts.flatMap((context) => {
+          try {
+            const evidence = normalizePublishedNflversePlayerResults(
+              {
+                ...context,
+                fetchedAt: files.fetchedAt,
+                sourceUpdatedAt: files.statsSourceUpdatedAt,
+                participationSourceUpdatedAt: files.snapsSourceUpdatedAt,
+              },
+              rows,
+            );
+            reconciled++;
+            return evidence;
+          } catch {
+            failures++;
+            return [];
+          }
+        });
+      }
     } catch {
       failures++;
     }
@@ -155,7 +187,14 @@ export async function processPlayerResults() {
       p_lease_id: lease,
       p_observations: observations,
     });
-    if (completed.error) failures++;
+    if (
+      completed.error ||
+      !z.object({ status: z.literal("RECORDED") }).safeParse(completed.data)
+        .success
+    ) {
+      failures++;
+      reconciled = 0;
+    }
   }
   return {
     status: failures

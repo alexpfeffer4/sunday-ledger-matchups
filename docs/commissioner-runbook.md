@@ -83,6 +83,28 @@ published event set is intentionally immutable.
    the week. Preserve the score-review period for verified corrections and
    downstream publication. Historical weeks retain their attached close policy.
 
+## Enabled player-props pilot
+
+For a week that has actually adopted the supported props package, use the
+[approved nflverse pilot](governance/2026-09-15-nflverse-primary-pilot.md).
+Review the full slate once: each team's QB with the highest standard passing
+line, RB with the highest standard rushing line and WR/TE with the highest
+standard receiving line in the pregame nomination snapshot. Verify flagged
+identity/position issues; QB rushing markets cannot fill RB slots. These are
+featured players, not confirmed starters, and odds do not guarantee participation
+or availability. No player may replace a frozen identity after acceptance.
+The approved already-open Week 2 exception has a separate guarded cutover and
+must preserve its completed reset audit.
+
+Player results are expected overnight, with later updates possible. Pending
+player results are not a loss or a void and may hold up the required weekly
+finality. Missing rows do not prove zero yardage or no offensive participation.
+After bounded retries, follow the [verified-exception runbook](operations/nflverse-primary-pilot.md)
+with identifiable published evidence and an authorized operator. Routine manual
+stat entry is not required, and commissioners cannot assign arbitrary results.
+Later source corrections retain the existing review windows and protected
+postseason/history process; the source schedule creates no new deadline.
+
 ## Backup operator and retention deadline
 
 Choose a backup member before Week 1. Naming someone is **not** authorization.

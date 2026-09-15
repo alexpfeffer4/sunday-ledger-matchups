@@ -3,6 +3,7 @@ import { buildPlayerCatalogBootstrap } from "@/application/players/catalog-boots
 import {
   normalizeCatalogGames,
   normalizeLiveCatalog,
+  normalizeNflversePrimaryCatalog,
   sanitizeCatalogSource,
   sanitizeNflverseCatalog,
   type CatalogSource,
@@ -32,7 +33,10 @@ export type CatalogFetchers = {
     used: number;
     observedAt: string;
   }>;
-  nflverse: (season: number) => Promise<NflverseCatalogFiles>;
+  nflverse: (
+    season: number,
+    options?: { includeUsageStats?: boolean },
+  ) => Promise<NflverseCatalogFiles>;
   quotes: (
     weekId: string,
   ) => Promise<{ imports: PropQuoteImport[]; pending: boolean }>;
@@ -58,6 +62,12 @@ const contextSchema = z.object({
     )
     .min(1)
     .max(16),
+  sourcePolicy: z
+    .enum(["API_SPORTS_NFLVERSE", "NFLVERSE_PRIMARY"])
+    .default("API_SPORTS_NFLVERSE"),
+  selectionPolicy: z
+    .enum(["LEGACY_ROLE_PRIORITY", "FEATURED_HIGHEST_STANDARD_LINES"])
+    .default("LEGACY_ROLE_PRIORITY"),
   apiSportsContractValidated: z.boolean(),
   nflverseContractValidated: z.boolean(),
   verifiedAliases: z
@@ -132,37 +142,51 @@ export async function executePlayerCatalogJob(
     return value;
   };
   try {
-    const quotaClaim = z
-      .object({ status: z.string(), leaseId: z.uuid().optional() })
-      .parse(await rpc(port, "claim_player_statistics_status"));
-    if (["DISABLED", "BUSY"].includes(quotaClaim.status))
+    const primary = context.sourcePolicy === "NFLVERSE_PRIMARY";
+    if (
+      primary !==
+      (context.selectionPolicy === "FEATURED_HIGHEST_STANDARD_LINES")
+    )
       return finish(
-        { status: "PENDING", missingSources: 1 },
-        "STATISTICS_ACCOUNT_CHECK_PENDING",
+        { status: "UNAVAILABLE", missingSources: 1 },
+        "CATALOG_POLICY_MISMATCH",
       );
-    if (quotaClaim.status === "CLAIMED") {
-      const quota = await fetchers.quota();
-      await rpc(port, "complete_player_statistics_status", {
-        p_lease_id: quotaClaim.leaseId,
-        p_active: quota.active,
-        p_daily_limit: quota.dailyLimit,
-        p_used: quota.used,
-        p_observed_at: quota.observedAt,
-      });
-      if (!quota.active)
+    if (!primary) {
+      const quotaClaim = z
+        .object({ status: z.string(), leaseId: z.uuid().optional() })
+        .parse(await rpc(port, "claim_player_statistics_status"));
+      if (["DISABLED", "BUSY"].includes(quotaClaim.status))
         return finish(
-          { status: "UNAVAILABLE", missingSources: 1 },
-          "STATISTICS_ACCOUNT_INACTIVE",
+          { status: "PENDING", missingSources: 1 },
+          "STATISTICS_ACCOUNT_CHECK_PENDING",
         );
+      if (quotaClaim.status === "CLAIMED") {
+        const quota = await fetchers.quota();
+        await rpc(port, "complete_player_statistics_status", {
+          p_lease_id: quotaClaim.leaseId,
+          p_active: quota.active,
+          p_daily_limit: quota.dailyLimit,
+          p_used: quota.used,
+          p_observed_at: quota.observedAt,
+        });
+        if (!quota.active)
+          return finish(
+            { status: "UNAVAILABLE", missingSources: 1 },
+            "STATISTICS_ACCOUNT_INACTIVE",
+          );
+      }
     }
     const now = () => fetchers.now?.() ?? new Date().toISOString();
     const source = async (
-      kind: "COVERAGE" | "GAMES" | "ROSTER" | "NFLVERSE",
+      kind: "COVERAGE" | "GAMES" | "ROSTER" | "NFLVERSE" | "NFLVERSE_PRIMARY",
       teamId: string | null = null,
     ): Promise<unknown | null> => {
       const key = `${kind}:${context.season}${teamId ? `:${teamId}` : ""}`;
       if (context.cachedSources[key]) return context.cachedSources[key];
-      if (!withinDeadline() || (kind !== "NFLVERSE" && attempted >= 2)) {
+      if (
+        !withinDeadline() ||
+        (!kind.startsWith("NFLVERSE") && attempted >= 2)
+      ) {
         missing++;
         return null;
       }
@@ -188,9 +212,11 @@ export async function executePlayerCatalogJob(
         },
         value: unknown = null;
       try {
-        if (kind === "NFLVERSE")
+        if (kind === "NFLVERSE" || kind === "NFLVERSE_PRIMARY")
           value = sanitizeNflverseCatalog(
-            await fetchers.nflverse(context.season),
+            await fetchers.nflverse(context.season, {
+              includeUsageStats: kind !== "NFLVERSE_PRIMARY",
+            }),
             context.season,
           );
         else {
@@ -232,49 +258,64 @@ export async function executePlayerCatalogJob(
         if (!value) missing++;
       }
     };
-    const coverageRaw = await source("COVERAGE");
-    if (!coverageRaw)
-      return finish({ status: "PENDING", missingSources: missing });
-    const coverage = sourceSchema.parse(coverageRaw);
-    const gamesRaw = await source("GAMES");
-    if (!gamesRaw)
-      return finish({ status: "PENDING", missingSources: missing });
-    const games = sourceSchema.parse(gamesRaw);
-    const relevantGames = normalizeCatalogGames(
-      games,
-      context.season,
-      now(),
-    ).filter((game) =>
-      context.events.some(
-        (event) =>
-          event.awayTeam === game.away.name &&
-          event.homeTeam === game.home.name &&
-          event.scheduledStartAt === game.scheduledStartAt,
-      ),
-    );
-    if (relevantGames.length !== context.events.length)
-      return finish(
-        {
-          status: "UNAVAILABLE",
-          missingSources: context.events.length - relevantGames.length,
-        },
-        "EVENT_IDENTITY_UNRESOLVED",
-      );
-    const nflRaw = await source("NFLVERSE");
-    if (!nflRaw) return finish({ status: "PENDING", missingSources: missing });
-    const nflverse = nflSchema.parse(nflRaw);
+    let nflverse: NflverseCatalogFiles | undefined;
+    let coverage: CatalogSource | undefined;
+    let games: CatalogSource | undefined;
     const rosters: Record<string, CatalogSource> = {};
-    for (const teamId of [
-      ...new Set(relevantGames.flatMap((game) => [game.away.id, game.home.id])),
-    ].sort()) {
-      const raw = await source("ROSTER", teamId);
-      if (raw) rosters[teamId] = sourceSchema.parse(raw);
+    if (!primary) {
+      const coverageRaw = await source("COVERAGE");
+      if (!coverageRaw)
+        return finish({ status: "PENDING", missingSources: missing });
+      coverage = sourceSchema.parse(coverageRaw);
+      const gamesRaw = await source("GAMES");
+      if (!gamesRaw)
+        return finish({ status: "PENDING", missingSources: missing });
+      games = sourceSchema.parse(gamesRaw);
+      const relevantGames = normalizeCatalogGames(
+        games,
+        context.season,
+        now(),
+      ).filter((game) =>
+        context.events.some(
+          (event) =>
+            event.awayTeam === game.away.name &&
+            event.homeTeam === game.home.name &&
+            event.scheduledStartAt === game.scheduledStartAt,
+        ),
+      );
+      if (relevantGames.length !== context.events.length)
+        return finish(
+          {
+            status: "UNAVAILABLE",
+            missingSources: context.events.length - relevantGames.length,
+          },
+          "EVENT_IDENTITY_UNRESOLVED",
+        );
+      const nflRaw = await source("NFLVERSE");
+      if (!nflRaw)
+        return finish({ status: "PENDING", missingSources: missing });
+      nflverse = nflSchema.parse(nflRaw);
+      for (const teamId of [
+        ...new Set(
+          relevantGames.flatMap((game) => [game.away.id, game.home.id]),
+        ),
+      ].sort()) {
+        const raw = await source("ROSTER", teamId);
+        if (raw) rosters[teamId] = sourceSchema.parse(raw);
+      }
+      if (missing)
+        return finish({ status: "PENDING", missingSources: missing });
     }
-    if (missing) return finish({ status: "PENDING", missingSources: missing });
+    if (!nflverse) {
+      const nflRaw = await source("NFLVERSE_PRIMARY");
+      if (!nflRaw)
+        return finish({ status: "PENDING", missingSources: missing });
+      nflverse = nflSchema.parse(nflRaw);
+    }
     // Acquisition may validate access before release/source contracts. Do not
     // insert false immutable mapping rows that cannot later be safely promoted.
     if (
-      !context.apiSportsContractValidated ||
+      (!primary && !context.apiSportsContractValidated) ||
       !context.nflverseContractValidated
     )
       return finish(
@@ -287,20 +328,25 @@ export async function executePlayerCatalogJob(
         "CATALOG_WORK_DEFERRED",
       );
     const quotes = await fetchers.quotes(context.weekId);
-    const normalized = normalizeLiveCatalog({
-      ...context,
-      now: now(),
-      coverage,
-      games,
-      rosters,
-      nflverse,
-      quotes: quotes.imports,
-    });
+    const common = { ...context, now: now(), nflverse, quotes: quotes.imports };
+    const normalized = primary
+      ? normalizeNflversePrimaryCatalog(common)
+      : normalizeLiveCatalog({
+          ...common,
+          coverage: coverage!,
+          games: games!,
+          rosters,
+        });
     const prepared = buildPlayerCatalogBootstrap(normalized);
     for (const event of prepared.resultEvents)
       await rpc(port, "register_player_result_event", { p_mapping: event });
     if (prepared.records.length)
       await rpc(port, "import_player_catalog", { p_records: prepared.records });
+    if (primary)
+      await rpc(port, "record_player_catalog_nominations", {
+        p_lease_id: context.leaseId,
+        p_proposals: prepared.proposals,
+      });
     const unresolved =
       context.events.length * 6 -
       prepared.proposals.filter((row) => row.proposedCanonicalKey !== null)
@@ -308,7 +354,7 @@ export async function executePlayerCatalogJob(
     return finish(
       {
         status: unresolved
-          ? quotes.pending
+          ? primary || quotes.pending
             ? "PENDING"
             : "UNAVAILABLE"
           : "READY",

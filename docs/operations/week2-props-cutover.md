@@ -2,9 +2,11 @@
 
 This runbook implements the
 [September 15 one-time amendment](../governance/2026-09-15-week2-props-cutover.md).
-It is preparation, not evidence of a completed reset or live activation. The
-owner has approved the conditional release and exact reset scope; do not ask for
-the same approval again. The owner does not edit SQL or supply private card
+The exact independently approved reset has completed; do not execute it again.
+The following cutover instructions do not claim live props activation. Read with
+the [approved nflverse primary policy](../governance/2026-09-15-nflverse-primary-pilot.md).
+The owner has approved the conditional release and exact reset scope; do not ask
+for the same approval again. The owner does not edit SQL or supply private card
 identifiers in chat.
 
 Use `scripts/player-props/open-week2-cutover.sql`, which defaults to a dry run.
@@ -55,28 +57,31 @@ accepted bet by **any member** invalidates the staged manifest and blocks menu
 confirmation and cutover. Reassess the changed state; existing approval does not
 authorize canceling another card or silently expanding the receipt manifest.
 
-The owner reports the Odds API 20K subscription and replacement key installed.
-The agent verifies a fresh deployment and the live allowance headers securely,
-then applies the reviewed 1,000/day and 5,000/month limits with at least 350/day
-and 2,000/month protected for core operations. Until verified, retain the actual
-90/day and 450/month limits. Preserve usage history and verified quota-reset
-evidence; do not treat a successful key response alone as sufficient capacity.
-Refresh normalized entitlement evidence within the helper's ten-minute gate
-before catalog start and before cutover.
+The Odds API 20K entitlement and the reviewed 1,000/day and 5,000/month limits
+have been verified, with at least 350/day and 2,000/month protected for core
+operations. Preserve usage history and verified quota-reset evidence; refresh
+normalized entitlement evidence within the helper's ten-minute gate before
+catalog start and cutover. No owner upgrade or key setup remains.
 
-The API-Sports key already passed its protected Production account check with a
-100-request daily allowance. Source coverage, verified offensive participation,
-complete final totals and permission to display/retain the normalized evidence
-still require validation. The authorized support request remains unsent after
-the site's rejected verification attempt; use the
-[prepared official-dashboard request](api-sports-permission-request.md).
+Use the explicit `NFLVERSE_PRIMARY` source policy with
+`FEATURED_HIGHEST_STANDARD_LINES` nomination evidence. The
+[pilot runbook](nflverse-primary-pilot.md) requires current roster, game and
+bookmaker mappings; complete explicit final totals; verified PFR offensive
+participation; and an executable audited exception path. Each team supplies the
+QB with the highest standard passing line, RB with the highest standard rushing
+line and WR/TE with the highest standard receiving line in its coherent pregame
+snapshot. Position comes from the roster: a QB rushing market cannot fill the
+RB slot. These are featured players, not confirmed starters or guaranteed
+participants. Depth-chart acquisition is not required. Missing standard lines
+do not permit a silent usage fallback.
 
-The catalog phase requires both source-validation flags and enabled metadata
-policy with the protected 80 result / 20 metadata daily split and at most eight
-API-Sports requests per minute. Use the established bounded catalog allowance;
-do not skip mapping or results checks to meet a calendar deadline. Cutover also
+This mode requires its own validated nflverse source/policy evidence and enabled
+catalog acquisition. API-Sports coverage, credentials and contract-validation
+flags are not dependencies, and must not be set merely to bypass old guards.
+The earlier dual-source mode retains its separate requirements. Cutover also
 requires enabled result processing and the installed player-results hook in the
 active existing five-minute score dispatcher. Record actual delivery evidence.
+Do not skip mapping, completeness or exception checks to meet a calendar date.
 
 ## Commissioner review and atomic cutover
 

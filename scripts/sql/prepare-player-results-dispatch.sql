@@ -34,11 +34,18 @@ begin
  execute d;
 end;
 $prepare$;
--- Post-approval activation prerequisites, verified by the release agent:
--- 1. API_SPORTS_NFL_KEY server-only in approved deployment scope.
--- 2. Current-season box-score contract and nflverse participation mapping proved.
--- 3. Exact normalized data retention/use and eventual unresolved path validated.
--- 4. Shared Odds API protected budget upgraded, actual billing reset inspected.
--- Then enable separately: private.player_result_policy.processing_enabled,
--- api_sports_contract_validated, nflverse_contract_validated. Offer disable NEVER
--- clears processing_enabled after any prop receipt has been accepted.
+-- Activation prerequisites under the retained release approval:
+-- 1. Explicit selected source/selection policy and matching validation evidence.
+--    NFLVERSE_PRIMARY uses FEATURED_HIGHEST_STANDARD_LINES, published nflverse
+--    totals and PFR snaps; no API-Sports key or contract flag is required.
+--    API_SPORTS_NFLVERSE additionally requires the server-only API_SPORTS_NFL_KEY
+--    and a validated current-season API-Sports box-score contract.
+-- 2. Stable player/game/team mappings, per-game completeness, permitted normalized
+--    evidence retention/attribution and an executable verified-exception path.
+-- 3. Fresh Odds API entitlement evidence and the verified protected app budget;
+--    the owner upgrade/key setup is complete. Preserve usage and reset history.
+-- Enable processing/metadata separately only after their checks pass. Set only
+-- genuinely validated contract flags: nflverse_contract_validated in primary
+-- mode; both source flags in dual-source mode. Verify the selected mode through
+-- private.player_source_policy_validated(). This hook itself is source-agnostic.
+-- Disabling offers NEVER clears processing_enabled after a prop is accepted.

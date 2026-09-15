@@ -1,30 +1,41 @@
 # Sunday Ledger — current governing source index
 
+## Restricted nflverse primary pilot — September 15, 2026
+
+The owner approved [nflverse as the primary player-results source](2026-09-15-nflverse-primary-pilot.md)
+for a limited six-choice menu per eligible game. Under the later approved
+`FEATURED_HIGHEST_STANDARD_LINES` policy, each team supplies the QB with the
+highest standard passing line, RB with the highest standard rushing line and
+WR/TE with the highest standard receiving line. These are featured players
+selected from pregame markets, not confirmed starters; a QB rushing market
+cannot fill the RB slot. Current roster mappings verify positions and teams. The explicit `NFLVERSE_PRIMARY`
+policy accepts overnight settlement and verified exception handling. Missing
+statistics or participation stay pending; neither a download nor a timeout
+proves a zero or DNP. The immutable 1.4/3.3 competitive package, frozen identities,
+shared credits and existing correction authority remain unchanged.
+
+The existing Odds API 20K subscription/key and protected application budget
+transition have been verified. No additional statistics subscription or nflverse
+key is required. API-Sports entitlement/support is not a dependency for this
+policy, and SportsGameOdds is not being integrated. Source readiness, actual
+commissioner menu review and scoped activation remain separate checks. Follow
+the [pilot runbook](../operations/nflverse-primary-pilot.md).
+
 ## Open Week 2 props exception — September 15, 2026
 
-The owner requested props in the already-open pilot Week 2 and authorized a
-reset of the designated accepted card so that member can choose again. The
-[Week 2 cutover amendment](2026-09-15-week2-props-cutover.md) narrowly supersedes
-the future-only/no-redeployment provisions for that private scope. It requires
-an auditable cancellation and replacement card generation, unchanged original
-receipts, the same 1,000-credit allocation and atomic reset with validated props
-activation before any published game starts. That transaction freezes the
-reviewed complete menu before replacement submissions. If readiness fails,
-existing play remains unchanged and no reset occurs. No general cancellation
-control is added.
+The owner requested props in the already-open pilot Week 2 and authorized an
+exact one-time reset so the affected member can choose again. The later explicit
+reset instruction superseded the initial requirement to wait for combined props
+activation. That reset has completed, preserving original receipts and the same
+1,000-credit allocation. Preserve its audit; do not reset again.
 
-The owner subsequently reported completing the Odds API 20K subscription and
-installing the replacement key in the existing server-only Vercel variable.
-That completes the owner purchase/setup task; the agent must verify the fresh
-deployment and live account allowance before changing the current 90/day and
-450/month application caps. No repeat upgrade or key-setup request is needed.
-
-The owner also approved the API-Sports dashboard verification attempt. The site
-rejected the attempt and no support request was sent; the
-[prepared permission request](../operations/api-sports-permission-request.md)
-can be sent through official dashboard support. Retained release approval does
-not establish provider entitlement, coverage or permission. The earlier
-prospective-only instructions below remain effective outside this exception.
+The [Week 2 cutover amendment](2026-09-15-week2-props-cutover.md) permits the
+later props transition only while its exact prior-reset, unchanged-binding,
+source, real menu-review and pregame guards still pass. The cutover must freeze
+the complete reviewed menu in the transaction. Any new accepted bet by any
+member blocks the exception and never authorizes canceling more picks. Other
+opened and completed weeks retain their rules and history. Supporting code is
+deployed; this status does not claim live props activation.
 
 ## Player props release approval — September 15, 2026
 

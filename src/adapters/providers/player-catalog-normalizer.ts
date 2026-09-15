@@ -241,6 +241,7 @@ export function sanitizeNflverseCatalog(
       "full_name",
       "gsis_id",
       "pfr_id",
+      "espn_id",
       "status",
     ]),
     scheduleCsv: project(files.scheduleCsv, [
@@ -545,6 +546,159 @@ export function normalizeLiveCatalog(input: {
             source: "NFLVERSE",
             description: `Recent ${field} over ${usageRows.length} game(s); starting role unconfirmed.`,
           });
+      }
+    }
+  }
+  if (!result.events.length)
+    throw new Error("CATALOG_NO_VERIFIED_EVENT_MATCHES");
+  return result;
+}
+
+/** The approved featured-player pilot uses one real source crosswalk. It does
+ * not claim API-Sports identity/entitlement or that an odds leader is a starter. */
+export function normalizeNflversePrimaryCatalog(input: {
+  season: number;
+  week: number;
+  now: string;
+  events: CatalogEvent[];
+  nflverse: NflverseCatalogFiles;
+  quotes: PropQuoteImport[];
+  nflverseContractValidated: boolean;
+  verifiedAliases?: { canonicalKey: string; name: string }[];
+}): PlayerCatalogBootstrapInput {
+  const { nflverse: files } = input;
+  const now = Date.parse(input.now),
+    fetched = Date.parse(files.fetchedAt),
+    revision = Date.parse(files.sourceUpdatedAt);
+  if (
+    !Number.isFinite(now) ||
+    !Number.isFinite(fetched) ||
+    !Number.isFinite(revision) ||
+    revision > fetched ||
+    fetched > now ||
+    now - revision > 48 * 3600000
+  )
+    throw new Error("CATALOG_NFLVERSE_CURRENT_DIRECTORY_UNAVAILABLE");
+  const roster = parseNflverseCsv(files.rosterCsv).filter(
+    (row) => Number(row.season) === input.season,
+  );
+  const schedule = parseNflverseCsv(files.scheduleCsv).filter(
+    (row) => Number(row.season) === input.season,
+  );
+  if (!roster.length || !schedule.length)
+    throw new Error("CATALOG_NFLVERSE_CURRENT_SEASON_UNAVAILABLE");
+  const result: PlayerCatalogBootstrapInput = {
+    now: input.now,
+    sourceVerifiedAt: files.fetchedAt,
+    sourceExpiresAt: new Date(revision + 48 * 3600000).toISOString(),
+    sourcePolicy: "NFLVERSE_PRIMARY",
+    selectionPolicy: "FEATURED_HIGHEST_STANDARD_LINES",
+    events: [],
+    directory: [],
+    mappings: [],
+    roles: [],
+    quotes: input.quotes,
+  };
+  const directoryKeys = new Set<string>();
+  for (const event of input.events) {
+    if (
+      !Number.isFinite(Date.parse(event.scheduledStartAt)) ||
+      Date.parse(event.scheduledStartAt) <= now
+    )
+      continue;
+    const when = eastern(event.scheduledStartAt);
+    const matches = schedule.filter(
+      (game) =>
+        Number(game.week) === input.week &&
+        game.gameday === when.date &&
+        game.gametime === when.time &&
+        nflCatalogTeams[game.away_team] === event.awayTeam &&
+        nflCatalogTeams[game.home_team] === event.homeTeam &&
+        game.game_id ===
+          `${input.season}_${String(input.week).padStart(2, "0")}_${game.away_team}_${game.home_team}`,
+    );
+    if (matches.length !== 1 || event.awayTeam === event.homeTeam) continue;
+    const game = matches[0];
+    result.events.push({
+      ...event,
+      resultMapping: {
+        verified: true,
+        verifiedAt: files.fetchedAt,
+        evidenceHash: catalogHash([
+          "NFLVERSE_PRIMARY",
+          event.externalEventId,
+          game.game_id,
+          event.scheduledStartAt,
+          event.awayTeam,
+          event.homeTeam,
+        ]),
+        apiSportsEventId: null,
+        nflverseEventId: game.game_id,
+        gameDate: when.date,
+        awayTeam: event.awayTeam,
+        homeTeam: event.homeTeam,
+      },
+    });
+    for (const team of [event.awayTeam, event.homeTeam]) {
+      const current = roster.filter(
+        (player) =>
+          nflCatalogTeams[player.team] === team &&
+          ["QB", "RB", "WR", "TE"].includes(player.position) &&
+          player.status === "ACT" &&
+          /^\d{2}-\d{7}$/.test(player.gsis_id) &&
+          /^[1-9]\d*$/.test(player.espn_id ?? "") &&
+          /^[A-Za-z][A-Za-z0-9]{3,19}$/.test(player.pfr_id ?? "") &&
+          player.full_name,
+      );
+      for (const player of current) {
+        // Unique stable IDs plus current team and position establish identity;
+        // odds text and approximate display names cannot repair a failed join.
+        if (
+          ["gsis_id", "espn_id", "pfr_id"].some(
+            (key) =>
+              roster.filter((row) => row[key] === player[key]).length !== 1,
+          )
+        )
+          continue;
+        const canonicalKey = `nflverse:${player.gsis_id}`;
+        const evidence = {
+          verified: true,
+          verifiedAt: files.fetchedAt,
+          evidenceHash: catalogHash(["NFLVERSE_PRIMARY", input.season, player]),
+        };
+        if (!directoryKeys.has(canonicalKey)) {
+          directoryKeys.add(canonicalKey);
+          result.directory.push({
+            ...evidence,
+            canonicalKey,
+            displayName: player.full_name,
+            position: player.position,
+            team,
+            validFrom: eastern(files.fetchedAt).date,
+            validThrough: eastern(
+              new Date(fetched + 7 * 86400000).toISOString(),
+            ).date,
+            bookmakerAliases: [
+              ...new Set(
+                (input.verifiedAliases ?? [])
+                  .filter((alias) => alias.canonicalKey === canonicalKey)
+                  .map((alias) => alias.name),
+              ),
+            ].slice(0, 10),
+          });
+        }
+        result.mappings.push({
+          ...evidence,
+          canonicalKey,
+          provider: "NFLVERSE",
+          externalEventId: event.externalEventId,
+          externalPlayerId: player.gsis_id,
+          team,
+          gameDate: when.date,
+          sourceTeam: player.team,
+          secondaryPlayerId: player.pfr_id,
+          resultPathVerified: input.nflverseContractValidated,
+        });
       }
     }
   }

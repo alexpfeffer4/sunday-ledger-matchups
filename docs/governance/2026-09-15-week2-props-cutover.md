@@ -6,6 +6,11 @@ member's accepted picks so that member can choose again. It supplements the
 [full-slate props contract](../player-props.md) and
 [rolling-submission amendment](2026-09-14-rolling-submissions.md).
 
+The later [nflverse primary amendment](2026-09-15-nflverse-primary-pilot.md)
+selects the pilot's source/nomination policy and overnight settlement expectation.
+It does not waive this exception's exact scope or race guards. The independently
+authorized reset has completed; the cutover must reuse its audit, not reset again.
+
 The owner has approved implementation and the conditional migration, merge,
 deployment and activation workflow. No repeated release approval is required
 for this scope. Purchases remain excluded. This document records authority and
@@ -50,11 +55,12 @@ qualification, pairings and completed history are not recalculated by cutover.
 
 Prepare the complete role-correct slate and pass all existing source, identity,
 results, participation, quote, quota and commissioner-review gates before the
-cutover. The owner reports completing the 20K Odds API subscription and key
-installation; the agent must verify live entitlement from a fresh deployment
-before changing the current 90/day and 450/month caps. No repeat owner upgrade
-or key-setup request is needed. Account authentication alone is not evidence of
-coverage or permission to retain settlement facts.
+cutover. The 20K Odds API entitlement and protected budget transition have been
+verified; refresh the normalized entitlement evidence when the cutover requires
+it. No repeat owner upgrade or key-setup request is needed. Validate the explicit
+nflverse policy's roster/game/bookmaker joins, published totals, offensive snap
+evidence and verified exception path. API-Sports account access is not a gate
+for that mode. Account authentication alone does not prove result completeness.
 
 Two execution sequences are supported under the authoritative season/week/card
 locks:

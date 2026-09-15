@@ -10,7 +10,12 @@ import {
   fullSlateCatalogWireFixture,
 } from "../fixtures/player-catalog-wire";
 
-function harness(wire = playerCatalogWireFixture()) {
+import { nflversePrimaryCatalogFixture } from "../fixtures/nflverse-primary-catalog";
+
+function harness(
+  wire = playerCatalogWireFixture(),
+  options: { primary?: boolean; selectionPolicy?: string } = {},
+) {
   const sources = new Map<string, unknown>();
   const calls: { name: string; args?: Record<string, unknown> }[] = [];
   const eventId = randomUUID(),
@@ -25,6 +30,14 @@ function harness(wire = playerCatalogWireFixture()) {
           status: "CLAIMED",
           leaseId: lease,
           weekId: eventId,
+          sourcePolicy: options.primary
+            ? "NFLVERSE_PRIMARY"
+            : "API_SPORTS_NFLVERSE",
+          selectionPolicy:
+            options.selectionPolicy ??
+            (options.primary
+              ? "FEATURED_HIGHEST_STANDARD_LINES"
+              : "LEGACY_ROLE_PRIORITY"),
           season: wire.season,
           week: wire.week,
           events: wire.events,
@@ -242,5 +255,127 @@ describe("durable automatic catalog preparation", () => {
     });
     expect(state.fetchers.api).toHaveBeenCalledTimes(36);
     expect(state.fetchers.nflverse).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("nflverse primary pilot acquisition", () => {
+  it.each([14, 16])(
+    "prepares a %i-game slate with zero API-Sports calls or reservations",
+    async (games) => {
+      const wire = nflversePrimaryCatalogFixture(fullSlateCatalogWireFixture());
+      wire.events = wire.events.slice(0, games);
+      wire.quotes = wire.quotes.slice(0, games);
+      wire.apiSportsContractValidated = false;
+      const state = harness(wire, { primary: true });
+      expect(await executePlayerCatalogJob(state.port, state.fetchers)).toEqual(
+        { status: "READY", missingSources: 0 },
+      );
+      expect(state.fetchers.api).not.toHaveBeenCalled();
+      expect(state.fetchers.quota).not.toHaveBeenCalled();
+      expect(state.fetchers.nflverse).toHaveBeenCalledWith(2026, {
+        includeUsageStats: false,
+      });
+      expect(
+        state.calls.some((call) =>
+          [
+            "claim_player_statistics_status",
+            "reserve_player_metadata_request",
+            "complete_player_result_request",
+          ].includes(call.name),
+        ),
+      ).toBe(false);
+      const registered = state.calls.filter(
+        (call) => call.name === "register_player_result_event",
+      );
+      expect(registered).toHaveLength(games);
+      expect(
+        registered.every(
+          (call) =>
+            (call.args!.p_mapping as { apiSportsEventId: unknown })
+              .apiSportsEventId === null,
+        ),
+      ).toBe(true);
+      const records = state.calls.find(
+        (call) => call.name === "import_player_catalog",
+      )!.args!.p_records as { provider: string }[];
+      expect(records).toHaveLength(games * 6 * 2);
+      expect(records.some((row) => row.provider === "API_SPORTS")).toBe(false);
+      const nomination = state.calls.find(
+        (call) => call.name === "record_player_catalog_nominations",
+      );
+      expect(nomination?.args?.p_proposals).toHaveLength(games * 6);
+      expect(state.calls.indexOf(nomination!)).toBeGreaterThan(
+        state.calls.findIndex((call) => call.name === "import_player_catalog"),
+      );
+      await executePlayerCatalogJob(state.port, state.fetchers);
+      expect(state.fetchers.nflverse).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("keeps an empty successful discovery retryable until real lines arrive", async () => {
+    const state = harness(nflversePrimaryCatalogFixture(), { primary: true });
+    const imports = state.wire.quotes;
+    state.fetchers.quotes = vi.fn(async () => ({
+      imports: [],
+      pending: false,
+    }));
+    expect(await executePlayerCatalogJob(state.port, state.fetchers)).toEqual({
+      status: "PENDING",
+      missingSources: 6,
+    });
+    expect(
+      state.calls.some(
+        (call) => call.name === "record_player_catalog_nominations",
+      ),
+    ).toBe(true);
+    state.fetchers.quotes = vi.fn(async () => ({ imports, pending: false }));
+    expect(await executePlayerCatalogJob(state.port, state.fetchers)).toEqual({
+      status: "READY",
+      missingSources: 0,
+    });
+    expect(state.fetchers.nflverse).toHaveBeenCalledTimes(1);
+  });
+  it("keeps primary source evidence separate from cached legacy metadata", async () => {
+    const state = harness(nflversePrimaryCatalogFixture(), { primary: true });
+    state.sources.set("NFLVERSE:2026", playerCatalogWireFixture().nflverse);
+    expect(
+      (await executePlayerCatalogJob(state.port, state.fetchers)).status,
+    ).toBe("READY");
+    expect(state.fetchers.nflverse).toHaveBeenCalledTimes(1);
+    expect(state.sources.has("NFLVERSE_PRIMARY:2026")).toBe(true);
+  });
+  it("does not import immutable identities or spend quote credits before the primary contract passes", async () => {
+    const wire = nflversePrimaryCatalogFixture();
+    wire.nflverseContractValidated = false;
+    const state = harness(wire, { primary: true });
+    expect(
+      (await executePlayerCatalogJob(state.port, state.fetchers)).status,
+    ).toBe("PENDING");
+    expect(state.fetchers.quotes).not.toHaveBeenCalled();
+    expect(
+      state.calls.some((call) => call.name === "import_player_catalog"),
+    ).toBe(false);
+  });
+  it("rejects an inconsistent source/selection policy before any provider operation", async () => {
+    const state = harness(nflversePrimaryCatalogFixture(), {
+      primary: true,
+      selectionPolicy: "LEGACY_ROLE_PRIORITY",
+    });
+    expect(
+      (await executePlayerCatalogJob(state.port, state.fetchers)).status,
+    ).toBe("UNAVAILABLE");
+    expect(state.fetchers.nflverse).not.toHaveBeenCalled();
+    expect(state.fetchers.quotes).not.toHaveBeenCalled();
+  });
+  it("keeps identities unresolved when primary current roster evidence is absent", async () => {
+    const wire = nflversePrimaryCatalogFixture();
+    wire.nflverse.rosterCsv =
+      "season,team,position,full_name,gsis_id,pfr_id,status";
+    const state = harness(wire, { primary: true });
+    expect(
+      (await executePlayerCatalogJob(state.port, state.fetchers)).status,
+    ).not.toBe("READY");
+    expect(
+      state.calls.some((call) => call.name === "import_player_catalog"),
+    ).toBe(false);
   });
 });

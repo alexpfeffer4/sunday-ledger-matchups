@@ -29,7 +29,10 @@ begin
  'api.open_reviewed_player_prop_week(text,text)','api.configure_player_prop_odds_budget(jsonb)',
  'private.player_props_menu_eligible(uuid)','private.player_props_menu_reviewed(uuid)',
  'private.player_catalog_staged_week(uuid,integer)','private.configure_player_catalog_hold(uuid,uuid)',
- 'private.abort_player_catalog_hold(uuid,uuid,uuid)'] loop
+ 'private.abort_player_catalog_hold(uuid,uuid,uuid)',
+ 'private.player_source_policy_validated()',
+ 'private.configure_nflverse_primary_pilot(text,text)',
+ 'api.resolve_verified_player_result_exception(uuid,uuid,text,integer,integer,text,text,text,uuid,text,text)'] loop
  if to_regprocedure(n) is null then raise exception 'Missing authority: %',n; end if;
  end loop;
  if strpos(pg_get_functiondef('private.pin_week_rules()'::regprocedure),'p.rules_enabled')=0
@@ -43,7 +46,9 @@ select p.enabled,daily_credit_limit,monthly_credit_limit,protected_core_daily_cr
  (select max(completed_at) from private.odds_entitlement_probes proof where proof.state='SUCCEEDED'
  and proof.started_at>=p.provider_cycle_verified_at and proof.remaining::bigint+proof.used::bigint=p.provider_entitlement_credits) as latest_consistent_entitlement_probe_at
  from private.odds_refresh_policy p;
-select processing_enabled,api_sports_contract_validated,nflverse_contract_validated,
+select source_policy,selection_policy,source_validation_id,
+ private.player_source_policy_validated() as selected_source_policy_validated,
+ processing_enabled,api_sports_contract_validated,nflverse_contract_validated,
  results_daily_limit,metadata_daily_limit,requests_per_minute from private.player_result_policy;
 
 select mode,ruleset_version,product_bible_version,sha256_hash from private.authoritative_season_rulesets order by mode;
