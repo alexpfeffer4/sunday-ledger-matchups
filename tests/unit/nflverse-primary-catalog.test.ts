@@ -45,6 +45,46 @@ function addPlayer(
 }
 
 describe("nflverse primary featured-player catalog", () => {
+  it("accepts a provider kickoff without milliseconds for the same published instant", () => {
+    const input = fixture();
+    const expected = build(input).proposals.map(
+      (proposal) => proposal.proposedCanonicalKey,
+    );
+    input.quotes[0].events[0].scheduledStartAt =
+      input.events[0].scheduledStartAt.replace(".000Z", "Z");
+
+    const result = build(input);
+    expect(
+      result.proposals.map((proposal) => proposal.proposedCanonicalKey),
+    ).toEqual(expected);
+    expect(result.records).toHaveLength(12);
+    expect(result.exceptions).toEqual([]);
+  });
+  it.each(["kickoff", "away-team", "home-team", "event-id"])(
+    "rejects a quote with a different %s even when kickoff precision differs",
+    (difference) => {
+      const input = fixture();
+      const quote = input.quotes[0].events[0];
+      quote.scheduledStartAt = input.events[0].scheduledStartAt.replace(
+        ".000Z",
+        "Z",
+      );
+      if (difference === "kickoff")
+        quote.scheduledStartAt = "2026-09-21T00:20:01Z";
+      if (difference === "away-team") quote.awayTeam = "Buffalo Bills";
+      if (difference === "home-team") quote.homeTeam = "Detroit Lions";
+      if (difference === "event-id") quote.externalEventId = "other-event";
+
+      const result = build(input);
+      expect(result.records).toEqual([]);
+      expect(result.proposals).toHaveLength(6);
+      expect(
+        result.proposals.every(
+          (proposal) => proposal.proposedCanonicalKey === null,
+        ),
+      ).toBe(true);
+    },
+  );
   it.each(["MoorD.00", "Ya-SRo00"])(
     "preserves published punctuation in PFR identity %s",
     (pfrId) => {

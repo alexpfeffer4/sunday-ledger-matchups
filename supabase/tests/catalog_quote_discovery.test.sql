@@ -61,33 +61,33 @@ create function pg_temp.discovery_payload(p_event text) returns jsonb language s
     from(values('OVER'),('UNDER')) sides(side)) end)))
  from private.sports_events e where e.fixture_event_key=p_event and e.week_id=(select first_week from catalog_fixture_context);
 $$;
-create function pg_temp.discover_tick(p_tick integer) returns setof text language plpgsql as $$
+create function pg_temp.discover_tick() returns setof text language plpgsql as $$
 declare job jsonb;claim jsonb;facts jsonb;n integer;wk uuid:=(select first_week from catalog_fixture_context);
 begin
  -- Advance only the disposable scheduled fixture; production leases and retry
  -- times are enforced by the job claim. Provider HTTP remains fully synthetic.
  update private.player_catalog_jobs set next_attempt_at=clock_timestamp()-interval '1 second' where week_id=wk;
  job:=api.claim_player_catalog_job(wk);
- return next is(job->>'status','CLAIMED','tick '||p_tick||' leases pending discovery');
- for n in 1..2 loop
+ return next is(job->>'status','CLAIMED','cold catalog leases pending discovery');
+ for n in 1..16 loop
   update private.odds_refresh_policy set next_request_at='-infinity';
   claim:=api.claim_player_catalog_quote(wk);
-  return next is(claim->>'status','CLAIMED','tick '||p_tick||' request '||n||' discovers next event');
+  return next is(claim->>'status','CLAIMED','bounded request '||n||' discovers next event');
   if claim->>'status'<>'CLAIMED' then return;end if;
   return next is(api.complete_shared_quote_request((claim->>'requestId')::uuid,
-   pg_temp.discovery_payload(claim->>'externalEventId'),'{"last":3}') ->>'status','SUCCEEDED','tick '||p_tick||' persists exact three-family result');
+   pg_temp.discovery_payload(claim->>'externalEventId'),'{"last":3}') ->>'status','SUCCEEDED','cold catalog persists exact three-family result');
  end loop;
  facts:=api.get_player_catalog_quotes(wk);
- return next is(jsonb_array_length(facts->'imports'),p_tick*2,'tick '||p_tick||' retains prior event identity progress');
- return next is((facts->>'pending')::boolean,p_tick<8,'tick '||p_tick||' truthfully reports remaining discovery');
- return next is(api.claim_player_catalog_quote(wk)->>'status',case when p_tick<8 then 'LIMIT' else 'CACHED' end,'tick '||p_tick||' cannot make a third paid call');
- -- Expire ordinary quote freshness between every tick. Retained identities,
+ return next is(jsonb_array_length(facts->'imports'),16,'cold catalog retains all event identity progress');
+ return next is((facts->>'pending')::boolean,false,'cold catalog truthfully reports no remaining discovery');
+ return next is(api.claim_player_catalog_quote(wk)->>'status','CACHED','cold catalog cannot make an extra paid call after complete discovery');
+ -- Expire ordinary quote freshness before the later retry. Retained identities,
  -- including confirmed absence, do not inherit the60s current-quote limit.
  update private.shared_quote_requests set fetched_at=fetched_at-interval '5 minutes' where kind='PROPS' and state='SUCCEEDED';
- perform api.complete_player_catalog_job((job->>'leaseId')::uuid,'PENDING',16-p_tick*2,null);
+ perform api.complete_player_catalog_job((job->>'leaseId')::uuid,'PENDING',0,null);
 end; $$;
-select pg_temp.discover_tick(n) from generate_series(1,8)n;
-select is((select count(distinct event_ids[1]) from private.shared_quote_requests where kind='PROPS' and state='SUCCEEDED'),16::bigint,'eight bounded ticks discover all16 distinct published events');
+select pg_temp.discover_tick();
+select is((select count(distinct event_ids[1]) from private.shared_quote_requests where kind='PROPS' and state='SUCCEEDED'),16::bigint,'one bounded tick discovers all 16 distinct published events');
 select is((select count(*) from private.shared_quote_requests where kind='PROPS'),16::bigint,'no event was fetched again after its ordinary quote cache expired');
 select is((select daily_credits from private.odds_refresh_policy),48,'the full cold16-game catalog reserves48 optional credits once');
 select is((select count(*) from private.player_catalog_quote_evidence),48::bigint,'positive and negative families all have durable progress');

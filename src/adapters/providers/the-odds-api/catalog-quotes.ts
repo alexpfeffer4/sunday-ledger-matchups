@@ -31,10 +31,11 @@ const claimSchema = z.discriminatedUnion("status", [
 ]);
 
 /** The leased catalog worker discovers public book identities before a menu
- * exists. SQL derives eligible published events and caps each job lease at two
+ * exists. SQL derives eligible published events and caps each job lease at sixteen
  * paid requests. Twelve-hour identity progress never renews live quote proofs. */
 export async function acquirePlayerCatalogQuotes(
   weekId: string,
+  deadlineAt?: number,
 ): Promise<{ imports: PropQuoteImport[]; pending: boolean }> {
   const secret = getSupabaseServerSecret();
   if (!secret) return { imports: [], pending: true };
@@ -50,10 +51,16 @@ export async function acquirePlayerCatalogQuotes(
   }
   const cached = await readFacts();
   if (!cached.pending || !process.env.ODDS_API_KEY) return cached;
-  const deadline = Date.now() + 25_000;
+  // The catalog runner supplies an absolute deadline that includes earlier
+  // source work and leaves time for identity imports. Other callers retain the
+  // short default. Never extend a caller's remaining runtime allowance.
+  const deadline = Math.min(
+    Date.now() + 60_000,
+    deadlineAt ?? Date.now() + 25_000,
+  );
   let waited = false;
   let requests = 0;
-  while (requests < 2 && Date.now() + 12_000 < deadline) {
+  while (requests < 16 && Date.now() + 12_000 < deadline) {
     const claimed = await admin
       .schema("api")
       .rpc("claim_player_catalog_quote", {
@@ -92,6 +99,9 @@ export async function acquirePlayerCatalogQuotes(
         "SUCCEEDED"
       )
         break;
+      // Normal shared-provider pacing may apply before each new event. Allow
+      // one bounded wait after success; repeated backoff still ends this batch.
+      waited = false;
     } catch {
       await admin.schema("api").rpc("complete_shared_quote_request", {
         p_request_id: claim.requestId,

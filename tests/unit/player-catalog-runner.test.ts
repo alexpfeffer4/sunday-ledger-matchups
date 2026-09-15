@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   executePlayerCatalogJob,
   type CatalogFetchers,
@@ -11,6 +11,8 @@ import {
 } from "../fixtures/player-catalog-wire";
 
 import { nflversePrimaryCatalogFixture } from "../fixtures/nflverse-primary-catalog";
+
+afterEach(() => vi.useRealTimers());
 
 function harness(
   wire = playerCatalogWireFixture(),
@@ -259,6 +261,139 @@ describe("durable automatic catalog preparation", () => {
 });
 
 describe("nflverse primary pilot acquisition", () => {
+  it("deducts elapsed source work from the absolute quote acquisition deadline", async () => {
+    const state = harness(nflversePrimaryCatalogFixture(), { primary: true });
+    const startedAt = Date.parse(state.wire.now);
+    vi.useFakeTimers();
+    vi.setSystemTime(startedAt);
+    state.fetchers.now = () => new Date().toISOString();
+    state.fetchers.nflverse = vi.fn(async () => {
+      vi.setSystemTime(startedAt + 35_000);
+      return state.wire.nflverse;
+    });
+    state.fetchers.quotes = vi.fn(async (_weekId, deadlineAt) => {
+      expect(deadlineAt).toBe(startedAt + 60_000);
+      expect(deadlineAt! - Date.now()).toBe(25_000);
+      return { imports: state.wire.quotes, pending: false };
+    });
+
+    expect(await executePlayerCatalogJob(state.port, state.fetchers)).toEqual({
+      status: "READY",
+      missingSources: 0,
+    });
+    const proposals = state.calls.find(
+      (call) => call.name === "record_player_catalog_nominations",
+    )!.args!.p_proposals as { nominationVerifiedAt: string }[];
+    expect(
+      proposals.every(
+        (proposal) => proposal.nominationVerifiedAt === state.wire.now,
+      ),
+    ).toBe(true);
+  });
+  it.each([
+    "quotes",
+    "register_player_result_event",
+    "last_result_event",
+    "import_player_catalog",
+  ])(
+    "defers after the worker deadline at %s and resumes cached evidence without changing source times",
+    async (boundary) => {
+      const wire = nflversePrimaryCatalogFixture(fullSlateCatalogWireFixture());
+      wire.events = wire.events.slice(0, 2);
+      wire.quotes = wire.quotes.slice(0, 2);
+      const state = harness(wire, { primary: true });
+      const startedAt = Date.parse(wire.now);
+      vi.useFakeTimers();
+      vi.setSystemTime(startedAt);
+      state.fetchers.now = () => new Date().toISOString();
+      state.fetchers.quotes = vi.fn(async () => {
+        if (boundary === "quotes") vi.setSystemTime(startedAt + 80_000);
+        return { imports: wire.quotes, pending: false };
+      });
+      const slowPort: CatalogPort = {
+        rpc: async (name, args) => {
+          const result = await state.port.rpc(name, args);
+          if (
+            name === boundary ||
+            (boundary === "last_result_event" &&
+              name === "register_player_result_event" &&
+              state.calls.filter((call) => call.name === name).length ===
+                wire.events.length)
+          )
+            vi.setSystemTime(startedAt + 80_000);
+          return result;
+        },
+      };
+
+      expect(await executePlayerCatalogJob(slowPort, state.fetchers)).toEqual({
+        status: "PENDING",
+        missingSources: 1,
+      });
+      const postQuoteWrites = state.calls.filter((call) =>
+        [
+          "register_player_result_event",
+          "import_player_catalog",
+          "record_player_catalog_nominations",
+          "complete_player_catalog_job",
+        ].includes(call.name),
+      );
+      expect(postQuoteWrites.map((call) => call.name)).toEqual(
+        boundary === "quotes"
+          ? ["complete_player_catalog_job"]
+          : boundary === "register_player_result_event"
+            ? ["register_player_result_event", "complete_player_catalog_job"]
+            : boundary === "last_result_event"
+              ? [
+                  "register_player_result_event",
+                  "register_player_result_event",
+                  "complete_player_catalog_job",
+                ]
+              : [
+                  "register_player_result_event",
+                  "register_player_result_event",
+                  "import_player_catalog",
+                  "complete_player_catalog_job",
+                ],
+      );
+      expect(postQuoteWrites.at(-1)?.args).toMatchObject({
+        p_status: "PENDING",
+        p_error: "CATALOG_WORK_DEFERRED",
+      });
+      expect(state.sources.has("NFLVERSE_PRIMARY:2026")).toBe(true);
+
+      vi.setSystemTime(startedAt + 5 * 60_000);
+      state.fetchers.quotes = vi.fn(async () => ({
+        imports: wire.quotes,
+        pending: false,
+      }));
+      expect(await executePlayerCatalogJob(state.port, state.fetchers)).toEqual(
+        {
+          status: "READY",
+          missingSources: 0,
+        },
+      );
+      expect(state.fetchers.nflverse).toHaveBeenCalledTimes(1);
+      expect(state.fetchers.api).not.toHaveBeenCalled();
+      const proposals = state.calls.find(
+        (call) => call.name === "record_player_catalog_nominations",
+      )!.args!.p_proposals as {
+        proposedCanonicalKey: string | null;
+        nominationVerifiedAt: string;
+      }[];
+      expect(proposals).toHaveLength(12);
+      expect(
+        proposals.every(
+          (proposal) =>
+            proposal.proposedCanonicalKey !== null &&
+            proposal.nominationVerifiedAt === wire.now,
+        ),
+      ).toBe(true);
+      expect(state.fetchers.quotes).toHaveBeenCalledWith(
+        expect.any(String),
+        startedAt + 6 * 60_000,
+      );
+    },
+  );
   it.each([14, 16])(
     "prepares a %i-game slate with zero API-Sports calls or reservations",
     async (games) => {
@@ -342,6 +477,25 @@ describe("nflverse primary pilot acquisition", () => {
     ).toBe("READY");
     expect(state.fetchers.nflverse).toHaveBeenCalledTimes(1);
     expect(state.sources.has("NFLVERSE_PRIMARY:2026")).toBe(true);
+  });
+  it("nominates primary players across database and provider kickoff serialization", async () => {
+    const wire = nflversePrimaryCatalogFixture();
+    wire.events[0].scheduledStartAt = "2026-09-21T00:20:00+00:00";
+    wire.quotes[0].events[0].scheduledStartAt = "2026-09-21T00:20:00Z";
+    const state = harness(wire, { primary: true });
+
+    expect(await executePlayerCatalogJob(state.port, state.fetchers)).toEqual({
+      status: "READY",
+      missingSources: 0,
+    });
+    const proposals = state.calls.find(
+      (call) => call.name === "record_player_catalog_nominations",
+    )!.args!.p_proposals as { proposedCanonicalKey: string | null }[];
+    expect(proposals).toHaveLength(6);
+    expect(
+      proposals.every((proposal) => proposal.proposedCanonicalKey !== null),
+    ).toBe(true);
+    expect(state.fetchers.api).not.toHaveBeenCalled();
   });
   it("does not import immutable identities or spend quote credits before the primary contract passes", async () => {
     const wire = nflversePrimaryCatalogFixture();

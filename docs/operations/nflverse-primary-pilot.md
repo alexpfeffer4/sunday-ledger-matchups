@@ -130,3 +130,56 @@ Keep a compatible application and accepted-prop result processing, reveal,
 corrections and history. A source outage does not erase accepted bets or justify
 switching their evidence policy silently. Preserve the exact completed Week 2
 reset and cancellation audit; recovery never reactivates canceled receipts.
+
+## Collection runtime and pacing
+
+The collector may request up to the full 16-game slate in one lease. Requests
+remain sequential, with each request subject to the shared provider pacing,
+credit reservation, protected core budget and backoff. Successful empty market
+responses are cached just like populated responses; increasing the batch ceiling
+does not increase the number of requests needed to discover the slate.
+
+The worker supplies an absolute quote deadline 60 seconds after the job starts,
+so earlier source work consumes that allowance. It reserves the remainder of its
+80-second work budget for mappings and nominations, with a check before each
+write boundary. A new provider request requires more than 12 seconds remaining;
+the provider fetch itself has a ten-second timeout. Slow work stops with cached
+progress. One bounded pacing wait is allowed after each successful request;
+repeated backoff without progress ends the batch.
+
+Successful partial discovery with unobserved event families resumes at the next
+existing five-minute cron boundary. Failure, no progress and missing players with
+complete discovery retain their full retry delay. The scheduler, authentication,
+source freshness and executable member quote gates are unchanged. Actual time
+depends on provider and database latency; a one-run full slate is not guaranteed.
+
+## Repairing the initial all-empty catalog generation
+
+A verified kickoff serialization bug can produce an all-empty nomination head
+from otherwise valid cached source data. Deploy and verify the corrected release
+before recovery. Replay the actual cached roster, schedule and quote payloads
+through the fixed normalizer offline and verify nonempty, identity-checked
+nominees with their original source timestamps. Verify the deployed fixed
+release SHA independently; the repair records that attestation and cannot
+inspect the application deployment. Do not change source timestamps, purge caches, reset cards,
+force a new paid fetch or relax the normal nomination ordering guard.
+
+1. Record the exact current generation ID, content hash and deployed fix SHA.
+   Confirm that every nomination has empty candidates and no proposed player.
+   Preserve the source validation, current staged Week 2 and completed reset.
+2. Disable metadata acquisition with offers and result processing still disabled.
+   Wait for any existing catalog worker lease to expire; do not clear its lease.
+3. As the database operator, call
+   `private.invalidate_empty_nflverse_nomination_head(week_id, generation_id,
+content_hash, fixed_release_sha, operation_id, reason)` with those exact
+   observed values and a retained incident reason. Its transaction requires the
+   current unstarted stage, matching completed reset, no active picks, no selected,
+   confirmed or frozen menu, and no active worker lease. It records an immutable
+   audit and removes only the derived current head. The original generation and
+   all source evidence remain unchanged. An exact operation replay returns its
+   audit without changing a newly recovered head; conflicting replay fails.
+4. Verify the audit and preserved generation, restore metadata acquisition, and
+   let the due worker recompute through the normal nomination authority using
+   the original cached evidence timestamps. Confirm actual candidates before
+   commissioner review. This repair does not change job timing or provider
+   quotas, authorize menu confirmation, activate offers, or repeat the reset.

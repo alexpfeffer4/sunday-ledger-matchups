@@ -39,6 +39,7 @@ export type CatalogFetchers = {
   ) => Promise<NflverseCatalogFiles>;
   quotes: (
     weekId: string,
+    deadlineAt?: number,
   ) => Promise<{ imports: PropQuoteImport[]; pending: boolean }>;
   now?: () => string;
 };
@@ -141,6 +142,8 @@ export async function executePlayerCatalogJob(
     });
     return value;
   };
+  const defer = () =>
+    finish({ status: "PENDING", missingSources: 1 }, "CATALOG_WORK_DEFERRED");
   try {
     const primary = context.sourcePolicy === "NFLVERSE_PRIMARY";
     if (
@@ -322,12 +325,11 @@ export async function executePlayerCatalogJob(
         { status: "PENDING", missingSources: 1 },
         "RESULT_CONTRACT_VALIDATION_PENDING",
       );
-    if (!withinDeadline())
-      return finish(
-        { status: "PENDING", missingSources: 1 },
-        "CATALOG_WORK_DEFERRED",
-      );
-    const quotes = await fetchers.quotes(context.weekId);
+    if (!withinDeadline()) return defer();
+    // Source acquisition shares this absolute budget. Leave twenty seconds of
+    // the existing eighty-second worker window for mappings and nominations.
+    const quotes = await fetchers.quotes(context.weekId, startedAt + 60_000);
+    if (!withinDeadline()) return defer();
     const common = { ...context, now: now(), nflverse, quotes: quotes.imports };
     const normalized = primary
       ? normalizeNflversePrimaryCatalog(common)
@@ -338,15 +340,21 @@ export async function executePlayerCatalogJob(
           rosters,
         });
     const prepared = buildPlayerCatalogBootstrap(normalized);
-    for (const event of prepared.resultEvents)
+    for (const event of prepared.resultEvents) {
+      if (!withinDeadline()) return defer();
       await rpc(port, "register_player_result_event", { p_mapping: event });
-    if (prepared.records.length)
+    }
+    if (prepared.records.length) {
+      if (!withinDeadline()) return defer();
       await rpc(port, "import_player_catalog", { p_records: prepared.records });
-    if (primary)
+    }
+    if (primary) {
+      if (!withinDeadline()) return defer();
       await rpc(port, "record_player_catalog_nominations", {
         p_lease_id: context.leaseId,
         p_proposals: prepared.proposals,
       });
+    }
     const unresolved =
       context.events.length * 6 -
       prepared.proposals.filter((row) => row.proposedCanonicalKey !== null)
