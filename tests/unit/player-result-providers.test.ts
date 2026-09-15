@@ -185,14 +185,12 @@ it("charges catalog response usage before rejecting a failed provider request", 
   vi.stubEnv("API_SPORTS_NFL_KEY", "fixture-secret");
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockResolvedValue(
-        new Response("unavailable", {
-          status: 429,
-          headers: { "x-ratelimit-requests-remaining": "0" },
-        }),
-      ),
+    vi.fn().mockResolvedValue(
+      new Response("unavailable", {
+        status: 429,
+        headers: { "x-ratelimit-requests-remaining": "0" },
+      }),
+    ),
   );
   const usage = vi.fn();
   await expect(
