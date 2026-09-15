@@ -31,6 +31,7 @@ it("uses the documented game id parameter, server-only header, and truthful miss
   );
   expect(fetcher.mock.calls[0][1]).toMatchObject({
     cache: "no-store",
+    redirect: "error",
     headers: { "x-apisports-key": "fixture-secret" },
   });
   expect(usage).toHaveBeenCalledWith({
@@ -88,6 +89,7 @@ it("sanitizes the quota-free status response before any persistence", async () =
   expect(fetcher.mock.calls[0][0]).toBe(
     "https://v1.american-football.api-sports.io/status",
   );
+  expect(fetcher.mock.calls[0][1]).toMatchObject({ redirect: "error" });
 });
 
 it("blocks invalid game ids or absent keys before a request", async () => {

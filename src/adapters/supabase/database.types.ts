@@ -93,6 +93,10 @@ export type Database = {
         Args: never;
         Returns: Json;
       };
+      claim_player_source_smoke: {
+        Args: { p_operation_key: string };
+        Returns: Json;
+      };
       claim_shared_quote_request: {
         Args: { p_plan_id: string; p_request_id: string };
         Returns: Json;
@@ -141,6 +145,17 @@ export type Database = {
           p_used: number;
         };
         Returns: undefined;
+      };
+      complete_player_source_smoke: {
+        Args: {
+          p_failure_code?: string;
+          p_failure_stage?: string;
+          p_report?: Json;
+          p_run_id: string;
+          p_sample?: Json;
+          p_status: string;
+        };
+        Returns: Json;
       };
       complete_shared_quote_request: {
         Args: { p_import: Json; p_request_id: string; p_usage?: Json };
@@ -196,6 +211,10 @@ export type Database = {
       };
       reserve_player_metadata_request: {
         Args: never;
+        Returns: string;
+      };
+      reserve_player_source_smoke_request: {
+        Args: { p_run_id: string };
         Returns: string;
       };
       resolve_finalized_week17_player_candidate: {
