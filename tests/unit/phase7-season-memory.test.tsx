@@ -10,10 +10,49 @@ import {
   projectSeasonMemory,
 } from "@/domain/history/project-season-memory";
 import { makePhase7State, phase7Ids } from "../fixtures/phase7-season-memory";
+import { weeklyCloseStateSchema } from "@/application/queries/weekly-close-dtos";
 
 afterEach(cleanup);
 
 describe("Phase 7 weekly close surfaces", () => {
+  it("shows corrected player yards and matchup totals when the team score is unchanged", () => {
+    const state = makePhase7State();
+    state.matchups.find(
+      (matchup) => matchup.id === phase7Ids.matchup2,
+    )!.result = null;
+    const correction = state.corrections[0]!;
+    correction.correctedEvent = correction.originalEvent;
+    correction.reason = "A completed pass was ruled a lateral.";
+    correction.playerCorrection = {
+      subjectLabel: "First Quarterback",
+      statistic: "PASSING_YARDS",
+      beforeYards: 0,
+      afterYards: -5,
+      beforeParticipation: "OFFENSE",
+      afterParticipation: "OFFENSE",
+    };
+    const memory = projectSeasonMemory(weeklyCloseStateSchema.parse(state));
+    const { container, rerender } = render(
+      <WeeklyCloseModule
+        bridge={memory.recordBridge!}
+        cutline={memory.playoffCutline}
+        leagueSlug="sunday-ledger"
+      />,
+    );
+    expect(container).toHaveTextContent(
+      "First Quarterback · Passing yards: 0 yards → -5 yards.",
+    );
+    expect(container).toHaveTextContent("Your matchup score: 300.00 → 400.00.");
+    expect(container).not.toHaveTextContent("Event result: 20–20 → 20–20");
+    rerender(<HistoryLedger leagueSlug="sunday-ledger" memory={memory} />);
+    expect(container).toHaveTextContent(
+      "First Quarterback · Passing yards: 0 yards → -5 yards.",
+    );
+    expect(container).toHaveTextContent(
+      "A completed pass was ruled a lateral.",
+    );
+  });
+
   it("keeps settled picks and next access visible while standings await finalization", () => {
     const memory = projectSeasonMemory(makePhase7State());
     if (!memory.recordBridge) throw new Error("Missing RecordBridge fixture.");

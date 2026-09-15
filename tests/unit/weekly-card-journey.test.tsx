@@ -30,6 +30,9 @@ import {
   makePhase6Matchup,
   makePhase6State,
 } from "../fixtures/phase6-paired-matchup";
+vi.mock("@/app/l/[leagueSlug]/player-prop-actions", () => ({
+  refreshPlayerPropQuotesAction: vi.fn(),
+}));
 vi.mock("@/app/l/[leagueSlug]/actions", () => ({
   acceptStage1CardAction: vi.fn(),
 }));

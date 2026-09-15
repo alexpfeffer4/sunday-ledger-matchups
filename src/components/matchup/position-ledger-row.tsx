@@ -1,4 +1,5 @@
 import type { PositionLedgerItem } from "@/application/queries/project-paired-matchup";
+import { marketLabel } from "@/components/card/selection-identity";
 import { formatMarketProposition } from "@/components/card/market-option-copy";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCenticredits, formatCredits } from "@/domain/odds/american";
@@ -26,6 +27,11 @@ function rowState(row: PositionLedgerItem): {
   if (row.outcome === "LOSS") return { label: "Lost", tone: "negative" };
   if (row.outcome === "PUSH") return { label: "Push", tone: "void" };
   if (row.outcome === "VOID") return { label: "Void", tone: "void" };
+  if (
+    row.marketType.startsWith("PLAYER_") &&
+    ["FINAL", "CORRECTED"].includes(row.eventState)
+  )
+    return { label: "Awaiting player results", tone: "sealed" };
   if (row.section === "IN_PROGRESS")
     return { label: "In progress", tone: "live" };
   return { label: "Remaining", tone: "sealed" };
@@ -63,16 +69,29 @@ export function PositionLedgerRow({
           </p>
           <p className="text-muted mt-1 text-xs">
             {formatEventTime(row.scheduledStartAt)} ·{" "}
-            {row.marketType.toLowerCase()}
+            {marketLabel(row.marketType)}
           </p>
         </div>
-        <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
+        <StatusBadge tone={status.tone} icon={false}>
+          {status.label}
+        </StatusBadge>
       </div>
 
       <div className="position-ledger-facts mt-4 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 text-sm sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-end">
         <div className="min-w-0">
           <p className="text-muted text-xs">Accepted pick</p>
           <p className="mt-1 font-semibold break-words">{proposition}</p>
+          {row.finalYards !== null && row.finalYards !== undefined ? (
+            <p className="text-muted mt-2 text-xs">
+              Final: {row.finalYards}{" "}
+              {marketLabel(row.marketType).toLowerCase()}
+            </p>
+          ) : null}
+          {row.playerCorrectionReason ? (
+            <p className="text-corrected mt-2 text-xs">
+              Player result corrected: {row.playerCorrectionReason}
+            </p>
+          ) : null}
         </div>
         <div className="text-right">
           <p className="text-muted text-xs">Odds</p>

@@ -24,6 +24,9 @@ import {
   makeStage3CardState,
   savedStage3Draft,
 } from "../fixtures/stage3-card-journey";
+vi.mock("@/app/l/[leagueSlug]/player-prop-actions", () => ({
+  refreshPlayerPropQuotesAction: vi.fn(),
+}));
 vi.mock("@/app/l/[leagueSlug]/actions", () => ({
   acceptStage1CardAction: vi.fn(),
 }));

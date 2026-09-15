@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { projectHistoricalMatchup } from "@/application/queries/project-historical-matchup";
 import { projectScheduleWeeks } from "@/application/presentation/schedule-weeks";
@@ -78,6 +78,127 @@ describe("historical matchups", () => {
     expect(
       screen.getByRole("link", { name: "Back to your matchup" }),
     ).toHaveAttribute("href", matchupHref("sunday-ledger", 1));
+  });
+  it("keeps same-game player picks separate and renders authoritative zero and negative yards", () => {
+    const { history, cards, game } = historicalFixture();
+    history.corrections = [];
+    const subjects = [
+      {
+        subjectId: "10000000-0000-4000-8000-000000000001",
+        subjectLabel: "Harbor Quarterback",
+        subjectTeam: "Harbor Club",
+        finalYards: 0,
+      },
+      {
+        subjectId: "10000000-0000-4000-8000-000000000002",
+        subjectLabel: "Lake Quarterback",
+        subjectTeam: "Lake Club",
+        finalYards: -2,
+      },
+    ];
+    for (const [index, subject] of subjects.entries()) {
+      const { finalYards, ...identity } = subject;
+      const position = cards.cards[index]!.positions[0]!;
+      Object.assign(position, {
+        ...identity,
+        marketType: "PLAYER_PASSING_YARDS",
+        statistic: "PASSING_YARDS",
+        period: "FULL_GAME",
+        proposition: `${subject.subjectLabel} · Under 200.5 passing yards`,
+        settlement: {
+          outcome: "WIN",
+          returnedCenticredits: 20000,
+          finalYards,
+          playerEvidenceVersion: 2,
+        },
+      });
+    }
+    const projected = projectHistoricalMatchup(history, cards, 1)!;
+    expect(projected.phase).toBe("FINAL");
+    expect(projected.self.scoreCenticredits).toBe(
+      game.result!.sideAPointsForCenticredits,
+    );
+    render(<PairedMatchupView matchup={projected} refreshControl={null} />);
+    for (const [index, subject] of subjects.entries()) {
+      const member = index === 0 ? projected.self : projected.opponent;
+      expect(
+        projected.rows.SETTLED.find(
+          (row) => row.subjectId === subject.subjectId,
+        ),
+      ).toMatchObject({
+        ...subject,
+        statistic: "PASSING_YARDS",
+        period: "FULL_GAME",
+        playerEvidenceVersion: 2,
+        playerCorrectionReason: null,
+      });
+      const playerColumn = screen.getByRole("group", {
+        name: `${member.displayName} · Harbor Club at Lake Club · ${subject.subjectLabel} · Passing yards`,
+      });
+      expect(
+        within(playerColumn).getByText(
+          `Final: ${subject.finalYards} passing yards`,
+        ),
+      ).toBeVisible();
+      expect(
+        within(playerColumn).getByText(`${subject.subjectTeam} · Full game`),
+      ).toBeVisible();
+      expect(
+        within(playerColumn).queryByText(
+          `${subjects[1 - index]!.subjectLabel} · Under 200.5 passing yards`,
+        ),
+      ).toBeNull();
+    }
+  });
+  it("shows a player correction even when the official team result did not change", () => {
+    const { history, cards, game } = historicalFixture();
+    history.corrections = [];
+    const position = cards.cards[0]!.positions[0]!;
+    Object.assign(position, {
+      subjectId: "10000000-0000-4000-8000-000000000003",
+      subjectLabel: "Harbor Receiver",
+      subjectTeam: "Harbor Club",
+      marketType: "PLAYER_RECEIVING_YARDS",
+      statistic: "RECEIVING_YARDS",
+      period: "FULL_GAME",
+      proposition: "Harbor Receiver · Over 60.5 receiving yards",
+      settlement: {
+        outcome: "LOSS",
+        returnedCenticredits: 0,
+        finalYards: 60,
+        playerEvidenceVersion: 3,
+        playerCorrectionReason: "The official receiving total was corrected.",
+      },
+    });
+    const projected = projectHistoricalMatchup(history, cards, 1)!;
+    expect(projected).toMatchObject({
+      phase: "CORRECTED",
+      phaseLabel: "Corrected final",
+      correctedCount: 1,
+    });
+    expect(projected.self.scoreCenticredits).toBe(
+      game.result!.sideAPointsForCenticredits,
+    );
+    expect(
+      projected.rows.SETTLED.find((row) => row.id === position.id),
+    ).toMatchObject({
+      eventState: "CORRECTED",
+      corrected: true,
+      outcome: "LOSS",
+      returnedCenticredits: 0,
+    });
+    expect(
+      projected.rows.SETTLED.filter((row) => row.id !== position.id).every(
+        (row) => !row.corrected,
+      ),
+    ).toBe(true);
+    render(<PairedMatchupView matchup={projected} refreshControl={null} />);
+    expect(screen.getByText("Final: 60 receiving yards")).toBeVisible();
+    expect(
+      screen.getByText(
+        "Player result corrected: The official receiving total was corrected.",
+      ),
+    ).toBeVisible();
   });
   it("rejects unpublished, provisional, other-season, mismatched-week and missing evidence", () => {
     const { history, cards } = historicalFixture();

@@ -21,7 +21,12 @@ import {
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
 import { reviewLiveCardQuotes } from "@/app/l/[leagueSlug]/card-quote-actions";
+import { acceptStage1CardAction } from "@/app/l/[leagueSlug]/actions";
+import { submissionAttemptId } from "@/components/card/submission-attempt";
 
+vi.mock("@/app/l/[leagueSlug]/player-prop-actions", () => ({
+  refreshPlayerPropQuotesAction: vi.fn(),
+}));
 vi.mock("@/app/l/[leagueSlug]/card-quote-actions", () => ({
   reviewLiveCardQuotes: vi.fn(async () => ({ status: "disabled" })),
 }));
@@ -67,6 +72,7 @@ beforeEach(() => {
   localStorage.clear();
   vi.mocked(reviewLiveCardQuotes).mockReset();
   vi.mocked(reviewLiveCardQuotes).mockResolvedValue({ status: "disabled" });
+  vi.mocked(acceptStage1CardAction).mockReset();
 });
 
 afterEach(() => {
@@ -475,7 +481,75 @@ describe("authenticated card editor", () => {
     ).toBeEnabled();
   });
 
-  it("requires another check after the server review expires", async () => {
+  it.each([
+    "Your complete card is now sealed.",
+    "Already completed. Your card is already sealed. Your saved picks and receipts are unchanged.",
+  ])(
+    "clears draft and retry persistence after successful seal: %s",
+    async (message) => {
+      const key = `sunday-ledger:card-draft:v1:${leagueId}:${weekId}:${cardId}`;
+      storeHomeDraft();
+      vi.mocked(reviewLiveCardQuotes).mockResolvedValue(readyReview());
+      vi.mocked(acceptStage1CardAction).mockResolvedValue({
+        status: "success",
+        message,
+      });
+      render(<Stage1CardBuilder state={state} />);
+      fireEvent.click(
+        (await screen.findAllByRole("button", { name: "Review 1 picks" }))[0],
+      );
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Confirm and seal card" }),
+      );
+      expect(
+        await screen.findByRole("heading", {
+          name: "All 1,000 credits are sealed",
+        }),
+      ).toBeVisible();
+      await waitFor(() =>
+        expect(
+          Object.keys(localStorage).filter((storedKey) =>
+            storedKey.startsWith(key),
+          ),
+        ).toEqual([]),
+      );
+    },
+  );
+
+  it("removes stale retry persistence when another device's sealed card is loaded", async () => {
+    const key = `sunday-ledger:card-draft:v1:${leagueId}:${weekId}:${cardId}`;
+    storeHomeDraft();
+    const previousAttempt = submissionAttemptId(key, "unchanged-complete-card");
+    render(
+      <Stage1CardBuilder
+        state={{
+          ...state,
+          ownerCard: {
+            ...state.ownerCard!,
+            allocatedCredits: 1_000,
+            remainingCredits: 0,
+          },
+        }}
+      />,
+    );
+    expect(
+      await screen.findByRole("heading", {
+        name: "All 1,000 credits are sealed",
+      }),
+    ).toBeVisible();
+    await waitFor(() =>
+      expect(
+        Object.keys(localStorage).filter((storedKey) =>
+          storedKey.startsWith(key),
+        ),
+      ).toEqual([]),
+    );
+    expect(submissionAttemptId(key, "unchanged-complete-card")).not.toBe(
+      previousAttempt,
+    );
+  });
+
+  it("allows explicit Submit to renew an expired review without another Review click", async () => {
     storeHomeDraft();
     vi.mocked(reviewLiveCardQuotes).mockResolvedValue(
       readyReview(165, new Date(Date.now() - 1000).toISOString()),
@@ -487,11 +561,14 @@ describe("authenticated card editor", () => {
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: "Confirm and seal card" }),
-      ).toBeDisabled(),
+      ).toBeEnabled(),
     );
     expect(
-      screen.getByRole("button", { name: "Check current odds again" }),
-    ).toBeEnabled();
+      await screen.findByText(/We’ll check the latest odds when you submit/),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Check current odds again" }),
+    ).not.toBeInTheDocument();
   });
 });
 

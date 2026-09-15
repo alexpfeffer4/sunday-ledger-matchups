@@ -76,6 +76,8 @@ select ok((select bool_and(r.quote_observed_at<clock_timestamp()-interval '2 min
 select is((select count(*) from private.card_quote_review_acceptances),1::bigint,'review evidence is linked without rewriting the receipt');
 select is((select api.accept_stage1_card('quote-contract',positions,'quote-accepted-once')->>'replayed' from quote_context),'true','retry replays the same acceptance');
 select is((select count(*) from private.position_receipts where league_id=(select league_id from quote_context)),1::bigint,'no duplicate receipt');
+select ok((api.bind_card_submission_intent('quote-contract','79000000-0000-4000-8000-000000000011',positions)->>'cardSealed')::boolean,'another device recovers the authoritative legacy sealed state before quote renewal') from quote_context;
+select is(api.bind_card_submission_intent('quote-contract','79000000-0000-4000-8000-000000000011',positions)->>'committed','false','a different legacy device intent is never reported as a newly accepted batch') from quote_context;
 select pg_temp.as_member(5);
 select throws_ok($$select api.claim_live_quote_refresh(league_id) from quote_context$$,'42501','League membership required.','outsiders cannot trigger imports');
 select pg_temp.as_member(3);

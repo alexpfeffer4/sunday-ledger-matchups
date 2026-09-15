@@ -93,7 +93,9 @@ export function projectHistoricalMatchup(
       );
       // Missing historical evidence must not appear as an empty/zero card.
       if (!event || !position.settlement) return null;
-      const corrected = correctedEvents.has(position.eventLabel);
+      const corrected =
+        correctedEvents.has(position.eventLabel) ||
+        Boolean(position.settlement.playerCorrectionReason);
       rows.push({
         id: position.id,
         side: index === 0 ? "SELF" : "OPPONENT",
@@ -107,6 +109,16 @@ export function projectHistoricalMatchup(
             ? "VOID"
             : "FINAL",
         marketType: position.marketType,
+        subjectId: position.subjectId,
+        subjectLabel: position.subjectLabel,
+        subjectTeam: position.subjectTeam,
+        statistic: position.statistic,
+        period: position.period,
+        finalYards: position.settlement.finalYards ?? null,
+        playerEvidenceVersion:
+          position.settlement.playerEvidenceVersion ?? null,
+        playerCorrectionReason:
+          position.settlement.playerCorrectionReason ?? null,
         proposition: position.proposition,
         americanOdds: position.americanOdds,
         stakeCredits: position.stakeCredits,
@@ -123,9 +135,11 @@ export function projectHistoricalMatchup(
       a.eventId.localeCompare(b.eventId) ||
       a.id.localeCompare(b.id),
   );
-  const corrected = corrections.some((correction) =>
-    correction.effects.some((effect) => effect.matchupId === game.id),
-  );
+  const corrected =
+    rows.some((row) => Boolean(row.playerCorrectionReason)) ||
+    corrections.some((correction) =>
+      correction.effects.some((effect) => effect.matchupId === game.id),
+    );
   const competition = (item: typeof game) =>
     competitionLabel({
       ...item,

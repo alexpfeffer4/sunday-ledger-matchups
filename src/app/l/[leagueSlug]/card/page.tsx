@@ -7,6 +7,8 @@ import { Stage1CardView } from "@/components/stage1/live-views";
 
 export const metadata: Metadata = { title: "Card" };
 
+export const maxDuration = 120;
+
 export default async function CardPage({
   params,
 }: {

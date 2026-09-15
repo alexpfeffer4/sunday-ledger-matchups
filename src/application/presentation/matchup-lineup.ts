@@ -8,7 +8,14 @@ import {
   returnedCenticredits,
 } from "@/domain/odds/american";
 
-export const lineupMarkets = ["MONEYLINE", "SPREAD", "TOTAL"] as const;
+export const lineupMarkets = [
+  "MONEYLINE",
+  "SPREAD",
+  "TOTAL",
+  "PLAYER_PASSING_YARDS",
+  "PLAYER_RUSHING_YARDS",
+  "PLAYER_RECEIVING_YARDS",
+] as const;
 
 export type MatchupGame = {
   eventId: string;
@@ -51,7 +58,10 @@ export function matchupGames(matchup: PairedMatchupDto): MatchupGame[] {
     game.rows.sort(
       (a, b) =>
         lineupMarkets.indexOf(a.marketType) -
-          lineupMarkets.indexOf(b.marketType) || a.id.localeCompare(b.id),
+          lineupMarkets.indexOf(b.marketType) ||
+        (a.subjectLabel ?? "").localeCompare(b.subjectLabel ?? "") ||
+        (a.subjectId ?? "").localeCompare(b.subjectId ?? "") ||
+        a.id.localeCompare(b.id),
     );
     game.completed =
       game.rows.length > 0 &&

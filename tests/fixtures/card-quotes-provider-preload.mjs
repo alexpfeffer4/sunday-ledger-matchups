@@ -68,6 +68,42 @@ if (
         headers: { "x-requests-remaining": "1400" },
       });
     }
+    if (/\/events\/[^/]+\/odds$/.test(url.pathname)) {
+      const eventId = decodeURIComponent(url.pathname.split("/").at(-2));
+      const requestedFamilies = (url.searchParams.get("markets") ?? "")
+        .split(",")
+        .filter(Boolean)
+        .sort();
+      const fixture = JSON.parse(
+        readFileSync(`${process.env.ODDS_TEST_FIXTURE}.props`, "utf8"),
+      );
+      const event = fixture.events[eventId];
+      if (!event)
+        throw new Error(
+          "Unconfigured event in disposable player quote fixture",
+        );
+      appendFileSync(
+        `${process.env.ODDS_TEST_FIXTURE}.calls`,
+        `props:${eventId}:${requestedFamilies.join(",")}\n`,
+      );
+      const payload = {
+        ...event,
+        bookmakers: event.bookmakers.map((book) => ({
+          ...book,
+          markets: book.markets.filter((market) =>
+            requestedFamilies.includes(market.key),
+          ),
+        })),
+      };
+      return Response.json(payload, {
+        status: fixture.status ?? 200,
+        headers: {
+          "x-requests-remaining": String(fixture.remaining ?? 1400),
+          "x-requests-last": String(requestedFamilies.length),
+          "x-requests-used": String(fixture.used ?? 100),
+        },
+      });
+    }
     if (!url.pathname.endsWith("/odds"))
       throw new Error("Unexpected provider endpoint in quote acceptance");
     const fixture = JSON.parse(

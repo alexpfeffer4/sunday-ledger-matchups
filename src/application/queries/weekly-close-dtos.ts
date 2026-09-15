@@ -142,6 +142,21 @@ export const weeklyCloseStateSchema = z.object({
       correctedAt: z.string(),
       beforeStandingsSnapshotId: z.uuid().nullable(),
       afterStandingsSnapshotId: z.uuid().nullable(),
+      playerCorrection: z
+        .object({
+          subjectLabel: z.string(),
+          statistic: z.enum([
+            "PASSING_YARDS",
+            "RUSHING_YARDS",
+            "RECEIVING_YARDS",
+          ]),
+          beforeYards: z.number().int().nullable(),
+          afterYards: z.number().int().nullable(),
+          beforeParticipation: z.enum(["OFFENSE", "NO_OFFENSE"]),
+          afterParticipation: z.enum(["OFFENSE", "NO_OFFENSE"]),
+        })
+        .nullable()
+        .optional(),
       originalEvent: z.object({
         versionId: z.uuid(),
         status: z.enum(["FINAL", "VOID"]),

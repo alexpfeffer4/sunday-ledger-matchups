@@ -31,6 +31,7 @@ export type CorrectionFact = {
   correctedAt: string;
   beforeEvent: string;
   afterEvent: string;
+  playerCorrection?: WeeklyCloseStateDto["corrections"][number]["playerCorrection"];
   beforeSideAScoreCenticredits: number | null;
   beforeSideBScoreCenticredits: number | null;
   afterSideAScoreCenticredits: number;
@@ -193,6 +194,7 @@ function correctionFacts(
         correctedAt: correction.correctedAt,
         beforeEvent: eventScore(correction.originalEvent),
         afterEvent: eventScore(correction.correctedEvent),
+        playerCorrection: correction.playerCorrection,
         beforeSideAScoreCenticredits:
           effect.before?.sideAPointsForCenticredits ?? null,
         beforeSideBScoreCenticredits:
@@ -202,6 +204,25 @@ function correctionFacts(
       },
     ];
   });
+}
+
+export function correctionResultChange(correction: CorrectionFact): string {
+  const player = correction.playerCorrection;
+  if (!player)
+    return `Event result: ${correction.beforeEvent} → ${correction.afterEvent}.`;
+  const statistic = {
+    PASSING_YARDS: "Passing yards",
+    RUSHING_YARDS: "Rushing yards",
+    RECEIVING_YARDS: "Receiving yards",
+  }[player.statistic];
+  const result = (
+    participation: "OFFENSE" | "NO_OFFENSE",
+    yards: number | null,
+  ) =>
+    participation === "NO_OFFENSE"
+      ? "No offensive participation"
+      : `${yards ?? "Pending"} yards`;
+  return `${player.subjectLabel} · ${statistic}: ${result(player.beforeParticipation, player.beforeYards)} → ${result(player.afterParticipation, player.afterYards)}.`;
 }
 
 function matchupFact(

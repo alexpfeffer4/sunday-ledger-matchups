@@ -10,7 +10,20 @@ export const rosterSizeSchema = z.union([
   z.literal(16),
 ]);
 
-export const marketTypeSchema = z.enum(["MONEYLINE", "SPREAD", "TOTAL"]);
+export const mainMarketTypeSchema = z.enum(["MONEYLINE", "SPREAD", "TOTAL"]);
+export const playerStatisticSchema = z.enum([
+  "PASSING_YARDS",
+  "RUSHING_YARDS",
+  "RECEIVING_YARDS",
+]);
+export const marketTypeSchema = z.enum([
+  "MONEYLINE",
+  "SPREAD",
+  "TOTAL",
+  "PLAYER_PASSING_YARDS",
+  "PLAYER_RUSHING_YARDS",
+  "PLAYER_RECEIVING_YARDS",
+]);
 
 export const standingsTiebreakSchema = z.enum([
   "MATCHUP_WIN_PERCENTAGE",
@@ -96,7 +109,7 @@ export const seasonRulesetV11Schema = z.object({
     irreversibleAction: z.literal("CONFIRM_AND_SEAL_CARD"),
   }),
   markets: z.object({
-    eligible: z.array(marketTypeSchema).length(3),
+    eligible: z.array(mainMarketTypeSchema).length(3),
     referenceBook: z.literal("draftkings"),
   }),
   concentration: z.object({
@@ -182,6 +195,43 @@ export const seasonRulesetV13Schema = seasonRulesetSchema.extend({
     incompleteDefinition: z.literal("ZERO_ACCEPTED_POSITIONS"),
   }),
 });
+/** Prospective player props; no catalog is activated by importing this package. */
+export const playerPropRulesSchema = z
+  .object({
+    period: z.literal("FULL_GAME"),
+    includesOvertime: z.literal(true),
+    slotsPerTeam: z.tuple([
+      z.literal("QB_PASS"),
+      z.literal("RB_RUSH"),
+      z.literal("RECEIVER"),
+    ]),
+    menuFreeze: z.literal("FIRST_ACCEPTED_SUBMISSION"),
+    identity: z.literal("EVENT_PLAYER_STATISTIC_PERIOD"),
+    participation: z.literal("OFFENSIVE_PARTICIPATION_REQUIRED"),
+    zeroOffensiveSnaps: z.literal("VOID"),
+    unknownEvidence: z.literal("PENDING"),
+    injuryAfterParticipation: z.literal("GRADE_FINAL_STATISTIC"),
+  })
+  .strict();
+export const seasonRulesetV14Schema = seasonRulesetV13Schema.extend({
+  version: z.literal("1.4"),
+  productBibleVersion: z.literal("3.3"),
+  markets: z
+    .object({
+      eligible: z.tuple([
+        z.literal("MONEYLINE"),
+        z.literal("SPREAD"),
+        z.literal("TOTAL"),
+        z.literal("PLAYER_PASSING_YARDS"),
+        z.literal("PLAYER_RUSHING_YARDS"),
+        z.literal("PLAYER_RECEIVING_YARDS"),
+      ]),
+      referenceBook: z.literal("draftkings"),
+      playerProps: playerPropRulesSchema,
+    })
+    .strict(),
+});
+export type PlayerPropsSeasonRuleset = z.infer<typeof seasonRulesetV14Schema>;
 export type RollingSeasonRuleset = z.infer<typeof seasonRulesetV13Schema>;
 
 export type RosterSize = z.infer<typeof rosterSizeSchema>;
@@ -224,6 +274,7 @@ const historicalSeasonRulesetV1Schema = legacySeasonRulesetV11Schema.extend({
 });
 
 export const persistedSeasonRulesetSchema = z.union([
+  seasonRulesetV14Schema,
   seasonRulesetV13Schema,
   seasonRulesetSchema,
   seasonRulesetV11Schema,

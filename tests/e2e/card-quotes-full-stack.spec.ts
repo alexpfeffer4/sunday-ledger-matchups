@@ -41,9 +41,24 @@ function sql(statement: string) {
 function expireRefresh(leagueId: string) {
   expect(leagueId).toMatch(/^[0-9a-f-]{36}$/);
   sql(
-    `update private.live_quote_refreshes set attempted_at=clock_timestamp()-interval '2 minutes', fetched_at=clock_timestamp()-interval '2 minutes' where week_id in (select id from private.season_weeks where league_id='${leagueId}'); update private.odds_refresh_policy set next_request_at='-infinity';`,
+    `update private.live_quote_refreshes set attempted_at=clock_timestamp()-interval '2 minutes', fetched_at=clock_timestamp()-interval '2 minutes' where week_id in (select id from private.season_weeks where league_id='${leagueId}'); update private.shared_quote_requests request set fetched_at=clock_timestamp()-interval '2 minutes' where exists(select 1 from private.sports_events event where event.league_id='${leagueId}' and event.fixture_event_key=any(request.event_ids)); update private.odds_refresh_policy set next_request_at='-infinity';`,
   );
 }
+async function waitForReviewExpiry(page: Page) {
+  const reviewId = await page.locator('input[name="reviewId"]').inputValue();
+  expect(reviewId).toMatch(/^[0-9a-f-]{36}$/);
+  // Let the actual immutable 30-second proof expire; do not weaken its guard.
+  await expect
+    .poll(
+      () =>
+        sql(
+          `select expires_at<=clock_timestamp() from private.live_card_quote_reviews where id='${reviewId}'::uuid;`,
+        ),
+      { timeout: 40_000, intervals: [1000] },
+    )
+    .toBe("t");
+}
+
 async function buildCard(
   page: Page,
   slug: string,
@@ -431,10 +446,20 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
     await expect(
       otherPage.getByRole("button", { name: "Confirm and seal card" }),
     ).toBeEnabled();
+    await waitForReviewExpiry(page);
+    await expect(
+      page.getByRole("button", { name: "Confirm and seal card" }),
+    ).toBeEnabled();
+    const callsBeforeSubmit = readFileSync(`${fixturePath}.calls`, "utf8");
     await page.getByRole("button", { name: "Confirm and seal card" }).click();
     await expect(
       page.getByRole("heading", { name: "All 1,000 credits are sealed" }),
     ).toBeVisible();
+    // Same economics renewed and accepted on one explicit click, sharing the
+    // still-valid public fetch; the user did not have to repeat Review.
+    expect(readFileSync(`${fixturePath}.calls`, "utf8")).toBe(
+      callsBeforeSubmit,
+    );
     const original = await rpc(members[1]!, "get_stage1_state", {
       p_league_slug: slug,
     });
@@ -518,6 +543,29 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
       fullPage: true,
     });
     await secondPage.getByRole("button", { name: "Use updated odds" }).click();
+    await waitForReviewExpiry(secondPage);
+    expireRefresh(leagueId);
+    writeFileSync(
+      fixturePath!,
+      JSON.stringify({ payload: providerPayload(150) }),
+    );
+    await secondPage
+      .getByRole("button", { name: "Confirm and seal card" })
+      .click();
+    await expect(
+      secondPage.getByText(
+        "Odds changed. Check the differences before submitting again.",
+      ),
+    ).toBeVisible();
+    expect(
+      (await rpc(members[2]!, "get_stage1_state", { p_league_slug: slug }))
+        .ownerCard.positions,
+    ).toEqual([]);
+    await expect(
+      secondPage.getByRole("button", { name: "Use updated odds" }),
+    ).toBeVisible();
+    // Even a better price needs another explicit confirmation.
+    await secondPage.getByRole("button", { name: "Use updated odds" }).click();
     await secondPage
       .getByRole("button", { name: "Confirm and seal card" })
       .click();
@@ -531,7 +579,7 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
     const secondState = await rpc(members[2]!, "get_stage1_state", {
       p_league_slug: slug,
     });
-    expect(secondState.ownerCard.positions[0].americanOdds).toBe(130);
+    expect(secondState.ownerCard.positions[0].americanOdds).toBe(150);
     expect(secondState.matchup.opponentRevealedPositions).toEqual([]);
     await second.close();
 
@@ -563,7 +611,7 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
     expireRefresh(leagueId);
     writeFileSync(
       fixturePath!,
-      JSON.stringify({ payload: providerPayload(130) }),
+      JSON.stringify({ payload: providerPayload(150) }),
     );
     await thirdPage
       .getByRole("button", { name: "Review 1 picks" })

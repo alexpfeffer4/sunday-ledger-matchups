@@ -7,6 +7,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { selectionKey } from "@/components/card/selection-identity";
+import { clearSubmissionAttempt } from "@/components/card/submission-attempt";
 import { usesRollingSubmissions } from "@/rulesets/card-rules";
 import {
   restoreCardDrafts,
@@ -46,6 +48,10 @@ function write(key: string, drafts: RestoredCardDraft[]) {
     drafts: drafts.map(
       ({
         eventId,
+        subjectId,
+        subjectLabel,
+        statistic,
+        period,
         marketSnapshotId,
         marketType,
         outcomeKey,
@@ -55,6 +61,10 @@ function write(key: string, drafts: RestoredCardDraft[]) {
         stakeCredits,
       }) => ({
         eventId,
+        subjectId,
+        subjectLabel,
+        statistic,
+        period,
         marketSnapshotId,
         marketType,
         outcomeKey,
@@ -86,11 +96,7 @@ export function useCardDraft(context: OwnerCardContext) {
   const acceptedMarkets = useMemo(
     () =>
       new Set(
-        rolling
-          ? (context.ownerCard?.positions ?? []).map(
-              (position) => `${position.eventId}:${position.marketType}`,
-            )
-          : [],
+        rolling ? (context.ownerCard?.positions ?? []).map(selectionKey) : [],
       ),
     [rolling, context.ownerCard?.positions],
   );
@@ -102,10 +108,7 @@ export function useCardDraft(context: OwnerCardContext) {
         : restoreCardDrafts(
             stored.slice(stored.indexOf(":") + 1),
             context.slate,
-          ).filter(
-            (draft) =>
-              !acceptedMarkets.has(`${draft.eventId}:${draft.marketType}`),
-          ),
+          ).filter((draft) => !acceptedMarkets.has(selectionKey(draft))),
     [stored, context.slate, sealed, incomplete, acceptedMarkets],
   );
   const setDrafts = useCallback(
@@ -122,12 +125,7 @@ export function useCardDraft(context: OwnerCardContext) {
                 restoreCardDrafts(
                   snapshot(key).slice(snapshot(key).indexOf(":") + 1),
                   context.slate,
-                ).filter(
-                  (draft) =>
-                    !acceptedMarkets.has(
-                      `${draft.eventId}:${draft.marketType}`,
-                    ),
-                ),
+                ).filter((draft) => !acceptedMarkets.has(selectionKey(draft))),
               )
             : next,
         );
@@ -135,11 +133,14 @@ export function useCardDraft(context: OwnerCardContext) {
     [key, sealed, incomplete, context.slate, acceptedMarkets],
   );
   const clearDrafts = useCallback(() => {
-    if (key) write(key, []);
+    if (key) {
+      clearSubmissionAttempt(key);
+      write(key, []);
+    }
   }, [key]);
   useEffect(() => {
-    if (key && (sealed || incomplete)) write(key, []);
-  }, [key, sealed, incomplete]);
+    if (sealed || incomplete) clearDrafts();
+  }, [clearDrafts, sealed, incomplete]);
   useEffect(() => {
     if (!key || !rolling || !acceptedMarkets.size || stored === "loading:")
       return;
@@ -148,7 +149,7 @@ export function useCardDraft(context: OwnerCardContext) {
       context.slate,
     );
     const retained = current.filter(
-      (draft) => !acceptedMarkets.has(`${draft.eventId}:${draft.marketType}`),
+      (draft) => !acceptedMarkets.has(selectionKey(draft)),
     );
     if (retained.length !== current.length) write(key, retained);
   }, [key, rolling, acceptedMarkets, stored, context.slate]);

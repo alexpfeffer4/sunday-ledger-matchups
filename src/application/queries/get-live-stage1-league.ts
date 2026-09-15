@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import { getOwnerRehearsalForLeague } from "@/application/queries/get-owner-rehearsal";
 import { withVerifiedRulesetHash } from "@/rulesets/verify-snapshot";
+import { getPlayerPropMenu } from "./get-player-prop-menu";
 import {
   liveQuoteHeadsSchema,
   stage1StateSchema,
@@ -35,6 +36,21 @@ export const getAuthoritativeLeagueState = cache(
       state.season.rulesetSnapshot,
     );
     if (!state.week) return state;
+    if (state.week.propsEnabled) {
+      const menu = await getPlayerPropMenu(leagueSlug);
+      if (menu && menu.weekId === state.week.id) {
+        state.slate = state.slate.map((event) => ({
+          ...event,
+          playerProps: menu.slots
+            .filter((slot) => slot.eventId === event.id)
+            .map((slot) => {
+              const publicSlot = { ...slot };
+              delete publicSlot.candidates;
+              return publicSlot;
+            }),
+        }));
+      }
+    }
     if (
       state.league.mode === "SIMULATION" &&
       !state.week.rollingSubmissionsEnabled &&

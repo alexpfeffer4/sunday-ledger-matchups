@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { reconcileOddsEntitlement } from "@/adapters/providers/the-odds-api/entitlement";
 import { refreshLiveScores } from "@/adapters/providers/the-odds-api/provider-requests";
 
 export const runtime = "nodejs";
@@ -17,6 +18,10 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401, headers });
   }
   try {
+    const entitlement = await reconcileOddsEntitlement();
+    // A completed free probe shares the same three-second launch spacing.
+    if (entitlement !== "IDLE")
+      await new Promise((resolve) => setTimeout(resolve, 3000));
     // Database selects all scope and timing. Never accept caller-authored IDs.
     const result = await refreshLiveScores();
     return Response.json(result, {

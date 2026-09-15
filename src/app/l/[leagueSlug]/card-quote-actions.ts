@@ -87,7 +87,10 @@ export async function reviewLiveCardQuotes(
         .parse(result.data);
       return { status: "simulation", quotes: prepared.quotes };
     }
-    const refreshed = await refreshCardQuotes(state.league.id);
+    const refreshed = await refreshCardQuotes(
+      state.league.id,
+      input.data.positions,
+    );
     if (refreshed === "DISABLED") return { status: "disabled" };
     const user = await createSupabaseServerClient();
     const result = await user.schema("api").rpc("review_live_card_quotes", {

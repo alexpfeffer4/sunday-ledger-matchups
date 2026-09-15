@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { marketTypeSchema } from "@/rulesets/schema";
+import { playerPropSlotSchema, playerSubjectFields } from "./player-prop-dtos";
 
 // Public game identity is deliberately separate from a receipt. Zod strips
 // unrecognized fields so no per-game allocation/market metadata is forwarded.
@@ -12,6 +14,9 @@ const settlementSchema = z
   .object({
     outcome: z.enum(["WIN", "LOSS", "PUSH", "VOID"]),
     returnedCenticredits: z.number().int().nonnegative(),
+    finalYards: z.number().nullable().optional(),
+    playerEvidenceVersion: z.number().int().positive().nullable().optional(),
+    playerCorrectionReason: z.string().nullable().optional(),
   })
   .nullable();
 
@@ -19,7 +24,8 @@ const positionSchema = z.object({
   id: z.uuid(),
   eventId: z.uuid(),
   eventLabel: z.string(),
-  marketType: z.enum(["MONEYLINE", "SPREAD", "TOTAL"]),
+  marketType: marketTypeSchema,
+  ...playerSubjectFields,
   proposition: z.string(),
   americanOdds: z.number().int(),
   stakeCredits: z.number().int().positive(),
@@ -28,7 +34,8 @@ const positionSchema = z.object({
 
 export const stage1MarketSchema = z.object({
   id: z.uuid(),
-  marketType: z.enum(["MONEYLINE", "SPREAD", "TOTAL"]),
+  marketType: marketTypeSchema,
+  ...playerSubjectFields,
   outcomeKey: z.enum(["AWAY", "HOME", "OVER", "UNDER"]),
   proposition: z.string(),
   lineMilli: z.number().int().nullable(),
@@ -48,7 +55,9 @@ export const stage1MarketSchema = z.object({
 export const liveQuoteHeadsSchema = z.array(
   z.object({
     eventId: z.uuid(),
-    markets: z.array(stage1MarketSchema).length(6),
+    // Main import enforces its exact six outcomes in SQL. A prop-only refresh
+    // may truthfully return a subset, and a full head includes extra subjects.
+    markets: z.array(stage1MarketSchema),
   }),
 );
 
@@ -107,6 +116,7 @@ export const stage1StateSchema = z.object({
       correctionWindowClosesAt: z.string().nullable(),
       finalizationMode: z.enum(["MANUAL_24H", "AFTER_RESULTS"]).optional(),
       rollingSubmissionsEnabled: z.boolean().optional(),
+      propsEnabled: z.boolean().optional(),
       entryClosesAt: z.string().nullable().optional(),
       entryClosed: z.boolean().optional(),
     })
@@ -148,6 +158,7 @@ export const stage1StateSchema = z.object({
       state: z.enum(["SCHEDULED", "LIVE", "FINAL", "VOID", "CORRECTED"]),
       providerHealth: z.enum(["HEALTHY", "DEGRADED"]),
       markets: z.array(stage1MarketSchema),
+      playerProps: z.array(playerPropSlotSchema).optional(),
     }),
   ),
   ownerCard: z

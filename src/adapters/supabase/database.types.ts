@@ -53,6 +53,166 @@ export type Database = {
       };
     };
     Functions: {
+      apply_live_quote_plan: {
+        Args: { p_plan_id: string };
+        Returns: Json;
+      };
+      bind_card_submission_intent: {
+        Args: { p_intent_id: string; p_league_slug: string; p_positions: Json };
+        Returns: Json;
+      };
+      claim_nflverse_reconciliation: {
+        Args: never;
+        Returns: Json;
+      };
+      claim_odds_entitlement_probe: {
+        Args: never;
+        Returns: Json;
+      };
+      claim_player_catalog_job: {
+        Args: { p_week_id?: string };
+        Returns: Json;
+      };
+      claim_player_catalog_quote: {
+        Args: { p_week_id: string };
+        Returns: Json;
+      };
+      claim_player_catalog_source: {
+        Args: { p_cache_key: string };
+        Returns: Json;
+      };
+      claim_player_result_jobs: {
+        Args: never;
+        Returns: Json;
+      };
+      claim_player_statistics_status: {
+        Args: never;
+        Returns: Json;
+      };
+      claim_shared_quote_request: {
+        Args: { p_plan_id: string; p_request_id: string };
+        Returns: Json;
+      };
+      complete_nflverse_reconciliation: {
+        Args: { p_lease_id: string; p_observations?: Json };
+        Returns: Json;
+      };
+      complete_odds_entitlement_probe: {
+        Args: { p_probe_id: string; p_usage?: Json };
+        Returns: Json;
+      };
+      complete_player_catalog_job: {
+        Args: {
+          p_error?: string;
+          p_lease_id: string;
+          p_missing_sources?: number;
+          p_status: string;
+        };
+        Returns: undefined;
+      };
+      complete_player_catalog_source: {
+        Args: { p_cache_key: string; p_lease_id: string; p_payload?: Json };
+        Returns: undefined;
+      };
+      complete_player_result_request: {
+        Args: {
+          p_observations?: Json;
+          p_rate_limit?: number;
+          p_remaining?: number;
+          p_request_id: string;
+          p_retry_after_seconds?: number;
+        };
+        Returns: Json;
+      };
+      complete_player_statistics_status: {
+        Args: {
+          p_active: boolean;
+          p_daily_limit: number;
+          p_lease_id: string;
+          p_observed_at: string;
+          p_used: number;
+        };
+        Returns: undefined;
+      };
+      complete_shared_quote_request: {
+        Args: { p_import: Json; p_request_id: string; p_usage?: Json };
+        Returns: Json;
+      };
+      configure_player_prop_odds_budget: {
+        Args: { p_verified_entitlement: Json };
+        Returns: Json;
+      };
+      confirm_player_prop_menu: {
+        Args: { p_choices: Json; p_league_slug: string };
+        Returns: Json;
+      };
+      enqueue_player_catalog: {
+        Args: { p_league_slug: string };
+        Returns: Json;
+      };
+      get_player_catalog_quotes: {
+        Args: { p_week_id: string };
+        Returns: Json;
+      };
+      get_player_prop_menu: {
+        Args: { p_league_slug: string };
+        Returns: Json;
+      };
+      import_player_catalog: {
+        Args: { p_records: Json };
+        Returns: Json;
+      };
+      import_player_result_observations: {
+        Args: { p_observations: Json };
+        Returns: Json;
+      };
+      open_reviewed_player_prop_week: {
+        Args: { p_idempotency_key: string; p_league_slug: string };
+        Returns: Json;
+      };
+      plan_live_quote_refresh: {
+        Args: { p_league_id: string; p_positions?: Json };
+        Returns: Json;
+      };
+      plan_player_menu_quotes: {
+        Args: { p_event_id?: string; p_league_id: string };
+        Returns: Json;
+      };
+      prepare_player_prop_menu: {
+        Args: { p_league_slug: string };
+        Returns: Json;
+      };
+      register_player_result_event: {
+        Args: { p_mapping: Json };
+        Returns: undefined;
+      };
+      reserve_player_metadata_request: {
+        Args: never;
+        Returns: string;
+      };
+      resolve_finalized_week17_player_candidate: {
+        Args: {
+          p_candidate_id: string;
+          p_participation_observation_id: string;
+          p_reason: string;
+          p_statistic_observation_id: string;
+        };
+        Returns: Json;
+      };
+      resolve_player_result_candidate: {
+        Args: {
+          p_candidate_id: string;
+          p_participation_observation_id: string;
+          p_reason: string;
+          p_statistic_observation_id: string;
+        };
+        Returns: Json;
+      };
+      revalidate_card_submission_intent: {
+        Args: { p_intent_id: string; p_review_id: string };
+        Returns: Json;
+      };
+
       get_league_matchup_cards: {
         Args: { p_league_slug: string; p_week_id: string };
         Returns: Json;

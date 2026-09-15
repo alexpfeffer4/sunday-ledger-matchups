@@ -1,4 +1,5 @@
 import type { LeagueMatchupCards } from "./league-matchup-dtos";
+import type { MarketType } from "@/rulesets/schema";
 import { competitionLabel } from "@/application/presentation/competition-label";
 import {
   scoreFreshness,
@@ -33,7 +34,15 @@ export type PositionLedgerItem = {
   eventLabel: string;
   scheduledStartAt: string;
   eventState: Stage1StateDto["slate"][number]["state"];
-  marketType: "MONEYLINE" | "SPREAD" | "TOTAL";
+  marketType: MarketType;
+  subjectId?: string | null;
+  subjectLabel?: string | null;
+  subjectTeam?: string | null;
+  statistic?: "PASSING_YARDS" | "RUSHING_YARDS" | "RECEIVING_YARDS" | null;
+  period?: "FULL_GAME" | null;
+  finalYards?: number | null;
+  playerEvidenceVersion?: number | null;
+  playerCorrectionReason?: string | null;
   proposition: string;
   americanOdds: number;
   stakeCredits: number;
@@ -336,7 +345,11 @@ export function projectPairedMatchup(
       );
     }
     const settlement = position.settlement ?? null;
-    if (["FINAL", "VOID", "CORRECTED"].includes(event.state) && !settlement) {
+    if (
+      ["FINAL", "VOID", "CORRECTED"].includes(event.state) &&
+      !settlement &&
+      !position.subjectId
+    ) {
       throw new Error(
         "An authorized completed event is missing its official settlement.",
       );
@@ -350,6 +363,14 @@ export function projectPairedMatchup(
       scheduledStartAt: event.scheduledStartAt,
       eventState: event.state,
       marketType: position.marketType,
+      subjectId: position.subjectId,
+      subjectLabel: position.subjectLabel,
+      subjectTeam: position.subjectTeam,
+      statistic: position.statistic,
+      period: position.period,
+      finalYards: settlement?.finalYards ?? null,
+      playerEvidenceVersion: settlement?.playerEvidenceVersion ?? null,
+      playerCorrectionReason: settlement?.playerCorrectionReason ?? null,
       proposition: position.proposition,
       americanOdds: position.americanOdds,
       stakeCredits: position.stakeCredits,
@@ -360,7 +381,9 @@ export function projectPairedMatchup(
         : event.state === "LIVE"
           ? "IN_PROGRESS"
           : "REMAINING",
-      corrected: correctedEventIds.has(position.eventId),
+      corrected:
+        correctedEventIds.has(position.eventId) ||
+        Boolean(settlement?.playerCorrectionReason),
     };
   };
 
