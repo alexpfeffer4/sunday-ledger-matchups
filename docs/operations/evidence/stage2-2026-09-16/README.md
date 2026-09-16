@@ -1,0 +1,15 @@
+# Retained Stage 2 evidence
+
+Final executable revision: `3d39f6c30868f0249fdba28a3740be883a157772`, tree `16cf54c301f079b0ccb20c1187cfe83cba916c72`. [Acceptance run 35158664285](https://github.com/alexpfeffer4/sunday-ledger-matchups/actions/runs/35158664285), attempt 1. all eight required job groups and the **Acceptance complete** aggregate passed. Both final benchmark jobs retain 182 observations each, 364 total. Both benchmark scenarios passed once with zero retries, skips or flaky results; 364 observations were retained.
+
+See [release status](../../simplification-stage2-status.md) for interpretation, scope and recovery. The [full comparison](before-after.md) and [machine-readable comparison](before-after.json) pair each action with its retained Stage 1 observation. Timing is median/range, never an unsupported percentile. SQL plan times are separate from browser RPC times.
+
+The gzip JSONL files preserve original observations byte for byte after decompression. Summary values, read/query plans, four actual post-acceptance screenshots and preparation/scroll evidence are retained. Every source ZIP digest was verified. The manifest records source artifact IDs/digests and hashes all selected files. Full authentication state and Playwright traces are excluded. Original Actions artifacts expire after seven days; these selected files remain in the repository.
+
+Fixture/build/role/receipt/device settings match Stage 1: actual worker-created ten-member league, 16 games/96 slots, complete 96 published or pending 60 published/36 pending, commissioner participant, existing final Week 2 history; five desktop runs starting with 0–4 accepted positions, then five mobile runs with 5–9. Production build, fresh browser on warm app/database. Desktop Chromium 1440×900 unthrottled; mobile Chromium 390×844 DPR 3 touch, 150 ms, 1.6 Mbps down/750 Kbps up, 4× CPU. Provider misses use a synthetic 500 ms delay. Different CI runners, small sample, no physical device or Production performance claim.
+
+Browser response-body sizes are known bytes with unknowns explicitly counted; they are not transferred bytes. Observed transfer summaries sum Resource Timing `transferSize`, including navigation only for timed hard navigations (cold/repeat Matchup, standings, historical matchup). Prefetch can overlap spans and requests can finish later; zero transfer can mean caching. Rendering entries are retained for later Stage 3, not profiled here.
+
+Both final preparation scenarios use the actual worker/claim/completion path, retain retry/replay/finality protections and create no live/provider effects. Twenty real disposable 50-credit submissions and four natural-expiry recoveries retain explicit changed-term consent. Each accepted submission additionally checks minimal preflight count/allocation parity; all refresh-scroll and paused-edit protections remain in the existing harness.
+
+The [menu experiment](menu-experiment/README.md) is deliberately separate. It proved the proposed SQL rewrite had no meaningful gain, so final shipped SQL leaves the menu unchanged. Its compressed reports and discarded SQL are evidence only.
