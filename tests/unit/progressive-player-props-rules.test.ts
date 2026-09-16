@@ -39,7 +39,7 @@ const packages = [
 it("pins both SQL-generated progressive packages to the same canonical hashes as the application", async () => {
   const migration = readFileSync(
     new URL(
-      "../../supabase/migrations/20260915221000_progressive_player_props.sql",
+      "../../supabase/migrations/20260916023250_progressive_player_props.sql",
       import.meta.url,
     ),
     "utf8",
