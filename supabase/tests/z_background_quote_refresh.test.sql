@@ -2,6 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
+\ir ../operations/shared-odds-refresh-parity.sql
 insert into auth.users(id,email) select ('a1000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'rolling-quote-'||n||'@example.test' from generate_series(1,4) n;
 insert into private.profiles(id,display_name) select id,'Rolling Quote Member '||right(id::text,1) from auth.users where id::text like 'a1000000-%';
 create function pg_temp.as_rolling_member(n integer) returns void language plpgsql as $$
@@ -172,7 +173,14 @@ create function pg_temp.apply_all_background() returns integer language plpgsql 
  if result->>'status'='FAILED' then raise exception 'Background application failed';end if;
  n:=n+1;if n>50 then raise exception 'Fanout did not converge';end if;
  end loop;return n;end $$;
-select is(pg_temp.apply_all_background(),40,'all forty league events receive their independent quote heads');
+-- An invalid league identity rolls back only its own event transaction.
+create temporary table background_bad_event as select e.id,e.home_team from private.sports_events e join private.leagues l on l.id=e.league_id where l.slug='background-league-20' and e.fixture_event_key='rolling-game-1';
+update private.sports_events set home_team='Invalid fixture identity' where id=(select id from background_bad_event);
+select is(api.apply_background_quote_event(b.run_id,(select id from background_bad_event),array[b.request_id])->>'status','FAILED','one invalid league application is independently contained') from background_context b;
+select is(api.apply_background_quote_event(b.run_id,(select e.id from private.sports_events e join private.leagues l on l.id=e.league_id where l.slug='background-league-19' and e.fixture_event_key='rolling-game-1'),array[b.request_id])->>'status','REFRESHED','a different league applies the same successful fetch despite the failure') from background_context b;
+update private.sports_events e set home_team=b.home_team from background_bad_event b where e.id=b.id;
+update private.background_quote_applications set retry_at='-infinity' where event_id=(select id from background_bad_event);
+select is(pg_temp.apply_all_background(),39,'remaining league events recover without another fetch');
 select is(pg_temp.apply_all_background(),0,'replaying application makes no duplicate publication');
 select is((select count(*) from private.live_quote_heads h join private.market_snapshots m on m.id=h.market_snapshot_id where h.outcome_key='HOME' and h.market_type='MONEYLINE' and m.american_odds=150),40::bigint,'every league sees the shared new public price');
 select is((select daily_credits from private.odds_refresh_policy),credits+3,'fanout and replay incur zero extra provider charges') from background_context;
@@ -209,7 +217,9 @@ update private.odds_refresh_policy set next_request_at='-infinity',next_quota_re
 select throws_ok($$select private.reserve_background_quote_credits(1)$$,'P0001','QUOTE_ENTITLEMENT_STALE','provider reset requires fresh verified entitlement evidence');
 update private.odds_refresh_policy set next_request_at='-infinity',next_quota_reset_at=clock_timestamp()+interval '16 days',requests_remaining=3999;
 select throws_ok($$select private.reserve_background_quote_credits(1)$$,'P0001','QUOTE_REFRESH_BUDGET','provider floor and essential demand headroom stop optional work');
-update private.odds_refresh_policy set requests_remaining=19835,next_request_at='-infinity';
+update private.odds_refresh_policy set requests_remaining=19835,next_request_at='-infinity',provider_entitlement_credits=null;
+select throws_ok($$select private.reserve_background_quote_credits(1)$$,'P0001','QUOTE_ENTITLEMENT_STALE','missing entitlement cannot authorize optional work');
+update private.odds_refresh_policy set provider_entitlement_credits=20000;
 update private.background_quote_settings set daily_limit=1;
 select throws_ok($$select private.reserve_background_quote_credits(1)$$,'P0001','QUOTE_REFRESH_BUDGET','purpose ceiling applies to scheduled main as well as props');
 update private.background_quote_settings set enabled=false,revision=revision+1;

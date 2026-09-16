@@ -1,5 +1,14 @@
 # Sunday Ledger — current governing source index
 
+## Shared automatic odds refresh — September 16, 2026 (Version 1.0)
+
+The [operational amendment](2026-09-16-shared-odds-refresh.md) authorizes shared
+scheduled public-price acquisition, independent league application and draft-safe
+stored browsing updates. It preserves existing competitive rules, progressive
+publication, season consent and final Review/Submit safeguards. Implementation
+and Preview are authorized; Production activation and increased limits remain
+subject to the [exact release package](../operations/shared-odds-refresh.md).
+
 ## Standing season automation — September 16, 2026 (Version 2.2)
 
 The owner's [Version 2.2 amendment](2026-09-16-season-automation.md) supersedes

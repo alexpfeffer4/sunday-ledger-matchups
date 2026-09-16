@@ -125,7 +125,7 @@ begin
  select * into strict p from private.odds_refresh_policy for update;
  select * into strict s from private.background_quote_settings for share;
  if not s.enabled or not p.enabled then raise exception 'QUOTE_REFRESH_DISABLED';end if;
- if p.provider_entitlement_credits<20000 or p.next_quota_reset_at is null or p.next_quota_reset_at<=t
+ if coalesce(p.provider_entitlement_credits,0)<20000 or p.next_quota_reset_at is null or p.next_quota_reset_at<=t
  or not exists(select 1 from private.odds_entitlement_probes where state='SUCCEEDED' and completed_at>t-interval '26 hours')
  then raise exception 'QUOTE_ENTITLEMENT_STALE';end if;
  d:=case when p.usage_day=(t at time zone 'UTC')::date then p.background_daily_credits else 0 end;
@@ -439,7 +439,7 @@ begin
   result:=private.apply_shared_quote_events(e.week_id,e.id,p_request_ids,false,allowed);
   perform private.assert_background_quote_run(p_run_id);
   if not exists(select 1 from private.background_quote_targets() b where b.event_id=e.id) then raise exception 'QUOTE_WORKER_SCOPE_INVALID';end if;
- exception when others then failure:=sqlstate;result:=jsonb_build_object('status','FAILED');end;
+ exception when others then failure:=case when sqlerrm in ('QUOTE_SOURCE_STALE','EVENT_IDENTITY_CHANGED','QUOTE_WORKER_CLAIM_INVALID','QUOTE_WORKER_SCOPE_INVALID','QUOTE_REFRESH_LEASE_INVALID') then sqlerrm else sqlstate end;result:=jsonb_build_object('status','FAILED');end;
  t:=clock_timestamp();
  for f in select c.family,c.latest_successful_request_id request_id from private.shared_quote_coverage c
  where c.external_event_id=e.fixture_event_key and c.latest_successful_request_id=any(p_request_ids)
