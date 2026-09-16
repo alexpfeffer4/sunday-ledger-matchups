@@ -2,6 +2,11 @@
 
 ## Shared automatic odds refresh — September 16, 2026 (Version 1.0)
 
+Subsequent owner release approval covers the tested database installation,
+API-credit limits and activation within the existing provider plan. It authorizes
+no subscription change or additional monetary spending. The hosted installation
+version is `20260916181542`; migration SQL bytes remain unchanged.
+
 The [operational amendment](2026-09-16-shared-odds-refresh.md) authorizes shared
 scheduled public-price acquisition, independent league application and draft-safe
 stored browsing updates. It preserves existing competitive rules, progressive

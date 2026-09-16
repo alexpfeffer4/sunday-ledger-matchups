@@ -1,14 +1,16 @@
 # Shared automatic odds refresh — release package
 
 September 16, 2026 · Architecture Version 1.0 · [Integrated PR #69](https://github.com/alexpfeffer4/sunday-ledger-matchups/pull/69).
-Implementation and Preview are authorized. **Production installation, deployment,
-budget changes and activation are pending separate approval.** Installing the new
-migration leaves background fetching and passive polling disabled.
+The owner approved Production installation and activation using API credits within
+the existing plan, with no subscription change or additional monetary spending.
+The tested migration is installed dormant; activation uses the guarded procedure
+below after migration-record alignment.
 
-The owner subsequently authorized merging once checks pass. The automatic app
-deployment is compatible with the existing database: missing optional stored-quote
-RPC capability returns STOP, without a recurring error or provider call. Database
-installation, new limits and activation still require their release approval.
+PR #69 merged and its automatic app deployment was verified. The hosted migration
+tool recorded installation as `20260916181542`; the filename and exact-version
+release check now match that ledger. SQL bytes and all 22 function hashes are
+unchanged. The optional read endpoint also remains compatible with pre-installation
+databases, returning STOP without a recurring error or provider call.
 
 ## Candidate and compatibility
 
@@ -19,7 +21,7 @@ verify that deployed SHA. Entry main was `82a65f48c2e4ed52f441e4ab5a0a3c83c2b10c
 (#68); the existing required Acceptance jobs and five-minute database gate remain.
 Production observations and hosted migration parity are recorded privately.
 
-One additive migration: `20260916153128_shared_background_odds_refresh.sql`,
+One additive migration: `20260916181542_shared_background_odds_refresh.sql`,
 created with the repository's Supabase CLI 2.116.0. Existing migration bytes are
 untouched. The common application operation retains the authenticated member
 wrapper; worker application requires an issued, unexpired, revision-bound claim.
