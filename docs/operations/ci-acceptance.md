@@ -56,6 +56,13 @@ provisioned again. Native automation fixtures are reset before legacy native
 checks; progressive native publication retains its separate reset. The database
 conformance job starts independently with no committed native/browser fixtures.
 
+After either browser-lane database reset, the loopback-only readiness helper asks
+PostgREST to reload configuration/schema and waits up to thirty seconds for its
+service-role OpenAPI document to include the migrated preparation RPC. It does
+not call that RPC or create a user to probe readiness. Missing schema/cache state
+is retried; authorization errors fail immediately. This closes the observed race
+between completed reset migrations and API schema-cache refresh.
+
 Keep Node 24, lockfile-based `npm ci`, npm caching, SHA-pinned actions, current
 browser projects, report validation, artifact retention, cleanup and cancellation
 of superseded PR runs. Every full-stack job builds against its own disposable

@@ -172,7 +172,9 @@ jobs:
       - name: Require zero skipped progressive availability tests
         run: node scripts/check-full-stack-report.mjs acceptance-reports/progressive-props.json
       - name: Isolate legacy Auth journeys from progressive source policy
-        run: supabase db reset --local --no-seed
+        run: |
+          supabase db reset --local --no-seed
+          node scripts/wait-for-disposable-api.mjs
       - name: Verify authenticated scheduled quote updates
         env:
           PLAYWRIGHT_JSON_OUTPUT_FILE: acceptance-reports/shared-odds.json
@@ -183,7 +185,9 @@ jobs:
       - name: Require zero skipped shared quote tests
         run: node scripts/check-full-stack-report.mjs acceptance-reports/shared-odds.json
       - name: Isolate legacy Auth journeys from scheduled quote fixtures
-        run: supabase db reset --local --no-seed
+        run: |
+          supabase db reset --local --no-seed
+          node scripts/wait-for-disposable-api.mjs
       - name: Provision isolated entitled owner
         run: |
           OWNER_USER_ID="$(node scripts/provision-owner-rehearsal-acceptance.mjs)"

@@ -64,6 +64,19 @@ Retained evidence includes byte-exact compressed raw observations, CI summary va
 
 ## Prepared rollout and recovery
 
+### Approved release follow-up
+
+The owner explicitly approved the single migration, merge and deployment after
+the PR explanation on September 16. This supersedes the pending-approval text
+below. Final-head run `35148834219` passed every group except the existing desktop
+shared-odds test, which started after reset before `ensure_profile` was visible in
+PostgREST's schema cache. This repeated the earlier disposable reset race. A small
+test-infrastructure follow-up now reloads and waits for the loopback API's schema
+after both browser-lane resets; four focused tests cover delayed readiness,
+authorization failure, timeout and rejection of hosted targets. It neither retries
+failed product actions nor changes Production behavior. Release verification for
+this follow-up is in progress; the approved migration SQL bytes remain unchanged.
+
 Target: Supabase project `nxikkhtaercmbuyrlyio`, and the existing Vercel project `prj_k1ILOuL7pKVand1qVNfZj8oij6sI` serving ledgerleagues.com. No other environment is part of the release.
 
 The handoff's common execution contract requires owner approval for **PR #71 merge/automatic frontend deployment and the single migration** after verification. No such release approval has been given in this conversation. The exact candidate file SHA-256 is `256a24cd5c7ffe53eb8b1c7a1af669a5724bc05a7bd34b414c052326686f7963`; its expected function-body hash is recorded above. Current and candidate frontend callers have identical RPC contracts, so either app/database order is compatible. Prefer applying the reviewed migration and verifying its parity before merging. No new activation or cap change is required. Preserve the existing odds-release marker/configuration: the 22 unchanged function bodies, rather than a new test/documentation commit SHA, establish compatibility. If the hosted migration tool assigns its installation timestamp, record that exact version and align the still-unmerged filename before merging; preserve its SQL bytes and reuse same-body evidence.
