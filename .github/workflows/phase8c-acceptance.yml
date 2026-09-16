@@ -53,6 +53,8 @@ jobs:
         run: test "$(psql "$TEST_SUPABASE_DB_URL" -X -qAt -v ON_ERROR_STOP=1 -f supabase/operations/stage1-preparation-parity.sql)" = t
       - name: Verify Stage 2 read bodies and privileges
         run: test "$(psql "$TEST_SUPABASE_DB_URL" -X -qAt -v ON_ERROR_STOP=1 -f supabase/operations/stage2-read-parity.sql)" = t
+      - name: Derive effective authority navigation from the clean migration chain
+        run: node scripts/export-effective-authorities.mjs
       - name: Verify disabled scheduler configuration on disposable database
         run: |
           psql "$TEST_SUPABASE_DB_URL" -v ON_ERROR_STOP=1 --single-transaction \

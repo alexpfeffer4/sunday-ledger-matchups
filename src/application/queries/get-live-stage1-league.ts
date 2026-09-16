@@ -1,4 +1,5 @@
 import "server-only";
+import { queryFailure } from "./query-failure";
 
 import { cache } from "react";
 import { isSupabaseConfigured } from "@/adapters/supabase/config";
@@ -22,6 +23,7 @@ export const getLeagueState = cache(
     const claims = await supabase.auth.getClaims();
     if (!claims.data?.claims?.sub) return null;
 
+    const startedAt = performance.now();
     const result = await supabase.schema("api").rpc("get_stage1_state", {
       p_league_slug: leagueSlug,
     });
@@ -30,7 +32,12 @@ export const getLeagueState = cache(
       if (["42501", "PGRST116", "P0002"].includes(result.error.code ?? "")) {
         return null;
       }
-      throw new Error("The league could not be loaded.");
+      throw queryFailure(
+        "get_stage1_state",
+        startedAt,
+        result.error,
+        "The league could not be loaded.",
+      );
     }
 
     const state = stage1StateSchema.parse(result.data);
@@ -48,6 +55,7 @@ export const getAuthoritativeLeagueState = cache(
     const supabase = await createSupabaseServerClient();
     // These stored reads share the same authorized league/week prerequisite.
     // Neither one acquires provider data or depends on the other's response.
+    const quoteStartedAt = performance.now();
     const [menu, currentQuotes] = await Promise.all([
       state.week.propsEnabled ? getPlayerPropMenu(leagueSlug) : null,
       (async () => {
@@ -82,7 +90,12 @@ export const getAuthoritativeLeagueState = cache(
     if (!currentQuotes) return enriched;
     if (currentQuotes.error) {
       if (currentQuotes.error.code === "PGRST202") return enriched;
-      throw new Error("The current NFL quotes could not be loaded.");
+      throw queryFailure(
+        "get_live_quote_heads",
+        quoteStartedAt,
+        currentQuotes.error,
+        "The current NFL quotes could not be loaded.",
+      );
     }
 
     const heads = liveQuoteHeadsSchema.parse(currentQuotes.data);

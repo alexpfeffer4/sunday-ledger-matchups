@@ -1,4 +1,5 @@
 import "server-only";
+import { queryFailure } from "./query-failure";
 
 import { cache } from "react";
 import { isSupabaseConfigured } from "@/adapters/supabase/config";
@@ -16,6 +17,7 @@ export const getWeeklyCloseState = cache(
     const claims = await supabase.auth.getClaims();
     if (!claims.data?.claims?.sub) return null;
 
+    const startedAt = performance.now();
     const result = await supabase.schema("api").rpc("get_weekly_close_state", {
       p_league_slug: leagueSlug,
     });
@@ -29,11 +31,19 @@ export const getWeeklyCloseState = cache(
         return null;
       }
       if (result.error.code === "55000") {
-        throw new Error(
+        throw queryFailure(
+          "get_weekly_close_state",
+          startedAt,
+          result.error,
           "Season memory stopped because official competitive lineage is ambiguous.",
         );
       }
-      throw new Error("The active-season ledger could not be loaded.");
+      throw queryFailure(
+        "get_weekly_close_state",
+        startedAt,
+        result.error,
+        "The active-season ledger could not be loaded.",
+      );
     }
 
     return weeklyCloseStateSchema.parse(result.data);
