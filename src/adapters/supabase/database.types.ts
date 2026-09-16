@@ -165,6 +165,14 @@ export type Database = {
         Args: { p_verified_entitlement: Json };
         Returns: Json;
       };
+      confirm_progressive_player_prop_menu: {
+        Args: {
+          p_choices: Json;
+          p_empty_slot_publication: string;
+          p_league_slug: string;
+        };
+        Returns: Json;
+      };
       confirm_player_prop_menu: {
         Args: { p_choices: Json; p_league_slug: string };
         Returns: Json;

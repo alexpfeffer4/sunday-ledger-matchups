@@ -1,5 +1,7 @@
 # Week 2 props cutover and recorded card reset
 
+The subsequent [progressive availability amendment](2026-09-15-progressive-player-props.md) supersedes the complete-nomination gate and immutable-empty-slot rule below only for its explicit successor 1.5 scope. Initial review covers the available choices and a standing policy for exact empty slots; later automatic first publication is separately audited. Exact reset reuse, zero new picks before initial cutover, initial pregame scope and all source/budget/result guards remain required.
+
 Owner decision, September 15, 2026. This amendment records the owner's request
 to include props in the already-open pilot Week 2 and reset the designated
 member's accepted picks so that member can choose again. It supplements the

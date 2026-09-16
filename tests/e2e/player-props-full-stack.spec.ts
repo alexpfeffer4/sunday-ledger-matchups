@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { completePlayerPropsAction } from "../fixtures/complete-player-props-action";
 import {
   stage1StateSchema,
   type Stage1StateDto,
@@ -124,13 +125,11 @@ async function submitDraft(page: Page, count: number) {
   await expect(
     page.getByRole("heading", { name: "Review your bets", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Submit bets", exact: true }).click();
-  await expect(
-    page
-      .getByRole("status")
-      .filter({ hasText: /submitted|saved/ })
-      .last(),
-  ).toBeVisible();
+  await completePlayerPropsAction(
+    page,
+    page.getByRole("button", { name: "Submit bets", exact: true }),
+    /submitted|saved/,
+  );
 }
 
 async function atNarrowEnlargedText(page: Page, check: () => Promise<void>) {
@@ -329,7 +328,15 @@ for (const games of [14, 16]) {
         name: /^(Prepare player menu|Update proposed choices)$/,
       });
       await expect(prepareMenu).toBeVisible();
-      await prepareMenu.click({ timeout: 10_000 });
+      // Canonical games can already expose 48 players from an earlier fixture.
+      // Wait for this real Prepare action to finish before polling its committed
+      // menu; the action itself can occupy most of the assertion's five seconds.
+      await completePlayerPropsAction(
+        page,
+        prepareMenu,
+        "The proposed players are ready to review.",
+        { timeout: 10_000 },
+      );
       await expect
         .poll(async () => {
           const menu = playerPropMenuSchema.parse(
@@ -355,12 +362,14 @@ for (const games of [14, 16]) {
       await page
         .getByLabel("I reviewed the full slate and any unavailable slots.")
         .check();
-      await page
-        .getByRole("button", {
+      await completePlayerPropsAction(
+        page,
+        page.getByRole("button", {
           name: "Confirm full-slate player menu",
           exact: true,
-        })
-        .click();
+        }),
+        "Player choices confirmed for this week.",
+      );
       await expect
         .poll(async () => {
           const menu = playerPropMenuSchema.parse(
@@ -372,9 +381,12 @@ for (const games of [14, 16]) {
         })
         .toBe(true);
       await page.reload();
-      await page
-        .getByRole("button", { name: "Open week for bets", exact: true })
-        .click();
+      // Opening removes this form, so the committed OPEN state below is its
+      // completion check instead of feedback inside the removed component.
+      await completePlayerPropsAction(
+        page,
+        page.getByRole("button", { name: "Open week for bets", exact: true }),
+      );
       await expect
         .poll(async () => (await state(commissioner, slug)).week?.state)
         .toBe("OPEN");

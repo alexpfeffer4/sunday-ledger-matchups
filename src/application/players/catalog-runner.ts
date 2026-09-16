@@ -81,6 +81,23 @@ const contextSchema = z.object({
     .max(4000)
     .default([]),
   cachedSources: z.record(z.string(), z.unknown()).default({}),
+  progressiveSlots: z
+    .array(
+      z.object({
+        externalEventId: z.string().min(1),
+        team: z.string().min(1),
+        slot: z.enum(["QB_PASS", "RB_RUSH", "RECEIVER"]),
+      }),
+    )
+    .min(1)
+    .max(96)
+    .nullish(),
+});
+const progressiveResultSchema = z.object({
+  progressive: z.literal(true),
+  publishedSlots: z.number().int().min(0).max(96),
+  remainingSlots: z.number().int().min(0).max(96),
+  replayed: z.boolean(),
 });
 const sourceSchema = z.object({
   fetchedAt: instant,
@@ -148,11 +165,36 @@ export async function executePlayerCatalogJob(
     const primary = context.sourcePolicy === "NFLVERSE_PRIMARY";
     if (
       primary !==
-      (context.selectionPolicy === "FEATURED_HIGHEST_STANDARD_LINES")
+        (context.selectionPolicy === "FEATURED_HIGHEST_STANDARD_LINES") ||
+      (context.progressiveSlots && !primary)
     )
       return finish(
         { status: "UNAVAILABLE", missingSources: 1 },
         "CATALOG_POLICY_MISMATCH",
+      );
+    const slotKey = (slot: {
+      externalEventId: string;
+      team: string;
+      slot: string;
+    }) => JSON.stringify([slot.externalEventId, slot.team, slot.slot]);
+    const progressiveKeys = context.progressiveSlots
+      ? new Set(context.progressiveSlots.map(slotKey))
+      : null;
+    if (
+      context.progressiveSlots &&
+      (progressiveKeys!.size !== context.progressiveSlots.length ||
+        context.progressiveSlots.some(
+          (slot) =>
+            !context.events.some(
+              (event) =>
+                event.externalEventId === slot.externalEventId &&
+                [event.awayTeam, event.homeTeam].includes(slot.team),
+            ),
+        ))
+    )
+      return finish(
+        { status: "UNAVAILABLE", missingSources: 1 },
+        "CATALOG_PROGRESSIVE_SCOPE_INVALID",
       );
     if (!primary) {
       const quotaClaim = z
@@ -340,25 +382,61 @@ export async function executePlayerCatalogJob(
           rosters,
         });
     const prepared = buildPlayerCatalogBootstrap(normalized);
+    // A post-publication claim names only still-empty, pregame slots. Already
+    // published players never enter this import or publication proposal batch.
+    const proposals = progressiveKeys
+      ? prepared.proposals.filter((proposal) =>
+          progressiveKeys.has(slotKey(proposal)),
+        )
+      : prepared.proposals;
+    const candidateKeys = new Set(
+      proposals.flatMap((proposal) =>
+        proposal.candidates.map((candidate) =>
+          JSON.stringify([
+            proposal.externalEventId,
+            proposal.team,
+            candidate.canonicalKey,
+          ]),
+        ),
+      ),
+    );
+    const records = progressiveKeys
+      ? prepared.records.filter((record) =>
+          candidateKeys.has(
+            JSON.stringify([
+              record.externalEventId,
+              record.team,
+              record.canonicalKey,
+            ]),
+          ),
+        )
+      : prepared.records;
     for (const event of prepared.resultEvents) {
       if (!withinDeadline()) return defer();
       await rpc(port, "register_player_result_event", { p_mapping: event });
     }
-    if (prepared.records.length) {
+    if (records.length) {
       if (!withinDeadline()) return defer();
-      await rpc(port, "import_player_catalog", { p_records: prepared.records });
+      await rpc(port, "import_player_catalog", { p_records: records });
     }
+    let unresolved =
+      (context.progressiveSlots?.length ?? context.events.length * 6) -
+      proposals.filter((row) => row.proposedCanonicalKey !== null).length;
     if (primary) {
       if (!withinDeadline()) return defer();
-      await rpc(port, "record_player_catalog_nominations", {
+      const recorded = await rpc(port, "record_player_catalog_nominations", {
         p_lease_id: context.leaseId,
-        p_proposals: prepared.proposals,
+        p_proposals: proposals,
       });
+      if (progressiveKeys) {
+        const result = progressiveResultSchema.safeParse(recorded);
+        if (!result.success)
+          throw new Error("CATALOG_PROGRESSIVE_RESULT_INVALID");
+        // SQL owns one-time publication and may retain tied, closed or otherwise
+        // unresolved slots. A locally proposed name alone cannot mark them ready.
+        unresolved = result.data.remainingSlots;
+      }
     }
-    const unresolved =
-      context.events.length * 6 -
-      prepared.proposals.filter((row) => row.proposedCanonicalKey !== null)
-        .length;
     return finish(
       {
         status: unresolved

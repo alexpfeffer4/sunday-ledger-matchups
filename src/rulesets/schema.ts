@@ -231,7 +231,25 @@ export const seasonRulesetV14Schema = seasonRulesetV13Schema.extend({
     })
     .strict(),
 });
-export type PlayerPropsSeasonRuleset = z.infer<typeof seasonRulesetV14Schema>;
+/** Empty slots may acquire their first player before that game's entry cutoff.
+ * Published players stay fixed. The V1.4 package and its schema remain intact. */
+export const progressivePlayerPropRulesSchema = playerPropRulesSchema.extend({
+  menuFreeze: z.literal("FIRST_PUBLICATION_PER_SLOT"),
+  emptySlotPublication: z.literal("AUTOMATIC_BEFORE_EVENT_CUTOFF"),
+});
+export const seasonRulesetV15Schema = seasonRulesetV14Schema.extend({
+  version: z.literal("1.5"),
+  productBibleVersion: z.literal("3.4"),
+  markets: seasonRulesetV14Schema.shape.markets.extend({
+    playerProps: progressivePlayerPropRulesSchema,
+  }),
+});
+export type PlayerPropsSeasonRuleset =
+  | z.infer<typeof seasonRulesetV14Schema>
+  | z.infer<typeof seasonRulesetV15Schema>;
+export type ProgressivePlayerPropsSeasonRuleset = z.infer<
+  typeof seasonRulesetV15Schema
+>;
 export type RollingSeasonRuleset = z.infer<typeof seasonRulesetV13Schema>;
 
 export type RosterSize = z.infer<typeof rosterSizeSchema>;
@@ -274,6 +292,7 @@ const historicalSeasonRulesetV1Schema = legacySeasonRulesetV11Schema.extend({
 });
 
 export const persistedSeasonRulesetSchema = z.union([
+  seasonRulesetV15Schema,
   seasonRulesetV14Schema,
   seasonRulesetV13Schema,
   seasonRulesetSchema,

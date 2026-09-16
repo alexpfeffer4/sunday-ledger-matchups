@@ -69,6 +69,9 @@ const previewEvents: Event[] = pairs.map(([awayTeam, homeTeam], eventIndex) => {
         confirmed: true,
         frozen: false,
         unavailableReason: unavailable ? "Identity unresolved" : null,
+        lateFillEligible: unavailable,
+        publicationMode: unavailable ? null : ("COMMISSIONER" as const),
+        publishedAt: unavailable ? null : "2026-09-20T15:00:00Z",
       };
     }),
   );

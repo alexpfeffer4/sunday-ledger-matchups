@@ -1,5 +1,24 @@
 # Sunday Ledger — current governing source index
 
+## Progressive player availability — September 15, 2026
+
+The owner approved [showing empty slots as unavailable and checking them through
+the week](2026-09-15-progressive-player-props.md). The additive Ruleset 1.5 /
+Product Bible 3.4 packages allow a first verified player to appear in an initially
+empty slot before that game's own cutoff. The initial structural menu may be
+partial or entirely unavailable. Its actual commissioner review explicitly
+acknowledges the automatic publication policy; future additions have separate
+immutable system audits. Offered players and accepted receipts remain fixed.
+
+The [progressive release runbook](../operations/progressive-player-props.md)
+retains the exact completed reset and initial Week 2 cutover guards. Successful
+scoped cutover also supports later unopened weeks in the same pilot season,
+with a new initial review each week. Existing 1.4 packages, unrelated seasons
+and completed history remain intact. Prepared packages and compatible code do
+not by themselves activate offers. This decision retains the previously granted
+conditional release authorization and supersedes the complete-nominee and
+permanently-empty-slot requirements in the older scoped entries below.
+
 ## Restricted nflverse primary pilot — September 15, 2026
 
 The owner approved [nflverse as the primary player-results source](2026-09-15-nflverse-primary-pilot.md)
