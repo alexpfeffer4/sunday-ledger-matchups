@@ -2,6 +2,9 @@ create function pg_temp.automation_postseason_fixture(size integer,p_stop_open18
 declare c jsonb;u uuid;wk uuid;j jsonb;n integer;answer jsonb;gate jsonb;
 begin
  c:=pg_temp.automation_context('auto-postseason-'||size||'-'||substr(gen_random_uuid()::text,1,8),p_enroll=>false);
+ -- The reused Week 2 has real matchup/card rows; supply its stored terminal
+ -- score/result fixture facts as well as the prior-week FINAL state.
+ perform pg_temp.phase8_close_matrix_week((c->>'season')::uuid,2);
  -- Complete synthetic roster construction before real standing consent.
  update private.seasons set lifecycle='DRAFT',roster_locked_at=null where id=(c->>'season')::uuid;
  for n in 5..size loop

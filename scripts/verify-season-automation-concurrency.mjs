@@ -312,6 +312,19 @@ for (const command of ["PAUSE", "REVOKE"]) {
 }
 {
   const f = await fixture("transfer");
+  for (const subject of [f.member, randomUUID()]) {
+    const unauthorized = await sql(
+      member(
+        { ...f, owner: subject },
+        `SELECT api.configure_season_automation(${quote(f.slug)},'PAUSE')`,
+      ),
+    );
+    assert.notEqual(
+      unauthorized.code,
+      0,
+      "Members and outsiders cannot change standing authorization",
+    );
+  }
   successful(
     await sql(
       member(

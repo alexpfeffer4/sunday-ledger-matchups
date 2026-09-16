@@ -703,6 +703,7 @@ begin
  if r.operation<>'PREPARE' then raise exception using errcode='42501',message='Only due preparation can acquire markets.';end if;
  select league_id into l from private.seasons where id=r.season_id;
  perform 1 from private.odds_refresh_policy for update;
+ perform private.require_week2_props_readiness(true);
  if exists(select 1 from private.provider_requests where kind='ODDS' and league_id=l and attempted_at>clock_timestamp()-interval '60 seconds') then raise exception 'QUOTE_REFRESH_COOLDOWN';end if;
  perform private.reserve_provider_credits(3);
  insert into private.provider_requests(kind,league_id,actor_user_id) values('ODDS',l,null) returning provider_requests.id into id;

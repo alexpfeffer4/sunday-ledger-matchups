@@ -475,7 +475,7 @@ select ok(not has_function_privilege('anon','api.configure_season_automation(tex
 select ok(not has_function_privilege('service_role','private.lifecycle_publish_next_live_week_slate(uuid,uuid,text[],text,uuid)','execute'),'service cannot bypass claimed-run wrapper');
 -- Each trial rolls back its own fixture, preserving the installed source policy.
 create function pg_temp.automation_trial(fault text) returns jsonb language plpgsql as $$
-declare c jsonb;wk uuid;r uuid;j jsonb;answer jsonb;g uuid;nominees jsonb;
+declare c jsonb;other_context jsonb;wk uuid;r uuid;j jsonb;answer jsonb;g uuid;nominees jsonb;
 begin
  begin
  c:=pg_temp.automation_context('auto-trial-'||fault);wk:=pg_temp.automation_stage(c,3,true,case when fault='early' then clock_timestamp()+interval '1 hour' else null end);
@@ -494,9 +494,13 @@ begin
  update private.player_catalog_nomination_heads set generation_id=g where week_id=wk;
  end if;
  if fault='absent-consent' then update private.season_automation set revoked=true where season_id=(c->>'season')::uuid;end if;
+ if fault='wrong-season' then
+ other_context:=pg_temp.automation_context('auto-wrong-season-authority');
+ update private.season_automation set consent_id=(select consent_id from private.season_automation where season_id=(other_context->>'season')::uuid) where season_id=(c->>'season')::uuid;
+ end if;
  r:=pg_temp.automation_run(c,'VALIDATE',3);
  begin j:=api.complete_season_automation(r);exception when others then j:=jsonb_build_object('status',sqlstate);end;
- if fault in('wrong-role','wrong-team','wrong-event','tie','stale','warning','absent-consent') then
+ if fault in('wrong-role','wrong-team','wrong-event','tie','stale','warning','absent-consent','wrong-season') then
  answer:=j||jsonb_build_object('available',(select count(*) from private.week_player_menu where week_id=wk and subject_id is not null));
  else
  r:=pg_temp.automation_run(c,'OPEN',3);
@@ -534,7 +538,7 @@ begin
  exception when sqlstate 'ZX001' then return sqlerrm::jsonb;end;
 end $$;
 select is(pg_temp.automation_trial(fault)->>'available','0',fault||' initial candidate stays unavailable without blocking structural validation') from unnest(array['wrong-role','wrong-team','wrong-event','tie','stale','warning'])fault;
-select is(pg_temp.automation_trial(fault)->>'status','40001',fault||' fences stale SYSTEM authority') from unnest(array['absent-consent','pause','revoke','expired-lease','stale-generation','policy-change'])fault;
+select is(pg_temp.automation_trial(fault)->>'status','40001',fault||' fences stale SYSTEM authority') from unnest(array['absent-consent','wrong-season','pause','revoke','expired-lease','stale-generation','policy-change'])fault;
 select is(pg_temp.automation_trial(fault)->>'cards','0',fault||' leaves no cards or credit grant') from unnest(array['early','missing-game','cutoff','source-off','offers-off'])fault;
 select is(pg_temp.automation_trial('content-race')->>'status','OPENED','changed unoffered menu is revalidated and opens automatically');
 select is(pg_temp.automation_trial('previous-pending')->>'status','OPENED','previous week pending blocks opening until its stored FINAL state');

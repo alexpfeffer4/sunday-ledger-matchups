@@ -6,7 +6,6 @@ begin;
 do $$
 declare sha text:=current_setting('sunday_ledger.automation_release_sha',true);
 begin
- if coalesce(current_setting('sunday_ledger.automation_apply',true),'false')<>'true' then return;end if;
  if sha is null or sha !~ '^[0-9a-f]{40}$' then raise exception 'Exact tested deployed release SHA required';end if;
  if not exists(select 1 from cron.job where jobname='sunday-ledger-score-checkpoints' and active and schedule='*/5 * * * *')
  or strpos(pg_get_functiondef('private.dispatch_score_checkpoints()'::regprocedure),'perform private.dispatch_season_automation();')=0
@@ -15,7 +14,9 @@ begin
  or not exists(select 1 from vault.decrypted_secrets where name='score_job_secret' and length(decrypted_secret)>=32) then
  raise exception 'Existing five-minute dispatch and protected target must be verified';end if;
  perform private.require_week2_props_readiness(true);
+ if coalesce(current_setting('sunday_ledger.automation_apply',true),'false')='true' then
  update private.season_automation_settings set enabled=true,release_sha=sha where singleton;
+ end if;
 end $$;
 select enabled,release_sha,private.season_automation_policy_hash() policy_hash,
  (select count(*) from private.season_automation_consents) recorded_consents

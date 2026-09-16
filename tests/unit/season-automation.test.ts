@@ -234,6 +234,29 @@ describe("bounded lifecycle worker", () => {
     );
     expect(calls.some((c) => c.args?.p_run === second)).toBe(true);
   });
+  it("does not acquire paid markets when the database readiness reservation fails", async () => {
+    const queue = [claimed(first, "PREPARE"), { status: "IDLE" }];
+    const rpc = vi.fn(async (name: string) => {
+      if (name === "claim_season_automation")
+        return { data: queue.shift(), error: null };
+      if (name === "claim_season_automation_odds")
+        return { data: null, error: { message: "Readiness unavailable" } };
+      return { data: { status: "FAILED" }, error: null };
+    });
+    const odds = vi.fn();
+    expect(
+      await executeSeasonAutomation({
+        rpc,
+        schedule: async () => fullSchedule(),
+        odds,
+      }),
+    ).toEqual({ status: "PARTIAL", attempted: 1, failed: 1 });
+    expect(odds).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledWith(
+      "complete_season_automation",
+      expect.objectContaining({ p_failure: "PROVIDER_BUDGET" }),
+    );
+  });
   it("caps the batch at three actions and reports expired completion as failure", async () => {
     const rpc = vi.fn(async (name: string) =>
       name === "claim_season_automation"
