@@ -399,6 +399,16 @@ for (const pending of [false, true])
             page.getByRole("button", { name: "Submit bets", exact: true }),
           ).toBeEnabled();
         };
+        const changeAllPrices = (price: number) => {
+          source.writeMain(price, false, 500);
+          const wire = JSON.parse(
+            readFileSync(process.env.ODDS_TEST_FIXTURE!, "utf8"),
+          );
+          for (const event of wire.payload)
+            for (const market of event.bookmakers[0].markets)
+              for (const item of market.outcomes) item.price = price;
+          writeFileSync(process.env.ODDS_TEST_FIXTURE!, JSON.stringify(wire));
+        };
         source.writeMain(140, false, 500);
         expireCache();
         const miss = await timed(
@@ -421,14 +431,7 @@ for (const pending of [false, true])
           .getByRole("button", { name: "Back to edit", exact: true })
           .click();
         // Both sides change so whichever unused outcome was selected requires consent.
-        source.writeMain(155, false, 500);
-        const wire = JSON.parse(
-          readFileSync(process.env.ODDS_TEST_FIXTURE!, "utf8"),
-        );
-        for (const event of wire.payload)
-          for (const market of event.bookmakers[0].markets)
-            for (const item of market.outcomes) item.price = 155;
-        writeFileSync(process.env.ODDS_TEST_FIXTURE!, JSON.stringify(wire));
+        changeAllPrices(155);
         expireCache();
         await timed("review-changed-terms", async () => {
           await review();
@@ -438,10 +441,24 @@ for (const pending of [false, true])
           await acknowledge();
         });
         if (run === 1) {
-          // Expire only the disposable review evidence, then exercise server recovery.
-          sql(
-            `update private.live_card_quote_reviews set expires_at=clock_timestamp()-interval '1 second' where actor_user_id=${q(fixture.owner)}::uuid;`,
-          );
+          // Reviews are append-only. Wait for this real proof's stored expiry;
+          // the deliberate wait is outside the measured recovery span.
+          const reviewId = await page
+            .locator('input[name="reviewId"]')
+            .inputValue();
+          expect(reviewId).toMatch(/^[0-9a-f-]{36}$/i);
+          const expiryWait =
+            Number(
+              sql(
+                `select greatest(0,ceil(extract(epoch from expires_at-clock_timestamp())*1000)) from private.live_card_quote_reviews where id=${q(reviewId)}::uuid and actor_user_id=${q(fixture.owner)}::uuid;`,
+              ),
+            ) + 100;
+          expect(expiryWait).toBeLessThan(31_000);
+          await page.waitForTimeout(expiryWait);
+          // Same-economics renewal may accept under the existing submit intent.
+          // Changed economics must instead return to explicit confirmation.
+          changeAllPrices(170);
+          expireCache();
           await timed("expired-review-recovery", async () => {
             const response = page.waitForResponse(
               (r) =>
@@ -452,6 +469,9 @@ for (const pending of [false, true])
               .getByRole("button", { name: "Submit bets", exact: true })
               .click();
             await response;
+            await expect(
+              page.getByRole("button", { name: "Use updated odds" }).first(),
+            ).toBeVisible();
             await acknowledge();
           });
           expect(
