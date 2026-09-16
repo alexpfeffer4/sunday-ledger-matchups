@@ -1,6 +1,6 @@
 create function pg_temp.automation_postseason_fixture(size integer,p_stop_open18 boolean default false) returns jsonb language plpgsql as $$
 declare c jsonb;u uuid;wk uuid;j jsonb;n integer;answer jsonb;gate jsonb;
- card record;quote private.market_snapshots%rowtype;positions jsonb;review_id uuid;request_id uuid;result_id uuid;
+ fixture_card record;quote private.market_snapshots%rowtype;positions jsonb;review_id uuid;request_id uuid;result_id uuid;
 begin
  c:=pg_temp.automation_context('auto-postseason-'||size||'-'||substr(gen_random_uuid()::text,1,8),p_enroll=>false);
  -- The reused Week 2 has real matchup/card rows; supply its stored terminal
@@ -53,11 +53,11 @@ begin
  select m.* into strict quote from private.market_snapshots m join private.live_quote_heads h on h.market_snapshot_id=m.id
  where m.week_id=wk and m.market_type='MONEYLINE' and m.outcome_key='HOME';
  positions:=jsonb_build_array(jsonb_build_object('marketSnapshotId',quote.id,'payloadHash',quote.payload_hash,'stakeCredits',100));
- for card in select * from private.weekly_cards where week_id=wk order by id loop
- perform set_config('request.jwt.claims',jsonb_build_object('sub',card.owner_user_id,'role','authenticated')::text,true);
+ for fixture_card in select * from private.weekly_cards where week_id=wk order by id loop
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',fixture_card.owner_user_id,'role','authenticated')::text,true);
  insert into private.live_card_quote_reviews(card_id,actor_user_id,positions,reviewed_at,expires_at,fetched_at)
- values(card.id,card.owner_user_id,positions,clock_timestamp(),clock_timestamp()+interval '30 seconds',clock_timestamp()) returning id into review_id;
- perform api.accept_stage1_card(c->>'slug',jsonb_set(positions,'{0}',positions->0||jsonb_build_object('reviewId',review_id)),'native-week17-'||card.id);
+ values(fixture_card.id,fixture_card.owner_user_id,positions,clock_timestamp(),clock_timestamp()+interval '30 seconds',clock_timestamp()) returning id into review_id;
+ perform api.accept_stage1_card(c->>'slug',jsonb_set(positions,'{0}',positions->0||jsonb_build_object('reviewId',review_id)),'native-week17-'||fixture_card.id);
  end loop;
  perform set_config('request.jwt.claims',jsonb_build_object('sub',c->>'owner','role','authenticated')::text,true);
  end if;

@@ -75,7 +75,9 @@ language plpgsql set search_path='' as $$
 declare r private.season_automation_runs%rowtype; a private.season_automation%rowtype;s private.seasons%rowtype;c private.season_automation_consents%rowtype;
 begin
  select * into strict r from private.season_automation_runs where id=p_run;
- perform 1 from private.leagues where id=(select league_id from private.seasons where id=r.season_id) for update;
+ -- Fence commissioner transfer/deletion while allowing older season-locked
+ -- score/receipt writers to take their ordinary league FK KEY SHARE lock.
+ perform 1 from private.leagues where id=(select league_id from private.seasons where id=r.season_id) for no key update;
  select * into strict s from private.seasons where id=r.season_id for update;
  select * into strict a from private.season_automation where season_id=s.id for update;
  select * into strict r from private.season_automation_runs where id=p_run for update;
@@ -96,7 +98,7 @@ create function private.assert_lifecycle_actor(p_league uuid,p_run uuid) returns
 language plpgsql set search_path='' as $$
 declare r private.season_automation_runs%rowtype;
 begin
- perform 1 from private.leagues where id=p_league for update;
+ perform 1 from private.leagues where id=p_league for no key update;
  if p_run is null then
  perform 1 from private.seasons where league_id=p_league order by created_at desc limit 1 for update;
  if auth.uid() is null or not private.is_league_commissioner(p_league) then
@@ -106,6 +108,15 @@ begin
  if not exists(select 1 from private.seasons where id=r.season_id and league_id=p_league) then
  raise exception using errcode='42501',message='Automation league scope mismatch.';end if;
  end if;
+end $$;
+-- The protected Week 17 correction originally locked its event before the
+-- season. Serialize it with lifecycle publication before taking child locks;
+-- retain its complete authentication, objective-result and lineage authority.
+do $$ declare d text;anchor text;begin
+ d:=pg_get_functiondef('api.correct_finalized_week17_result(uuid,text,integer,integer,text,text)'::regprocedure);
+ anchor:=E'begin\n  select event.* into strict v_event';
+ if strpos(d,anchor)=0 then raise exception 'Protected correction lock baseline changed';end if;
+ execute replace(d,anchor,E'begin\n  perform 1 from private.leagues where id=(select league_id from private.sports_events where id=p_event_id) for no key update;\n  perform 1 from private.seasons where id=(select season_id from private.sports_events where id=p_event_id) for update;\n  select event.* into strict v_event');
 end $$;
 create function private.automation_week_enrolled(p_season uuid,p_week integer) returns boolean
 language sql stable set search_path='' as $$
