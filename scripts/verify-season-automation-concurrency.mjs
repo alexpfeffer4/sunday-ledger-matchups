@@ -358,7 +358,7 @@ for (const command of ["PAUSE", "REVOKE"]) {
 // Existing result and provider accounting transactions lock policy before
 // season. Lifecycle work must yield without making that writer wait in a cycle.
 for (const policy of ["player_result_policy", "odds_refresh_policy"]) {
-  const f = await fixture(`busy-${policy}`);
+  const f = await fixture(`busy-${policy.replaceAll("_", "-")}`);
   const writer = session(`${prefix}-${policy}`);
   writer.child.stdin.write(`BEGIN; SET LOCAL statement_timeout='20s';
     SELECT 1 FROM private.${policy} FOR UPDATE;
