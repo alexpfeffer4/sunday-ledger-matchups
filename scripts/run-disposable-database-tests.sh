@@ -8,11 +8,15 @@ mkdir -p acceptance-reports
 # Include nested SQL in the existing disposable-only diagnostics. A busy
 # PL/pgSQL fixture otherwise appears as one opaque lives_ok() call. This does
 # not change query planning, the five-minute limit or any acceptance assertion.
-PGOPTIONS='-c statement_timeout=10000' psql "$TEST_SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 \
+if ! timeout 15s docker exec -e PGOPTIONS='-c statement_timeout=10000' \
+  supabase_db_sunday-ledger-matchups psql -U supabase_admin -d postgres -X -v ON_ERROR_STOP=1 \
   -c 'CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA extensions;' \
   -c "ALTER DATABASE postgres SET pg_stat_statements.track = 'all';" \
   -c 'SELECT extensions.pg_stat_statements_reset();' \
-  > acceptance-reports/database-query-timing-setup.log 2>&1
+  > acceptance-reports/database-query-timing-setup.log 2>&1; then
+  cat acceptance-reports/database-query-timing-setup.log >&2
+  exit 1
+fi
 
 # At 90 seconds retain the actual wait state, then sample every 30 seconds
 # while the suite runs so a later stall is captured as well. At five minutes
@@ -78,6 +82,7 @@ fi
 if [[ "$suite_status" -ne 0 && -f acceptance-reports/database-query-timings.log ]]; then
   cat acceptance-reports/database-query-timings.log >&2
 fi
-PGOPTIONS='-c statement_timeout=10000' psql "$TEST_SUPABASE_DB_URL" -X \
+timeout 15s docker exec -e PGOPTIONS='-c statement_timeout=10000' \
+  supabase_db_sunday-ledger-matchups psql -U supabase_admin -d postgres -X \
   -c 'ALTER DATABASE postgres RESET pg_stat_statements.track;' >/dev/null
 exit "$suite_status"
