@@ -1,8 +1,9 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-/** Keep the action's network work outside the subsequent state assertion's
- * polling budget. A completed HTTP response alone does not prove app success;
- * callers also check actual success feedback or the committed result. */
+/** Wait for action response headers, then observable application completion.
+ * RSC streams can remain open after the mutation commits and success renders;
+ * stream closure is not an action completion condition. Without a status
+ * message, callers must assert the rendered or committed result themselves. */
 export async function completePlayerPropsAction(
   page: Page,
   button: Locator,
@@ -19,7 +20,6 @@ export async function completePlayerPropsAction(
     button.click(clickOptions),
   ]);
   expect(response.ok()).toBe(true);
-  expect(await response.finished()).toBeNull();
   if (successMessage)
     await expect(
       page.getByRole("status").filter({ hasText: successMessage }).last(),
