@@ -1,0 +1,686 @@
+[
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "cold-browser-matchup",
+    "n": 5,
+    "observedTransferBytes": [405661, 412013, 409986, 412750, 413361],
+    "median": 412013,
+    "min": 405661,
+    "max": 413361
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "repeat-matchup",
+    "n": 5,
+    "observedTransferBytes": [59148, 66217, 54690, 57207, 67565],
+    "median": 59148,
+    "min": 54690,
+    "max": 67565
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "nav-slate",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 3480, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 3480
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "nav-card",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "nav-league",
+    "n": 5,
+    "observedTransferBytes": [2073, 2073, 2073, 8362, 8360],
+    "median": 2073,
+    "min": 2073,
+    "max": 8362
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "nav-matchup",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "props-filter",
+    "n": 5,
+    "observedTransferBytes": [112358, 112723, 112729, 112703, 112713],
+    "median": 112713,
+    "min": 112358,
+    "max": 112729
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "game-filter",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "selection-and-stake",
+    "n": 5,
+    "observedTransferBytes": [112362, 112728, 112723, 112709, 112713],
+    "median": 112713,
+    "min": 112362,
+    "max": 112728
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "stake-edit",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "paused-edit-focus",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "review-cache-miss-synthetic-500ms",
+    "n": 5,
+    "observedTransferBytes": [8130, 8189, 8150, 8153, 8107],
+    "median": 8150,
+    "min": 8107,
+    "max": 8189
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "review-cache-hit",
+    "n": 5,
+    "observedTransferBytes": [8130, 8189, 8150, 8153, 8107],
+    "median": 8150,
+    "min": 8107,
+    "max": 8189
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "review-changed-terms",
+    "n": 5,
+    "observedTransferBytes": [8085, 8126, 8097, 8074, 8105],
+    "median": 8097,
+    "min": 8074,
+    "max": 8126
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "expired-review-recovery",
+    "n": 1,
+    "observedTransferBytes": [8303],
+    "median": 8303,
+    "min": 8303,
+    "max": 8303
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "confirm-to-receipt",
+    "n": 5,
+    "observedTransferBytes": [26321, 27989, 30483, 26649, 26772],
+    "median": 26772,
+    "min": 26321,
+    "max": 30483
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "standings",
+    "n": 5,
+    "observedTransferBytes": [47048, 45154, 40448, 54916, 54914],
+    "median": 47048,
+    "min": 40448,
+    "max": 54916
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "historical-matchup",
+    "n": 5,
+    "observedTransferBytes": [47959, 32187, 47955, 47956, 47956],
+    "median": 47956,
+    "min": 32187,
+    "max": 47959
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-desktop",
+    "action": "refresh-while-reading",
+    "n": 5,
+    "observedTransferBytes": [43516, 43751, 44197, 45294, 45470],
+    "median": 44197,
+    "min": 43516,
+    "max": 45470
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "cold-browser-matchup",
+    "n": 5,
+    "observedTransferBytes": [404340, 405625, 405990, 406190, 406541],
+    "median": 405990,
+    "min": 404340,
+    "max": 406541
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "repeat-matchup",
+    "n": 5,
+    "observedTransferBytes": [49551, 53942, 54307, 51401, 51752],
+    "median": 51752,
+    "min": 49551,
+    "max": 54307
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "nav-slate",
+    "n": 5,
+    "observedTransferBytes": [26066, 19884, 750, 6614, 6611],
+    "median": 6614,
+    "min": 750,
+    "max": 26066
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "nav-card",
+    "n": 5,
+    "observedTransferBytes": [300, 300, 300, 300, 23713],
+    "median": 300,
+    "min": 300,
+    "max": 23713
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "nav-league",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 1105, 0],
+    "median": 0,
+    "min": 0,
+    "max": 1105
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "nav-matchup",
+    "n": 5,
+    "observedTransferBytes": [6290, 0, 0, 1574, 0],
+    "median": 0,
+    "min": 0,
+    "max": 6290
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "props-filter",
+    "n": 5,
+    "observedTransferBytes": [104189, 104194, 104178, 104194, 104192],
+    "median": 104192,
+    "min": 104178,
+    "max": 104194
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "game-filter",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "selection-and-stake",
+    "n": 5,
+    "observedTransferBytes": [104196, 104197, 104180, 103716, 103729],
+    "median": 104180,
+    "min": 103716,
+    "max": 104197
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "stake-edit",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "paused-edit-focus",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "review-cache-miss-synthetic-500ms",
+    "n": 5,
+    "observedTransferBytes": [8141, 8142, 8151, 8153, 8137],
+    "median": 8142,
+    "min": 8137,
+    "max": 8153
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "review-cache-hit",
+    "n": 5,
+    "observedTransferBytes": [8141, 8142, 8151, 8153, 8137],
+    "median": 8142,
+    "min": 8137,
+    "max": 8153
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "review-changed-terms",
+    "n": 5,
+    "observedTransferBytes": [8082, 8094, 8106, 8091, 8109],
+    "median": 8094,
+    "min": 8082,
+    "max": 8109
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "expired-review-recovery",
+    "n": 1,
+    "observedTransferBytes": [8313],
+    "median": 8313,
+    "min": 8313,
+    "max": 8313
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "confirm-to-receipt",
+    "n": 5,
+    "observedTransferBytes": [31923, 32064, 32162, 32279, 32393],
+    "median": 32162,
+    "min": 31923,
+    "max": 32393
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "standings",
+    "n": 5,
+    "observedTransferBytes": [27837, 30222, 27837, 28307, 27837],
+    "median": 27837,
+    "min": 27837,
+    "max": 30222
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "historical-matchup",
+    "n": 5,
+    "observedTransferBytes": [29236, 29237, 29236, 29236, 29236],
+    "median": 29236,
+    "min": 29236,
+    "max": 29237
+  },
+  {
+    "condition": "16g-96s-sun-mon-complete-mobile-4x-150ms",
+    "action": "refresh-while-reading",
+    "n": 5,
+    "observedTransferBytes": [39539, 42415, 42599, 40844, 41784],
+    "median": 41784,
+    "min": 39539,
+    "max": 42599
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "cold-browser-matchup",
+    "n": 5,
+    "observedTransferBytes": [419813, 405243, 421726, 422226, 422906],
+    "median": 421726,
+    "min": 405243,
+    "max": 422906
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "repeat-matchup",
+    "n": 5,
+    "observedTransferBytes": [53808, 50436, 65445, 56220, 51910],
+    "median": 53808,
+    "min": 50436,
+    "max": 65445
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "nav-slate",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 1913],
+    "median": 0,
+    "min": 0,
+    "max": 1913
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "nav-card",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "nav-league",
+    "n": 5,
+    "observedTransferBytes": [2053, 9931, 11535, 3622, 11532],
+    "median": 9931,
+    "min": 2053,
+    "max": 11535
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "nav-matchup",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "props-filter",
+    "n": 5,
+    "observedTransferBytes": [107968, 18678, 108109, 17234, 12250],
+    "median": 18678,
+    "min": 12250,
+    "max": 108109
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "game-filter",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "selection-and-stake",
+    "n": 5,
+    "observedTransferBytes": [107969, 108224, 106674, 108226, 106891],
+    "median": 107969,
+    "min": 106674,
+    "max": 108226
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "stake-edit",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "paused-edit-focus",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "review-cache-miss-synthetic-500ms",
+    "n": 5,
+    "observedTransferBytes": [8122, 8129, 8149, 8155, 8171],
+    "median": 8149,
+    "min": 8122,
+    "max": 8171
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "review-cache-hit",
+    "n": 5,
+    "observedTransferBytes": [8122, 8129, 8149, 8155, 8171],
+    "median": 8149,
+    "min": 8122,
+    "max": 8171
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "review-changed-terms",
+    "n": 5,
+    "observedTransferBytes": [8099, 8116, 8062, 8101, 8073],
+    "median": 8099,
+    "min": 8062,
+    "max": 8116
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "expired-review-recovery",
+    "n": 1,
+    "observedTransferBytes": [8329],
+    "median": 8329,
+    "min": 8329,
+    "max": 8329
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "confirm-to-receipt",
+    "n": 5,
+    "observedTransferBytes": [131955, 131990, 132208, 132476, 133643],
+    "median": 132208,
+    "min": 131955,
+    "max": 133643
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "standings",
+    "n": 5,
+    "observedTransferBytes": [40111, 30309, 40112, 29797, 45103],
+    "median": 40111,
+    "min": 29797,
+    "max": 45103
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "historical-matchup",
+    "n": 5,
+    "observedTransferBytes": [30674, 33193, 39441, 39741, 47910],
+    "median": 39441,
+    "min": 30674,
+    "max": 47910
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-desktop",
+    "action": "refresh-while-reading",
+    "n": 5,
+    "observedTransferBytes": [44441, 49685, 43268, 44382, 44516],
+    "median": 44441,
+    "min": 43268,
+    "max": 49685
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "cold-browser-matchup",
+    "n": 5,
+    "observedTransferBytes": [403402, 404787, 405153, 405376, 405652],
+    "median": 405153,
+    "min": 403402,
+    "max": 405652
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "repeat-matchup",
+    "n": 5,
+    "observedTransferBytes": [56373, 53070, 58480, 58350, 58626],
+    "median": 58350,
+    "min": 53070,
+    "max": 58626
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "nav-slate",
+    "n": 5,
+    "observedTransferBytes": [750, 750, 0, 750, 750],
+    "median": 750,
+    "min": 0,
+    "max": 750
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "nav-card",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "nav-league",
+    "n": 5,
+    "observedTransferBytes": [1096, 0, 1096, 1096, 1096],
+    "median": 1096,
+    "min": 0,
+    "max": 1096
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "nav-matchup",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 1571, 0],
+    "median": 0,
+    "min": 0,
+    "max": 1571
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "props-filter",
+    "n": 5,
+    "observedTransferBytes": [98903, 99348, 99350, 10168, 7782],
+    "median": 98903,
+    "min": 7782,
+    "max": 99350
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "game-filter",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "selection-and-stake",
+    "n": 5,
+    "observedTransferBytes": [98902, 99343, 99818, 99349, 99815],
+    "median": 99349,
+    "min": 98902,
+    "max": 99818
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "stake-edit",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "paused-edit-focus",
+    "n": 5,
+    "observedTransferBytes": [0, 0, 0, 0, 0],
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "review-cache-miss-synthetic-500ms",
+    "n": 5,
+    "observedTransferBytes": [8138, 8133, 8136, 8156, 8125],
+    "median": 8136,
+    "min": 8125,
+    "max": 8156
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "review-cache-hit",
+    "n": 5,
+    "observedTransferBytes": [8138, 8133, 8136, 8156, 8125],
+    "median": 8136,
+    "min": 8125,
+    "max": 8156
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "review-changed-terms",
+    "n": 5,
+    "observedTransferBytes": [8129, 8108, 8099, 8072, 8114],
+    "median": 8108,
+    "min": 8072,
+    "max": 8129
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "expired-review-recovery",
+    "n": 1,
+    "observedTransferBytes": [8325],
+    "median": 8325,
+    "min": 8325,
+    "max": 8325
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "confirm-to-receipt",
+    "n": 5,
+    "observedTransferBytes": [34500, 31076, 29623, 34814, 34995],
+    "median": 34500,
+    "min": 29623,
+    "max": 34995
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "standings",
+    "n": 5,
+    "observedTransferBytes": [32271, 27840, 27838, 30359, 27840],
+    "median": 27840,
+    "min": 27838,
+    "max": 32271
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "historical-matchup",
+    "n": 5,
+    "observedTransferBytes": [29229, 29229, 34356, 29229, 32787],
+    "median": 29229,
+    "min": 29229,
+    "max": 34356
+  },
+  {
+    "condition": "16g-96s-sun-mon-pending-mobile-4x-150ms",
+    "action": "refresh-while-reading",
+    "n": 5,
+    "observedTransferBytes": [38622, 39582, 39756, 39865, 40875],
+    "median": 39756,
+    "min": 38622,
+    "max": 40875
+  }
+]
