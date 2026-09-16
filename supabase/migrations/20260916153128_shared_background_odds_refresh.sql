@@ -61,6 +61,22 @@ returns interval language sql immutable set search_path='' as $$
  else case when p_cutoff<=p_now+interval '24 hours' then interval '1 hour' else interval '6 hours' end end;
 $$;
 
+-- Published coverage plus the stored, consented future schedule for planning ONLY.
+-- Future prop families are an upper bound, not authority to publish identities.
+create function private.background_quote_forecast_scope(p_now timestamptz,p_reset timestamptz)
+returns table(external_event_id text,family text,opens_at timestamptz,cutoff timestamptz)
+language sql volatile set search_path='' as $$
+ select b.external_event_id,b.family,p_now,max(b.cutoff) from private.background_quote_targets() b group by 1,2
+ union all
+ select 'forecast:'||(g->>'gameId'),f.family,greatest(p_now,private.automation_open_time(a.season_id,(g->>'week')::integer)),(g->>'scheduledStartAt')::timestamptz
+ from private.season_automation a cross join lateral jsonb_array_elements(a.schedule) g
+ cross join (values('MAIN'),('player_pass_yds'),('player_rush_yds'),('player_reception_yds')) f(family)
+ where a.enabled and not a.revoked and (g->>'scheduledStartAt')::timestamptz>p_now
+ and private.automation_open_time(a.season_id,(g->>'week')::integer)<p_reset
+ and (g->>'week')::integer>coalesce((select max(w.nfl_week) from private.season_weeks w where w.season_id=a.season_id and w.state<>'PLANNED'),0)
+ and exists(select 1 from jsonb_array_elements(private.automation_expected_games(a.season_id,(g->>'week')::integer)) expected where expected->>'gameId'=g->>'gameId');
+$$;
+
 -- Re-evaluate on the first claim each UTC day. Conservative remaining public
 -- coverage estimate; demand/result headroom is additional to the provider floor.
 create function private.evaluate_background_quote_budget() returns jsonb
@@ -70,21 +86,23 @@ declare p private.odds_refresh_policy%rowtype;s private.background_quote_setting
 begin
  select * into strict p from private.odds_refresh_policy;
  select * into strict s from private.background_quote_settings for update;
- if s.forecast_at::date=t::date and s.forecast is not null then return s.forecast;end if;
+ if (s.forecast_at at time zone 'UTC')::date=(t at time zone 'UTC')::date and s.forecast is not null then return s.forecast;end if;
  days_left:=greatest(1,extract(epoch from (p.next_quota_reset_at-t))/86400);
- -- Union by provider event/family: additional leagues never multiply credits.
- select coalesce(sum(greatest(0,extract(epoch from cutoff-t-interval '24 hours'))/21600
- +least(86400,greatest(0,extract(epoch from cutoff-t)))/3600),0)
- into estimate from (select external_event_id,family,max(cutoff) cutoff from private.background_quote_targets() where family<>'MAIN' group by 1,2) scope;
- -- MAIN is one bulk request per tick, even across sixteen distinct games.
- estimate:=estimate+3*(select count(*) from generate_series(date_trunc('hour',t),
- coalesce((select max(cutoff) from private.background_quote_targets() where family='MAIN'),t),interval '15 minutes') tick
- where tick>=t and exists(select 1 from private.background_quote_targets() b where b.family='MAIN' and b.cutoff>tick)
- and (extract(minute from tick)=0 or exists(select 1 from private.background_quote_targets() b where b.family='MAIN' and b.cutoff>tick and b.cutoff<=tick+interval '6 hours')));
- -- Future as-yet unpublished coverage gets a conservative 16-game weekly
- -- envelope; it is forecast only and can never become acquisition scope.
- estimate:=ceil(estimate+greatest(0,ceil(days_left/7)-1)*2650);
- essential:=greatest(2000,ceil(days_left*greatest(150,
+ -- Deduplicate across leagues. Clip all work at the actual provider reset.
+ with scope as (select external_event_id,family,min(opens_at) opens_at,least(max(cutoff),p.next_quota_reset_at) ends_at,max(cutoff) cutoff
+ from private.background_quote_forecast_scope(t,p.next_quota_reset_at) group by 1,2)
+ select coalesce(sum(1+ceil(greatest(0,extract(epoch from least(ends_at,cutoff-interval '24 hours')-opens_at))/21600)
+ +ceil(greatest(0,extract(epoch from ends_at-greatest(opens_at,cutoff-interval '24 hours')))/3600)),0)
+ into estimate from scope where family<>'MAIN' and ends_at>opens_at;
+ -- Bulk MAIN, including the faster windows and partial cycles. A new batch
+ -- boundary adds one conservative request rather than undercounting its start.
+ with scope as materialized (select external_event_id,min(opens_at) opens_at,max(cutoff) cutoff
+ from private.background_quote_forecast_scope(t,p.next_quota_reset_at) where family='MAIN' group by 1), ticks as (
+ select tick from generate_series(date_trunc('hour',t),p.next_quota_reset_at,interval '15 minutes') tick)
+ select estimate+3*(count(*)+1) into estimate from ticks
+ where tick>=t and tick<p.next_quota_reset_at and exists(select 1 from scope b where b.opens_at<=tick and b.cutoff>tick)
+ and (extract(minute from tick)=0 or exists(select 1 from scope b where b.opens_at<=tick and b.cutoff>tick and b.cutoff<=tick+interval '6 hours'));
+ essential:=greatest(2000,ceil(days_left*greatest(150,case when p.usage_day=(t at time zone 'UTC')::date then p.daily_credits else 0 end,
  coalesce((select sum(greatest(reserved_cost,coalesce(charged_cost,0))) / 7.0 from private.shared_quote_requests
  where purpose='DEMAND' and attempted_at>t-interval '7 days'),0))));
  available:=greatest(0,least(coalesce(p.requests_remaining,0)-s.provider_reserve-essential,
@@ -148,6 +166,8 @@ begin
  if exists(select 1 from unnest(p_request_ids) requested_id(id) left join private.shared_quote_requests req on req.id=requested_id.id
   where req.state is distinct from 'SUCCEEDED' or (p_strict and req.fetched_at<t-interval '120 seconds') or req.fetched_at>t) then raise exception 'QUOTE_SOURCE_STALE'; end if;
  perform 1 from private.shared_quote_coverage cov where exists(select 1 from private.shared_quote_requests req where req.id=any(p_request_ids) and cov.external_event_id=any(req.event_ids) and cov.family=any(req.families)) order by cov.external_event_id,cov.family for share;
+ t:=clock_timestamp();
+ if p_strict and exists(select 1 from private.shared_quote_requests where id=any(p_request_ids) and fetched_at<t-interval '120 seconds') then raise exception 'QUOTE_SOURCE_STALE';end if;
  select sl.id into strict v_slate_id from private.slates sl where sl.week_id=w.id
   and exists(select 1 from private.slate_items i where i.slate_id=sl.id and private.is_effective_slate_item(i.id)) order by sl.version desc limit 1;
  for r in select req.* from private.shared_quote_requests req where req.id=any(p_request_ids) order by req.fetched_at,req.id loop
@@ -222,13 +242,15 @@ $$;
 
 create or replace function api.apply_live_quote_plan(p_plan_id uuid) returns jsonb
 language plpgsql security definer set search_path='' as $$
-declare u uuid:=(select auth.uid());p private.member_quote_plans%rowtype;
+declare u uuid:=(select auth.uid());p private.member_quote_plans%rowtype;result jsonb;
 begin
  select * into p from private.member_quote_plans where id=p_plan_id and actor_user_id=u;
  if u is null or p.id is null or not exists(select 1 from private.league_memberships m join private.season_weeks w on w.league_id=m.league_id where w.id=p.week_id and m.user_id=u)
  then raise exception using errcode='42501',message='League membership required.';end if;
  if p.expires_at<=clock_timestamp() then raise exception 'QUOTE_REFRESH_LEASE_INVALID';end if;
- return private.apply_shared_quote_events(p.week_id,null,p.request_ids,true);
+ result:=private.apply_shared_quote_events(p.week_id,null,p.request_ids,true);
+ if p.expires_at<=clock_timestamp() then raise exception 'QUOTE_REFRESH_LEASE_INVALID';end if;
+ return result;
 end $$;
 
 create function private.assert_background_quote_run(p_run_id uuid)
@@ -448,11 +470,18 @@ begin
  if private.player_prop_offers_enabled(w.id) then menu:=api.get_player_prop_menu(p_league_slug);end if;
  select coalesce(jsonb_agg(jsonb_build_object('eventId',e.id,'entryOpen',private.event_accepts_entries(e.id),
  'entryClosesAt',case when private.is_rolling_week(w.id) then e.entry_cutoff_at else w.common_lock_at end,
- 'freshness',coalesce((select jsonb_agg(jsonb_build_object('family',f.family,'readAt',clock_timestamp(),'checkedAt',r.fetched_at,'observedAt',f.observed_at,
- 'delayed',coalesce(r.fetched_at+private.background_quote_interval(f.family,e.entry_cutoff_at,clock_timestamp())+interval '5 minutes'<clock_timestamp(),true)))
- from (select case when h.subject_id is null then 'MAIN' else case h.statistic when 'PASSING_YARDS' then 'player_pass_yds' when 'RUSHING_YARDS' then 'player_rush_yds' when 'RECEIVING_YARDS' then 'player_reception_yds' end end family,
- h.verified_request_id request_id,min(m.observed_at) observed_at from private.live_quote_heads h join private.market_snapshots m on m.id=h.market_snapshot_id
- where h.event_id=e.id group by 1,2) f left join private.shared_quote_requests r on r.id=f.request_id),'[]'::jsonb)) order by e.scheduled_start_at,e.id),'[]'::jsonb)
+ 'freshness',coalesce((select jsonb_agg(jsonb_build_object('family',f.family,'readAt',clock_timestamp(),'checkedAt',f.checked_at,'observedAt',f.observed_at,
+ 'delayed',coalesce(f.checked_at+private.background_quote_interval(f.family,e.entry_cutoff_at,clock_timestamp())+interval '5 minutes'<clock_timestamp(),true)))
+ from (select families.family,coalesce(evidence.checked_at,applied.fetched_at) checked_at,evidence.observed_at
+ from (select 'MAIN'::text family union select case m.statistic when 'PASSING_YARDS' then 'player_pass_yds' when 'RUSHING_YARDS' then 'player_rush_yds' when 'RECEIVING_YARDS' then 'player_reception_yds' end
+ from private.week_player_menu m where m.event_id=e.id and m.subject_id is not null) families
+ left join lateral (select min(coalesce(r.fetched_at,i.fetched_at)) checked_at,min(m.observed_at) observed_at
+ from private.live_quote_heads h join private.market_snapshots m on m.id=h.market_snapshot_id
+ left join private.shared_quote_requests r on r.id=h.verified_request_id and r.state='SUCCEEDED'
+ left join private.live_odds_imports i on i.id=h.verified_import_id
+ where h.event_id=e.id and (case when h.subject_id is null then 'MAIN' else case h.statistic when 'PASSING_YARDS' then 'player_pass_yds' when 'RUSHING_YARDS' then 'player_rush_yds' when 'RECEIVING_YARDS' then 'player_reception_yds' end end)=families.family) evidence on true
+ left join private.background_quote_applications a on a.event_id=e.id and a.family=families.family
+ left join private.shared_quote_requests applied on applied.id=a.request_id and applied.state='SUCCEEDED') f),'[]'::jsonb)) order by e.scheduled_start_at,e.id),'[]'::jsonb)
  into events from private.sports_events e where e.week_id=w.id;
  return jsonb_build_object('status','READY','weekId',w.id,'pollingEnabled',(select polling_enabled from private.background_quote_settings),
  'quotes',heads,'events',events,'slots',coalesce((select jsonb_agg(slot-'candidates') from jsonb_array_elements(menu->'slots') slot),'[]'::jsonb),

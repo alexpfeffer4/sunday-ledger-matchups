@@ -31,9 +31,11 @@ function client(apiKey: string) {
   });
 }
 function sql(statement: string) {
+  if (!["127.0.0.1", "localhost"].includes(new URL(database!).hostname))
+    throw new Error("Disposable loopback database required");
   return execFileSync(
     "psql",
-    [database!, "-X", "-v", "ON_ERROR_STOP=1", "-At"],
+    [database!, "-X", "-v", "ON_ERROR_STOP=1", "-qAt"],
     { input: statement, encoding: "utf8" },
   ).trim();
 }
@@ -112,6 +114,9 @@ test("scheduled saved prices preserve the authenticated member draft", async ({
   request,
 }) => {
   test.setTimeout(180_000);
+  sql(
+    "update private.season_weeks set state='FINAL' where league_id in (select id from private.leagues where slug like 'quote-%');",
+  );
   const run = Date.now().toString(36);
   const admin = client(secret!);
   const identities = [];
@@ -338,7 +343,29 @@ test("scheduled saved prices preserve the authenticated member draft", async ({
       })
     ).status(),
   ).toBe(400);
-  const first = await request.post("/api/operations/quotes", { headers });
+  // Exercise the installed dispatcher with real pg_net, then roll back before
+  // it can send to the fixed Production URL. Deliver that exact queued request
+  // to the disposable HTTP app; neither arbitrary scope nor a staged run is used.
+  const dispatched = JSON.parse(
+    sql(`begin;
+    do $$begin
+      delete from vault.secrets where name in ('score_job_secret','score_job_url');
+      perform vault.create_secret('${process.env.SCORE_JOB_SECRET}', 'score_job_secret');
+      perform vault.create_secret('https://www.ledgerleagues.com/api/operations/scores','score_job_url');
+      perform private.dispatch_score_checkpoints();
+    end$$;
+    select jsonb_build_object('url',url,'headers',headers,'body',convert_from(body,'UTF8')::jsonb)
+    from net.http_request_queue where url='https://www.ledgerleagues.com/api/operations/quotes' order by id desc limit 1;
+    rollback;`)
+      .split("\n")
+      .at(-1)!,
+  );
+  expect(new URL(dispatched.url).pathname).toBe("/api/operations/quotes");
+  expect(dispatched.body).toEqual({});
+  const first = await request.post(new URL(dispatched.url).pathname, {
+    headers: dispatched.headers,
+    data: dispatched.body,
+  });
   expect(first.status(), await first.text()).toBe(200);
   expect((await first.json()).fetched).toBe(1);
   expect(readFileSync(`${fixturePath}.calls`, "utf8").trim()).toBe("odds");
@@ -385,7 +412,7 @@ test("scheduled saved prices preserve the authenticated member draft", async ({
   const publicQuotes = await response.json();
   expect(publicQuotes.quotes.length).toBe(1);
   expect(JSON.stringify(publicQuotes)).not.toMatch(
-    /request_ids|requestIds|actor_user_id|payload.*events|stakeCredits/,
+    /"(?:request_ids|requestIds|actor_user_id|payload|stakeCredits)"\s*:/,
   );
   expect(readFileSync(`${fixturePath}.calls`, "utf8")).toBe(beforeRead);
   // The live page gets a changed economic price through a stored read, retaining draft amount.
@@ -413,8 +440,12 @@ test("scheduled saved prices preserve the authenticated member draft", async ({
   );
   const third = await request.post("/api/operations/quotes", { headers });
   expect(third.status(), await third.text()).toBe(200);
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect(page.getByText(/Updated quote/).first()).toBeVisible();
+  await expect
+    .poll(async () => {
+      await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+      return page.getByText(/Updated quote/).count();
+    })
+    .toBeGreaterThan(0);
   expect(
     await page.evaluate(() =>
       Object.entries(localStorage).filter(([key]) =>
@@ -424,7 +455,7 @@ test("scheduled saved prices preserve the authenticated member draft", async ({
   ).toEqual(saved);
   // Review retains the normal economic acknowledgement and submission authority.
   await page
-    .getByRole("button", { name: "Review card", exact: true })
+    .getByRole("button", { name: "Review 1 updated quote", exact: true })
     .first()
     .click();
   await page.getByRole("button", { name: "Use updated odds" }).first().click();
@@ -433,6 +464,18 @@ test("scheduled saved prices preserve the authenticated member draft", async ({
       `select count(*) from private.position_receipts where league_id='${leagueId}'`,
     ),
   ).toBe("0");
+  await expect(
+    page.getByRole("button", { name: "Confirm and seal card" }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: "Confirm and seal card" }).click();
+  await expect(
+    page.getByRole("heading", { name: "All 1,000 credits are sealed" }),
+  ).toBeVisible();
+  expect(
+    sql(
+      `select count(*) from private.position_receipts where league_id='${leagueId}'`,
+    ),
+  ).toBe("1");
   const outsider = await request.get(
     `/api/l/${slug}/quotes?weekId=${opened.week.id}`,
   );

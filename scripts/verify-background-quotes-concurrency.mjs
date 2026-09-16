@@ -25,7 +25,7 @@ const parallel = async (statement) =>
     })
   ).stdout.trim();
 const fixture = readFileSync(
-  "supabase/tests/background_quote_refresh.test.sql",
+  "supabase/tests/z_background_quote_refresh.test.sql",
   "utf8",
 );
 const setup = fixture.slice(
