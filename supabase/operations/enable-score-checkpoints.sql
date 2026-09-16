@@ -35,6 +35,9 @@ begin
  if to_regprocedure('private.attach_player_result_dispatch_hook()') is not null then
   perform private.attach_player_result_dispatch_hook();
  end if;
+ if to_regprocedure('private.attach_season_automation_dispatch_hook()') is not null then
+  perform private.attach_season_automation_dispatch_hook();
+ end if;
 end;
 $preserve_player_hook$;
 

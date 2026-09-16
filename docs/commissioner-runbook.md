@@ -1,5 +1,12 @@
 # Sunday Ledger Live commissioner runbook
 
+September 16 Version 2.2 amendment: explicitly enrolled future Live weeks use
+[standing season consent and automatic SYSTEM props validation](governance/2026-09-16-season-automation.md).
+Their preparation, opening and postseason checkpoints run automatically; no
+routine weekly commissioner confirmation is required. Use the Season automation
+panel for enrollment, timing, exceptions and pause/resume. The manual sequence
+below remains relevant to unenrolled scopes and authorized recovery.
+
 September 14 policy note: read this runbook with the
 [automatic-weekly-results amendment](governance/2026-09-14-automatic-weekly-finalization.md)
 and [rolling-submission amendment](governance/2026-09-14-rolling-submissions.md).

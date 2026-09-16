@@ -54,6 +54,11 @@ const checked = apiFunctions(readFileSync(checkedPath, "utf8"));
 const generated = apiFunctions(readFileSync(generatedPath, "utf8"));
 const differences = [];
 const checkedFunctions = [
+  "get_season_automation",
+  "configure_season_automation",
+  "claim_season_automation",
+  "claim_season_automation_odds",
+  "complete_season_automation",
   "apply_live_quote_plan",
   "bind_card_submission_intent",
   "claim_nflverse_reconciliation",

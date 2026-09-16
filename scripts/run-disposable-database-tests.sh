@@ -5,6 +5,19 @@ set -euo pipefail
 node -e 'const u = new URL(process.env.TEST_SUPABASE_DB_URL); if (!["localhost", "127.0.0.1"].includes(u.hostname)) throw new Error("Database acceptance requires loopback");'
 mkdir -p acceptance-reports
 
+# Include nested SQL in the existing disposable-only diagnostics. A busy
+# PL/pgSQL fixture otherwise appears as one opaque lives_ok() call. This does
+# not change query planning, the five-minute limit or any acceptance assertion.
+if ! timeout 15s docker exec -e PGOPTIONS='-c statement_timeout=10000' \
+  supabase_db_sunday-ledger-matchups psql -U supabase_admin -d postgres -X -v ON_ERROR_STOP=1 \
+  -c 'CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA extensions;' \
+  -c "ALTER DATABASE postgres SET pg_stat_statements.track = 'all';" \
+  -c 'SELECT extensions.pg_stat_statements_reset();' \
+  > acceptance-reports/database-query-timing-setup.log 2>&1; then
+  cat acceptance-reports/database-query-timing-setup.log >&2
+  exit 1
+fi
+
 # At 90 seconds retain the actual wait state, then sample every 30 seconds
 # while the suite runs so a later stall is captured as well. At five minutes
 # fail the gate instead of waiting an hour.
@@ -35,6 +48,15 @@ suite_pid=$!
           where datname=current_database() and pid<>pg_backend_pid()
           order by query_start nulls last;" \
       >> acceptance-reports/database-waits.log 2>&1 || true
+    PGOPTIONS='-c statement_timeout=10000' psql "$TEST_SUPABASE_DB_URL" -X \
+      -c "select clock_timestamp() as observed_at, calls,
+                 round(total_exec_time::numeric,1) as total_ms,
+                 round(mean_exec_time::numeric,1) as mean_ms,
+                 round((jit_generation_time+jit_inlining_time+jit_optimization_time+jit_emission_time)::numeric,1) as jit_ms,
+                 left(query,800) as disposable_test_query
+          from extensions.pg_stat_statements where not toplevel
+          order by total_exec_time desc limit 12;" \
+      > acceptance-reports/database-query-timings.log 2>&1 || true
     diagnostic_interval=30
   done
 ) &
@@ -57,4 +79,10 @@ fi
 if [[ "$suite_status" -ne 0 && -f acceptance-reports/database-resources.log ]]; then
   tail -n 40 acceptance-reports/database-resources.log >&2
 fi
+if [[ "$suite_status" -ne 0 && -f acceptance-reports/database-query-timings.log ]]; then
+  cat acceptance-reports/database-query-timings.log >&2
+fi
+timeout 15s docker exec -e PGOPTIONS='-c statement_timeout=10000' \
+  supabase_db_sunday-ledger-matchups psql -U supabase_admin -d postgres -X \
+  -c 'ALTER DATABASE postgres RESET pg_stat_statements.track;' >/dev/null
 exit "$suite_status"

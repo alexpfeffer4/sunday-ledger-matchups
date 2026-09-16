@@ -553,13 +553,16 @@ select is(
   1,
   'the member-scoped read model projects the published slate'
 );
+-- Replay the original request even after a newer import changes physical row order.
 select lives_ok(
   $$select api.publish_live_week_slate(
     '62000000-0000-4000-8000-000000000001',
     (
-      select id from private.live_odds_imports
-      where season_id = '64000000-0000-4000-8000-000000000001'
-      limit 1
+      select (response_json ->> 'importId')::uuid
+      from private.command_receipts
+      where actor_user_id = '61000000-0000-4000-8000-000000000001'
+        and command_name = 'STORE_LIVE_ODDS_IMPORT'
+        and idempotency_key = 'store-stage3-live-import'
     ),
     array['provider-event-buf-nyj'],
     'publish-stage3-live-slate'

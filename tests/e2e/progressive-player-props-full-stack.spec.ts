@@ -467,3 +467,186 @@ update private.player_catalog_jobs set next_attempt_at=clock_timestamp() where w
   expect(published.progressiveActivated).toBe(true);
   await owner.auth.signOut();
 });
+
+test("one season approval opens two future weeks automatically and pause retains pending props", async ({
+  page,
+  request,
+  baseURL,
+}, info) => {
+  test.setTimeout(180_000);
+  if (
+    !baseURL ||
+    !["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname)
+  )
+    throw new Error("Automation acceptance requires a disposable app.");
+  const run = `${Date.now().toString(36)}-${info.project.name}`;
+  const slug = `season-auto-${run}`;
+  const identity = {
+    email: `${slug}@acceptance.test`,
+    password: `Season-Auto-${run}-48!`,
+  };
+  const admin = client(secret!);
+  const created = await admin.auth.admin.createUser({
+    ...identity,
+    email_confirm: true,
+  });
+  expect(created.error).toBeNull();
+  const owner = client(key!);
+  expect((await owner.auth.signInWithPassword(identity)).error).toBeNull();
+  const fixtureSource = [
+    helpers(
+      "supabase/tests/open_week2_props_after_reset.test.sql",
+      "AFTER RESET CUTOVER HELPERS",
+    ),
+    helpers(
+      "supabase/tests/progressive_player_props.test.sql",
+      "PROGRESSIVE PLAYER PROPS HELPERS",
+    ),
+    readFileSync("supabase/tests/fixtures/season_automation.sql.inc", "utf8"),
+  ].join("\n");
+  const fixture = JSON.parse(
+    sql(`begin; ${fixtureSource}
+    select pg_temp.automation_context(${quoteSql(slug)},${quoteSql(created.data.user!.id)}::uuid,false); commit;`),
+  );
+  await signIn(page, identity, `/l/${slug}/commissioner`);
+  const panel = page.getByRole("region", { name: "Season automation" });
+  await expect(panel.getByText("Not enabled", { exact: true })).toBeVisible();
+  const consent = panel.getByRole("checkbox");
+  await expect(consent).not.toBeChecked();
+  await consent.check();
+  await completePlayerPropsAction(
+    page,
+    panel.getByRole("button", { name: "Approve and enable for this season" }),
+    "Season automation approved",
+  );
+  await expect(
+    panel.getByRole("button", { name: "Pause automation" }),
+  ).toBeVisible();
+  const data = `${quoteSql(JSON.stringify(fixture))}::jsonb`;
+  for (const week of [3, 4]) {
+    const stage = sql(`begin; ${fixtureSource}
+      ${week === 4 ? `update private.season_weeks set state='FINAL' where season_id=${quoteSql(fixture.season)}::uuid and nfl_week=3;` : ""}
+      select pg_temp.automation_stage(${data},${week},${week === 3}); commit;`);
+    expect(stage).toMatch(/[0-9a-f-]{36}/);
+    for (const operation of ["VALIDATE", "OPEN"]) {
+      const runId = sql(
+        `begin; ${fixtureSource} select pg_temp.automation_run(${data},'${operation}',${week}); commit;`,
+      );
+      const completed = await rpc(admin, "complete_season_automation", {
+        p_run: runId,
+      });
+      expect(completed.status).toBe(
+        operation === "OPEN" ? "OPENED" : "VALIDATED",
+      );
+    }
+    await page.reload();
+    await expect(
+      panel.getByText(
+        new RegExp(`Week ${week} players validated automatically`),
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", {
+        name: /Confirm reviewed|Confirm available|Open reviewed week/,
+      }),
+    ).toHaveCount(0);
+    const currentMenu = await menu(owner, slug);
+    expect(currentMenu.automaticValidation).toBe(true);
+    expect(currentMenu.canOpen).toBe(false);
+    expect(currentMenu.slots.filter((slot) => slot.subjectId)).toHaveLength(
+      week === 3 ? 1 : 0,
+    );
+  }
+  await completePlayerPropsAction(
+    page,
+    panel.getByRole("button", { name: "Pause automation" }),
+    "Future preparation and publication paused",
+  );
+  await expect(
+    panel.getByRole("button", { name: "Resume automation" }),
+  ).toBeVisible();
+  const audit = JSON.parse(
+    sql(`select jsonb_build_object(
+    'consents',(select count(*) from private.season_automation_consents where season_id=${quoteSql(fixture.season)}::uuid),
+    'system',(select count(*) from private.player_prop_system_validations v join private.season_weeks w on w.id=v.week_id where w.season_id=${quoteSql(fixture.season)}::uuid),
+    'human',(select count(*) from private.player_prop_progressive_reviews r join private.season_weeks w on w.id=r.week_id where w.season_id=${quoteSql(fixture.season)}::uuid and w.nfl_week>=3),
+    'cards',(select count(*) from private.weekly_cards c join private.season_weeks w on w.id=c.week_id where w.season_id=${quoteSql(fixture.season)}::uuid and w.nfl_week>=3),
+    'pending',(select count(*) from private.player_catalog_pending_slots((select id from private.season_weeks where season_id=${quoteSql(fixture.season)}::uuid and nfl_week=4))));`),
+  );
+  expect(audit).toEqual({
+    consents: 1,
+    system: 2,
+    human: 0,
+    cards: 8,
+    pending: 6,
+  });
+  expect(
+    (await owner.schema("api").rpc("claim_season_automation")).error,
+  ).not.toBeNull();
+  expect(
+    (
+      await request.post("/api/operations/season-automation", { data: {} })
+    ).status(),
+  ).toBe(401);
+  expect(
+    (
+      await request.post("/api/operations/season-automation?league=other", {
+        headers: { Authorization: `Bearer ${process.env.SCORE_JOB_SECRET}` },
+        data: {},
+      })
+    ).status(),
+  ).toBe(400);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `test-results/season-automation-${info.project.name}.png`,
+    fullPage: true,
+  });
+});
+
+test("isolated season automation Preview shows one approval and pause controls", async ({
+  page,
+}, info) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/preview/season-automation");
+  const panel = page.getByRole("region", { name: "Season automation" });
+  await expect(
+    page.getByRole("heading", { name: "Your season, ready each week." }),
+  ).toBeVisible();
+  await expect(panel.getByRole("checkbox")).not.toBeChecked();
+  await page.screenshot({
+    path: `test-results/season-automation-preview-approval-${info.project.name}.png`,
+    fullPage: true,
+  });
+  await panel.getByRole("checkbox").check();
+  await panel
+    .getByRole("button", { name: "Approve and enable for this season" })
+    .click();
+  await expect(
+    panel.getByRole("button", { name: "Pause automation" }),
+  ).toBeVisible();
+  await panel.getByRole("button", { name: "Pause automation" }).click();
+  await expect(
+    panel.getByRole("button", { name: "Resume automation" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Show automatically opened week" })
+    .click();
+  await expect(
+    panel.getByText(/Week 3 players validated automatically/),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  expect(errors).toEqual([]);
+  await page.screenshot({
+    path: `test-results/season-automation-preview-open-${info.project.name}.png`,
+    fullPage: true,
+  });
+});

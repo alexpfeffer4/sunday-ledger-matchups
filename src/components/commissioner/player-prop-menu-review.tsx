@@ -41,6 +41,7 @@ export function PlayerPropMenuReview({
   refreshAction,
   slots,
   frozen,
+  automaticValidation = false,
   amendmentPending = false,
   amendmentApplied = false,
   progressiveAvailability = false,
@@ -55,6 +56,7 @@ export function PlayerPropMenuReview({
   refreshAction: FormAction;
   slots: PlayerPropMenuSlot[];
   frozen: boolean;
+  automaticValidation?: boolean;
   amendmentPending?: boolean;
   amendmentApplied?: boolean;
   progressiveAvailability?: boolean;
@@ -91,6 +93,7 @@ export function PlayerPropMenuReview({
     groups.set(slot.eventId, [...(groups.get(slot.eventId) ?? []), slot]);
   const pending = preparing || confirming || refreshing || opening;
   const readOnly =
+    automaticValidation ||
     frozen ||
     (progressiveAvailability && (progressiveActivated || amendmentApplied));
   const changedChoices = slots.some(
@@ -105,26 +108,30 @@ export function PlayerPropMenuReview({
         Player props · Full slate
       </p>
       <h2 id="player-menu-heading" className="mt-2 text-xl font-bold">
-        {progressiveAvailability
-          ? readOnly
-            ? "Published players and pending slots"
-            : "Review available players and pending slots"
-          : frozen
-            ? "This week’s player menu"
-            : "Review the proposed player menu"}
+        {automaticValidation
+          ? "Automatic player menu"
+          : progressiveAvailability
+            ? readOnly
+              ? "Published players and pending slots"
+              : "Review available players and pending slots"
+            : frozen
+              ? "This week’s player menu"
+              : "Review the proposed player menu"}
       </h2>
       <p className="text-graphite mt-2 text-sm leading-6">
-        {progressiveAvailability
-          ? readOnly
-            ? "Published players stay fixed. Eligible empty slots may fill automatically before that game’s betting cutoff."
-            : "Review the available players and the policy for pending slots. Eligible empty slots may fill automatically before each game’s betting cutoff. Published players stay fixed for everyone."
-          : amendmentPending
-            ? "Review the proposed player menu for the Week 2 update. Activating the reviewed update will fix this player menu for everyone."
-            : frozen && amendmentApplied
-              ? "The reviewed Week 2 update fixed this player menu. Lines may appear later for these players; unavailable player slots cannot be replaced."
-              : frozen
-                ? "The first accepted bet fixed the players for this week. Lines may appear later for these players; unavailable player slots cannot be replaced."
-                : "Check the proposed quarterback, running back and receiver for each team. Resolve flagged choices, then confirm the whole slate once. The first accepted bet fixes these players for everyone."}
+        {automaticValidation
+          ? "Players are selected and validated automatically under your approved season policy. No weekly confirmation is needed. Offered players stay fixed; eligible unavailable slots may fill before their game’s cutoff."
+          : progressiveAvailability
+            ? readOnly
+              ? "Published players stay fixed. Eligible empty slots may fill automatically before that game’s betting cutoff."
+              : "Review the available players and the policy for pending slots. Eligible empty slots may fill automatically before each game’s betting cutoff. Published players stay fixed for everyone."
+            : amendmentPending
+              ? "Review the proposed player menu for the Week 2 update. Activating the reviewed update will fix this player menu for everyone."
+              : frozen && amendmentApplied
+                ? "The reviewed Week 2 update fixed this player menu. Lines may appear later for these players; unavailable player slots cannot be replaced."
+                : frozen
+                  ? "The first accepted bet fixed the players for this week. Lines may appear later for these players; unavailable player slots cannot be replaced."
+                  : "Check the proposed quarterback, running back and receiver for each team. Resolve flagged choices, then confirm the whole slate once. The first accepted bet fixes these players for everyone."}
       </p>
       {slots.length ? (
         <p className="mt-3 text-sm font-semibold">
@@ -274,7 +281,8 @@ export function PlayerPropMenuReview({
                             {selected.roleEvidence}
                           </p>
                         ) : null}
-                        {slot.subjectId &&
+                        {!automaticValidation &&
+                        slot.subjectId &&
                         slot.publicationMode === "AUTOMATIC" ? (
                           <p className="text-muted mt-2 text-xs leading-5">
                             Added automatically before kickoff under the

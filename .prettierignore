@@ -7,3 +7,5 @@ package-lock.json
 src/app/icon.svg
 src/design/identity/generated-vectors.ts
 src/design/identity/**/*.svg
+# SQL include fixtures have no supported formatter; .inc otherwise infers HTML.
+supabase/tests/fixtures/*.sql.inc
