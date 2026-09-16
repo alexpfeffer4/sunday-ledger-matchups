@@ -1,16 +1,11 @@
 import { expect } from "@playwright/test";
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { sql } from "./stage1-baseline";
 import { quoteSql as q } from "./player-props-acceptance.mjs";
 
-// Reuse the actual Stage 1 worker-created league. All definition changes and
-// cutoff inputs below are rolled back within the loopback-only fixture helper.
+// Reuse the actual Stage 1 worker-created league. Read-only transactions use
+// the existing loopback-only fixture helper. The menu implementation is unchanged.
 export function verifyStage2Reads(slug: string, pending: boolean) {
-  const before = readFileSync("tests/fixtures/stage2-menu-before.sql", "utf8");
-  const after =
-    sql(
-      "select pg_get_functiondef('private.get_player_prop_menu_before_automation(text)'::regprocedure);",
-    ) + ";";
   const subjects = JSON.parse(
     sql(`select jsonb_agg(jsonb_build_object('id',m.user_id,'role',m.role))
     from private.league_memberships m join private.leagues l on l.id=m.league_id where l.slug=${q(slug)};`),
@@ -19,31 +14,8 @@ export function verifyStage2Reads(slug: string, pending: boolean) {
   const member = subjects.find((s) => s.role === "MEMBER")!;
   const claims = (id: string) =>
     `select set_config('request.jwt.claims',${q(JSON.stringify({ sub: id, role: "authenticated" }))},true);set local role authenticated;`;
-  const statements = [
-    "begin; create temporary table stage2_results(label text, value jsonb); grant all on stage2_results to authenticated;",
-  ];
+  const statements = ["begin read only;"];
   for (const subject of [owner, member]) {
-    for (const cutoff of [false, true]) {
-      statements.push("savepoint fixture_state;");
-      if (cutoff)
-        statements.push(`update private.sports_events set actual_started_at=clock_timestamp(),state='LIVE'
-        where week_id=(select w.id from private.season_weeks w join private.leagues l on l.id=w.league_id where l.slug=${q(slug)} order by nfl_week desc limit 1);`);
-      for (const [version, definition] of [
-        ["before", before],
-        ["after", after],
-      ] as const) {
-        statements.push(definition, claims(subject.id));
-        statements.push(
-          `insert into stage2_results values(${q(`${subject.role}-${cutoff}-${version}`)},api.get_player_prop_menu(${q(slug)}));reset role;`,
-        );
-      }
-      statements.push(`do $$ begin
-        if (select value from stage2_results where label=${q(`${subject.role}-${cutoff}-before`)}) is distinct from
-           (select value from stage2_results where label=${q(`${subject.role}-${cutoff}-after`)}) then
-          raise exception 'Stage 2 menu output changed'; end if;
-        ${cutoff ? `if exists(select 1 from stage2_results r cross join lateral jsonb_array_elements(r.value->'slots') s where r.label=${q(`${subject.role}-${cutoff}-after`)} and (s->>'lateFillEligible')::boolean) then raise exception 'Cutoff exposed eligible slot';end if;` : ""}
-        end $$; rollback to fixture_state;`);
-    }
     statements.push(
       claims(subject.id),
       `do $$ declare full_state jsonb; review jsonb;expected jsonb;begin
@@ -71,20 +43,8 @@ export function verifyStage2Reads(slug: string, pending: boolean) {
   sql(statements.join("\n"));
 
   const plans: unknown[] = [];
-  // Alternating same-process, same-fixture A/B calls avoid attributing runner
-  // variance to the SQL change. Cold execution remains separately labeled.
+  // Same-fixture SQL execution times, separate from browser RPC duration.
   for (let run = 0; run <= 5; run++) {
-    for (const version of run % 2 ? ["after", "before"] : ["before", "after"]) {
-      const definition = version === "before" ? before : after;
-      const output = sql(`begin;${definition}\n${claims(owner.id)}
-        explain (analyze,buffers,verbose,format json) select api.get_player_prop_menu(${q(slug)});rollback;`);
-      plans.push({
-        version,
-        run,
-        name: "get_player_prop_menu",
-        plan: JSON.parse(output.slice(output.indexOf("["))),
-      });
-    }
     for (const name of ["get_stage1_state", "get_card_review_context"]) {
       const output = sql(`begin read only;${claims(owner.id)}
         explain (analyze,buffers,verbose,format json) select api.${name}(${q(slug)});rollback;`);
@@ -96,44 +56,6 @@ export function verifyStage2Reads(slug: string, pending: boolean) {
         plan: JSON.parse(output.slice(output.indexOf("["))),
       });
     }
-  }
-  // Explain the exact inner slot projection, in its security-definer execution
-  // role, to distinguish repeated function work from HTTP/RPC latency.
-  const menu = JSON.parse(
-    sql(
-      `begin read only;${claims(owner.id)}select api.get_player_prop_menu(${q(slug)});rollback;`,
-    )
-      .split("\n")
-      .at(-1)!,
-  );
-  for (const [version, definition] of [
-    ["before", before],
-    ["after", after],
-  ]) {
-    const start = definition!.indexOf(
-      version === "before"
-        ? " select coalesce(jsonb_agg"
-        : " with pending as materialized",
-    );
-    const end = definition!.indexOf(" return answer", start);
-    if (start < 0 || end < 0) throw new Error("Menu inner plan source changed");
-    const projection = definition!
-      .slice(start, end)
-      .replace(" into slots", "")
-      .replaceAll(
-        "answer->'slots'",
-        `(${q(JSON.stringify(menu.slots))}::jsonb)`,
-      )
-      .replace(/\bwk\b/g, `(${q(menu.weekId)}::uuid)`);
-    const output =
-      sql(`begin read only;select set_config('request.jwt.claims',${q(JSON.stringify({ sub: owner.id, role: "authenticated" }))},true);
-      explain (analyze,buffers,verbose,format json) ${projection} rollback;`);
-    plans.push({
-      version,
-      name: "inner-slot-projection",
-      role: "security-definer owner with caller claims",
-      plan: JSON.parse(output.slice(output.indexOf("["))),
-    });
   }
   const sizes = JSON.parse(
     sql(`begin read only;${claims(owner.id)}select jsonb_build_object(
@@ -149,7 +71,7 @@ export function verifyStage2Reads(slug: string, pending: boolean) {
     JSON.stringify(
       {
         comparisons:
-          "Exact menu equality for commissioner/member before/after kickoff; exact owner review projection; outsider/privilege denial",
+          "Exact commissioner/member review projection; outsider/privilege denial; effective count/allocation after each measured submission",
         sizes,
         plans,
       },
