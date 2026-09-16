@@ -15,6 +15,31 @@ if (
     const url = new URL(
       typeof input === "string" || input instanceof URL ? input : input.url,
     );
+    if (
+      process.env.STAGE1_BASELINE === "1" &&
+      url.hostname === "github.com" &&
+      url.pathname.startsWith("/nflverse/")
+    ) {
+      const fixture = JSON.parse(
+        readFileSync(`${process.env.ODDS_TEST_FIXTURE}.nflverse`, "utf8"),
+      );
+      const text = url.pathname.endsWith("games.csv")
+        ? fixture.scheduleCsv
+        : /roster_\d+\.csv$/.test(url.pathname)
+          ? fixture.rosterCsv
+          : null;
+      if (text === null)
+        throw new Error("Unconfigured disposable nflverse response");
+      appendFileSync(`${process.env.ODDS_TEST_FIXTURE}.calls`, "nflverse\n");
+      return new Response(text, {
+        headers: { "last-modified": new Date().toUTCString() },
+      });
+    }
+    if (
+      process.env.STAGE1_BASELINE === "1" &&
+      !["localhost", "127.0.0.1", "api.the-odds-api.com"].includes(url.hostname)
+    )
+      throw new Error("Stage 1 refuses an unsubstituted external request");
     const failureFile = process.env.AUTH_TEST_FAILURE_FILE;
     if (
       failureFile &&
@@ -42,6 +67,27 @@ if (
     if (url.hostname !== "api.the-odds-api.com") {
       const started = performance.now();
       const response = await originalFetch(input, init);
+      if (
+        process.env.STAGE1_BASELINE === "1" &&
+        !response.ok &&
+        ["127.0.0.1", "localhost"].includes(url.hostname) &&
+        url.pathname.startsWith("/rest/v1/")
+      ) {
+        const failure = await response
+          .clone()
+          .json()
+          .catch(() => ({}));
+        // Only the error code from the disposable database, never SQL text,
+        // request arguments, credentials or private member data.
+        console.error(
+          "STAGE1_RPC_FAILURE",
+          JSON.stringify({
+            endpoint: url.pathname,
+            status: response.status,
+            code: failure.code ?? "UNKNOWN",
+          }),
+        );
+      }
       if (
         process.env.RELEASE_QUERY_LOG &&
         ["127.0.0.1", "localhost"].includes(url.hostname) &&
@@ -104,13 +150,47 @@ if (
         },
       });
     }
+    if (
+      process.env.STAGE1_BASELINE === "1" &&
+      url.pathname.endsWith("/events")
+    ) {
+      const fixture = JSON.parse(
+        readFileSync(process.env.ODDS_TEST_FIXTURE, "utf8"),
+      );
+      appendFileSync(`${process.env.ODDS_TEST_FIXTURE}.calls`, "events\n");
+      return Response.json(
+        fixture.payload.map(
+          ({ id, sport_key, commence_time, home_team, away_team }) => ({
+            id,
+            sport_key,
+            commence_time,
+            home_team,
+            away_team,
+          }),
+        ),
+        {
+          headers: {
+            "x-requests-remaining": String(fixture.remaining ?? 19900),
+          },
+        },
+      );
+    }
     if (!url.pathname.endsWith("/odds"))
       throw new Error("Unexpected provider endpoint in quote acceptance");
     const fixture = JSON.parse(
       readFileSync(process.env.ODDS_TEST_FIXTURE, "utf8"),
     );
     appendFileSync(`${process.env.ODDS_TEST_FIXTURE}.calls`, "odds\n");
-    return Response.json(fixture.payload, {
+    if (fixture.delayMs)
+      await new Promise((resolve) => setTimeout(resolve, fixture.delayMs));
+    const selected = new Set(
+      (url.searchParams.get("eventIds") ?? "").split(",").filter(Boolean),
+    );
+    const payload =
+      process.env.STAGE1_BASELINE === "1" && selected.size
+        ? fixture.payload.filter((event) => selected.has(event.id))
+        : fixture.payload;
+    return Response.json(payload, {
       status: fixture.status ?? 200,
       headers: {
         "x-requests-remaining": String(fixture.remaining ?? 1490),

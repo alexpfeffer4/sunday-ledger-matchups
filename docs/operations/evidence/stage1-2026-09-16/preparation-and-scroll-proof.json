@@ -1,0 +1,196 @@
+{
+  "complete": {
+    "preparation-proof": {
+      "audit": {
+        "runs": [
+          {
+            "operation": "SYNC_SCHEDULE",
+            "state": "SUCCEEDED",
+            "failure": null
+          },
+          {
+            "operation": "PREPARE",
+            "state": "FAILED",
+            "failure": "MARKETS_UNAVAILABLE"
+          },
+          {
+            "operation": "PREPARE",
+            "state": "SUCCEEDED",
+            "failure": null
+          },
+          {
+            "operation": "VALIDATE",
+            "state": "SUCCEEDED",
+            "failure": null
+          },
+          {
+            "operation": "OPEN",
+            "state": "SUCCEEDED",
+            "failure": null
+          }
+        ],
+        "plans": 1,
+        "weeks": 1
+      },
+      "counts": {
+        "cards": 10,
+        "human": 0,
+        "consents": 1,
+        "validations": 1
+      },
+      "games": 16,
+      "slots": 96,
+      "pending": 0,
+      "calendarProfile": false,
+      "slatePreset": "ALL_NFL_GAMES",
+      "priorReceiptUnchanged": true
+    },
+    "16g-96s-sun-mon-complete-desktop-1-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 261,
+      "after": 261
+    },
+    "16g-96s-sun-mon-complete-desktop-2-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    },
+    "16g-96s-sun-mon-complete-desktop-3-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    },
+    "16g-96s-sun-mon-complete-desktop-4-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    },
+    "16g-96s-sun-mon-complete-desktop-5-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    },
+    "16g-96s-sun-mon-complete-mobile-4x-150ms-1-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    },
+    "16g-96s-sun-mon-complete-mobile-4x-150ms-2-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    },
+    "16g-96s-sun-mon-complete-mobile-4x-150ms-3-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    },
+    "16g-96s-sun-mon-complete-mobile-4x-150ms-4-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    },
+    "16g-96s-sun-mon-complete-mobile-4x-150ms-5-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    }
+  },
+  "pending": {
+    "preparation-proof": {
+      "audit": {
+        "runs": [
+          {
+            "operation": "SYNC_SCHEDULE",
+            "state": "SUCCEEDED",
+            "failure": null
+          },
+          {
+            "operation": "PREPARE",
+            "state": "FAILED",
+            "failure": "MARKETS_UNAVAILABLE"
+          },
+          {
+            "operation": "PREPARE",
+            "state": "SUCCEEDED",
+            "failure": null
+          },
+          {
+            "operation": "VALIDATE",
+            "state": "SUCCEEDED",
+            "failure": null
+          },
+          {
+            "operation": "OPEN",
+            "state": "SUCCEEDED",
+            "failure": null
+          }
+        ],
+        "plans": 1,
+        "weeks": 1
+      },
+      "counts": {
+        "cards": 10,
+        "human": 0,
+        "consents": 1,
+        "validations": 1
+      },
+      "games": 16,
+      "slots": 96,
+      "pending": 36,
+      "calendarProfile": false,
+      "slatePreset": "ALL_NFL_GAMES",
+      "priorReceiptUnchanged": true
+    },
+    "16g-96s-sun-mon-pending-desktop-1-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 261,
+      "after": 261
+    },
+    "16g-96s-sun-mon-pending-desktop-2-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    },
+    "16g-96s-sun-mon-pending-desktop-3-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    },
+    "16g-96s-sun-mon-pending-desktop-4-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    },
+    "16g-96s-sun-mon-pending-desktop-5-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    },
+    "16g-96s-sun-mon-pending-mobile-4x-150ms-1-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    },
+    "16g-96s-sun-mon-pending-mobile-4x-150ms-2-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    },
+    "16g-96s-sun-mon-pending-mobile-4x-150ms-3-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    },
+    "16g-96s-sun-mon-pending-mobile-4x-150ms-4-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    },
+    "16g-96s-sun-mon-pending-mobile-4x-150ms-5-scroll": {
+      "activation": "DOM click on actual refresh control; no auto-scroll",
+      "before": 300,
+      "after": 300
+    }
+  }
+}

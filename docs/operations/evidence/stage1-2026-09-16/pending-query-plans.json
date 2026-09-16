@@ -1,0 +1,908 @@
+[
+  {
+    "name": "get_player_prop_menu",
+    "run": 0,
+    "cache": "first-observed",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 168.473,
+          "Actual Total Time": 168.474,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": [
+            "api.get_player_prop_menu('stage1-pending-mu4jtmc5'::text)"
+          ],
+          "Shared Hit Blocks": 9299,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": 3326399053120054300,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.008,
+        "Triggers": [],
+        "Execution Time": 168.483
+      }
+    ]
+  },
+  {
+    "name": "get_player_prop_menu",
+    "run": 1,
+    "cache": "repeat",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 169.401,
+          "Actual Total Time": 169.401,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": [
+            "api.get_player_prop_menu('stage1-pending-mu4jtmc5'::text)"
+          ],
+          "Shared Hit Blocks": 9299,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": 3326399053120054300,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.008,
+        "Triggers": [],
+        "Execution Time": 169.413
+      }
+    ]
+  },
+  {
+    "name": "get_player_prop_menu",
+    "run": 2,
+    "cache": "repeat",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 172.26,
+          "Actual Total Time": 172.26,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": [
+            "api.get_player_prop_menu('stage1-pending-mu4jtmc5'::text)"
+          ],
+          "Shared Hit Blocks": 9299,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": 3326399053120054300,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.014,
+        "Triggers": [],
+        "Execution Time": 172.274
+      }
+    ]
+  },
+  {
+    "name": "get_player_prop_menu",
+    "run": 3,
+    "cache": "repeat",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 169.613,
+          "Actual Total Time": 169.613,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": [
+            "api.get_player_prop_menu('stage1-pending-mu4jtmc5'::text)"
+          ],
+          "Shared Hit Blocks": 9299,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": 3326399053120054300,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.015,
+        "Triggers": [],
+        "Execution Time": 169.63
+      }
+    ]
+  },
+  {
+    "name": "get_player_prop_menu",
+    "run": 4,
+    "cache": "repeat",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 169.067,
+          "Actual Total Time": 169.068,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": [
+            "api.get_player_prop_menu('stage1-pending-mu4jtmc5'::text)"
+          ],
+          "Shared Hit Blocks": 9299,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": 3326399053120054300,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.009,
+        "Triggers": [],
+        "Execution Time": 169.078
+      }
+    ]
+  },
+  {
+    "name": "get_player_prop_menu",
+    "run": 5,
+    "cache": "repeat",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 171.23,
+          "Actual Total Time": 171.231,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": [
+            "api.get_player_prop_menu('stage1-pending-mu4jtmc5'::text)"
+          ],
+          "Shared Hit Blocks": 9299,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": 3326399053120054300,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.006,
+        "Triggers": [],
+        "Execution Time": 171.241
+      }
+    ]
+  },
+  {
+    "name": "get_stage1_state",
+    "run": 0,
+    "cache": "first-observed",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 35.221,
+          "Actual Total Time": 35.221,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": ["api.get_stage1_state('stage1-pending-mu4jtmc5'::text)"],
+          "Shared Hit Blocks": 9500,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": 4286496555672396000,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.01,
+        "Triggers": [],
+        "Execution Time": 35.232
+      }
+    ]
+  },
+  {
+    "name": "get_stage1_state",
+    "run": 1,
+    "cache": "repeat",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 34.576,
+          "Actual Total Time": 34.576,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": ["api.get_stage1_state('stage1-pending-mu4jtmc5'::text)"],
+          "Shared Hit Blocks": 9500,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": 4286496555672396000,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.008,
+        "Triggers": [],
+        "Execution Time": 34.588
+      }
+    ]
+  },
+  {
+    "name": "get_stage1_state",
+    "run": 2,
+    "cache": "repeat",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 34.712,
+          "Actual Total Time": 34.712,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": ["api.get_stage1_state('stage1-pending-mu4jtmc5'::text)"],
+          "Shared Hit Blocks": 9500,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": 4286496555672396000,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.008,
+        "Triggers": [],
+        "Execution Time": 34.722
+      }
+    ]
+  },
+  {
+    "name": "get_stage1_state",
+    "run": 3,
+    "cache": "repeat",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 34.906,
+          "Actual Total Time": 34.907,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": ["api.get_stage1_state('stage1-pending-mu4jtmc5'::text)"],
+          "Shared Hit Blocks": 9500,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": 4286496555672396000,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.008,
+        "Triggers": [],
+        "Execution Time": 34.917
+      }
+    ]
+  },
+  {
+    "name": "get_stage1_state",
+    "run": 4,
+    "cache": "repeat",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 34.758,
+          "Actual Total Time": 34.758,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": ["api.get_stage1_state('stage1-pending-mu4jtmc5'::text)"],
+          "Shared Hit Blocks": 9500,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": 4286496555672396000,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.009,
+        "Triggers": [],
+        "Execution Time": 34.769
+      }
+    ]
+  },
+  {
+    "name": "get_stage1_state",
+    "run": 5,
+    "cache": "repeat",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 35.033,
+          "Actual Total Time": 35.034,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": ["api.get_stage1_state('stage1-pending-mu4jtmc5'::text)"],
+          "Shared Hit Blocks": 9500,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": 4286496555672396000,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.009,
+        "Triggers": [],
+        "Execution Time": 35.044
+      }
+    ]
+  },
+  {
+    "name": "get_live_quote_heads",
+    "run": 0,
+    "cache": "first-observed",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 5.147,
+          "Actual Total Time": 5.147,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": [
+            "api.get_live_quote_heads('stage1-pending-mu4jtmc5'::text)"
+          ],
+          "Shared Hit Blocks": 2124,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": -7385402525490882000,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.008,
+        "Triggers": [],
+        "Execution Time": 5.156
+      }
+    ]
+  },
+  {
+    "name": "get_live_quote_heads",
+    "run": 1,
+    "cache": "repeat",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 4.971,
+          "Actual Total Time": 4.972,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": [
+            "api.get_live_quote_heads('stage1-pending-mu4jtmc5'::text)"
+          ],
+          "Shared Hit Blocks": 2124,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": -7385402525490882000,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.008,
+        "Triggers": [],
+        "Execution Time": 4.981
+      }
+    ]
+  },
+  {
+    "name": "get_live_quote_heads",
+    "run": 2,
+    "cache": "repeat",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 4.805,
+          "Actual Total Time": 4.805,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": [
+            "api.get_live_quote_heads('stage1-pending-mu4jtmc5'::text)"
+          ],
+          "Shared Hit Blocks": 2124,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": -7385402525490882000,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.007,
+        "Triggers": [],
+        "Execution Time": 4.813
+      }
+    ]
+  },
+  {
+    "name": "get_live_quote_heads",
+    "run": 3,
+    "cache": "repeat",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 4.715,
+          "Actual Total Time": 4.715,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": [
+            "api.get_live_quote_heads('stage1-pending-mu4jtmc5'::text)"
+          ],
+          "Shared Hit Blocks": 2124,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": -7385402525490882000,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.008,
+        "Triggers": [],
+        "Execution Time": 4.723
+      }
+    ]
+  },
+  {
+    "name": "get_live_quote_heads",
+    "run": 4,
+    "cache": "repeat",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 4.596,
+          "Actual Total Time": 4.597,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": [
+            "api.get_live_quote_heads('stage1-pending-mu4jtmc5'::text)"
+          ],
+          "Shared Hit Blocks": 2124,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": -7385402525490882000,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.007,
+        "Triggers": [],
+        "Execution Time": 4.604
+      }
+    ]
+  },
+  {
+    "name": "get_live_quote_heads",
+    "run": 5,
+    "cache": "repeat",
+    "plan": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 4.715,
+          "Actual Total Time": 4.715,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Output": [
+            "api.get_live_quote_heads('stage1-pending-mu4jtmc5'::text)"
+          ],
+          "Shared Hit Blocks": 2124,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Query Identifier": -7385402525490882000,
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.007,
+        "Triggers": [],
+        "Execution Time": 4.723
+      }
+    ]
+  }
+]

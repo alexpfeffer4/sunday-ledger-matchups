@@ -7,14 +7,15 @@ league policy, Production configuration or migration contents.
 
 ## Required verification contract
 
-| Job group           | Coverage                                                                                                                                                                                |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Quality             | Identity assets, formatting, lint, strict types, all unit/property tests and production build through the unchanged `npm run verify` command                                            |
-| Database            | Every migration on a clean database, the complete pgTAP suite with its unchanged five-minute watchdog, disabled-scheduler assertions and generated authoritative signatures             |
-| Native              | All eight concurrency scripts, including season automation, quota, rolling submissions, card reset, player props/results, shared quotes and progressive publication                     |
-| Full stack: desktop | Progressive props and season automation, then all eight existing desktop spec files through real Auth, server actions, RSC and RPC                                                      |
-| Full stack: mobile  | Progressive props and season automation, then email authentication and the five existing member spec files on mobile WebKit                                                             |
-| Shared UI           | Existing Phase 8/public/practice/navigation/identity/accessibility checks on desktop Chromium and WebKit, plus Phase 6 matchup and Phase 7 history checks on desktop, WebKit and mobile |
+| Job group                    | Coverage                                                                                                                                                                                |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Quality                      | Identity assets, formatting, lint, strict types, all unit/property tests and production build through the unchanged `npm run verify` command                                            |
+| Database                     | Every migration on a clean database, the complete pgTAP suite with its unchanged five-minute watchdog, disabled-scheduler assertions and generated authoritative signatures             |
+| Native                       | All eight concurrency scripts, including season automation, quota, rolling submissions, card reset, player props/results, shared quotes and progressive publication                     |
+| Full stack: desktop          | Progressive props and season automation, then all eight existing desktop spec files through real Auth, server actions, RSC and RPC                                                      |
+| Full stack: mobile           | Progressive props and season automation, then email authentication and the five existing member spec files on mobile WebKit                                                             |
+| Shared UI                    | Existing Phase 8/public/practice/navigation/identity/accessibility checks on desktop Chromium and WebKit, plus Phase 6 matchup and Phase 7 history checks on desktop, WebKit and mobile |
+| Stage 1 preparation/baseline | Real worker PREPARE failure/retry, catalog, validation/opening, replay and representative desktop/mobile measurements for complete and pending menus on separate disposable stacks      |
 
 `Acceptance complete` depends on every group and runs even after a failure. Its
 checker requires explicit success for every dependency, including the full-stack
@@ -22,6 +23,12 @@ matrix result. A missing, failed, cancelled or skipped group fails the summary.
 The existing full-stack report checker still requires every selected test to
 execute with zero skips; its retry policy is unchanged. Matrix fail-fast is off
 so a desktop failure does not cancel the mobile evidence, or vice versa.
+
+The Stage 1 matrix additionally requires one selected preparation/baseline scenario
+per menu state, zero skips and zero retries. Each retains 182 observations under
+the declared device conditions. The database group verifies the exact preparation
+repair body/privileges as well as existing shared-odds parity. See the
+[Stage 1 status and retained baseline](simplification-stage1-status.md).
 
 For merge review, require the complete workflow to pass on the current head.
 If required status checks are configured later, use `Acceptance complete` as the
@@ -48,6 +55,13 @@ before the historical-policy member journeys, and the entitled fixture owner is
 provisioned again. Native automation fixtures are reset before legacy native
 checks; progressive native publication retains its separate reset. The database
 conformance job starts independently with no committed native/browser fixtures.
+
+After either browser-lane database reset, the loopback-only readiness helper asks
+PostgREST to reload configuration/schema and waits up to thirty seconds for its
+service-role OpenAPI document to include the migrated preparation RPC. It does
+not call that RPC or create a user to probe readiness. Missing schema/cache state
+is retried; authorization errors fail immediately. This closes the observed race
+between completed reset migrations and API schema-cache refresh.
 
 Keep Node 24, lockfile-based `npm ci`, npm caching, SHA-pinned actions, current
 browser projects, report validation, artifact retention, cleanup and cancellation

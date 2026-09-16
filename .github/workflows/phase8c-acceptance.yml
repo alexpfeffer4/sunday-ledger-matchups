@@ -49,6 +49,8 @@ jobs:
         run: bash scripts/run-disposable-database-tests.sh
       - name: Verify exact shared quote release function parity
         run: psql "$TEST_SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/operations/shared-odds-refresh-parity.sql
+      - name: Verify automatic preparation repair body and privileges
+        run: test "$(psql "$TEST_SUPABASE_DB_URL" -X -qAt -v ON_ERROR_STOP=1 -f supabase/operations/stage1-preparation-parity.sql)" = t
       - name: Verify disabled scheduler configuration on disposable database
         run: |
           psql "$TEST_SUPABASE_DB_URL" -v ON_ERROR_STOP=1 --single-transaction \
@@ -170,7 +172,9 @@ jobs:
       - name: Require zero skipped progressive availability tests
         run: node scripts/check-full-stack-report.mjs acceptance-reports/progressive-props.json
       - name: Isolate legacy Auth journeys from progressive source policy
-        run: supabase db reset --local --no-seed
+        run: |
+          supabase db reset --local --no-seed
+          node scripts/wait-for-disposable-api.mjs
       - name: Verify authenticated scheduled quote updates
         env:
           PLAYWRIGHT_JSON_OUTPUT_FILE: acceptance-reports/shared-odds.json
@@ -181,7 +185,9 @@ jobs:
       - name: Require zero skipped shared quote tests
         run: node scripts/check-full-stack-report.mjs acceptance-reports/shared-odds.json
       - name: Isolate legacy Auth journeys from scheduled quote fixtures
-        run: supabase db reset --local --no-seed
+        run: |
+          supabase db reset --local --no-seed
+          node scripts/wait-for-disposable-api.mjs
       - name: Provision isolated entitled owner
         run: |
           OWNER_USER_ID="$(node scripts/provision-owner-rehearsal-acceptance.mjs)"
@@ -247,6 +253,57 @@ jobs:
             browser: chromium
           - project: mobile
             browser: webkit
+  stage1:
+    name: Actual preparation and representative performance baseline (${{ matrix.menu }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    # Distinct raw provider worlds need separate global NFL identity mappings.
+    # Both menu states execute, each on its own fresh disposable stack.
+    strategy:
+      fail-fast: false
+      matrix:
+        menu: [complete, pending]
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: npm
+      - name: Clean install
+        run: npm ci
+      - name: Start fresh disposable acceptance stack
+        uses: ./.github/actions/setup-acceptance
+      - name: Install baseline browser
+        run: npx playwright install --with-deps chromium
+      - name: Build unchanged production app against disposable Auth
+        run: npm run build
+      - name: Exercise actual preparation and measure desktop and mobile conditions
+        env:
+          STAGE1_BASELINE: "1"
+          PLAYWRIGHT_JSON_OUTPUT_FILE: acceptance-reports/stage1.json
+          NODE_OPTIONS: --import=${{ github.workspace }}/tests/fixtures/card-quotes-provider-preload.mjs
+        run: >-
+          npx playwright test tests/e2e/stage1-baseline-full-stack.spec.ts --project=desktop
+          --grep '${{ matrix.menu }} representative baseline'
+          --workers=1 --retries=0 --reporter=github,json --output=test-results/stage1
+      - name: Require all preparation and baseline scenarios to execute
+        run: node scripts/check-full-stack-report.mjs acceptance-reports/stage1.json
+      - name: Summarize five-sample measurements
+        run: node scripts/summarize-stage1-baseline.mjs
+      - name: Retain Stage 1 raw observations and plans
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: stage1-baseline-${{ matrix.menu }}
+          path: |
+            acceptance-reports/
+            test-results/
+          retention-days: 7
+      - name: Stop disposable local database
+        if: always()
+        run: supabase stop --no-backup
   browser:
     name: Shared participant UI on Chromium and WebKit
     runs-on: ubuntu-latest
@@ -304,6 +361,7 @@ jobs:
       - native
       - full-stack
       - browser
+      - stage1
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -315,4 +373,4 @@ jobs:
       - name: Require successful results from every job group
         env:
           CI_JOB_RESULTS: ${{ toJSON(needs) }}
-        run: node scripts/check-ci-results.mjs quality database native full-stack browser
+        run: node scripts/check-ci-results.mjs quality database native full-stack browser stage1

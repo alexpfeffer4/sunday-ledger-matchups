@@ -9,10 +9,10 @@ begin
  update private.season_automation set generation=a.generation+1,lease_id=id,lease_until=clock_timestamp()+interval '90 seconds' where season_id=a.season_id;
  return id;
 end $$;
-create function pg_temp.automation_context(label text,p_owner_id uuid default null,p_enroll boolean default true) returns jsonb language plpgsql as $$
+create function pg_temp.automation_context(label text,p_owner_id uuid default null,p_enroll boolean default true,p_nfl_year integer default 2026) returns jsonb language plpgsql as $$
 declare c jsonb;ids uuid[];matches jsonb;
 begin
- c:=pg_temp.progressive_fixture(label,p_owner_id=>p_owner_id);
+ c:=pg_temp.progressive_fixture(label,p_owner_id=>p_owner_id,p_nfl_year=>p_nfl_year);
  update private.season_automation_settings set enabled=true,release_sha=repeat('d',40);
  if p_enroll then perform api.configure_season_automation(c->>'slug','ENABLE',3,'ALL_NFL_GAMES',private.season_automation_policy_hash());end if;
  select array_agg(id order by id) into ids from private.season_entries where season_id=(c->>'season')::uuid;
