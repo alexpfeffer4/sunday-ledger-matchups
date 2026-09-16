@@ -9,7 +9,7 @@ do $$
 declare sha text:=current_setting('sunday_ledger.quotes_release_sha',true);p private.odds_refresh_policy%rowtype;
 begin
  if sha is null or sha !~ '^[0-9a-f]{40}$' then raise exception 'Exact tested deployed release SHA required';end if;
- if not exists(select 1 from supabase_migrations.schema_migrations where version='20260916153128') then raise exception 'Shared quote migration missing';end if;
+ if not exists(select 1 from supabase_migrations.schema_migrations where version='20260916181542') then raise exception 'Shared quote migration missing';end if;
  if not exists(select 1 from cron.job where jobname='sunday-ledger-score-checkpoints' and active and schedule='*/5 * * * *')
  or strpos(pg_get_functiondef('private.dispatch_score_checkpoints()'::regprocedure),'perform private.dispatch_season_automation();')=0
  or strpos(pg_get_functiondef('private.dispatch_score_checkpoints()'::regprocedure),'perform private.dispatch_player_result_checkpoints();')=0
