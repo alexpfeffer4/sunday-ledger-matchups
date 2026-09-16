@@ -12,8 +12,7 @@ Record both SHAs in the private rollout record before executing this package. If
 merge creates another SHA, require tree equality with the tested candidate and
 verify that deployed SHA. Entry main was `82a65f48c2e4ed52f441e4ab5a0a3c83c2b10c00`
 (#68); the existing required Acceptance jobs and five-minute database gate remain.
-Production was READY at that main. Hosted migrations ended at
-`20260916141355_season_automation_schedule_alias`.
+Production observations and hosted migration parity are recorded privately.
 
 One additive migration: `20260916153128_shared_background_odds_refresh.sql`,
 created with the repository's Supabase CLI 2.116.0. Existing migration bytes are
@@ -46,22 +45,13 @@ request, and preserve uncertain charges. Provider headers and verified reset
 protection remain authoritative across UTC calendar resets. Activation changes
 limits only; it does not clear usage or provider evidence.
 
-Read-only measurement at 15:57 UTC: application usage 134/day and 298/month,
-conservative remaining balance 19,818, entitlement 20,000, recorded provider reset
-**October 2, 2026 at 00:00 UTC**. The latest free probe was successful at 15:10 UTC;
-its higher reported balance does not replace the conservative reservation balance.
-Refresh this dated evidence immediately before rollout without forcing paid calls.
-
-The deterministic quarter-hour model from 16:15 UTC through the actual reset uses
-16 published games with their actual 35 published prop families, plus the stored
-consented Week 3 and pre-reset Week 4 schedule. Future games assume all three
-families as an upper bound and earliest Tuesday 10 a.m. Eastern opening; actual
-finality, unavailable players and shared demand reuse can reduce acquisition.
-It estimates **1,527 MAIN + 3,785 prop = 5,312 background credits**, peak **984/day**,
-before retries. At the 150/day essential floor, 16 days reserve 2,400 additional
-credits; with the 2,000 provider floor this leaves **10,106** credits beyond the
-modeled scheduled and protected work. The 13,500 background limit is a ceiling,
-not an allocation to consume. Full 1× targets fit this measurement.
+Actual account counters, provider-cycle evidence, named live scope and the dated
+remaining-cycle forecast belong in the private rollout record. Recheck them
+immediately before activation. The public deterministic schedule fixture verifies
+cost arithmetic; it is not an account measurement. The background limit is a
+ceiling, not an allocation to consume. Choose only the feasible allowance after
+protecting essential/demand usage and the provider floor. Slow or defer optional
+work when the private measured balance cannot support the target cadence.
 
 `private.evaluate_background_quote_budget()` reevaluates at least daily using the
 actual published union and consented stored schedule, clips work at the real reset,
