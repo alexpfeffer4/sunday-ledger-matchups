@@ -445,6 +445,23 @@ select is((select canonical_json->>'version' from private.prepared_player_props_
 -- V2.2 automation extends the existing progressive fixture authority.
 \ir fixtures/season_automation.sql.inc
 create temporary table automation_context as select pg_temp.automation_context('auto-two-weeks') c;
+-- Narrow acquisition regression, separate from the full HTTP PREPARE scenario.
+-- Reuse this suite's leased-run fixture and roll back all credit/request effects.
+savepoint automation_odds_claim_regression;
+create temporary table automation_odds_claim as
+ select pg_temp.automation_run(c,'PREPARE',3) run_id,
+ (select daily_credits from private.odds_refresh_policy) prior_credits,
+ (c->>'league')::uuid league_id from automation_context;
+select lives_ok($$select api.claim_season_automation_odds(run_id) from automation_odds_claim$$,
+ 'real automatic preparation can reserve odds without an ambiguous id reference');
+select is((select count(*) from private.provider_requests where league_id=(select league_id from automation_odds_claim) and kind='ODDS' and actor_user_id is null),
+ 1::bigint,'automatic reservation records one SYSTEM provider request');
+select is((select daily_credits from private.odds_refresh_policy),
+ (select prior_credits+3 from automation_odds_claim),'automatic reservation conservatively charges three credits');
+select throws_ok($$select api.claim_season_automation_odds(run_id) from automation_odds_claim$$,
+ 'P0001','QUOTE_REFRESH_COOLDOWN','repeat acquisition retains the existing league cooldown');
+rollback to savepoint automation_odds_claim_regression;
+
 -- Exercise the actual schedule completion path, not only pre-staged week
 -- fixtures. This catches PL/pgSQL variable/query-alias ambiguity on Production.
 savepoint schedule_sync_regression;
