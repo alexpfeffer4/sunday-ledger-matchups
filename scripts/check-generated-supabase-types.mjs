@@ -77,6 +77,7 @@ const checkedFunctions = [
   "complete_shared_quote_request",
   "configure_player_prop_odds_budget",
   "confirm_player_prop_menu",
+  "confirm_progressive_player_prop_menu",
   "enqueue_player_catalog",
   "get_player_catalog_quotes",
   "get_player_prop_menu",

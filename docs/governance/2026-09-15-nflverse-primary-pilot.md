@@ -1,5 +1,7 @@
 # Restricted nflverse primary pilot
 
+The later [progressive availability decision](2026-09-15-progressive-player-props.md) introduces an additive 1.5 / Product Bible 3.4 competitive package for the authorized empty-slot continuation. It supersedes this document's no-new-version and permanently-unavailable-empty-slot statements in that scope; provider, ranking and grading requirements remain unchanged.
+
 Owner decision, September 15, 2026. After reviewing current-season nflverse
 evidence and the limits of the API-Sports free account, the owner approved
 implementing nflverse as the primary player-results source for the limited menu

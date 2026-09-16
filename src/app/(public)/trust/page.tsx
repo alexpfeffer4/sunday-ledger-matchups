@@ -37,7 +37,7 @@ export default function TrustPage() {
             ],
             [
               "Featured player choices",
-              "Where player props are enabled, each team’s featured QB, RB and WR or TE are chosen from the highest available standard passing, rushing and receiving lines in the reviewed pregame menu. They are not confirmed starters, and a posted line does not guarantee availability or participation. Players stay fixed once the menu freezes.",
+              "Where player props are enabled, each team’s featured QB, RB and WR or TE are chosen from the highest available standard passing, rushing and receiving lines. They are not confirmed starters, and a posted line does not guarantee availability or participation. Under progressive availability, the commissioner reviews the available players and approves automatic additions to eligible empty slots before each game’s betting cutoff. Each player stays fixed from first publication. Earlier rules keep their original menu-freeze policy.",
             ],
             [
               "Player results can take longer",

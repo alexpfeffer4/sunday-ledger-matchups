@@ -21,6 +21,8 @@ import { selectionKey } from "@/components/card/selection-identity";
 import { reviewLiveCardQuotes } from "@/app/l/[leagueSlug]/card-quote-actions";
 import { acceptStage1CardAction } from "@/app/l/[leagueSlug]/actions";
 import { simulationSeason14Ruleset } from "@/rulesets/simulation-season-1-4";
+import { simulationSeason15Ruleset } from "@/rulesets/simulation-season-1-5";
+import { playerPropMenuSchema } from "@/application/queries/player-prop-dtos";
 import { frozenCardRulesFixture } from "../fixtures/card-rules";
 import { makeStage3CardState } from "../fixtures/stage3-card-journey";
 import { makePhase6Matchup } from "../fixtures/phase6-paired-matchup";
@@ -60,11 +62,11 @@ afterEach(cleanup);
 const id = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
-function propsState(gameCount = 1): Stage1StateDto {
+function propsState(gameCount = 1, progressive = false): Stage1StateDto {
   const state = makeStage3CardState(gameCount);
   state.season.rulesetSnapshot = frozenCardRulesFixture(
     "SIMULATION",
-    simulationSeason14Ruleset,
+    progressive ? simulationSeason15Ruleset : simulationSeason14Ruleset,
   );
   state.week = {
     ...state.week!,
@@ -104,6 +106,13 @@ function propsState(gameCount = 1): Stage1StateDto {
             confirmed: true,
             frozen: false,
             unavailableReason: null,
+            ...(progressive
+              ? {
+                  lateFillEligible: false,
+                  publicationMode: "COMMISSIONER" as const,
+                  publishedAt: "2026-09-13T16:00:00Z",
+                }
+              : {}),
           }),
         ),
     );
@@ -179,6 +188,236 @@ function ready(
 }
 
 describe("full-slate props member experience", () => {
+  it("reviews available choices and the pending-slot policy without claiming future players were reviewed", async () => {
+    const state = propsState(1, true);
+    const slots = state.slate[0].playerProps!.map((slot, index) => ({
+      ...slot,
+      subjectId: index === 5 ? null : slot.subjectId,
+      subjectLabel: index === 5 ? null : slot.subjectLabel,
+      publicationMode: null,
+      publishedAt: null,
+      lateFillEligible: index === 5,
+      candidates:
+        index === 5
+          ? []
+          : [
+              {
+                subjectId: slot.subjectId!,
+                subjectLabel: slot.subjectLabel!,
+                position: slot.position!,
+                roleEvidence: "Highest verified standard line",
+                roleRank: 0,
+              },
+            ],
+    }));
+    const confirm = vi
+      .fn()
+      .mockResolvedValue({ status: "success", message: "Policy confirmed" });
+    render(
+      <PlayerPropMenuReview
+        leagueSlug="test-league"
+        leagueId={state.league.id}
+        slots={slots}
+        frozen={false}
+        amendmentPending
+        progressiveAvailability
+        prepareAction={vi.fn()}
+        refreshAction={vi.fn()}
+        confirmAction={confirm}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: "Review available players and pending slots",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "1 games · 5 of 6 player slots selected · 1 unavailable now",
+      ),
+    ).toBeVisible();
+    const acknowledgement = screen.getByRole("checkbox", {
+      name: "I reviewed the available players and approve automatic publication of eligible empty slots before each game’s betting cutoff.",
+    });
+    expect(acknowledgement).not.toBeChecked();
+    expect(confirm).not.toHaveBeenCalled();
+    fireEvent.click(acknowledgement);
+    fireEvent.submit(
+      screen
+        .getByRole("button", {
+          name: "Confirm players and pending-slot policy",
+        })
+        .closest("form")!,
+    );
+    await waitFor(() => expect(confirm).toHaveBeenCalledOnce());
+    const form = confirm.mock.calls[0][1] as FormData;
+    const choices = JSON.parse(String(form.get("choices")));
+    expect(choices).toHaveLength(6);
+    expect(choices[5].subjectId).toBeNull();
+    expect(form.get("emptySlotPublication")).toBe(
+      "AUTOMATIC_BEFORE_EVENT_CUTOFF",
+    );
+    expect(form.get("confirmed")).toBeNull();
+    expect(
+      screen.queryByRole("combobox", { hidden: true }),
+    ).not.toBeInTheDocument();
+  });
+  it("keeps published choices read-only and labels automatic publication separately from human review", () => {
+    const state = propsState(1, true);
+    const menu = playerPropMenuSchema.parse({
+      weekId: state.week!.id,
+      enabled: true,
+      frozen: true,
+      progressiveAvailability: true,
+      slots: state.slate[0].playerProps!.map((slot, index) => ({
+        ...slot,
+        subjectId: index === 5 ? null : slot.subjectId,
+        subjectLabel: index === 5 ? null : slot.subjectLabel,
+        lateFillEligible: index === 5,
+        publicationMode:
+          index === 4 ? "AUTOMATIC" : index === 5 ? null : "COMMISSIONER",
+        publishedAt: index === 5 ? null : "2026-09-13T16:10:00+00:00",
+        candidates: [],
+      })),
+    });
+    const { rerender } = render(
+      <PlayerPropMenuReview
+        leagueSlug="test-league"
+        leagueId={state.league.id}
+        slots={menu.slots.map((slot) => ({
+          ...slot,
+          candidates: slot.candidates ?? [],
+        }))}
+        frozen
+        amendmentApplied
+        progressiveAvailability={menu.progressiveAvailability}
+        prepareAction={vi.fn()}
+        refreshAction={vi.fn()}
+        confirmAction={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("combobox", { hidden: true }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Unavailable now · Check back before kickoff."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Added automatically before kickoff under the approved pending-slot policy.",
+      ),
+    ).toBeInTheDocument();
+    // An activated all-empty menu has no frozen player yet; it still must not
+    // offer a second initial review or manual replacement control.
+    rerender(
+      <PlayerPropMenuReview
+        leagueSlug="test-league"
+        leagueId={state.league.id}
+        slots={menu.slots.map((slot) => ({
+          ...slot,
+          subjectId: null,
+          subjectLabel: null,
+          publicationMode: null,
+          publishedAt: null,
+          lateFillEligible: true,
+          candidates: [],
+        }))}
+        frozen={false}
+        progressiveActivated
+        progressiveAvailability
+        prepareAction={vi.fn()}
+        refreshAction={vi.fn()}
+        confirmAction={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("combobox", { hidden: true }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+  it("offers check-back guidance only while an empty slot can still fill before its game cutoff", () => {
+    const state = propsState(1, true);
+    const event = state.slate[0];
+    event.playerProps![0] = {
+      ...event.playerProps![0],
+      subjectId: null,
+      subjectLabel: null,
+      publicationMode: null,
+      publishedAt: null,
+      lateFillEligible: true,
+    };
+    event.markets = event.markets.filter(
+      (market) => market.subjectId !== id(100),
+    );
+    const select = vi.fn();
+    const { rerender } = render(
+      <PlayerPropsGame
+        event={event}
+        acceptedPositions={[]}
+        drafts={[]}
+        bettingOpen
+        onSelect={select}
+      />,
+    );
+    expect(
+      screen.getByText("Unavailable now · Check back before kickoff."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("group", {
+        name: /HBR Alexandria Montgomery-Wellington/,
+      }),
+    ).not.toBeInTheDocument();
+    rerender(
+      <PlayerPropsGame
+        event={event}
+        acceptedPositions={[]}
+        drafts={[]}
+        bettingOpen={false}
+        onSelect={select}
+      />,
+    );
+    expect(screen.getByText("Unavailable for this game.")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Unavailable now · Check back before kickoff."),
+    ).not.toBeInTheDocument();
+    expect(select).not.toHaveBeenCalled();
+  });
+  it("keeps an existing player's draft intact when a previously empty slot is published", async () => {
+    const published = propsState(1, true);
+    const pending = structuredClone(published);
+    pending.slate[0].playerProps![1] = {
+      ...pending.slate[0].playerProps![1],
+      subjectId: null,
+      subjectLabel: null,
+      publicationMode: null,
+      publishedAt: null,
+      lateFillEligible: true,
+    };
+    pending.slate[0].markets = pending.slate[0].markets.filter(
+      (market) => market.subjectId !== id(101),
+    );
+    const key = storeProps(pending, [3]);
+    const originalDrafts = restoreCardDrafts(
+      localStorage.getItem(key),
+      pending.slate,
+    );
+    const { rerender } = render(<Stage1CardBuilder state={pending} />);
+    await screen.findAllByText(/Alexandria Montgomery-Wellington over/);
+    published.slate[0].playerProps![1].publicationMode = "AUTOMATIC";
+    published.slate[0].playerProps![1].publishedAt = "2026-09-13T16:15:00Z";
+    rerender(<Stage1CardBuilder state={published} />);
+    expect(
+      restoreCardDrafts(localStorage.getItem(key), published.slate),
+    ).toEqual(originalDrafts);
+    expect(acceptStage1CardAction).not.toHaveBeenCalled();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Player props" }),
+    );
+    expect(
+      screen.getByText("Added automatically before kickoff."),
+    ).toBeInTheDocument();
+  });
   it("keeps a withdrawn player quote visible in review and preserves it when submitting another draft", async () => {
     const state = propsState();
     const key = storeProps(state, [3, 0]);

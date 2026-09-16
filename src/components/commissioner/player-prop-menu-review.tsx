@@ -18,6 +18,9 @@ export type PlayerPropMenuSlot = {
   confirmed?: boolean;
   frozen?: boolean;
   unavailableReason?: string | null;
+  lateFillEligible?: boolean;
+  publicationMode?: "COMMISSIONER" | "AUTOMATIC" | null;
+  publishedAt?: string | null;
   candidates: Array<{
     subjectId: string;
     subjectLabel: string;
@@ -40,6 +43,8 @@ export function PlayerPropMenuReview({
   frozen,
   amendmentPending = false,
   amendmentApplied = false,
+  progressiveAvailability = false,
+  progressiveActivated = false,
   prepareAction,
   confirmAction,
   canOpen = false,
@@ -52,6 +57,8 @@ export function PlayerPropMenuReview({
   frozen: boolean;
   amendmentPending?: boolean;
   amendmentApplied?: boolean;
+  progressiveAvailability?: boolean;
+  progressiveActivated?: boolean;
   prepareAction: FormAction;
   confirmAction: FormAction;
   canOpen?: boolean;
@@ -83,6 +90,9 @@ export function PlayerPropMenuReview({
   for (const slot of slots)
     groups.set(slot.eventId, [...(groups.get(slot.eventId) ?? []), slot]);
   const pending = preparing || confirming || refreshing || opening;
+  const readOnly =
+    frozen ||
+    (progressiveAvailability && (progressiveActivated || amendmentApplied));
   const changedChoices = slots.some(
     (slot) => chosen(slot) !== (slot.subjectId ?? ""),
   );
@@ -95,28 +105,41 @@ export function PlayerPropMenuReview({
         Player props · Full slate
       </p>
       <h2 id="player-menu-heading" className="mt-2 text-xl font-bold">
-        {frozen ? "This week’s player menu" : "Review the proposed player menu"}
+        {progressiveAvailability
+          ? readOnly
+            ? "Published players and pending slots"
+            : "Review available players and pending slots"
+          : frozen
+            ? "This week’s player menu"
+            : "Review the proposed player menu"}
       </h2>
       <p className="text-graphite mt-2 text-sm leading-6">
-        {amendmentPending
-          ? "Review the proposed player menu for the Week 2 update. Activating the reviewed update will fix this player menu for everyone."
-          : frozen && amendmentApplied
-            ? "The reviewed Week 2 update fixed this player menu. Lines may appear later for these players; unavailable player slots cannot be replaced."
-            : frozen
-              ? "The first accepted bet fixed the players for this week. Lines may appear later for these players; unavailable player slots cannot be replaced."
-              : "Check the proposed quarterback, running back and receiver for each team. Resolve flagged choices, then confirm the whole slate once. The first accepted bet fixes these players for everyone."}
+        {progressiveAvailability
+          ? readOnly
+            ? "Published players stay fixed. Eligible empty slots may fill automatically before that game’s betting cutoff."
+            : "Review the available players and the policy for pending slots. Eligible empty slots may fill automatically before each game’s betting cutoff. Published players stay fixed for everyone."
+          : amendmentPending
+            ? "Review the proposed player menu for the Week 2 update. Activating the reviewed update will fix this player menu for everyone."
+            : frozen && amendmentApplied
+              ? "The reviewed Week 2 update fixed this player menu. Lines may appear later for these players; unavailable player slots cannot be replaced."
+              : frozen
+                ? "The first accepted bet fixed the players for this week. Lines may appear later for these players; unavailable player slots cannot be replaced."
+                : "Check the proposed quarterback, running back and receiver for each team. Resolve flagged choices, then confirm the whole slate once. The first accepted bet fixes these players for everyone."}
       </p>
       {slots.length ? (
         <p className="mt-3 text-sm font-semibold">
           {groups.size} games · {slots.length - unresolved} of {groups.size * 6}{" "}
-          player slots selected{unresolved ? ` · ${unresolved} unresolved` : ""}
+          player slots selected
+          {unresolved
+            ? ` · ${unresolved} ${progressiveAvailability ? "unavailable now" : "unresolved"}`
+            : ""}
         </p>
       ) : (
         <p className="text-muted mt-3 text-sm">
           Prepare the automatic proposal for the published games.
         </p>
       )}
-      {!frozen ? (
+      {!readOnly ? (
         <form action={prepare} className="mt-3">
           <input type="hidden" name="leagueSlug" value={leagueSlug} />
           <button
@@ -195,10 +218,19 @@ export function PlayerPropMenuReview({
                           {slot.team} ·{" "}
                           {marketLabel(`PLAYER_${slot.statistic}`)}
                         </label>
-                        {frozen ? (
+                        {readOnly || progressiveAvailability ? (
                           <p className="mt-2 text-sm">
-                            {slot.subjectLabel ?? "Unavailable this week"}
-                            {slot.position ? ` · ${slot.position}` : ""}
+                            {slot.subjectLabel ??
+                              (slot.lateFillEligible
+                                ? "Unavailable now · Check back before kickoff."
+                                : progressiveAvailability
+                                  ? readOnly
+                                    ? "Unavailable for this game."
+                                    : "Unavailable now · Check back before kickoff."
+                                  : "Unavailable this week")}
+                            {slot.subjectId && slot.position
+                              ? ` · ${slot.position}`
+                              : ""}
                           </p>
                         ) : (
                           <select
@@ -214,7 +246,9 @@ export function PlayerPropMenuReview({
                             }
                           >
                             <option value="">
-                              Leave unavailable this week
+                              {progressiveAvailability
+                                ? "Unavailable now"
+                                : "Leave unavailable this week"}
                             </option>
                             {slot.subjectId &&
                             !slot.candidates.some(
@@ -240,7 +274,14 @@ export function PlayerPropMenuReview({
                             {selected.roleEvidence}
                           </p>
                         ) : null}
-                        {slot.unavailableReason ? (
+                        {slot.subjectId &&
+                        slot.publicationMode === "AUTOMATIC" ? (
+                          <p className="text-muted mt-2 text-xs leading-5">
+                            Added automatically before kickoff under the
+                            approved pending-slot policy.
+                          </p>
+                        ) : null}
+                        {slot.unavailableReason && !progressiveAvailability ? (
                           <p className="text-pending mt-2 text-xs leading-5">
                             {slot.unavailableReason}
                           </p>
@@ -252,24 +293,45 @@ export function PlayerPropMenuReview({
               </details>
             ))}
           </div>
-          {!frozen ? (
+          {!readOnly ? (
             <>
               <p className="text-graphite mt-4 text-sm leading-6">
-                {unresolved
-                  ? `${unresolved} unresolved slots will remain unavailable once ${amendmentPending ? "the Week 2 update is activated" : "the first bet is accepted"}. `
-                  : ""}
-                A missing line for a verified player can appear later. No player
-                is replaced after the menu freezes.
+                {progressiveAvailability ? (
+                  <>
+                    {unresolved} slots are unavailable now. Eligible empty slots
+                    will be checked automatically and can be filled before their
+                    game’s betting cutoff. Existing player choices and submitted
+                    bets stay fixed.
+                  </>
+                ) : (
+                  <>
+                    {unresolved
+                      ? `${unresolved} unresolved slots will remain unavailable once ${amendmentPending ? "the Week 2 update is activated" : "the first bet is accepted"}. `
+                      : ""}
+                    A missing line for a verified player can appear later. No
+                    player is replaced after the menu freezes.
+                  </>
+                )}
               </p>
               <label className="mt-3 flex min-h-11 items-start gap-3 text-sm leading-6">
                 <input
                   required
-                  name="confirmed"
-                  value="true"
+                  name={
+                    progressiveAvailability
+                      ? "emptySlotPublication"
+                      : "confirmed"
+                  }
+                  value={
+                    progressiveAvailability
+                      ? "AUTOMATIC_BEFORE_EVENT_CUTOFF"
+                      : "true"
+                  }
                   type="checkbox"
                   className="mt-1.5"
                 />
-                I reviewed the full slate and any unavailable slots.
+                {progressiveAvailability
+                  ? "I reviewed the available players and approve automatic publication of eligible empty slots before each game’s betting cutoff."
+                  : "I reviewed the full slate and any unavailable slots."}
               </label>
               <button
                 type="submit"
@@ -278,7 +340,9 @@ export function PlayerPropMenuReview({
               >
                 {confirming
                   ? "Confirming player menu…"
-                  : "Confirm full-slate player menu"}
+                  : progressiveAvailability
+                    ? "Confirm players and pending-slot policy"
+                    : "Confirm full-slate player menu"}
               </button>
               <ActionFeedback state={confirmed} />
             </>
@@ -290,8 +354,10 @@ export function PlayerPropMenuReview({
           <input type="hidden" name="leagueSlug" value={leagueSlug} />
           <p className="text-graphite text-sm leading-6">
             The player menu is reviewed. Open the week to make game lines and
-            available player props ready for bets. Confirmed unresolved slots
-            remain unavailable; known players can receive lines later.
+            available player props ready for bets.{" "}
+            {progressiveAvailability
+              ? "Eligible empty slots can fill automatically before their game’s betting cutoff. Published players stay fixed."
+              : "Confirmed unresolved slots remain unavailable; known players can receive lines later."}
           </p>
           {changedChoices ? (
             <p className="text-pending mt-2 text-sm">

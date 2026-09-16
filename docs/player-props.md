@@ -1,5 +1,7 @@
 # Full-slate player props and explicit Submit recovery
 
+The later [progressive availability amendment](governance/2026-09-15-progressive-player-props.md) adds the explicitly scoped 1.5 / Product Bible 3.4 behavior: empty slots display unavailable and may receive one first verified player before their own game cutoff. Already offered players and accepted receipts remain fixed. The 1.4 freeze rules below remain the historical contract for 1.4 bindings.
+
 The September 15 [nflverse primary amendment](governance/2026-09-15-nflverse-primary-pilot.md)
 and [release approval and current status](operations/player-props-release.md)
 supersede the original source assumptions and build-only boundary below. The later

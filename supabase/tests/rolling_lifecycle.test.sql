@@ -116,25 +116,62 @@ select pg_temp.actor(9);
 select lives_ok($$select api.start_owner_rehearsal('rolling-rehearsal-start')$$,'entitled owner starts a fresh V1.3 rehearsal');
 select lives_ok($$select api.fill_owner_rehearsal_bots('rolling-rehearsal-fill')$$,'nine deterministic bots use normal membership');
 select lives_ok($$select api.advance_owner_rehearsal('FORMATION_READY','rolling-rehearsal-open')$$,'the new-rule rehearsal opens through the shared rules path');
-select lives_ok($$do $run$
-declare checkpoint text; slug text; step integer:=0;
+-- Each checkpoint is its own top-level statement, matching the ordinary app
+-- request boundary and releasing executor memory between weeks. The old single
+-- DO statement retained an entire 18-week rehearsal's executor allocations.
+create function pg_temp.advance_rolling_rehearsal_step(p_step integer) returns void language plpgsql as $$
+declare checkpoint text; slug text;
 begin
- loop
-  checkpoint:=api.get_owner_rehearsal()->>'checkpoint';
-  exit when checkpoint='COMPLETE';
-  step:=step+1;
-  if step>30 then raise exception 'Rehearsal did not complete'; end if;
-  select league.slug into strict slug from private.owner_rehearsals r join private.leagues league on league.id=r.league_id where r.owner_user_id=pg_temp.rid(9) and r.status='ACTIVE';
-  if checkpoint='WEEK_2_OPEN' then
-   perform api.prepare_owner_rehearsal_quote_review(slug,'rolling-rehearsal-price-review');
-  end if;
-  if checkpoint like '%_OPEN' then
-   perform api.use_owner_rehearsal_sample_card('rolling-rehearsal-sample-'||step);
-  end if;
-  perform api.advance_owner_rehearsal(checkpoint,'rolling-rehearsal-step-'||step);
- end loop;
-end;
-$run$;$$,'all 18 weeks settle partial cards through one authoritative rehearsal to archive');
+ if p_step not between 1 and 30 then raise exception 'Rehearsal exceeded 30 checkpoint advances'; end if;
+ checkpoint:=api.get_owner_rehearsal()->>'checkpoint';
+ if checkpoint='COMPLETE' then return; end if;
+ -- This rollback-only fixture grows a full season in one transaction. Give
+ -- the planner current row counts instead of depending on background ANALYZE,
+ -- which cannot see this session's uncommitted fixture rows.
+ analyze private.season_weeks,private.season_entries,private.weekly_cards,
+ private.sports_events,private.slates,private.slate_items,private.market_snapshots,
+ private.live_quote_heads,private.position_receipts,private.settlement_versions,
+ private.weekly_score_versions,private.matchups,private.matchup_result_versions,
+ private.standings_snapshots,private.playoff_publications,private.playoff_round_publications;
+ select league.slug into strict slug from private.owner_rehearsals r join private.leagues league on league.id=r.league_id where r.owner_user_id=pg_temp.rid(9) and r.status='ACTIVE';
+ if checkpoint='WEEK_2_OPEN' then
+  perform api.prepare_owner_rehearsal_quote_review(slug,'rolling-rehearsal-price-review');
+ end if;
+ if checkpoint like '%_OPEN' then
+  perform api.use_owner_rehearsal_sample_card('rolling-rehearsal-sample-'||p_step);
+ end if;
+ perform api.advance_owner_rehearsal(checkpoint,'rolling-rehearsal-step-'||p_step);
+end; $$;
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(1)$$,'authoritative rehearsal checkpoint 1 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(2)$$,'authoritative rehearsal checkpoint 2 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(3)$$,'authoritative rehearsal checkpoint 3 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(4)$$,'authoritative rehearsal checkpoint 4 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(5)$$,'authoritative rehearsal checkpoint 5 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(6)$$,'authoritative rehearsal checkpoint 6 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(7)$$,'authoritative rehearsal checkpoint 7 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(8)$$,'authoritative rehearsal checkpoint 8 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(9)$$,'authoritative rehearsal checkpoint 9 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(10)$$,'authoritative rehearsal checkpoint 10 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(11)$$,'authoritative rehearsal checkpoint 11 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(12)$$,'authoritative rehearsal checkpoint 12 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(13)$$,'authoritative rehearsal checkpoint 13 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(14)$$,'authoritative rehearsal checkpoint 14 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(15)$$,'authoritative rehearsal checkpoint 15 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(16)$$,'authoritative rehearsal checkpoint 16 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(17)$$,'authoritative rehearsal checkpoint 17 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(18)$$,'authoritative rehearsal checkpoint 18 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(19)$$,'authoritative rehearsal checkpoint 19 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(20)$$,'authoritative rehearsal checkpoint 20 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(21)$$,'authoritative rehearsal checkpoint 21 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(22)$$,'authoritative rehearsal checkpoint 22 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(23)$$,'authoritative rehearsal checkpoint 23 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(24)$$,'authoritative rehearsal checkpoint 24 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(25)$$,'authoritative rehearsal checkpoint 25 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(26)$$,'authoritative rehearsal checkpoint 26 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(27)$$,'authoritative rehearsal checkpoint 27 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(28)$$,'authoritative rehearsal checkpoint 28 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(29)$$,'authoritative rehearsal checkpoint 29 completes within the 30-step bound');
+select lives_ok($$select pg_temp.advance_rolling_rehearsal_step(30)$$,'authoritative rehearsal checkpoint 30 completes within the 30-step bound');
 select is(api.get_owner_rehearsal()->>'checkpoint','COMPLETE','the full-season rehearsal reaches its stored completion checkpoint');
 select is((select count(*) from private.season_weeks w join private.owner_rehearsals r on r.season_id=w.season_id where r.owner_user_id=pg_temp.rid(9) and w.state='FINAL' and private.is_rolling_week(w.id)),18::bigint,'every rehearsal week retains V1.3 and final results');
 select is((select count(*) from private.weekly_cards c join private.owner_rehearsals r on r.season_id=c.season_id where r.owner_user_id=pg_temp.rid(9) and c.compliance='COMPLIANT'),176::bigint,'all 176 participating partial cards are compliant');

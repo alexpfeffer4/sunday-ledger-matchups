@@ -1,5 +1,7 @@
 # Player props: owner setup and controlled release
 
+The latest [progressive availability amendment](../governance/2026-09-15-progressive-player-props.md) authorizes a real partial initial menu and automatic first publication into approved empty slots before each target game cutoff. Its additive 1.5 / Product Bible 3.4 package preserves 1.4 and earlier history. The owner reviews current available choices plus that continuation policy; unknown future players are not represented as manually reviewed. Earlier complete-menu release instructions below apply to the older 1.4 path.
+
 ## Current approved pilot
 
 The owner approved the [restricted nflverse primary pilot](../governance/2026-09-15-nflverse-primary-pilot.md):
