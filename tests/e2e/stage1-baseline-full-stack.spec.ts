@@ -9,6 +9,7 @@ import {
   signIn,
   sql,
 } from "../fixtures/stage1-baseline";
+import { verifyStage2Reads } from "../fixtures/stage2-reads";
 import { observe, sample } from "../fixtures/stage1-measurements";
 import { quoteSql as q } from "../fixtures/player-props-acceptance.mjs";
 
@@ -247,6 +248,8 @@ for (const pending of [false, true])
       `acceptance-reports/stage1-query-plans-${pending ? "pending" : "complete"}.json`,
       JSON.stringify(plans, null, 2),
     );
+
+    verifyStage2Reads(slug, pending);
 
     const authContext = await browser.newContext();
     const authPage = await authContext.newPage();
@@ -497,6 +500,14 @@ for (const pending of [false, true])
           ).toContainText(`${submitted + 1} submitted bet`);
         });
         submitted++;
+        const preflight = await rpc(owner, "get_card_review_context", {
+          p_league_slug: slug,
+        });
+        expect(preflight.ownerCard).toEqual({
+          positionCount: submitted,
+          allocatedCredits: submitted * 50,
+          remainingCredits: 1000 - submitted * 50,
+        });
         expect(
           Number(
             sql(

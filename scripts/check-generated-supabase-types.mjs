@@ -86,6 +86,7 @@ const checkedFunctions = [
   "enqueue_player_catalog",
   "get_player_catalog_quotes",
   "get_player_prop_menu",
+  "get_card_review_context",
   "import_player_catalog",
   "import_player_result_observations",
   "open_reviewed_player_prop_week",

@@ -2,7 +2,10 @@ import { getLeagueMatchupCards } from "@/application/queries/get-league-matchup-
 import { projectLeagueMatchup } from "@/application/queries/project-league-matchup";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
+import {
+  getAuthoritativeLeagueState,
+  getLeagueState,
+} from "@/application/queries/get-live-stage1-league";
 import { getLiveWeekOperations } from "@/application/queries/get-live-week-operations";
 import { getAuthoritativePlayoffState } from "@/application/queries/get-live-playoff-state";
 import { projectPairedMatchup } from "@/application/queries/project-paired-matchup";
@@ -47,7 +50,7 @@ export default async function MatchupPage({
   )
     notFound();
   const [live, archive, weeklyCloseState] = await Promise.all([
-    getAuthoritativeLeagueState(leagueSlug),
+    getLeagueState(leagueSlug),
     getSeasonArchive(leagueSlug),
     getWeeklyCloseState(leagueSlug),
   ]);
@@ -141,26 +144,25 @@ export default async function MatchupPage({
     return <SeasonArchiveHome archive={archive} leagueSlug={leagueSlug} />;
   }
   if (live) {
-    const operations = await getLiveWeekOperations(leagueSlug);
-    const playoffState = [
-      "PLAYOFFS",
-      "CHAMPION_FINAL",
-      "WEEK_18_EXHIBITION",
-      "FINAL",
-    ].includes(live.league.lifecycle)
-      ? await getAuthoritativePlayoffState(leagueSlug)
-      : null;
+    const [current, operations, playoffState, leagueCards] = await Promise.all([
+      getAuthoritativeLeagueState(leagueSlug),
+      getLiveWeekOperations(leagueSlug),
+      ["PLAYOFFS", "CHAMPION_FINAL", "WEEK_18_EXHIBITION", "FINAL"].includes(
+        live.league.lifecycle,
+      )
+        ? getAuthoritativePlayoffState(leagueSlug)
+        : null,
+      live.week ? getLeagueMatchupCards(leagueSlug, live.week.id) : null,
+    ]);
+    if (!current) notFound();
     const qualificationSeeds = new Map(
       (playoffState?.publication.qualifiers ?? []).map((qualifier) => [
         qualifier.entryId,
         qualifier.qualificationSeed,
       ]),
     );
-    const leagueCards = live.week
-      ? await getLeagueMatchupCards(leagueSlug, live.week.id)
-      : null;
     const ownMatchup = projectPairedMatchup(
-      live,
+      current,
       operations,
       new Date(),
       qualificationSeeds,
@@ -169,7 +171,7 @@ export default async function MatchupPage({
     const matchup =
       requested && ownMatchup
         ? projectLeagueMatchup(
-            live,
+            current,
             ownMatchup,
             leagueCards,
             requested,
@@ -188,7 +190,7 @@ export default async function MatchupPage({
         cardProgress={
           matchup.spectator ? undefined : (
             <OwnerCardProgress
-              context={ownerCardContext(live)}
+              context={ownerCardContext(current)}
               presentation="matchup"
             />
           )
@@ -235,7 +237,7 @@ export default async function MatchupPage({
         }
       />
     ) : (
-      <Stage1MatchupView state={live} />
+      <Stage1MatchupView state={current} />
     );
   }
   notFound();

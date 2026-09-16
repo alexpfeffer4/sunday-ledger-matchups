@@ -322,6 +322,19 @@ end; $$;
 -- END PROGRESSIVE PLAYER PROPS HELPERS
 
 create temporary table progressive_context as select pg_temp.progressive_fixture('progressive-props-test') c;
+-- Stage 2: the smaller preflight preserves manual Week 2's bound rules and
+-- ignores reset/superseded receipts just like the full authorized state.
+select is(api.get_card_review_context(c->>'slug')#>'{season,rulesetSnapshot}',
+ api.get_stage1_state(c->>'slug')#>'{season,rulesetSnapshot}',
+ 'review context retains the manual historical rules binding') from progressive_context;
+select is(api.get_card_review_context(c->>'slug')#>'{ownerCard,allocatedCredits}',
+ api.get_stage1_state(c->>'slug')#>'{ownerCard,allocatedCredits}',
+ 'review context excludes preserved reset receipts from allocation') from progressive_context;
+select is((api.get_card_review_context(c->>'slug')#>>'{ownerCard,positionCount}')::integer,
+ jsonb_array_length(api.get_stage1_state(c->>'slug')#>'{ownerCard,positions}'),
+ 'review count uses only effective accepted receipts') from progressive_context;
+select function_privs_are('api','get_card_review_context',array['text'],'authenticated',array['EXECUTE'],'member preflight has only execution');
+select function_privs_are('api','get_card_review_context',array['text'],role_name,array[]::text[],role_name||' cannot call member preflight') from unnest(array['anon','service_role'])role_name;
 select is(c#>>'{cutover,rulesetVersion}','1.5','partial reviewed cutover binds the prepared 1.5 package') from progressive_context;
 select is((select count(*) from private.week_player_menu where week_id=(c->>'week')::uuid and frozen_at is not null),6::bigint,'only the initial six published players freeze') from progressive_context;
 select is((select count(*) from private.player_catalog_pending_slots((c->>'week')::uuid)),24::bigint,'the other structural slots remain eligible') from progressive_context;

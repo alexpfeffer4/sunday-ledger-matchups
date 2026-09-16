@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
+import { getLeagueState } from "@/application/queries/get-live-stage1-league";
 import { getWeeklyCloseState } from "@/application/queries/get-weekly-close-state";
 import { RivalryHeader } from "@/components/history/rivalry-header";
 import { Stage1DeferredView } from "@/components/stage1/live-views";
@@ -22,7 +22,7 @@ export default async function RivalryPage({
 }) {
   const { leagueSlug, memberA, memberB } = await params;
   const [live, weeklyCloseState] = await Promise.all([
-    getAuthoritativeLeagueState(leagueSlug),
+    getLeagueState(leagueSlug),
     getWeeklyCloseState(leagueSlug),
   ]);
   if (!live) notFound();

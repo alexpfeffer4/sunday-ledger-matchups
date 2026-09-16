@@ -12,7 +12,9 @@ import {
   type Stage1StateDto,
 } from "@/application/queries/stage1-dtos";
 
-export const getAuthoritativeLeagueState = cache(
+// Base authorized state is shared by the shell and pages within this request.
+// Published event status and owner receipts remain present; no menu/quote refresh.
+export const getLeagueState = cache(
   async (leagueSlug: string): Promise<Stage1StateDto | null> => {
     if (!isSupabaseConfigured()) return null;
 
@@ -35,47 +37,63 @@ export const getAuthoritativeLeagueState = cache(
     state.season.rulesetSnapshot = await withVerifiedRulesetHash(
       state.season.rulesetSnapshot,
     );
-    if (!state.week) return state;
-    if (state.week.propsEnabled) {
-      const menu = await getPlayerPropMenu(leagueSlug);
-      if (menu && menu.weekId === state.week.id) {
-        state.slate = state.slate.map((event) => ({
-          ...event,
-          playerProps: menu.slots
-            .filter((slot) => slot.eventId === event.id)
-            .map((slot) => {
-              const publicSlot = { ...slot };
-              delete publicSlot.candidates;
-              return publicSlot;
-            }),
-        }));
-      }
-    }
-    if (
-      state.league.mode === "SIMULATION" &&
-      !state.week.rollingSubmissionsEnabled &&
-      !(await getOwnerRehearsalForLeague(leagueSlug))
-    ) {
-      return state;
-    }
+    return state;
+  },
+);
 
-    const currentQuotes = await supabase
-      .schema("api")
-      .rpc("get_live_quote_heads", { p_league_slug: leagueSlug });
+export const getAuthoritativeLeagueState = cache(
+  async (leagueSlug: string): Promise<Stage1StateDto | null> => {
+    const state = await getLeagueState(leagueSlug);
+    if (!state?.week) return state;
+    const supabase = await createSupabaseServerClient();
+    // These stored reads share the same authorized league/week prerequisite.
+    // Neither one acquires provider data or depends on the other's response.
+    const [menu, currentQuotes] = await Promise.all([
+      state.week.propsEnabled ? getPlayerPropMenu(leagueSlug) : null,
+      (async () => {
+        if (
+          state.league.mode === "SIMULATION" &&
+          !state.week!.rollingSubmissionsEnabled &&
+          !(await getOwnerRehearsalForLeague(leagueSlug))
+        )
+          return null;
+        return supabase.schema("api").rpc("get_live_quote_heads", {
+          p_league_slug: leagueSlug,
+        });
+      })(),
+    ]);
+    // Never mutate the request-cached base used by the shell/history callers.
+    const enriched =
+      menu && menu.weekId === state.week.id
+        ? {
+            ...state,
+            slate: state.slate.map((event) => ({
+              ...event,
+              playerProps: menu.slots
+                .filter((slot) => slot.eventId === event.id)
+                .map((slot) => {
+                  const publicSlot = { ...slot };
+                  delete publicSlot.candidates;
+                  return publicSlot;
+                }),
+            })),
+          }
+        : state;
+    if (!currentQuotes) return enriched;
     if (currentQuotes.error) {
-      if (currentQuotes.error.code === "PGRST202") return state;
+      if (currentQuotes.error.code === "PGRST202") return enriched;
       throw new Error("The current NFL quotes could not be loaded.");
     }
 
     const heads = liveQuoteHeadsSchema.parse(currentQuotes.data);
-    if (heads.length === 0) return state;
+    if (heads.length === 0) return enriched;
     const marketsByEvent = new Map(
       heads.map((event) => [event.eventId, event.markets] as const),
     );
 
     return {
-      ...state,
-      slate: state.slate.map((event) => ({
+      ...enriched,
+      slate: enriched.slate.map((event) => ({
         ...event,
         markets: marketsByEvent.get(event.id) ?? event.markets,
       })),
