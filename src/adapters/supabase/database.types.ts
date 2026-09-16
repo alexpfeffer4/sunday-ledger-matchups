@@ -56,16 +56,16 @@ export type Database = {
       get_season_automation: { Args: { p_league_slug: string }; Returns: Json };
       configure_season_automation: {
         Args: {
-          p_league_slug: string;
           p_command: string;
           p_effective_week?: number;
-          p_slate_preset?: string;
+          p_league_slug: string;
           p_policy_hash?: string;
+          p_slate_preset?: string;
         };
         Returns: Json;
       };
       claim_season_automation: {
-        Args: Record<PropertyKey, never>;
+        Args: never;
         Returns: Json;
       };
       claim_season_automation_odds: {
@@ -74,10 +74,10 @@ export type Database = {
       };
       complete_season_automation: {
         Args: {
+          p_failure?: string;
+          p_import?: Json;
           p_run: string;
           p_schedule?: Json;
-          p_import?: Json;
-          p_failure?: string;
         };
         Returns: Json;
       };
