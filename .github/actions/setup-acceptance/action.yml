@@ -1,0 +1,48 @@
+# This action never links to or reads a hosted Supabase project.
+name: Start disposable acceptance stack
+description: Fresh loopback-only Postgres, Auth, mail capture and fixture configuration for one isolated runner.
+runs:
+  using: composite
+  steps:
+    - name: Set up Supabase CLI
+      uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520
+      with:
+        version: 2.116.0
+    - name: Initialize disposable local configuration
+      run: |
+        supabase init
+        node scripts/configure-auth-acceptance.mjs
+      shell: bash
+    - name: Start disposable Supabase stack and apply every migration
+      run: supabase start --exclude realtime,storage-api,imgproxy,studio,edge-runtime,logflare,vector,supavisor
+      shell: bash
+    - name: Export disposable full-stack configuration
+      run: |
+        supabase status -o env > /tmp/sunday-ledger-supabase.env
+        set -a
+        source /tmp/sunday-ledger-supabase.env
+        set +a
+        for required_name in API_URL ANON_KEY SERVICE_ROLE_KEY DB_URL; do
+          if [[ -z "${!required_name:-}" ]]; then
+            echo "Supabase did not export required local setting: $required_name" >&2
+            exit 1
+          fi
+        done
+        echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+        echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+        echo "TEST_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+        echo "TEST_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+        echo "TEST_SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+        echo "TEST_SUPABASE_DB_URL=$DB_URL" >> "$GITHUB_ENV"
+        echo "OWNER_REHEARSAL_TEST_EMAIL=owner-rehearsal@acceptance.test" >> "$GITHUB_ENV"
+        echo "OWNER_REHEARSAL_TEST_PASSWORD=Owner-Rehearsal-Acceptance-48!" >> "$GITHUB_ENV"
+        echo "TEST_MAIL_URL=http://127.0.0.1:54324" >> "$GITHUB_ENV"
+        echo "AUTH_TEST_FAILURE_FILE=/tmp/sunday-ledger-auth-failure.json" >> "$GITHUB_ENV"
+        echo "RELEASE_QUERY_LOG=/tmp/sunday-ledger-release-queries.jsonl" >> "$GITHUB_ENV"
+        echo "FULL_STACK_ACCEPTANCE=1" >> "$GITHUB_ENV"
+        echo "PLAYWRIGHT_PRODUCTION=1" >> "$GITHUB_ENV"
+        echo "SUPABASE_SECRET_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+        echo "SCORE_JOB_SECRET=disposable-score-job-secret-for-ci-only" >> "$GITHUB_ENV"
+        echo "ODDS_API_KEY=disposable-provider-fixture" >> "$GITHUB_ENV"
+        echo "ODDS_TEST_FIXTURE=/tmp/sunday-ledger-odds-fixture.json" >> "$GITHUB_ENV"
+      shell: bash

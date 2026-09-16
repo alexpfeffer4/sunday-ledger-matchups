@@ -1,162 +1,52 @@
-name: Phase 8C authoritative Simulation acceptance
-
-on:
+# Each data-bearing job owns a fresh runner and disposable stack.
+# Preserve the full verification contract; no path-based suite selection yet.
+name: Acceptance
+"on":
   pull_request:
     branches:
       - main
       - codex/audit-stage7-deletion-guard
-    paths:
-      - ".github/workflows/phase8c-acceptance.yml"
-      - "package.json"
-      - "package-lock.json"
-      - "scripts/check-generated-supabase-types.mjs"
-      - "scripts/configure-auth-acceptance.mjs"
-      - "scripts/check-full-stack-report.mjs"
-      - "scripts/run-disposable-database-tests.sh"
-      - "scripts/verify-rolling-concurrency.mjs"
-      - "scripts/verify-card-reset-concurrency.mjs"
-      - "scripts/verify-player-source-smoke-concurrency.mjs"
-      - "scripts/verify-player-props-concurrency.mjs"
-      - "scripts/verify-progressive-player-props-concurrency.mjs"
-      - "scripts/verify-season-automation-concurrency.mjs"
-      - "scripts/verify-player-result-concurrency.mjs"
-      - "scripts/verify-quote-sharing-concurrency.mjs"
-      - "scripts/rolling-submissions/**"
-      - "supabase/templates/**"
-      - "src/**"
-      - "supabase/migrations/**"
-      - "supabase/operations/**"
-      - "supabase/tests/**"
-      - "tests/**"
-  workflow_dispatch:
-
+  workflow_dispatch: null
 permissions:
   contents: read
-
 concurrency:
-  group: phase8c-${{ github.workflow }}-${{ github.ref }}
+  group: acceptance-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
-  quality-and-database:
-    name: Clean quality, migration, pgTAP, and type gate
+  quality:
+    name: Quality, unit tests, and production build
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 15
     steps:
       - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Set up Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: 24
           cache: npm
-
       - name: Clean install
         run: npm ci
-
       - name: Formatting, lint, strict types, unit/property tests, and build
         run: npm run verify
-
-      - name: Set up Supabase CLI
-        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3
+  database:
+    name: Clean migrations, complete pgTAP, and generated types
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          version: 2.116.0
-
-      - name: Initialize disposable local configuration
-        run: |
-          supabase init
-          node scripts/configure-auth-acceptance.mjs
-
-      - name: Start disposable Supabase stack and apply every migration
-        # Keep native Postgres, Auth, Kong, PostgREST, Mailpit and the metadata
-        # service used by type generation. This application does not exercise
-        # Storage, Realtime, Edge Functions, Studio, analytics or the pooler.
-        run: >-
-          supabase start
-          --exclude realtime,storage-api,imgproxy,studio,edge-runtime,logflare,vector,supavisor
-
-      - name: Export disposable full-stack configuration
-        run: |
-          supabase status -o env > /tmp/sunday-ledger-supabase.env
-          set -a
-          source /tmp/sunday-ledger-supabase.env
-          set +a
-          for required_name in API_URL ANON_KEY SERVICE_ROLE_KEY DB_URL; do
-            if [[ -z "${!required_name:-}" ]]; then
-              echo "Supabase did not export required local setting: $required_name" >&2
-              exit 1
-            fi
-          done
-          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
-          echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> "$GITHUB_ENV"
-          echo "TEST_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
-          echo "TEST_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> "$GITHUB_ENV"
-          echo "TEST_SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
-          echo "TEST_SUPABASE_DB_URL=$DB_URL" >> "$GITHUB_ENV"
-          echo "OWNER_REHEARSAL_TEST_EMAIL=owner-rehearsal@acceptance.test" >> "$GITHUB_ENV"
-          echo "OWNER_REHEARSAL_TEST_PASSWORD=Owner-Rehearsal-Acceptance-48!" >> "$GITHUB_ENV"
-          echo "TEST_MAIL_URL=http://127.0.0.1:54324" >> "$GITHUB_ENV"
-          echo "AUTH_TEST_FAILURE_FILE=/tmp/sunday-ledger-auth-failure.json" >> "$GITHUB_ENV"
-          echo "RELEASE_QUERY_LOG=/tmp/sunday-ledger-release-queries.jsonl" >> "$GITHUB_ENV"
-          echo "FULL_STACK_ACCEPTANCE=1" >> "$GITHUB_ENV"
-          echo "PLAYWRIGHT_PRODUCTION=1" >> "$GITHUB_ENV"
-          echo "SUPABASE_SECRET_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
-          echo "SCORE_JOB_SECRET=disposable-score-job-secret-for-ci-only" >> "$GITHUB_ENV"
-          echo "ODDS_API_KEY=disposable-provider-fixture" >> "$GITHUB_ENV"
-          echo "ODDS_TEST_FIXTURE=/tmp/sunday-ledger-odds-fixture.json" >> "$GITHUB_ENV"
-
-      - name: Verify standing season automation concurrency on native Postgres
-        # Exercise the new races in their own fresh state before the broad gate.
-        run: node scripts/verify-season-automation-concurrency.mjs
-
-      - name: Isolate progressive Auth journeys from committed native race fixtures
-        # Native races intentionally commit LIVE events. Start the new browser
-        # journey with only its own provider-backed fixtures and source policy.
-        run: supabase db reset --local --no-seed
-
-      - name: Install full-stack browser
-        run: npx playwright install --with-deps chromium webkit
-
-      - name: Build the production app against disposable Auth
-        run: npm run build
-
-      - name: Verify progressive availability with real Auth on desktop and mobile
-        env:
-          PLAYWRIGHT_JSON_OUTPUT_FILE: acceptance-reports/progressive-props.json
-          NODE_OPTIONS: --import=${{ github.workspace }}/tests/fixtures/card-quotes-provider-preload.mjs
-        run: >-
-          npx playwright test tests/e2e/progressive-player-props-full-stack.spec.ts
-          --project=desktop --project=mobile --workers=1 --reporter=github,json
-          --output=test-results/progressive-props
-
-      - name: Require zero skipped progressive availability tests
-        run: node scripts/check-full-stack-report.mjs acceptance-reports/progressive-props.json
-
-      - name: Isolate the complete database suite from automation race fixtures
-        run: supabase db reset --local --no-seed
-
+          node-version: 24
+          cache: npm
+      - name: Clean install
+        run: npm ci
+      - name: Start fresh disposable acceptance stack
+        uses: ./.github/actions/setup-acceptance
       - name: Run complete pgTAP and Phase 8C isolation suite
         run: bash scripts/run-disposable-database-tests.sh
-
-      - name: Verify isolated source-smoke quota concurrency on native Postgres
-        run: node scripts/verify-player-source-smoke-concurrency.mjs
-
-      - name: Verify rolling submission concurrency on native Postgres
-        run: node scripts/verify-rolling-concurrency.mjs
-
-      - name: Verify recorded card reset concurrency on native Postgres
-        run: node scripts/verify-card-reset-concurrency.mjs
-
-      - name: Verify player-prop native concurrency
-        run: node scripts/verify-player-props-concurrency.mjs
-
-      - name: Verify player-result worker concurrency
-        run: node scripts/verify-player-result-concurrency.mjs
-
-      - name: Verify shared quote native concurrency
-        run: node scripts/verify-quote-sharing-concurrency.mjs
-
       - name: Verify disabled scheduler configuration on disposable database
         run: |
           psql "$TEST_SUPABASE_DB_URL" -v ON_ERROR_STOP=1 --single-transaction \
@@ -180,24 +70,101 @@ jobs:
               END IF;
             END \$\$;" \
             -c "SELECT cron.unschedule('sunday-ledger-score-checkpoints');"
-
       - name: Verify checked-in Phase 8C Supabase function types
         run: |
           supabase gen types typescript --local --schema api,public > /tmp/sunday-ledger-database.types.ts
           npm run types:supabase:check -- /tmp/sunday-ledger-database.types.ts
-
+      - name: Retain disposable acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: database-acceptance
+          path: |
+            acceptance-reports/
+            test-results/
+          retention-days: 7
+      - name: Stop disposable local database
+        if: always()
+        run: supabase stop --no-backup
+  native:
+    name: Native concurrency and retry safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: npm
+      - name: Clean install
+        run: npm ci
+      - name: Start fresh disposable acceptance stack
+        uses: ./.github/actions/setup-acceptance
+      - name: Verify standing season automation concurrency on native Postgres
+        run: node scripts/verify-season-automation-concurrency.mjs
+      - name: Clear committed automation fixtures before the legacy native gates
+        run: supabase db reset --local --no-seed
+      - name: Verify isolated source-smoke quota concurrency on native Postgres
+        run: node scripts/verify-player-source-smoke-concurrency.mjs
+      - name: Verify rolling submission concurrency on native Postgres
+        run: node scripts/verify-rolling-concurrency.mjs
+      - name: Verify recorded card reset concurrency on native Postgres
+        run: node scripts/verify-card-reset-concurrency.mjs
+      - name: Verify player-prop native concurrency
+        run: node scripts/verify-player-props-concurrency.mjs
+      - name: Verify player-result worker concurrency
+        run: node scripts/verify-player-result-concurrency.mjs
+      - name: Verify shared quote native concurrency
+        run: node scripts/verify-quote-sharing-concurrency.mjs
       - name: Verify progressive player publication concurrency on native Postgres
-        # The primary source policy is immutable after older native fixtures
-        # publish menus. Give this authority its own disposable database state.
         run: |
           supabase db reset --local --no-seed
           node scripts/verify-progressive-player-props-concurrency.mjs
-
+      - name: Retain disposable acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: native-acceptance
+          path: |
+            acceptance-reports/
+            test-results/
+          retention-days: 7
+      - name: Stop disposable local database
+        if: always()
+        run: supabase stop --no-backup
+  full-stack:
+    name: Real Auth and member journeys (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: npm
+      - name: Clean install
+        run: npm ci
+      - name: Start fresh disposable acceptance stack
+        uses: ./.github/actions/setup-acceptance
+      - name: Install full-stack browser
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Build the production app against disposable Auth
+        run: npm run build
+      - name: Verify progressive availability and season automation
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: acceptance-reports/progressive-props.json
+          NODE_OPTIONS: --import=${{ github.workspace }}/tests/fixtures/card-quotes-provider-preload.mjs
+        run: >-
+          npx playwright test tests/e2e/progressive-player-props-full-stack.spec.ts --project=${{ matrix.project
+          }} --workers=1 --reporter=github,json --output=test-results/progressive-props
+      - name: Require zero skipped progressive availability tests
+        run: node scripts/check-full-stack-report.mjs acceptance-reports/progressive-props.json
       - name: Isolate legacy Auth journeys from progressive source policy
-        # Clear the progressive lane's committed menus and immutable source
-        # policy before provisioning the legacy owner and browser fixtures.
         run: supabase db reset --local --no-seed
-
       - name: Provision isolated entitled owner
         run: |
           OWNER_USER_ID="$(node scripts/provision-owner-rehearsal-acceptance.mjs)"
@@ -207,121 +174,128 @@ jobs:
           fi
           psql "$TEST_SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c \
             "insert into private.owner_rehearsal_entitlements (user_id, note) values ('$OWNER_USER_ID'::uuid, 'Disposable CI owner');"
-
       - name: Run real Auth, server action, RSC, RPC, and authorization lane
         env:
           PLAYWRIGHT_JSON_OUTPUT_FILE: acceptance-reports/desktop.json
           NODE_OPTIONS: --import=${{ github.workspace }}/tests/fixtures/card-quotes-provider-preload.mjs
         run: >-
-          npx playwright test
-          tests/e2e/controlled-league-full-stack.spec.ts
-          tests/e2e/owner-rehearsal-full-stack.spec.ts
-          tests/e2e/card-quotes-full-stack.spec.ts
-          tests/e2e/auth-email-full-stack.spec.ts
-          tests/e2e/release-readiness-full-stack.spec.ts
-          tests/e2e/rolling-submissions-full-stack.spec.ts
-          tests/e2e/player-props-full-stack.spec.ts
-          tests/e2e/card-reset-full-stack.spec.ts
+          npx playwright test tests/e2e/controlled-league-full-stack.spec.ts tests/e2e/owner-rehearsal-full-stack.spec.ts
+          tests/e2e/card-quotes-full-stack.spec.ts tests/e2e/auth-email-full-stack.spec.ts tests/e2e/release-readiness-full-stack.spec.ts
+          tests/e2e/rolling-submissions-full-stack.spec.ts tests/e2e/player-props-full-stack.spec.ts tests/e2e/card-reset-full-stack.spec.ts
           --project=desktop --workers=1 --reporter=github,json --output=test-results/desktop
-
+        if: matrix.project == 'desktop'
       - name: Require zero skipped desktop full-stack tests
         run: node scripts/check-full-stack-report.mjs acceptance-reports/desktop.json
-
+        if: matrix.project == 'desktop'
       - name: Verify real email authentication with mobile WebKit emulation
         env:
           PLAYWRIGHT_JSON_OUTPUT_FILE: acceptance-reports/mobile-auth.json
           NODE_OPTIONS: --import=${{ github.workspace }}/tests/fixtures/card-quotes-provider-preload.mjs
         run: >-
-          npx playwright test tests/e2e/auth-email-full-stack.spec.ts
-          --project=mobile --workers=1 --reporter=github,json --output=test-results/mobile-auth
-
+          npx playwright test tests/e2e/auth-email-full-stack.spec.ts --project=mobile --workers=1 --reporter=github,json
+          --output=test-results/mobile-auth
+        if: matrix.project == 'mobile'
       - name: Require zero skipped mobile Auth tests
         run: node scripts/check-full-stack-report.mjs acceptance-reports/mobile-auth.json
-
+        if: matrix.project == 'mobile'
       - name: Measure mobile WebKit member release journey
         env:
           PLAYWRIGHT_JSON_OUTPUT_FILE: acceptance-reports/mobile-member.json
           NODE_OPTIONS: --import=${{ github.workspace }}/tests/fixtures/card-quotes-provider-preload.mjs
         run: >-
-          npx playwright test tests/e2e/release-readiness-full-stack.spec.ts
-          tests/e2e/rolling-submissions-full-stack.spec.ts
-          tests/e2e/player-props-full-stack.spec.ts
-          tests/e2e/controlled-league-full-stack.spec.ts
-          tests/e2e/card-reset-full-stack.spec.ts
+          npx playwright test tests/e2e/release-readiness-full-stack.spec.ts tests/e2e/rolling-submissions-full-stack.spec.ts
+          tests/e2e/player-props-full-stack.spec.ts tests/e2e/controlled-league-full-stack.spec.ts tests/e2e/card-reset-full-stack.spec.ts
           --project=mobile --workers=1 --reporter=github,json --output=test-results/mobile-member
-
+        if: matrix.project == 'mobile'
       - name: Require zero skipped mobile member tests
         run: node scripts/check-full-stack-report.mjs acceptance-reports/mobile-member.json
-
+        if: matrix.project == 'mobile'
       - name: Retain disposable acceptance evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: stage7-disposable-acceptance
+          name: full-stack-${{ matrix.project }}
           path: |
             acceptance-reports/
             test-results/
           retention-days: 7
-
       - name: Stop disposable local database
         if: always()
         run: supabase stop --no-backup
-
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: desktop
+            browser: chromium
+          - project: mobile
+            browser: webkit
   browser:
     name: Shared participant UI on Chromium and WebKit
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Set up Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: 24
           cache: npm
-
       - name: Clean install
         run: npm ci
-
       - name: Render deterministic shared-UI fixtures
         run: >-
-          npx vitest run
-          tests/e2e/phase1-markup.test.tsx
-          tests/e2e/phase8a-markup.test.tsx
-          tests/e2e/phase8b-markup.test.tsx
-          tests/e2e/phase8c-markup.test.tsx
-          tests/e2e/phase10-markup.test.tsx
-          tests/e2e/phase11-markup.test.tsx
-          tests/e2e/audit-stage4-markup.test.tsx
-
+          npx vitest run tests/e2e/phase1-markup.test.tsx tests/e2e/phase8a-markup.test.tsx tests/e2e/phase8b-markup.test.tsx
+          tests/e2e/phase8c-markup.test.tsx tests/e2e/phase10-markup.test.tsx tests/e2e/phase11-markup.test.tsx
+          tests/e2e/audit-stage4-markup.test.tsx tests/e2e/phase6-markup.test.tsx tests/e2e/phase7-markup.test.tsx
       - name: Install bounded browser set
         run: npx playwright install --with-deps chromium webkit
-
       - name: Chromium Phase 8 acceptance
         run: >-
-          npx playwright test
-          tests/e2e/phase8a-playoffs.spec.ts
-          tests/e2e/phase8b-finality.spec.ts
-          tests/e2e/phase8c-simulation.spec.ts
-          tests/e2e/phase8-accessibility.spec.ts
-          tests/e2e/phase10-navigation-records.spec.ts
-          tests/e2e/phase11-identity.spec.ts
-          tests/e2e/phase1-public.spec.tsx
-          tests/e2e/phase3-practice-card.spec.ts
-          tests/e2e/audit-stage4-presentation.spec.ts
-          --project=desktop --reporter=github
-
+          npx playwright test tests/e2e/phase8a-playoffs.spec.ts tests/e2e/phase8b-finality.spec.ts tests/e2e/phase8c-simulation.spec.ts
+          tests/e2e/phase8-accessibility.spec.ts tests/e2e/phase10-navigation-records.spec.ts tests/e2e/phase11-identity.spec.ts
+          tests/e2e/phase1-public.spec.tsx tests/e2e/phase3-practice-card.spec.ts tests/e2e/audit-stage4-presentation.spec.ts
+          --project=desktop --reporter=github --output=test-results/shared-desktop
       - name: WebKit Phase 8 acceptance
         run: >-
-          npx playwright test
-          tests/e2e/phase8a-playoffs.spec.ts
-          tests/e2e/phase8b-finality.spec.ts
-          tests/e2e/phase8c-simulation.spec.ts
-          tests/e2e/phase8-accessibility.spec.ts
-          tests/e2e/phase10-navigation-records.spec.ts
-          tests/e2e/phase11-identity.spec.ts
-          tests/e2e/phase1-public.spec.tsx
-          tests/e2e/phase3-practice-card.spec.ts
-          tests/e2e/audit-stage4-presentation.spec.ts
-          --project=webkit --reporter=github
+          npx playwright test tests/e2e/phase8a-playoffs.spec.ts tests/e2e/phase8b-finality.spec.ts tests/e2e/phase8c-simulation.spec.ts
+          tests/e2e/phase8-accessibility.spec.ts tests/e2e/phase10-navigation-records.spec.ts tests/e2e/phase11-identity.spec.ts
+          tests/e2e/phase1-public.spec.tsx tests/e2e/phase3-practice-card.spec.ts tests/e2e/audit-stage4-presentation.spec.ts
+          --project=webkit --reporter=github --output=test-results/shared-webkit
+      - name: Matchup privacy and season history on all existing browser projects
+        run: >-
+          npx playwright test tests/e2e/phase6-paired-matchup.spec.tsx tests/e2e/phase7-weekly-close.spec.tsx
+          --project=desktop --project=webkit --project=mobile --reporter=github --output=test-results/matchup-history
+      - name: Retain disposable acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: shared-ui-acceptance
+          path: |
+            acceptance-reports/
+            test-results/
+          retention-days: 7
+  acceptance:
+    name: Acceptance complete
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ always() }}
+    needs:
+      - quality
+      - database
+      - native
+      - full-stack
+      - browser
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: npm
+      - name: Require successful results from every job group
+        env:
+          CI_JOB_RESULTS: ${{ toJSON(needs) }}
+        run: node scripts/check-ci-results.mjs quality database native full-stack browser
