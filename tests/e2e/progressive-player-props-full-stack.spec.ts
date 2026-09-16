@@ -276,15 +276,17 @@ commit;`),
     .toBe(12);
   current = await state(owner, slug);
   const knownGame = current.slate.find((event) => event.id === fixture.event)!;
-  const knownPlayer = knownGame.playerProps!.find(
-    (slot) => slot.subjectId === fixture.frozenSubject,
-  )!;
   const pendingGame = current.slate.find(
     (event) => event.id === fixture.pendingEvent,
   )!;
+  // The raw state RPC contains markets; the application query adds player
+  // slots from the separate menu RPC before rendering the slate.
   const knownMenuBefore = (await menu(owner, slug)).slots.find(
-    (slot) => slot.subjectId === fixture.frozenSubject,
+    (slot) =>
+      slot.eventId === knownGame.id && slot.subjectId === fixture.frozenSubject,
   )!;
+  expect(knownMenuBefore).toMatchObject({ confirmed: true, frozen: true });
+  expect(knownMenuBefore.subjectLabel).toBeTruthy();
   await page.goto(`/l/${slug}/slate`);
   await page.getByRole("button", { name: "Player props", exact: true }).click();
   const pendingPanel = await gamePanel(page, pendingGame);
@@ -296,7 +298,7 @@ commit;`),
   const knownPanel = await gamePanel(page, knownGame);
   const player = knownPanel.locator("article").filter({
     has: page.getByRole("heading", {
-      name: knownPlayer.subjectLabel!,
+      name: knownMenuBefore.subjectLabel!,
       exact: true,
     }),
   });
