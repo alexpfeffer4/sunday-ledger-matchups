@@ -15,6 +15,31 @@ if (
     const url = new URL(
       typeof input === "string" || input instanceof URL ? input : input.url,
     );
+    if (
+      process.env.STAGE1_BASELINE === "1" &&
+      url.hostname === "github.com" &&
+      url.pathname.startsWith("/nflverse/")
+    ) {
+      const fixture = JSON.parse(
+        readFileSync(`${process.env.ODDS_TEST_FIXTURE}.nflverse`, "utf8"),
+      );
+      const text = url.pathname.endsWith("games.csv")
+        ? fixture.scheduleCsv
+        : /roster_\d+\.csv$/.test(url.pathname)
+          ? fixture.rosterCsv
+          : null;
+      if (text === null)
+        throw new Error("Unconfigured disposable nflverse response");
+      appendFileSync(`${process.env.ODDS_TEST_FIXTURE}.calls`, "nflverse\n");
+      return new Response(text, {
+        headers: { "last-modified": new Date().toUTCString() },
+      });
+    }
+    if (
+      process.env.STAGE1_BASELINE === "1" &&
+      !["localhost", "127.0.0.1", "api.the-odds-api.com"].includes(url.hostname)
+    )
+      throw new Error("Stage 1 refuses an unsubstituted external request");
     const failureFile = process.env.AUTH_TEST_FAILURE_FILE;
     if (
       failureFile &&
@@ -110,6 +135,8 @@ if (
       readFileSync(process.env.ODDS_TEST_FIXTURE, "utf8"),
     );
     appendFileSync(`${process.env.ODDS_TEST_FIXTURE}.calls`, "odds\n");
+    if (fixture.delayMs)
+      await new Promise((resolve) => setTimeout(resolve, fixture.delayMs));
     return Response.json(fixture.payload, {
       status: fixture.status ?? 200,
       headers: {

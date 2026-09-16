@@ -1,6 +1,6 @@
 # Simplification and speed — Stage 1 status
 
-September 16, 2026. Stage 1 is incomplete; Stage 2 must not start.
+September 16, 2026. Workspace reconnected and all local implementation files were recovered. Stage 1 implementation is now published for disposable verification; results remain pending. Stage 2 must not start.
 
 ## Verified baseline
 
@@ -21,7 +21,7 @@ Required measurements: representative ten-member league, sixteen games and ninet
 
 Suggested lab settings: Chromium desktop 1440×900 unthrottled; mobile Chromium 390×844, DPR 3, 150 ms latency, 1.6 Mbps down/750 Kbps up and 4× CPU slowdown. Declare synthetic provider delay and browser emulation. No physical-device, hosted authenticated performance or field Web Vitals claim.
 
-## Interrupted work and exact limitation
+## Recovered interruption (historical)
 
 Local implementation was written on branch `codex/simplification-stage1-verification`, based on the main SHA above, but was not committed or pushed before the workspace disconnected. The local executor repeatedly returned `409 Conflict, environment_offline: Environment is not connected`. The unavailable workspace prevents retrieving the exact changes, completing local checks and publishing them into the disposable CI lane.
 
@@ -36,3 +36,7 @@ Restore/reopen the workspace or start a fresh implementation workspace. Fetch cu
 Complete Stage 1 implementation, execute the existing disposable CI lane, resolve actual failures, and publish one reviewable verification PR with full required Acceptance, applicable Preview metadata and retained baseline artifacts. Produce the final Stage 2 status only after the meaningful paths run successfully. Stage 2 remains unauthorized in this task.
 
 A test/documentation-only release needs no database deployment. Merge remains a separate owner decision under the common execution contract. Recovery is a revert of test/harness changes, never a reset of bets, receipts, season consent or installed migration history.
+
+## Recovery update
+
+The next user turn restored executor connectivity. All six implementation/harness files survived. Current cgroup counters report no out-of-memory kill, but they do not identify the connection outage cause. The recovered implementation is on this same PR; the earlier status-only warning is historical. Required database/browser execution remains pending.
