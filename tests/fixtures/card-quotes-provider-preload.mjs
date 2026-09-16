@@ -129,6 +129,31 @@ if (
         },
       });
     }
+    if (
+      process.env.STAGE1_BASELINE === "1" &&
+      url.pathname.endsWith("/events")
+    ) {
+      const fixture = JSON.parse(
+        readFileSync(process.env.ODDS_TEST_FIXTURE, "utf8"),
+      );
+      appendFileSync(`${process.env.ODDS_TEST_FIXTURE}.calls`, "events\n");
+      return Response.json(
+        fixture.payload.map(
+          ({ id, sport_key, commence_time, home_team, away_team }) => ({
+            id,
+            sport_key,
+            commence_time,
+            home_team,
+            away_team,
+          }),
+        ),
+        {
+          headers: {
+            "x-requests-remaining": String(fixture.remaining ?? 19900),
+          },
+        },
+      );
+    }
     if (!url.pathname.endsWith("/odds"))
       throw new Error("Unexpected provider endpoint in quote acceptance");
     const fixture = JSON.parse(

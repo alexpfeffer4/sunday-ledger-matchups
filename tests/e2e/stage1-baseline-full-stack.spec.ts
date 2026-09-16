@@ -93,7 +93,10 @@ for (const pending of [false, true])
     update private.odds_refresh_policy set next_request_at='-infinity';`);
     source.writeMain();
     const prepared = await tick();
-    expect(prepared.status(), await prepared.text()).toBe(200);
+    expect(
+      prepared.status(),
+      `${await prepared.text()} ${JSON.stringify(snapshot())}`,
+    ).toBe(200);
     audit = snapshot();
     expect(audit.weeks).toBe(1);
     expect(audit.plans).toBe(1);
