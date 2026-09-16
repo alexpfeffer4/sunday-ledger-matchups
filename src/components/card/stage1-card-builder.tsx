@@ -105,24 +105,30 @@ const weekdayFilters: Record<string, Exclude<KickoffFilter, "ALL">> = {
 
 const formatDate = easternTime;
 
+// Stake-typing profiles identified repeated formatter construction in these
+// render-time helpers. Locale/timezone/options are fixed; the instances carry
+// no league, user, quote or draft state and can be reused safely.
+const observedAtFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
+});
+const kickoffFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  weekday: "short",
+  hour: "numeric",
+  hour12: false,
+});
+
 function formatObservedAt(value: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  }).format(new Date(value));
+  return observedAtFormatter.format(new Date(value));
 }
 
 function kickoffWindow(value: string): Exclude<KickoffFilter, "ALL"> | "OTHER" {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "short",
-    hour: "numeric",
-    hour12: false,
-  }).formatToParts(new Date(value));
+  const parts = kickoffFormatter.formatToParts(new Date(value));
   const weekday = parts.find((part) => part.type === "weekday")?.value;
   const hour = Number(parts.find((part) => part.type === "hour")?.value);
   if (weekday && weekdayFilters[weekday]) return weekdayFilters[weekday];

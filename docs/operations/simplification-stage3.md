@@ -74,17 +74,29 @@ discovery, results ingestion and all quota/lease/freshness rules remain separate
 ## Profiling and retained evidence
 
 Stage 1/2 complete and pending fixtures, raw observations, mixed page timings and
-the discarded menu experiment remain the baseline. No menu rewrite, cache,
-rendering, virtualization, refresh cadence or state-library change is included.
+the discarded menu experiment remain the baseline. No menu rewrite, quote cache, virtualization, refresh cadence or state-library
+change is included. Profiling preceded the only render-cost change: reuse two
+fixed `Intl.DateTimeFormat` instances for kickoff filters and observation labels.
+The same locale, timezone and options are retained, with no user/league/draft
+state in these objects. Editor state, memoization and component structure remain
+unchanged.
 
 The existing production-build benchmark adds a separate Chromium CPU sample of
 stake typing while the editor is already open, five runs per desktop/mobile/menu
 condition. The fixed two-key sequence includes a declared 50 ms inter-key delay;
 wall time includes driver/frame waits and is not pure rendering latency. Profiles
 record aggregate function/source-position sample time only, no DOM/input/auth data.
-Original timed stake-edit spans are outside profiler overhead. Focus/value and
+Original timed stake-edit spans are outside profiler overhead. The pre-change
+profile is head `2a99afbb7495e52eeb246d10a5307357f42cf449` / Acceptance
+`35163775005`. Kickoff formatting was the largest named application self-sample
+(about 503–567 ms total over five mobile typing samples per menu); the matching
+compiled function uses `Intl.DateTimeFormat(...).formatToParts`. Observation
+formatting contributed about 82–83 ms per five mobile samples. These sampled
+values include allocation/native work and are not standalone React render time.
+The identical harness runs again after formatter reuse. Focus/value and
 paused polling assertions still run. See final evidence for results and limits;
-no speed benefit is asserted from this behavior-preserving refactor.
+report measured formatter effects separately from the quote refactor; no
+Production/physical-device speed claim is made.
 
 The required acceptance contract remains unchanged in breadth. The only added
 clean-database step derives navigation after existing parity checks. Local quality
