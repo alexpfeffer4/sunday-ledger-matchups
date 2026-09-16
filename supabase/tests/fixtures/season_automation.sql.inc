@@ -28,9 +28,11 @@ create function pg_temp.automation_stage(c jsonb,n integer,p_partial boolean def
 declare r uuid;payload jsonb;result jsonb;wk uuid;ev private.sports_events%rowtype;choices jsonb;claim jsonb;g jsonb;t timestamptz:=clock_timestamp()+interval '48 hours';
 begin
  r:=pg_temp.automation_run(c,'PREPARE',n);
- payload:=jsonb_build_object('source','THE_ODDS_API','fetchedAt',clock_timestamp(),'events',jsonb_build_array(jsonb_build_object(
- 'source','THE_ODDS_API','externalEventId',c->>'slug'||'-auto-'||n,'sportKey','americanfootball_nfl','awayTeam','Away A','homeTeam','Home B','scheduledStartAt',t,
- 'markets',(select jsonb_agg(jsonb_build_object('sourceBook','draftkings','marketType',market,'outcomeKey',outcome,'proposition','Fixture market','americanOdds',-110,'lineMilli',line,'observedAt',now()))
+ -- Mirror the normalized provider's UTC ISO strings, including microseconds;
+ -- the commissioner import DTO intentionally validates that same contract.
+ payload:=jsonb_build_object('source','THE_ODDS_API','fetchedAt',to_char(clock_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),'events',jsonb_build_array(jsonb_build_object(
+ 'source','THE_ODDS_API','externalEventId',c->>'slug'||'-auto-'||n,'sportKey','americanfootball_nfl','awayTeam','Away A','homeTeam','Home B','scheduledStartAt',to_char(t at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+ 'markets',(select jsonb_agg(jsonb_build_object('sourceBook','draftkings','marketType',market,'outcomeKey',outcome,'proposition','Fixture market','americanOdds',-110,'lineMilli',line,'observedAt',to_char(now() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')))
  from (values('MONEYLINE','AWAY',null::integer),('MONEYLINE','HOME',null),('SPREAD','AWAY',3500),('SPREAD','HOME',-3500),('TOTAL','OVER',45500),('TOTAL','UNDER',45500))v(market,outcome,line)))));
  result:=private.lifecycle_store_live_odds_import((c->>'league')::uuid,payload,'fixture-auto-import-'||n,r);
  if n<=14 then result:=private.lifecycle_publish_next_live_week_slate((c->>'league')::uuid,(result->>'importId')::uuid,array[c->>'slug'||'-auto-'||n],'fixture-auto-publish-'||n,r);
