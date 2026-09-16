@@ -125,6 +125,14 @@ begin
  if p_step not between 1 and 30 then raise exception 'Rehearsal exceeded 30 checkpoint advances'; end if;
  checkpoint:=api.get_owner_rehearsal()->>'checkpoint';
  if checkpoint='COMPLETE' then return; end if;
+ -- This rollback-only fixture grows a full season in one transaction. Give
+ -- the planner current row counts instead of depending on background ANALYZE,
+ -- which cannot see this session's uncommitted fixture rows.
+ analyze private.season_weeks,private.season_entries,private.weekly_cards,
+ private.sports_events,private.slates,private.slate_items,private.market_snapshots,
+ private.live_quote_heads,private.position_receipts,private.settlement_versions,
+ private.weekly_score_versions,private.matchups,private.matchup_result_versions,
+ private.standings_snapshots,private.playoff_publications,private.playoff_round_publications;
  select league.slug into strict slug from private.owner_rehearsals r join private.leagues league on league.id=r.league_id where r.owner_user_id=pg_temp.rid(9) and r.status='ACTIVE';
  if checkpoint='WEEK_2_OPEN' then
   perform api.prepare_owner_rehearsal_quote_review(slug,'rolling-rehearsal-price-review');

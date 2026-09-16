@@ -68,7 +68,12 @@ jobs:
           node scripts/configure-auth-acceptance.mjs
 
       - name: Start disposable Supabase stack and apply every migration
-        run: supabase start
+        # Keep native Postgres, Auth, Kong, PostgREST, Mailpit and the metadata
+        # service used by type generation. This application does not exercise
+        # Storage, Realtime, Edge Functions, Studio, analytics or the pooler.
+        run: >-
+          supabase start
+          --exclude realtime,storage-api,imgproxy,studio,edge-runtime,logflare,vector,supavisor
 
       - name: Export disposable full-stack configuration
         run: |

@@ -19,6 +19,12 @@ suite_pid=$!
 (
   diagnostic_interval=90
   while ! timeout "${diagnostic_interval}s" tail --pid="$suite_pid" -f /dev/null; do
+    {
+      date -u '+%Y-%m-%dT%H:%M:%SZ'
+      free -m
+      timeout 10s docker stats --no-stream \
+        --format '{{.Name}} CPU={{.CPUPerc}} Memory={{.MemUsage}} PIDs={{.PIDs}}'
+    } >> acceptance-reports/database-resources.log 2>&1 || true
     PGOPTIONS='-c statement_timeout=10000' psql "$TEST_SUPABASE_DB_URL" -X \
       -c "select clock_timestamp() as observed_at, pid, application_name,
                  state, wait_event_type, wait_event,
@@ -47,5 +53,8 @@ if [[ "$suite_status" -ne 0 && -f acceptance-reports/database-waits.log ]]; then
   # Keep the last observed query/wait state readable in the supported job logs
   # even when the artifact download is temporarily unavailable.
   tail -n 80 acceptance-reports/database-waits.log >&2
+fi
+if [[ "$suite_status" -ne 0 && -f acceptance-reports/database-resources.log ]]; then
+  tail -n 40 acceptance-reports/database-resources.log >&2
 fi
 exit "$suite_status"
