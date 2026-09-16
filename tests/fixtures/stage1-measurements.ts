@@ -62,20 +62,22 @@ export async function sample(
     status: number;
   }[] = [];
   const pending: Promise<void>[] = [];
+  let sealed = false;
   const listener = (response: import("@playwright/test").Response) => {
+    const row = {
+      path: new URL(response.url()).pathname,
+      bytes: null as number | null,
+      status: response.status(),
+    };
+    browserRequests.push(row);
     pending.push(
       (async () => {
         const sizes = await response
           .request()
           .sizes()
           .catch(() => null);
-        browserRequests.push({
-          path: new URL(response.url()).pathname,
-          bytes: sizes
-            ? sizes.responseBodySize + sizes.responseHeadersSize
-            : null,
-          status: response.status(),
-        });
+        if (!sealed && sizes)
+          row.bytes = sizes.responseBodySize + sizes.responseHeadersSize;
       })(),
     );
   };
@@ -125,7 +127,17 @@ export async function sample(
       };
     }, before);
     page.off("response", listener);
-    await Promise.all(pending);
+    // Playwright sizes() has no timeout and may await an unfinished RSC prefetch.
+    // Bound bookkeeping after the visible action; unavailable sizes stay null.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    await Promise.race([
+      Promise.all(pending),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, 1000);
+      }),
+    ]);
+    clearTimeout(timer);
+    sealed = true;
     const result = {
       ...timing,
       action: name,
@@ -141,6 +153,7 @@ export async function sample(
     );
     return result;
   } finally {
+    sealed = true;
     page.off("response", listener);
   }
 }

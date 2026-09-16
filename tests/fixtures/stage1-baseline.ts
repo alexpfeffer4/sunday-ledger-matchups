@@ -92,8 +92,16 @@ export async function prerequisites(
   const fixture = JSON.parse(
     sql(`begin; ${helpers}
     create temporary table baseline_context as select pg_temp.automation_context(${q(slug)},${q(created.data.user!.id)}::uuid,false,${year}) c;
-    do $$ declare c jsonb; u uuid; ids uuid[]; matches jsonb; begin
+    do $$ declare c jsonb; u uuid; ids uuid[]; matches jsonb; event_id uuid; begin
       select baseline_context.c into c from baseline_context;
+      -- Give the historical input real final score/result rows as well as the
+      -- existing week marker. Its reset receipts remain immutable. These are
+      -- synthetic prior-week inputs, before the measured Week 3 worker path.
+      update private.season_weeks set opens_at=clock_timestamp()-interval '8 days',common_lock_at=clock_timestamp()-interval '6 days' where id=(c->>'week')::uuid;
+      update private.sports_events set scheduled_start_at=clock_timestamp()-interval '7 days' where week_id=(c->>'week')::uuid;
+      for event_id in select id from private.sports_events where week_id=(c->>'week')::uuid loop
+        perform private.record_stage1_result_as((c->>'owner')::uuid,event_id,'FINAL',7,14,'Stored prior-week fixture result','MANUAL_OBJECTIVE',${q(slug)}||':prior:'||event_id::text);
+      end loop;
       -- Use the established postseason fixture's prerequisite construction:
       -- finish the synthetic roster before taking real standing consent.
       update private.seasons set lifecycle='DRAFT',roster_locked_at=null where id=(c->>'season')::uuid;

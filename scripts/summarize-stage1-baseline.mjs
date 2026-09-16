@@ -25,6 +25,9 @@ const summary = [...groups].map(([condition, values]) => ({
     ),
   ),
   providerCalls: values.map((x) => x.providerCalls.length),
+  unknownBrowserByteCounts: values.map(
+    (x) => x.browserRequests.filter((r) => r.bytes === null).length,
+  ),
 }));
 for (const row of summary)
   if (row.n !== (row.condition.endsWith("expired-review-recovery") ? 1 : 5))
@@ -40,11 +43,13 @@ writeFileSync(
     "",
     "Production build, substituted provider responses. Cold means a fresh authenticated browser context; app/database processes are already running. Mobile: Chromium 390×844, DPR 3, 150 ms latency, 1.6 Mbps down / 750 Kbps up, 4× CPU slowdown. Desktop: Chromium 1440×900, unthrottled. No physical-device or real-provider latency claim. Five samples support median/range, not percentiles. Bytes are per-request browser response sizes; RPC timings remain distinct from the database plans. LCP/layout shift/event/long-task observations in raw JSON are lab observations, not field Core Web Vitals.",
     "",
-    "| Condition / action | n | Median ms | Range ms | Median RPCs | Median browser bytes |",
-    "|---|---:|---:|---:|---:|---:|",
+    "Browser byte collection waits at most one second after the visible frame. Unavailable sizes remain null in raw data; known-byte sums are lower bounds when the unknown count is nonzero.",
+    "",
+    "| Condition / action | n | Median ms | Range ms | Median RPCs | Median known browser bytes | Unknown sizes per run |",
+    "|---|---:|---:|---:|---:|---:|---|",
     ...summary.map(
       (x) =>
-        `| ${x.condition} | ${x.n} | ${x.medianMs} | ${x.minMs}–${x.maxMs} | ${x.medianRpcCount} | ${x.medianBrowserBytes} |`,
+        `| ${x.condition} | ${x.n} | ${x.medianMs} | ${x.minMs}–${x.maxMs} | ${x.medianRpcCount} | ${x.medianBrowserBytes} | ${x.unknownBrowserByteCounts.join(", ")} |`,
     ),
     "",
   ].join("\n"),
