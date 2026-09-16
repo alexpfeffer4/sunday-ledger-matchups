@@ -198,7 +198,7 @@ for (const pending of [false, true])
       "get_stage1_state",
       "get_live_quote_heads",
     ]) {
-      const args = name === "get_live_quote_heads" ? `${q(slug)}` : q(slug);
+      const args = q(slug);
       for (let run = 0; run <= 5; run++) {
         const output =
           sql(`begin read only; select set_config('request.jwt.claims',${q(JSON.stringify({ sub: fixture.owner, role: "authenticated" }))},true);set local role authenticated;
@@ -264,7 +264,7 @@ for (const pending of [false, true])
         for (const [label, path] of [
           ["Make picks", "slate"],
           ["My Card", "card"],
-          ["League", "league"],
+          [mobile ? "League" : "Overview", "league"],
           ["Matchup", "matchup"],
         ]) {
           await timed(`nav-${path}`, async () => {

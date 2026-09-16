@@ -85,9 +85,12 @@ export async function prerequisites(slug: string) {
   // retains its historical accept/reset audit. No Week 3 or successful run is seeded.
   const fixture = JSON.parse(
     sql(`begin; ${helpers}
-    create temporary table baseline_context as select pg_temp.automation_context(${q(slug)},${q(created.data.user!.id)}::uuid) c;
+    create temporary table baseline_context as select pg_temp.automation_context(${q(slug)},${q(created.data.user!.id)}::uuid,false) c;
     do $$ declare c jsonb; u uuid; ids uuid[]; matches jsonb; begin
       select baseline_context.c into c from baseline_context;
+      -- Use the established postseason fixture's prerequisite construction:
+      -- finish the synthetic roster before taking real standing consent.
+      update private.seasons set lifecycle='DRAFT',roster_locked_at=null where id=(c->>'season')::uuid;
       for i in 5..10 loop
         u:=gen_random_uuid();
         insert into auth.users(id,email) values(u,u::text||'@acceptance.test');
@@ -95,10 +98,12 @@ export async function prerequisites(slug: string) {
         insert into private.league_memberships(league_id,user_id,role) values((c->>'league')::uuid,u,'MEMBER');
         insert into private.season_entries(season_id,league_id,user_id,standing_tiebreak) values((c->>'season')::uuid,(c->>'league')::uuid,u,lpad(i::text,64,'0'));
       end loop;
+      update private.seasons set lifecycle='REGULAR',roster_locked_at=clock_timestamp() where id=(c->>'season')::uuid;
       select array_agg(id order by standing_tiebreak) into ids from private.season_entries where season_id=(c->>'season')::uuid;
       select jsonb_agg(jsonb_build_object('week',wk,'sideAEntryId',ids[pair*2-1],'sideBEntryId',ids[pair*2])) into matches from generate_series(1,14)wk cross join generate_series(1,5)pair;
       insert into private.schedule_publications(season_id,league_id,version,algorithm_version,seed,ordered_entry_ids,output_hash,created_by,schedule_json)
       values((c->>'season')::uuid,(c->>'league')::uuid,3,'circle-v1','baseline-fixture',ids,repeat('e',64),(c->>'owner')::uuid,jsonb_build_object('matchups',matches));
+      perform api.configure_season_automation(c->>'slug','ENABLE',3,'ALL_NFL_GAMES',private.season_automation_policy_hash());
       perform api.complete_player_catalog_job((c->>'leaseId')::uuid,'PENDING',24,'CATALOG_IDENTITIES_OR_ROLES_UNRESOLVED');
     end $$;
     select c from baseline_context; commit;`),
