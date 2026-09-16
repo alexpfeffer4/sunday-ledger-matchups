@@ -34,6 +34,14 @@ for (const pending of [false, true])
     const headers = { Authorization: `Bearer ${process.env.SCORE_JOB_SECRET}` };
     const worker = () =>
       request.post("/api/operations/season-automation", { headers, data: {} });
+    const tick = () => {
+      // Each successful operation deliberately waits for the next five-minute
+      // checkpoint. Advance only this disposable season's stored checkpoint.
+      sql(
+        `update private.season_automation set next_attempt_at='-infinity' where season_id=${season}::uuid;`,
+      );
+      return worker();
+    };
     const snapshot = () =>
       JSON.parse(
         sql(`select jsonb_build_object(
@@ -48,7 +56,15 @@ for (const pending of [false, true])
     // Real HTTP entry -> normalization -> service claim -> incomplete acquisition
     // -> failure completion. No resulting week, plan or successful marker is seeded.
     source.writeMain(140, true);
-    const failed = await worker();
+    const synchronized = await worker();
+    expect(synchronized.status(), await synchronized.text()).toBe(200);
+    expect(snapshot().runs).toEqual([
+      expect.objectContaining({
+        operation: "SYNC_SCHEDULE",
+        state: "SUCCEEDED",
+      }),
+    ]);
+    const failed = await tick();
     expect(failed.status(), await failed.text()).toBe(503);
     let audit = snapshot();
     expect(audit.weeks).toBe(0);
@@ -77,7 +93,7 @@ for (const pending of [false, true])
     update private.provider_requests set attempted_at=clock_timestamp()-interval '61 seconds' where league_id=${league}::uuid;
     update private.odds_refresh_policy set next_request_at='-infinity';`);
     source.writeMain();
-    const prepared = await worker();
+    const prepared = await tick();
     expect(prepared.status(), await prepared.text()).toBe(200);
     audit = snapshot();
     expect(audit.weeks).toBe(1);
@@ -130,7 +146,14 @@ for (const pending of [false, true])
       sql(
         `update private.season_automation_week_plans set opens_at=clock_timestamp() where week_id=${q(week)}::uuid;`,
       );
-    const opened = await worker();
+    const validated = await tick();
+    expect(validated.status(), await validated.text()).toBe(200);
+    expect(
+      sql(
+        `select count(*) from private.player_prop_system_validations where week_id=${q(week)}::uuid;`,
+      ),
+    ).toBe("1");
+    const opened = await tick();
     expect(opened.status(), await opened.text()).toBe(200);
     const current = await rpc(owner, "get_stage1_state", {
       p_league_slug: slug,
@@ -284,12 +307,17 @@ for (const pending of [false, true])
           await expect(page.locator("details").first()).toBeVisible();
         });
         await timed("game-filter", async () => {
-          const button = page.getByRole("button", {
-            name: "All games",
-            exact: true,
+          const filters = page.getByRole("navigation", {
+            name: "Filter games by kickoff",
           });
-          await button.click();
-          await expect(button).toHaveAttribute("aria-pressed", "true");
+          const day = filters.getByRole("button").nth(1);
+          await day.click();
+          await expect(day).toHaveAttribute("aria-pressed", "true");
+          await expect(page.locator("details")).toHaveCount(8);
+          await filters
+            .getByRole("button", { name: "All games", exact: true })
+            .click();
+          await expect(page.locator("details")).toHaveCount(16);
         });
         // Use the default game-market tab again; only enabled, unused markets enter
         // real drafts. Every repetition submits a new 50-credit batch, at most 500.

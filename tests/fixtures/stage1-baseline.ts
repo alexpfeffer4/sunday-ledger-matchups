@@ -139,7 +139,9 @@ export function providerData(slug: string, pending: boolean) {
   for (let week = 1; week <= 18; week++)
     for (let pair = 0; pair < 16; pair++) {
       if ((week === 9 && pair >= 8) || (week === 10 && pair < 8)) continue;
-      const date = new Date(selected.getTime() + (week - 3) * 7 * 86400000)
+      const date = new Date(
+        selected.getTime() + ((week - 3) * 7 + (pair >= 8 ? 1 : 0)) * 86400000,
+      )
         .toISOString()
         .slice(0, 10);
       const away = codes[pair * 2],
