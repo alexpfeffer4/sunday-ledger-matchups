@@ -309,11 +309,14 @@ for (const pending of [false, true])
           });
         }
         await page.goto(`/l/${slug}/slate`);
+        const propGames = page.locator("details").filter({
+          has: page.locator("summary").filter({ hasText: "View players" }),
+        });
         await timed("props-filter", async () => {
           await page
             .getByRole("button", { name: "Player props", exact: true })
             .click();
-          await expect(page.locator("details").first()).toBeVisible();
+          await expect(propGames).toHaveCount(source.gameCount);
         });
         await timed("game-filter", async () => {
           const filters = page.getByRole("navigation", {
@@ -322,13 +325,11 @@ for (const pending of [false, true])
           const day = filters.getByRole("button").nth(1);
           await day.click();
           await expect(day).toHaveAttribute("aria-pressed", "true");
-          await expect(page.locator("details")).toHaveCount(
-            source.firstFilterCount,
-          );
+          await expect(propGames).toHaveCount(source.firstFilterCount);
           await filters
             .getByRole("button", { name: "All games", exact: true })
             .click();
-          await expect(page.locator("details")).toHaveCount(source.gameCount);
+          await expect(propGames).toHaveCount(source.gameCount);
         });
         // Use the default game-market tab again; only enabled, unused markets enter
         // real drafts. Every repetition submits a new 50-credit batch, at most 500.
