@@ -327,6 +327,16 @@ begin
  insert into private.player_prop_progressive_authorizations(week_id,source_validation_id,release_sha,approval_reference)
  values(w.id,p.source_validation_id,sha,'Season policy consent '||c.id::text);
 end $$;
+-- An activated all-unavailable menu has no frozen subject yet. Re-entering
+-- preparation during ordinary card acceptance must not attempt structural
+-- INSERTs (whose BEFORE trigger correctly rejects even an upsert). Late slots
+-- remain exclusively under the existing progressive publication authority.
+do $$ declare d text;old text;begin
+ d:=pg_get_functiondef('private.prepare_player_menu(uuid)'::regprocedure);
+ old:=' if not private.player_props_menu_eligible(p_week_id) then return; end if;';
+ if strpos(d,old)=0 then raise exception 'Player menu preparation baseline changed';end if;
+ execute replace(d,old,old||chr(10)||' if exists(select 1 from private.player_prop_progressive_activations where week_id=p_week_id) then return;end if;');
+end $$;
 do $$ declare d text;old text;begin
  d:=pg_get_functiondef('private.pin_week_rules()'::regprocedure);
  old:='exists(select 1 from private.player_prop_progressive_seasons where season_id=v_season.id and league_id=v_season.league_id)';

@@ -467,6 +467,8 @@ update private.season_weeks set state='FINAL' where id=(select wk from auto_week
 insert into auto_weeks select 4,pg_temp.automation_stage(c,4,false) from automation_context;
 select is(api.complete_season_automation(pg_temp.automation_run(c,'VALIDATE',4))->>'status','VALIDATED','successive all-unavailable week validates with the same approval') from automation_context;
 select is(api.complete_season_automation(pg_temp.automation_run(c,'OPEN',4))->>'status','OPENED','successive all-unavailable week opens without human confirmation') from automation_context;
+select lives_ok(format('select private.prepare_player_menu(%L::uuid)',wk),'all-unavailable activated menu survives ordinary card preparation without structural inserts') from auto_weeks where n=4;
+select is((select count(*) from private.week_player_menu where week_id=(select wk from auto_weeks where n=4)),6::bigint,'ordinary card preparation preserves all six unavailable authorized slots');
 select is((select count(*) from private.season_automation_consents where season_id=(select (c->>'season')::uuid from automation_context)),1::bigint,'two successive weeks use exactly one season approval');
 select is((select count(*) from private.player_prop_progressive_reviews where week_id in(select wk from auto_weeks)),0::bigint,'neither future week contains a fictitious human review');
 select is((select count(*) from private.player_prop_progressive_activations where week_id in(select wk from auto_weeks) and system_validation_id is not null),2::bigint,'each week has its own content-bound SYSTEM activation');
