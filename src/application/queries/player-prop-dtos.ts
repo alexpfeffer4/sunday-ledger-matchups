@@ -54,5 +54,6 @@ export const playerPropMenuSchema = z.object({
   amendmentApplied: z.boolean().optional(),
   progressiveAvailability: z.boolean().optional(),
   progressiveActivated: z.boolean().optional(),
+  automaticValidation: z.boolean().optional(),
 });
 export type PlayerPropMenu = z.infer<typeof playerPropMenuSchema>;

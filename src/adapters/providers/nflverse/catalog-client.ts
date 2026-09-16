@@ -1,6 +1,29 @@
 import "server-only";
 import type { NflverseCatalogFiles } from "@/adapters/providers/player-catalog-normalizer";
 
+/** Same verified schedule source used by player identity matching. */
+export async function fetchNflverseSchedule(
+  season: number,
+  signal?: AbortSignal,
+): Promise<string> {
+  if (!Number.isInteger(season) || season < 2020 || season > 2100)
+    throw new Error("INVALID_CATALOG_SEASON");
+  const response = await fetch(
+    "https://github.com/nflverse/nfldata/raw/master/data/games.csv",
+    {
+      cache: "no-store",
+      signal: AbortSignal.any([
+        AbortSignal.timeout(12000),
+        ...(signal ? [signal] : []),
+      ]),
+    },
+  );
+  if (!response.ok) throw new Error("CATALOG_SCHEDULE_UNAVAILABLE");
+  const text = await response.text();
+  if (text.length > 12000000) throw new Error("CATALOG_SCHEDULE_TOO_LARGE");
+  return text;
+}
+
 /** Fixed public nflverse sources; URLs cannot be supplied by a caller. */
 export async function fetchNflverseCatalog(
   season: number,

@@ -18,6 +18,7 @@ on:
       - "scripts/verify-player-source-smoke-concurrency.mjs"
       - "scripts/verify-player-props-concurrency.mjs"
       - "scripts/verify-progressive-player-props-concurrency.mjs"
+      - "scripts/verify-season-automation-concurrency.mjs"
       - "scripts/verify-player-result-concurrency.mjs"
       - "scripts/verify-quote-sharing-concurrency.mjs"
       - "scripts/rolling-submissions/**"
@@ -161,6 +162,9 @@ jobs:
         run: |
           supabase db reset --local --no-seed
           node scripts/verify-progressive-player-props-concurrency.mjs
+
+      - name: Verify standing season automation concurrency on native Postgres
+        run: node scripts/verify-season-automation-concurrency.mjs
 
       - name: Isolate progressive Auth journeys from committed native race fixtures
         # Native races intentionally commit LIVE events. Start the new browser

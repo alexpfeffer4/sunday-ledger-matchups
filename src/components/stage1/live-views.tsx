@@ -1007,6 +1007,7 @@ export function Stage1StandingsView({
 }
 
 export function Stage1CommissionerView({
+  seasonAutomated = false,
   cardStatus = null,
   invites,
   leagueManagement,
@@ -1017,6 +1018,7 @@ export function Stage1CommissionerView({
   state,
   week17CorrectionOperations,
 }: {
+  seasonAutomated?: boolean;
   cardStatus?: CommissionerCardStatus | null;
   invites: LeagueInviteSummary[];
   leagueManagement: MyLeagueSummary | null;
@@ -1111,6 +1113,7 @@ export function Stage1CommissionerView({
             </section>
           ) : (
             <Stage1CommissionerControls
+              seasonAutomated={seasonAutomated}
               invites={invites}
               latestLiveImport={latestLiveImport}
               liveWeekOperations={liveWeekOperations}

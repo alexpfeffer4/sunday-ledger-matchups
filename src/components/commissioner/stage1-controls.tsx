@@ -239,6 +239,7 @@ function commissionerNextStep({
 }
 
 export function Stage1CommissionerControls({
+  seasonAutomated = false,
   invites,
   latestLiveImport,
   liveWeekOperations,
@@ -246,6 +247,7 @@ export function Stage1CommissionerControls({
   state,
   week17CorrectionOperations = null,
 }: {
+  seasonAutomated?: boolean;
   invites: LeagueInviteSummary[];
   latestLiveImport: LiveOddsImportReview | null;
   liveWeekOperations: LiveWeekOperations | null;
@@ -276,13 +278,19 @@ export function Stage1CommissionerControls({
     }, 60_000);
     return () => window.clearInterval(timer);
   }, []);
-  const nextStep =
-    timedCommissionerAction(state, liveWeekOperations, now) ??
-    commissionerNextStep({
-      hasLiveImport: latestLiveImport !== null,
-      providerConfigured,
-      state,
-    });
+  const nextStep = seasonAutomated
+    ? {
+        title: "Season automation is managing the next checkpoint",
+        detail:
+          "Use the season automation panel for timing and any blocker. The controls below remain available for reviewed recovery and corrections.",
+        prerequisites: "No routine weekly player confirmation is required",
+      }
+    : (timedCommissionerAction(state, liveWeekOperations, now) ??
+      commissionerNextStep({
+        hasLiveImport: latestLiveImport !== null,
+        providerConfigured,
+        state,
+      }));
   const rosterIsValid = isRosterValid(state);
 
   useEffect(() => {

@@ -442,5 +442,175 @@ select api.confirm_progressive_player_prop_menu(c->>'slug',(select jsonb_agg(jso
 select is(api.open_reviewed_player_prop_week(c->>'slug','future-progressive-week-four')->>'rulesetVersion','1.5','following week retains the exact supported 1.5 snapshot') from progressive_context;
 select is((select count(*) from private.authoritative_season_rulesets where ruleset_version='1.5'),0::bigint,'global catalogs remain unchanged');
 select is((select canonical_json->>'version' from private.prepared_player_props_rulesets where mode='LIVE'),'1.4','prepared legacy 1.4 package remains unchanged');
+-- V2.2 automation extends the existing progressive fixture authority.
+\ir fixtures/season_automation.sql
+create temporary table automation_context as select pg_temp.automation_context('auto-two-weeks') c;
+create temporary table auto_weeks as select 3 n,pg_temp.automation_stage(c,3,true) wk from automation_context;
+select is((select count(*) from private.weekly_cards where week_id=(select wk from auto_weeks where n=3)),0::bigint,'automatic staging grants no credits or cards');
+select is((select state from private.season_weeks where id=(select wk from auto_weeks where n=3)),'PLANNED','automatic preparation remains PLANNED');
+select is(api.complete_season_automation(pg_temp.automation_run(c,'VALIDATE',3))->>'status','VALIDATED','first automatic week validates under season approval') from automation_context;
+select is((select count(*) from private.player_prop_progressive_reviews where week_id=(select wk from auto_weeks where n=3)),0::bigint,'SYSTEM validation creates no human review');
+select ok(not exists(select 1 from private.week_player_menu where week_id=(select wk from auto_weeks where n=3) and confirmed_by is not null),'SYSTEM validation never attributes review to commissioner');
+select is(api.complete_season_automation(pg_temp.automation_run(c,'OPEN',3))->>'status','OPENED','first week opens automatically with a partial menu') from automation_context;
+select is((select count(*) from private.weekly_cards where week_id=(select wk from auto_weeks where n=3)),4::bigint,'opening grants exactly one card per member');
+select is((select sum(granted_credits) from private.weekly_cards where week_id=(select wk from auto_weeks where n=3)),4000::bigint,'opening grants exactly 1000 credits each');
+select is((select count(*) from private.player_prop_empty_slots where week_id=(select wk from auto_weeks where n=3)),5::bigint,'only exact unavailable slots are authorized for later publication');
+select is((api.get_player_prop_menu(c->>'slug')->>'automaticValidation')::boolean,true,'UI identifies automatic validation truthfully') from automation_context;
+select is((api.get_player_prop_menu(c->>'slug')->>'canOpen')::boolean,false,'automatic scope has no routine commissioner opening confirmation') from automation_context;
+select api.configure_season_automation(c->>'slug','PAUSE') from automation_context;
+select is((select count(*) from private.player_catalog_pending_slots((select wk from auto_weeks where n=3))),5::bigint,'lifecycle pause preserves approved pending-slot continuation');
+select api.configure_season_automation(c->>'slug','RESUME') from automation_context;
+update private.season_weeks set state='FINAL' where id=(select wk from auto_weeks where n=3);
+insert into auto_weeks select 4,pg_temp.automation_stage(c,4,false) from automation_context;
+select is(api.complete_season_automation(pg_temp.automation_run(c,'VALIDATE',4))->>'status','VALIDATED','successive all-unavailable week validates with the same approval') from automation_context;
+select is(api.complete_season_automation(pg_temp.automation_run(c,'OPEN',4))->>'status','OPENED','successive all-unavailable week opens without human confirmation') from automation_context;
+select is((select count(*) from private.season_automation_consents where season_id=(select (c->>'season')::uuid from automation_context)),1::bigint,'two successive weeks use exactly one season approval');
+select is((select count(*) from private.player_prop_progressive_reviews where week_id in(select wk from auto_weeks)),0::bigint,'neither future week contains a fictitious human review');
+select is((select count(*) from private.player_prop_progressive_activations where week_id in(select wk from auto_weeks) and system_validation_id is not null),2::bigint,'each week has its own content-bound SYSTEM activation');
+select ok(not has_function_privilege('authenticated','api.complete_season_automation(uuid,jsonb,jsonb,text)','execute'),'members cannot execute scheduled commands');
+select ok(not has_function_privilege('anon','api.configure_season_automation(text,text,integer,text,text)','execute'),'anonymous cannot enroll');
+select ok(not has_function_privilege('service_role','private.lifecycle_publish_next_live_week_slate(uuid,uuid,text[],text,uuid)','execute'),'service cannot bypass claimed-run wrapper');
+-- Each trial rolls back its own fixture, preserving the installed source policy.
+create function pg_temp.automation_trial(fault text) returns jsonb language plpgsql as $$
+declare c jsonb;wk uuid;r uuid;j jsonb;answer jsonb;g uuid;nominees jsonb;
+begin
+ begin
+ c:=pg_temp.automation_context('auto-trial-'||fault);wk:=pg_temp.automation_stage(c,3,true);
+ if fault in('wrong-role','wrong-team','wrong-event','tie','stale','warning') then
+ select nominations into nominees from private.player_catalog_nomination_generations where id=(select generation_id from private.player_catalog_nomination_heads where week_id=wk);
+ select jsonb_agg(case when n->>'proposedCanonicalKey' is null then n else
+ case fault when 'wrong-role' then jsonb_set(n,'{slot}','"RB_RUSH"')
+ when 'wrong-team' then jsonb_set(n,'{team}','"Unrelated team"')
+ when 'wrong-event' then jsonb_set(n,'{externalEventId}','"Unrelated event"')
+ when 'tie' then jsonb_set(n,'{candidates}',(n->'candidates')||(n->'candidates'))
+ when 'stale' then jsonb_set(n,'{nominationExpiresAt}',to_jsonb(clock_timestamp()-interval '1 second'))
+ when 'warning' then jsonb_set(n,'{warnings}','["Ambiguous evidence"]') end end) into nominees from jsonb_array_elements(nominees)n;
+ -- New immutable source generation simulates evidence changing under the worker.
+ insert into private.player_catalog_nomination_generations(week_id,source_validation_id,nominations,content_hash)
+ values(wk,(select source_validation_id from private.player_result_policy where singleton),nominees,encode(extensions.digest(nominees::text,'sha256'),'hex')) returning id into g;
+ update private.player_catalog_nomination_heads set generation_id=g where week_id=wk;
+ end if;
+ if fault='absent-consent' then update private.season_automation set revoked=true where season_id=(c->>'season')::uuid;end if;
+ r:=pg_temp.automation_run(c,'VALIDATE',3);
+ begin j:=api.complete_season_automation(r);exception when others then j:=jsonb_build_object('status',sqlstate);end;
+ if fault in('wrong-role','wrong-team','wrong-event','tie','stale','warning','absent-consent') then
+ answer:=j||jsonb_build_object('available',(select count(*) from private.week_player_menu where week_id=wk and subject_id is not null));
+ else
+ r:=pg_temp.automation_run(c,'OPEN',3);
+ case fault
+ when 'pause' then perform api.configure_season_automation(c->>'slug','PAUSE');
+ when 'revoke' then perform api.configure_season_automation(c->>'slug','REVOKE');
+ when 'expired-lease' then update private.season_automation_runs set lease_until=clock_timestamp()-interval '1 second' where id=r;
+ when 'stale-generation' then update private.season_automation set generation=generation+1 where season_id=(c->>'season')::uuid;
+ when 'wrong-season' then update private.season_automation_runs set season_id=gen_random_uuid() where id=r;
+ when 'missing-game' then update private.sports_events set away_team='Changed fixture team' where week_id=wk;
+ when 'cutoff' then update private.sports_events set actual_started_at=clock_timestamp(),state='LIVE' where week_id=wk;
+ when 'previous-pending' then update private.season_weeks set state='PROVISIONAL' where id=(c->>'week')::uuid;
+ when 'content-race' then update private.week_player_menu set unavailable_reason='Changed evidence' where week_id=wk and subject_id is null;
+ when 'source-off' then update private.player_result_policy set processing_enabled=false;
+ when 'renew' then
+ perform api.configure_season_automation(c->>'slug','REVOKE');
+ perform api.configure_season_automation(c->>'slug','ENABLE',3,'ALL_NFL_GAMES',private.season_automation_policy_hash());
+ j:=api.complete_season_automation(pg_temp.automation_run(c,'VALIDATE',3));r:=pg_temp.automation_run(c,'OPEN',3);
+ else null;
+ end case;
+ begin j:=api.complete_season_automation(r);exception when others then j:=jsonb_build_object('status',sqlstate);end;
+ if fault='replay' then j:=api.complete_season_automation(r);end if;
+ if fault in('content-race','previous-pending') then
+ if fault='previous-pending' then update private.season_weeks set state='FINAL' where id=(c->>'week')::uuid;end if;
+ perform api.complete_season_automation(pg_temp.automation_run(c,'VALIDATE',3));
+ j:=api.complete_season_automation(pg_temp.automation_run(c,'OPEN',3));
+ end if;
+ answer:=j||jsonb_build_object('cards',(select count(*) from private.weekly_cards where week_id=wk),
+ 'activations',(select count(*) from private.player_prop_progressive_activations where week_id=wk),
+ 'systemReceipts',(select count(*) from private.command_receipts where league_id=(c->>'league')::uuid and execution_kind='SYSTEM' and actor_user_id is null),
+ 'consents',(select count(*) from private.season_automation_consents where season_id=(c->>'season')::uuid));
+ end if;
+ raise exception using errcode='ZX001',message=answer::text;
+ exception when sqlstate 'ZX001' then return sqlerrm::jsonb;end;
+end $$;
+select is(pg_temp.automation_trial(fault)->>'available','0',fault||' initial candidate stays unavailable without blocking structural validation') from unnest(array['wrong-role','wrong-team','wrong-event','tie','stale','warning'])fault;
+select is(pg_temp.automation_trial(fault)->>'status','40001',fault||' fences stale SYSTEM authority') from unnest(array['absent-consent','pause','revoke','expired-lease','stale-generation'])fault;
+select is(pg_temp.automation_trial(fault)->>'cards','0',fault||' leaves no cards or credit grant') from unnest(array['missing-game','cutoff','source-off'])fault;
+select is(pg_temp.automation_trial('content-race')->>'status','OPENED','changed unoffered menu is revalidated and opens automatically');
+select is(pg_temp.automation_trial('previous-pending')->>'status','OPENED','previous week pending blocks opening until its stored FINAL state');
+select is(pg_temp.automation_trial('replay')->>'replayed','true','completion replay returns its durable result');
+select is(pg_temp.automation_trial('replay')->>'activations','1','completion replay never duplicates activation');
+select is(pg_temp.automation_trial('renew')->>'consents','2','revoked preparation requires a genuine renewed policy approval');
+select is(pg_temp.automation_trial('renew')->>'status','OPENED','identical explicitly renewed scope can recover its prepared week');
+
+create function pg_temp.automation_retry_trial() returns jsonb language plpgsql as $$
+declare c jsonb;r uuid;j jsonb;delays jsonb:='[]';answer jsonb;n integer;
+begin begin
+ c:=pg_temp.automation_context('auto-retry-bounds');
+ for n in 1..4 loop
+ r:=pg_temp.automation_run(c,'SYNC_SCHEDULE',3);
+ update private.season_automation set operation_key='SYNC_SCHEDULE:3' where season_id=(c->>'season')::uuid;
+ j:=api.complete_season_automation(r,p_failure=>'SCHEDULE_UNAVAILABLE');
+ delays:=delays||to_jsonb((select round(extract(epoch from next_attempt_at-clock_timestamp())/60)::integer from private.season_automation where season_id=(c->>'season')::uuid));
+ end loop;
+ answer:=jsonb_build_object('delays',delays,'suspended',private.next_season_automation_action((c->>'season')::uuid)->>'status');
+ update private.player_result_policy set processing_enabled=false;
+ answer:=answer||jsonb_build_object('changed',private.next_season_automation_action((c->>'season')::uuid)->>'status');
+ perform api.configure_season_automation(c->>'slug','RETRY');
+ answer:=answer||jsonb_build_object('attempts',(select attempts from private.season_automation where season_id=(c->>'season')::uuid));
+ raise exception using errcode='ZX001',message=answer::text;
+ exception when sqlstate 'ZX001' then return sqlerrm::jsonb;end;end $$;
+select is(pg_temp.automation_retry_trial()->'delays','[5,15,60,60]'::jsonb,'failure retries are bounded at five, fifteen and sixty minutes');
+select is(pg_temp.automation_retry_trial()->>'suspended','SUSPENDED','fourth failed attempt suspends unchanged work');
+select is(pg_temp.automation_retry_trial()->>'changed','DUE','a relevant dependency change releases suspension');
+select is(pg_temp.automation_retry_trial()->>'attempts','0','authorized explicit retry resets the bounded attempt count');
+-- Reuse the canonical roster-matrix close-week fixture for the changed
+-- automatic publication path at representative bracket sizes.
+\ir fixtures/postseason_close_matrix_week.sql
+create function pg_temp.automation_postseason_trial(size integer) returns jsonb language plpgsql as $$
+declare c jsonb;u uuid;wk uuid;j jsonb;n integer;answer jsonb;gate jsonb;
+begin begin
+ c:=pg_temp.automation_context('auto-postseason-'||size,p_enroll=>false);
+ -- Complete synthetic roster construction before real standing consent.
+ update private.seasons set lifecycle='DRAFT',roster_locked_at=null where id=(c->>'season')::uuid;
+ for n in 5..size loop
+ u:=gen_random_uuid();insert into auth.users(id,email) values(u,u::text||'@automation.test');
+ insert into private.profiles(id,display_name) values(u,'Automation member '||n);
+ insert into private.league_memberships(league_id,user_id,role) values((c->>'league')::uuid,u,'MEMBER');
+ insert into private.season_entries(season_id,league_id,user_id,standing_tiebreak) values((c->>'season')::uuid,(c->>'league')::uuid,u,lpad(n::text,64,'0'));
+ end loop;
+ update private.seasons set lifecycle='REGULAR',roster_locked_at=now() where id=(c->>'season')::uuid;
+ perform api.configure_season_automation(c->>'slug','ENABLE',3,'ALL_NFL_GAMES',private.season_automation_policy_hash());
+ insert into private.season_weeks(season_id,league_id,nfl_week,scope,state,opens_at,common_lock_at,locked_at,correction_window_closes_at)
+ values((c->>'season')::uuid,(c->>'league')::uuid,14,'REGULAR','FINAL',now()-interval '2 days',now()-interval '1 day',now()-interval '1 day',clock_timestamp()+interval '1 hour') returning id into wk;
+ insert into private.standings_snapshots(season_id,week_id,league_id,through_week,ordered_rows,input_hash,status)
+ select (c->>'season')::uuid,wk,(c->>'league')::uuid,14,jsonb_agg(jsonb_build_object('seed',seed,'entryId',id,'displayName','Member '||seed,
+ 'wins',size-seed,'losses',seed,'ties',0,'pointsForCenticredits',2000000-seed*10000,'allPlayHalfWinUnits',200-seed,
+ 'allPlayComparisonCount',126,'attendanceMisses',0,'highestWeekCenticredits',200000-seed*1000,'deterministicTiebreak',lpad(seed::text,64,'0')) order by seed),repeat('a',64),'FINAL'
+ from (select id,row_number() over(order by id)::integer seed from private.season_entries where season_id=(c->>'season')::uuid)e;
+ gate:=api.complete_season_automation(pg_temp.automation_run(c,'QUALIFY',15));
+ update private.season_weeks set correction_window_closes_at=now()-interval '1 second' where id=wk;
+ j:=api.complete_season_automation(pg_temp.automation_run(c,'QUALIFY',15));
+ if j->>'status'<>'QUALIFIED' then raise exception 'Qualification failed: %',j;end if;
+ for n in 15..18 loop
+ if n=18 then
+ j:=api.complete_season_automation(pg_temp.automation_run(c,'CHAMPION',17));
+ if j->>'status'<>'CHAMPION_FINAL' then raise exception 'Champion failed: %',j;end if;
+ end if;
+ wk:=pg_temp.automation_stage(c,n,false);
+ j:=api.complete_season_automation(pg_temp.automation_run(c,'VALIDATE',n));
+ if j->>'status'<>'VALIDATED' then raise exception 'Validation failed: %',j;end if;
+ j:=api.complete_season_automation(pg_temp.automation_run(c,'OPEN',n));
+ if j->>'status'<>'OPENED' then raise exception 'Opening failed: %',j;end if;
+ perform pg_temp.phase8_close_matrix_week((c->>'season')::uuid,n);
+ end loop;
+ j:=api.complete_season_automation(pg_temp.automation_run(c,'ARCHIVE',18));
+ answer:=j||jsonb_build_object('gate',gate->>'status','cards',(select count(*) from private.weekly_cards card join private.season_weeks w on w.id=card.week_id where w.season_id=(c->>'season')::uuid and w.nfl_week>=15),
+ 'rounds',(select count(*) from private.playoff_round_publications where season_id=(c->>'season')::uuid and execution_kind='SYSTEM' and created_by is null),
+ 'validations',(select count(*) from private.player_prop_system_validations v join private.season_weeks w on w.id=v.week_id where w.season_id=(c->>'season')::uuid));
+ raise exception using errcode='ZX001',message=answer::text;
+ exception when sqlstate 'ZX001' then return sqlerrm::jsonb;end;end $$;
+create temporary table automation_postseason_results as select size,pg_temp.automation_postseason_trial(size) result from unnest(array[4,10])size;
+select is(result->>'status','ARCHIVED',size||'-member automatic postseason reaches complete archive') from automation_postseason_results;
+select is(result->>'gate','FAILED',size||'-member qualification obeys the existing review window') from automation_postseason_results;
+select is((result->>'cards')::integer,size*4,size||'-member postseason grants each member exactly one card each week') from automation_postseason_results;
+select is(result->>'rounds','4',size||'-member postseason preserves SYSTEM provenance for every round') from automation_postseason_results;
+select is(result->>'validations','4',size||'-member postseason never needs another human menu approval') from automation_postseason_results;
 select * from finish();
 rollback;

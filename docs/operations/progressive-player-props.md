@@ -1,5 +1,10 @@
 # Progressive player-props release and Week 2 cutover
 
+**Scope amendment:** [Version 2.2](../governance/2026-09-16-season-automation.md) supersedes the weekly human review
+requirement below only for explicitly enrolled future weeks. Those weeks use
+standing season consent and automatic SYSTEM validation. The historical Week 2
+cutover and unenrolled manual scopes retain their original requirements.
+
 Use with the [owner's progressive availability decision](../governance/2026-09-15-progressive-player-props.md),
 [nflverse pilot runbook](nflverse-primary-pilot.md), and retained
 [Week 2 reset/cutover safeguards](week2-props-cutover.md). The owner authorized

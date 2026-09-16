@@ -1,5 +1,16 @@
 # Sunday Ledger — current governing source index
 
+## Standing season automation — September 16, 2026 (Version 2.2)
+
+The owner's [Version 2.2 amendment](2026-09-16-season-automation.md) supersedes
+weekly human props review for explicitly enrolled future Live weeks. One genuine
+season approval covers the saved schedule/preset and versioned props policy;
+each week receives exact content-bound SYSTEM validation and opens automatically
+when canonical readiness/finality gates pass. Historical Week 2 and unenrolled
+manual scopes retain their genuine reviews. Competitive 1.5/3.4 bytes stay intact.
+The [release runbook](../operations/season-automation.md) separates the authorized
+implementation/Preview from final Production rollout and named enrollment approval.
+
 ## Progressive player availability — September 15, 2026
 
 The owner approved [showing empty slots as unavailable and checking them through

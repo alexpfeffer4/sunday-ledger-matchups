@@ -1,5 +1,10 @@
 # Player props with later publication of initially empty slots
 
+**Scope amendment:** [Version 2.2](2026-09-16-season-automation.md) supersedes the weekly human review
+requirement below only for explicitly enrolled future weeks. Those weeks use
+standing season consent and automatic SYSTEM validation. The historical Week 2
+cutover and unenrolled manual scopes retain their original requirements.
+
 Owner decision, September 15, 2026. After live acquisition returned requested
 DraftKings props for one of sixteen published games, the owner instructed that
 currently empty choices should display as unavailable and be checked through

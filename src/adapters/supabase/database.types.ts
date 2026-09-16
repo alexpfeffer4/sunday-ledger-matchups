@@ -53,6 +53,35 @@ export type Database = {
       };
     };
     Functions: {
+      get_season_automation: { Args: { p_league_slug: string }; Returns: Json };
+      configure_season_automation: {
+        Args: {
+          p_league_slug: string;
+          p_command: string;
+          p_effective_week?: number;
+          p_slate_preset?: string;
+          p_policy_hash?: string;
+        };
+        Returns: Json;
+      };
+      claim_season_automation: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      claim_season_automation_odds: {
+        Args: { p_run: string };
+        Returns: string;
+      };
+      complete_season_automation: {
+        Args: {
+          p_run: string;
+          p_schedule?: Json;
+          p_import?: Json;
+          p_failure?: string;
+        };
+        Returns: Json;
+      };
+
       apply_live_quote_plan: {
         Args: { p_plan_id: string };
         Returns: Json;

@@ -13,6 +13,9 @@ import { Stage1CommissionerView } from "@/components/stage1/live-views";
 import { getCommissionerCardStatus } from "@/application/queries/get-commissioner-card-status";
 import { getPlayerPropMenu } from "@/application/queries/get-player-prop-menu";
 import { PlayerPropMenuReview } from "@/components/commissioner/player-prop-menu-review";
+import { getSeasonAutomation } from "@/application/queries/get-season-automation";
+import { SeasonAutomationPanel } from "@/components/commissioner/season-automation-panel";
+import { configureSeasonAutomationAction } from "../automation-actions";
 import {
   preparePlayerPropMenuAction,
   confirmPlayerPropMenuAction,
@@ -49,18 +52,27 @@ export default async function CommissionerPage({
     getOwnerRehearsalForLeague(leagueSlug),
   ]);
   if (live) {
-    const menu = live.commissioner.isCommissioner
-      ? await getPlayerPropMenu(leagueSlug)
-      : null;
-    const cardStatus =
+    const [automation, menu, cardStatus] = await Promise.all([
+      live.commissioner.isCommissioner && !ownerRehearsal
+        ? getSeasonAutomation(leagueSlug)
+        : null,
+      live.commissioner.isCommissioner ? getPlayerPropMenu(leagueSlug) : null,
       live.commissioner.isCommissioner &&
       !ownerRehearsal &&
       live.week &&
       live.week.state !== "PLANNED"
-        ? await getCommissionerCardStatus(leagueSlug)
-        : null;
+        ? getCommissionerCardStatus(leagueSlug)
+        : null,
+    ]);
     return (
       <>
+        {automation && (
+          <SeasonAutomationPanel
+            leagueSlug={leagueSlug}
+            status={automation}
+            action={configureSeasonAutomationAction}
+          />
+        )}
         {menu?.enabled && (
           <PlayerPropMenuReview
             leagueId={live.league.id}
@@ -70,6 +82,7 @@ export default async function CommissionerPage({
               candidates: slot.candidates ?? [],
             }))}
             frozen={menu.frozen}
+            automaticValidation={menu.automaticValidation ?? false}
             amendmentPending={menu.amendmentPending ?? false}
             amendmentApplied={menu.amendmentApplied ?? false}
             progressiveAvailability={menu.progressiveAvailability ?? false}
@@ -82,6 +95,11 @@ export default async function CommissionerPage({
           />
         )}
         <Stage1CommissionerView
+          seasonAutomated={Boolean(
+            automation?.enabled &&
+            live.week &&
+            live.week.nflWeek >= (automation.effectiveWeek ?? 99) - 1,
+          )}
           cardStatus={cardStatus}
           invites={invites}
           leagueManagement={leagueManagement}
