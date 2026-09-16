@@ -368,7 +368,7 @@ for (const [size, correctionFirst] of [
     INSERT INTO private.event_result_versions(event_id,week_id,league_id,version,status,away_score,home_score,source,reason,recorded_by,input_hash)
     SELECT e.id,e.week_id,e.league_id,1,'FINAL',14,21,'MANUAL_OBJECTIVE','Immutable postseason result fixture',(c->>'owner')::uuid,
     encode(extensions.digest(e.id::text||':fixture-final','sha256'),'hex') FROM post_fixture f JOIN private.sports_events e ON e.week_id=(c->>'week')::uuid;
-    UPDATE private.sports_events SET state='FINAL' WHERE week_id=(SELECT (c->>'week')::uuid FROM post_fixture);
+    UPDATE private.sports_events SET state='FINAL',actual_started_at=clock_timestamp()-interval '4 hours' WHERE week_id=(SELECT (c->>'week')::uuid FROM post_fixture);
     SELECT pg_temp.phase8_close_matrix_week((c->>'season')::uuid,18) FROM post_fixture;
     SELECT c||jsonb_build_object('run',pg_temp.automation_run(c,'ARCHIVE',18)) FROM post_fixture; COMMIT;`),
       "Prepare automatic postseason with protected Week 18",

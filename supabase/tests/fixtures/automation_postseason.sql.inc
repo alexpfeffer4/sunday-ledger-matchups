@@ -44,7 +44,9 @@ begin
  if n=18 and p_stop_open18 then return c||jsonb_build_object('week',wk,'event17',(select id from private.sports_events where week_id=(select id from private.season_weeks where season_id=(c->>'season')::uuid and nfl_week=17)));end if;
  insert into private.event_result_versions(event_id,week_id,league_id,version,status,away_score,home_score,source,reason,recorded_by,input_hash)
  select id,week_id,league_id,1,'FINAL',14,21,'MANUAL_OBJECTIVE','Immutable postseason result fixture',(c->>'owner')::uuid,encode(extensions.digest(id::text||':fixture-final','sha256'),'hex') from private.sports_events where week_id=wk;
- update private.sports_events set state='FINAL' where week_id=wk;
+ -- Terminal fixture evidence also closes the rolling entry window through
+ -- the existing cutoff trigger before any objective correction can replay it.
+ update private.sports_events set state='FINAL',actual_started_at=clock_timestamp()-interval '4 hours' where week_id=wk;
  perform pg_temp.phase8_close_matrix_week((c->>'season')::uuid,n);
  end loop;
  j:=api.complete_season_automation(pg_temp.automation_run(c,'ARCHIVE',18));
