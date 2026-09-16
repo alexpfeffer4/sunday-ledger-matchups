@@ -9,6 +9,10 @@ required CI, isolated Preview and this rollout package are complete.
 ## Release contents
 
 - Migration: `20260916133711_season_automation_standing_policy.sql`.
+- Forward repair: `20260916141355_season_automation_schedule_alias.sql` removes
+  a local-variable/query-alias ambiguity in official schedule synchronization,
+  without changing guards, consent or policy. A complete schedule completion
+  regression covers the actual RPC before resuming paused lifecycle work.
 - Immutable season consent, exact SYSTEM validation and prepared-week scope;
   compact season control plus leased execution audit. Existing command receipts
   record SYSTEM provenance separately from genuine human actors.

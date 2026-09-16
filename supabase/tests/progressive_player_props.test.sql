@@ -445,6 +445,27 @@ select is((select canonical_json->>'version' from private.prepared_player_props_
 -- V2.2 automation extends the existing progressive fixture authority.
 \ir fixtures/season_automation.sql.inc
 create temporary table automation_context as select pg_temp.automation_context('auto-two-weeks') c;
+-- Exercise the actual schedule completion path, not only pre-staged week
+-- fixtures. This catches PL/pgSQL variable/query-alias ambiguity on Production.
+savepoint schedule_sync_regression;
+create temporary table automation_schedule as
+select jsonb_agg(jsonb_build_object('gameId','schedule-'||round_no||'-'||pair_no,
+ 'season',2026,'gameType','REG','week',case when round_no=17 and pair_no>8 then 18 else round_no end,
+ 'awayTeam','Team '||(pair_no*2-1),'homeTeam','Team '||(pair_no*2),
+ 'gameDate','2026-12-01','gameTime','13:00','scheduledStartAt','2026-12-01T18:00:00Z')
+ order by round_no,pair_no) payload
+from generate_series(1,17)round_no cross join generate_series(1,16)pair_no;
+select is(api.complete_season_automation(pg_temp.automation_run(c,'SYNC_SCHEDULE',3),payload)->>'status',
+ 'SCHEDULE_READY','complete 272-game official-shape schedule synchronizes through real completion RPC')
+from automation_context cross join automation_schedule;
+select is((select jsonb_array_length(schedule) from private.season_automation
+ where season_id=(select (c->>'season')::uuid from automation_context)),272,'schedule synchronization persists all games');
+select is(api.complete_season_automation(pg_temp.automation_run(c,'SYNC_SCHEDULE',3),payload-0)->>'blocker',
+ 'SLATE_OR_EVIDENCE_INCOMPLETE','incomplete schedule remains rejected after alias repair')
+from automation_context cross join automation_schedule;
+select is((select jsonb_array_length(schedule) from private.season_automation
+ where season_id=(select (c->>'season')::uuid from automation_context)),272,'failed synchronization preserves previously valid schedule');
+rollback to savepoint schedule_sync_regression;
 create temporary table auto_weeks as select 3 n,pg_temp.automation_stage(c,3,true) wk from automation_context;
 select is((select count(*) from private.weekly_cards where week_id=(select wk from auto_weeks where n=3)),0::bigint,'automatic staging grants no credits or cards');
 select is((select state from private.season_weeks where id=(select wk from auto_weeks where n=3)),'PLANNED','automatic preparation remains PLANNED');
