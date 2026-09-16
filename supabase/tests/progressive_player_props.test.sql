@@ -443,7 +443,7 @@ select is(api.open_reviewed_player_prop_week(c->>'slug','future-progressive-week
 select is((select count(*) from private.authoritative_season_rulesets where ruleset_version='1.5'),0::bigint,'global catalogs remain unchanged');
 select is((select canonical_json->>'version' from private.prepared_player_props_rulesets where mode='LIVE'),'1.4','prepared legacy 1.4 package remains unchanged');
 -- V2.2 automation extends the existing progressive fixture authority.
-\ir fixtures/season_automation.sql
+\ir fixtures/season_automation.sql.inc
 create temporary table automation_context as select pg_temp.automation_context('auto-two-weeks') c;
 create temporary table auto_weeks as select 3 n,pg_temp.automation_stage(c,3,true) wk from automation_context;
 select is((select count(*) from private.weekly_cards where week_id=(select wk from auto_weeks where n=3)),0::bigint,'automatic staging grants no credits or cards');
@@ -459,6 +459,9 @@ select is((api.get_player_prop_menu(c->>'slug')->>'automaticValidation')::boolea
 select is((api.get_player_prop_menu(c->>'slug')->>'canOpen')::boolean,false,'automatic scope has no routine commissioner opening confirmation') from automation_context;
 select api.configure_season_automation(c->>'slug','PAUSE') from automation_context;
 select is((select count(*) from private.player_catalog_pending_slots((select wk from auto_weeks where n=3))),5::bigint,'lifecycle pause preserves approved pending-slot continuation');
+update private.season_automation set suspended=true,attempts=4 where season_id=(select (c->>'season')::uuid from automation_context);
+select is(pg_temp.automation_late_fill((select wk from auto_weeks where n=3))->>'publishedSlots','1','actual pending-slot publication continues under SYSTEM activation despite lifecycle pause and retry suspension');
+select is((select sum(granted_credits) from private.weekly_cards where week_id=(select wk from auto_weeks where n=3)),4000::bigint,'late fill grants no extra credits');
 select api.configure_season_automation(c->>'slug','RESUME') from automation_context;
 update private.season_weeks set state='FINAL' where id=(select wk from auto_weeks where n=3);
 insert into auto_weeks select 4,pg_temp.automation_stage(c,4,false) from automation_context;
@@ -475,7 +478,7 @@ create function pg_temp.automation_trial(fault text) returns jsonb language plpg
 declare c jsonb;wk uuid;r uuid;j jsonb;answer jsonb;g uuid;nominees jsonb;
 begin
  begin
- c:=pg_temp.automation_context('auto-trial-'||fault);wk:=pg_temp.automation_stage(c,3,true);
+ c:=pg_temp.automation_context('auto-trial-'||fault);wk:=pg_temp.automation_stage(c,3,true,case when fault='early' then clock_timestamp()+interval '1 hour' else null end);
  if fault in('wrong-role','wrong-team','wrong-event','tie','stale','warning') then
  select nominations into nominees from private.player_catalog_nomination_generations where id=(select generation_id from private.player_catalog_nomination_heads where week_id=wk);
  select jsonb_agg(case when n->>'proposedCanonicalKey' is null then n else
@@ -502,11 +505,12 @@ begin
  when 'revoke' then perform api.configure_season_automation(c->>'slug','REVOKE');
  when 'expired-lease' then update private.season_automation_runs set lease_until=clock_timestamp()-interval '1 second' where id=r;
  when 'stale-generation' then update private.season_automation set generation=generation+1 where season_id=(c->>'season')::uuid;
- when 'wrong-season' then update private.season_automation_runs set season_id=gen_random_uuid() where id=r;
  when 'missing-game' then update private.sports_events set away_team='Changed fixture team' where week_id=wk;
  when 'cutoff' then update private.sports_events set actual_started_at=clock_timestamp(),state='LIVE' where week_id=wk;
  when 'previous-pending' then update private.season_weeks set state='PROVISIONAL' where id=(c->>'week')::uuid;
  when 'content-race' then update private.week_player_menu set unavailable_reason='Changed evidence' where week_id=wk and subject_id is null;
+ when 'policy-change' then execute 'create or replace function private.season_automation_policy_hash() returns text language sql immutable as $fn$ select repeat(''f'',64) $fn$';
+ when 'offers-off' then update private.player_prop_controls set offers_enabled=false;
  when 'source-off' then update private.player_result_policy set processing_enabled=false;
  when 'renew' then
  perform api.configure_season_automation(c->>'slug','REVOKE');
@@ -530,8 +534,8 @@ begin
  exception when sqlstate 'ZX001' then return sqlerrm::jsonb;end;
 end $$;
 select is(pg_temp.automation_trial(fault)->>'available','0',fault||' initial candidate stays unavailable without blocking structural validation') from unnest(array['wrong-role','wrong-team','wrong-event','tie','stale','warning'])fault;
-select is(pg_temp.automation_trial(fault)->>'status','40001',fault||' fences stale SYSTEM authority') from unnest(array['absent-consent','pause','revoke','expired-lease','stale-generation'])fault;
-select is(pg_temp.automation_trial(fault)->>'cards','0',fault||' leaves no cards or credit grant') from unnest(array['missing-game','cutoff','source-off'])fault;
+select is(pg_temp.automation_trial(fault)->>'status','40001',fault||' fences stale SYSTEM authority') from unnest(array['absent-consent','pause','revoke','expired-lease','stale-generation','policy-change'])fault;
+select is(pg_temp.automation_trial(fault)->>'cards','0',fault||' leaves no cards or credit grant') from unnest(array['early','missing-game','cutoff','source-off','offers-off'])fault;
 select is(pg_temp.automation_trial('content-race')->>'status','OPENED','changed unoffered menu is revalidated and opens automatically');
 select is(pg_temp.automation_trial('previous-pending')->>'status','OPENED','previous week pending blocks opening until its stored FINAL state');
 select is(pg_temp.automation_trial('replay')->>'replayed','true','completion replay returns its durable result');
@@ -562,50 +566,8 @@ select is(pg_temp.automation_retry_trial()->>'changed','DUE','a relevant depende
 select is(pg_temp.automation_retry_trial()->>'attempts','0','authorized explicit retry resets the bounded attempt count');
 -- Reuse the canonical roster-matrix close-week fixture for the changed
 -- automatic publication path at representative bracket sizes.
-\ir fixtures/postseason_close_matrix_week.sql
-create function pg_temp.automation_postseason_trial(size integer) returns jsonb language plpgsql as $$
-declare c jsonb;u uuid;wk uuid;j jsonb;n integer;answer jsonb;gate jsonb;
-begin begin
- c:=pg_temp.automation_context('auto-postseason-'||size,p_enroll=>false);
- -- Complete synthetic roster construction before real standing consent.
- update private.seasons set lifecycle='DRAFT',roster_locked_at=null where id=(c->>'season')::uuid;
- for n in 5..size loop
- u:=gen_random_uuid();insert into auth.users(id,email) values(u,u::text||'@automation.test');
- insert into private.profiles(id,display_name) values(u,'Automation member '||n);
- insert into private.league_memberships(league_id,user_id,role) values((c->>'league')::uuid,u,'MEMBER');
- insert into private.season_entries(season_id,league_id,user_id,standing_tiebreak) values((c->>'season')::uuid,(c->>'league')::uuid,u,lpad(n::text,64,'0'));
- end loop;
- update private.seasons set lifecycle='REGULAR',roster_locked_at=now() where id=(c->>'season')::uuid;
- perform api.configure_season_automation(c->>'slug','ENABLE',3,'ALL_NFL_GAMES',private.season_automation_policy_hash());
- insert into private.season_weeks(season_id,league_id,nfl_week,scope,state,opens_at,common_lock_at,locked_at,correction_window_closes_at)
- values((c->>'season')::uuid,(c->>'league')::uuid,14,'REGULAR','FINAL',now()-interval '2 days',now()-interval '1 day',now()-interval '1 day',clock_timestamp()+interval '1 hour') returning id into wk;
- insert into private.standings_snapshots(season_id,week_id,league_id,through_week,ordered_rows,input_hash,status)
- select (c->>'season')::uuid,wk,(c->>'league')::uuid,14,jsonb_agg(jsonb_build_object('seed',seed,'entryId',id,'displayName','Member '||seed,
- 'wins',size-seed,'losses',seed,'ties',0,'pointsForCenticredits',2000000-seed*10000,'allPlayHalfWinUnits',200-seed,
- 'allPlayComparisonCount',126,'attendanceMisses',0,'highestWeekCenticredits',200000-seed*1000,'deterministicTiebreak',lpad(seed::text,64,'0')) order by seed),repeat('a',64),'FINAL'
- from (select id,row_number() over(order by id)::integer seed from private.season_entries where season_id=(c->>'season')::uuid)e;
- gate:=api.complete_season_automation(pg_temp.automation_run(c,'QUALIFY',15));
- update private.season_weeks set correction_window_closes_at=now()-interval '1 second' where id=wk;
- j:=api.complete_season_automation(pg_temp.automation_run(c,'QUALIFY',15));
- if j->>'status'<>'QUALIFIED' then raise exception 'Qualification failed: %',j;end if;
- for n in 15..18 loop
- if n=18 then
- j:=api.complete_season_automation(pg_temp.automation_run(c,'CHAMPION',17));
- if j->>'status'<>'CHAMPION_FINAL' then raise exception 'Champion failed: %',j;end if;
- end if;
- wk:=pg_temp.automation_stage(c,n,false);
- j:=api.complete_season_automation(pg_temp.automation_run(c,'VALIDATE',n));
- if j->>'status'<>'VALIDATED' then raise exception 'Validation failed: %',j;end if;
- j:=api.complete_season_automation(pg_temp.automation_run(c,'OPEN',n));
- if j->>'status'<>'OPENED' then raise exception 'Opening failed: %',j;end if;
- perform pg_temp.phase8_close_matrix_week((c->>'season')::uuid,n);
- end loop;
- j:=api.complete_season_automation(pg_temp.automation_run(c,'ARCHIVE',18));
- answer:=j||jsonb_build_object('gate',gate->>'status','cards',(select count(*) from private.weekly_cards card join private.season_weeks w on w.id=card.week_id where w.season_id=(c->>'season')::uuid and w.nfl_week>=15),
- 'rounds',(select count(*) from private.playoff_round_publications where season_id=(c->>'season')::uuid and execution_kind='SYSTEM' and created_by is null),
- 'validations',(select count(*) from private.player_prop_system_validations v join private.season_weeks w on w.id=v.week_id where w.season_id=(c->>'season')::uuid));
- raise exception using errcode='ZX001',message=answer::text;
- exception when sqlstate 'ZX001' then return sqlerrm::jsonb;end;end $$;
+\ir fixtures/postseason_close_matrix_week.sql.inc
+\ir fixtures/automation_postseason.sql.inc
 create temporary table automation_postseason_results as select size,pg_temp.automation_postseason_trial(size) result from unnest(array[4,10])size;
 select is(result->>'status','ARCHIVED',size||'-member automatic postseason reaches complete archive') from automation_postseason_results;
 select is(result->>'gate','FAILED',size||'-member qualification obeys the existing review window') from automation_postseason_results;

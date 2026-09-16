@@ -23,7 +23,7 @@ create table private.season_automation (
  schedule jsonb, schedule_hash text, schedule_fetched_at timestamptz,
  attempts integer not null default 0 check(attempts between 0 and 4), operation_key text,
  next_attempt_at timestamptz not null default clock_timestamp(), suspended boolean not null default false,
- last_outcome text, blocker text, failure_dependency_hash text, last_checked_at timestamptz, last_retry_at timestamptz
+ last_outcome text, blocker text, failure_dependency_hash text, last_success_dependency_hash text, last_success_operation_key text, last_checked_at timestamptz, last_retry_at timestamptz
 );
 create table private.season_automation_runs (
  id uuid primary key default gen_random_uuid(),season_id uuid not null references private.seasons(id),
@@ -80,6 +80,7 @@ begin
  select * into strict a from private.season_automation where season_id=s.id for update;
  select * into strict r from private.season_automation_runs where id=p_run for update;
  select * into strict c from private.season_automation_consents where id=a.consent_id;
+ perform 1 from private.season_automation_settings where singleton for share;
  if not exists(select 1 from private.season_automation_settings where enabled and release_sha is not null)
  or s.mode<>'LIVE' or s.roster_locked_at is null or exists(select 1 from private.owner_rehearsals where league_id=s.league_id)
  or not a.enabled or a.revoked or a.lease_id is distinct from r.id or a.generation<>r.generation or a.revision<>r.revision
@@ -286,6 +287,8 @@ language sql stable set search_path='' as $$
  and v.policy_hash=c.policy_hash and v.menu_hash=private.week2_props_menu_hash(w.id)
  and v.evidence_hash=encode(extensions.digest(private.automation_menu_evidence(w.id)::text,'sha256'),'hex')
  and v.rules_hash=(select sha256_hash from private.prepared_progressive_player_props_rulesets where mode='LIVE')
+ and exists(select 1 from private.player_prop_controls where offers_enabled)
+ and exists(select 1 from private.player_prop_leagues where season_id=w.season_id and enabled and rules_enabled and catalog_enabled)
  and exists(select 1 from private.player_result_policy where singleton and metadata_enabled and processing_enabled
   and source_policy='NFLVERSE_PRIMARY' and selection_policy='FEATURED_HIGHEST_STANDARD_LINES' and private.player_source_policy_validated())
  and not exists(select 1 from private.week_player_menu m where m.week_id=w.id and m.subject_id is not null
@@ -336,6 +339,13 @@ end $$;
 create function private.lock_automation_validation_inputs(p_week uuid) returns void
 language plpgsql set search_path='' as $$
 begin
+ perform 1 from private.sports_events where week_id=p_week order by id for update;
+ perform 1 from private.player_prop_controls for share;
+ perform 1 from private.player_prop_leagues where season_id=(select season_id from private.season_weeks where id=p_week) for share;
+ perform 1 from private.prepared_progressive_player_props_rulesets where mode='LIVE' for share;
+ if not exists(select 1 from private.player_prop_controls where offers_enabled)
+ or not exists(select 1 from private.player_prop_leagues where season_id=(select season_id from private.season_weeks where id=p_week) and enabled and rules_enabled and catalog_enabled) then
+ raise exception using errcode='55000',message='The approved season offer scope is unavailable.';end if;
  perform 1 from private.player_result_policy where singleton for share;
  perform 1 from private.player_catalog_jobs where week_id=p_week for update;
  if exists(select 1 from private.player_catalog_jobs where week_id=p_week and lease_until>clock_timestamp()) then
@@ -526,11 +536,19 @@ create function private.automation_dependency_hash(p_season uuid) returns text
 language sql stable set search_path='' as $$
  select encode(extensions.digest(jsonb_build_object(
  'weeks',(select jsonb_agg(jsonb_build_array(w.id,w.state,w.correction_window_closes_at,w.ruleset_snapshot_id) order by w.nfl_week) from private.season_weeks w where w.season_id=p_season),
- 'source',(select to_jsonb(p) from private.player_result_policy p where singleton),
+ 'source',(select jsonb_build_array(metadata_enabled,processing_enabled,source_policy,selection_policy,source_validation_id,nflverse_contract_validated,api_sports_contract_validated,results_daily_limit,metadata_daily_limit,requests_per_minute) from private.player_result_policy where singleton),
+ 'offerControls',(select to_jsonb(c) from private.player_prop_controls c),
+ 'scope',(select to_jsonb(l) from private.player_prop_leagues l where season_id=p_season),
+ 'budget',(select jsonb_build_array(enabled,daily_credit_limit,monthly_credit_limit,protected_core_daily_credits,protected_core_monthly_credits,provider_entitlement_credits,next_quota_reset_at,provider_cycle_verified_at) from private.odds_refresh_policy where singleton),
+ 'budgetDay',(clock_timestamp() at time zone 'UTC')::date,
+ 'entitlementFresh',exists(select 1 from private.odds_refresh_policy p where p.singleton and (p.provider_cycle_verified_at between clock_timestamp()-interval '10 minutes' and clock_timestamp() or exists(select 1 from private.odds_entitlement_probes proof where proof.state='SUCCEEDED' and proof.completed_at between clock_timestamp()-interval '10 minutes' and clock_timestamp() and proof.started_at>=p.provider_cycle_verified_at and proof.remaining::bigint+proof.used::bigint=p.provider_entitlement_credits))),
  'evidence',private.automation_menu_evidence((select id from private.season_weeks where season_id=p_season order by nfl_week desc limit 1)),
  'release',(select to_jsonb(r) from private.season_automation_settings r where singleton),
  'schedule',(select schedule_hash from private.season_automation where season_id=p_season),
- 'lifecycle',(select lifecycle from private.seasons where id=p_season)
+ 'lifecycle',(select lifecycle from private.seasons where id=p_season),
+ 'closure',(select jsonb_build_array(private.rolling_week_entries_closed(w.id),w.correction_window_closes_at<=clock_timestamp()) from private.season_weeks w where w.season_id=p_season order by w.nfl_week desc limit 1),
+ 'results',(select jsonb_agg(r.id order by r.id) from private.event_result_versions r join private.season_weeks w on w.id=r.week_id where w.season_id=p_season and not exists(select 1 from private.event_result_versions child where child.supersedes_id=r.id)),
+ 'scores',(select jsonb_agg(r.id order by r.id) from private.weekly_score_versions r join private.season_weeks w on w.id=r.week_id where w.season_id=p_season and not exists(select 1 from private.weekly_score_versions child where child.supersedes_id=r.id))
  )::text,'sha256'),'hex');
 $$;
 -- A stored-state projection only: no provider calls, claims or domain writes.
@@ -588,6 +606,8 @@ begin
  if w.nfl_week>=15 then due:=greatest(due,w.correction_window_closes_at);end if;
  end if;
  if due is null then return jsonb_build_object('status','WAITING','week',n,'blocker','REVIEW_WINDOW');end if;
+ if op='RECONCILE' and a.last_success_operation_key=op||':'||n and a.last_success_dependency_hash=private.automation_dependency_hash(s.id) then
+ return jsonb_build_object('status','WAITING','week',n,'blocker','PREVIOUS_WEEK_RESULTS');end if;
  if a.suspended and a.operation_key=op||':'||n and a.failure_dependency_hash=private.automation_dependency_hash(s.id) then return jsonb_build_object('status','SUSPENDED','operation',op,'week',n,'blocker',coalesce(a.blocker,'OPERATION_FAILED'));end if;
  if a.failure_dependency_hash is null or a.failure_dependency_hash=private.automation_dependency_hash(s.id) then due:=greatest(due,a.next_attempt_at);end if;
  if a.lease_until>t then due:=greatest(due,a.lease_until);end if;
@@ -659,7 +679,8 @@ begin
  if (select count(distinct g->>'gameId') from jsonb_array_elements(p_schedule)g)<>272
  or (select count(distinct (g->>'week')::integer) from jsonb_array_elements(p_schedule)g)<>18
  or (select count(distinct team) from jsonb_array_elements(p_schedule)g cross join lateral unnest(array[g->>'awayTeam',g->>'homeTeam'])team)<>32
- or exists(select 1 from jsonb_array_elements(p_schedule)g cross join lateral unnest(array[g->>'awayTeam',g->>'homeTeam'])team group by team having count(*)<>17) then
+ or exists(select 1 from jsonb_array_elements(p_schedule)g cross join lateral unnest(array[g->>'awayTeam',g->>'homeTeam'])team group by team having count(*)<>17)
+ or exists(select 1 from jsonb_array_elements(p_schedule)g cross join lateral unnest(array[g->>'awayTeam',g->>'homeTeam'])team group by g->>'week',team having count(*)<>1) then
  raise exception using errcode='22023',message='The official schedule is incomplete or ambiguous.';end if;
  for g in select value from jsonb_array_elements(p_schedule) loop
  if g->>'season' is null or (g->>'season')::integer<>s.nfl_year or g->>'gameType' is distinct from 'REG'
@@ -760,7 +781,7 @@ begin
  perform private.assert_season_automation_run(r.id);
  if failure is null then
  update private.season_automation_runs set state='SUCCEEDED',response=answer,finished_at=clock_timestamp() where id=r.id;
- update private.season_automation set lease_id=null,lease_until=null,attempts=0,suspended=false,last_outcome=answer->>'status',blocker=null,failure_dependency_hash=null,
+ update private.season_automation set lease_id=null,lease_until=null,attempts=0,suspended=false,last_outcome=answer->>'status',blocker=null,failure_dependency_hash=null,last_success_operation_key=r.operation_key,last_success_dependency_hash=private.automation_dependency_hash(s.id),
  next_attempt_at=date_bin(interval '5 minutes',clock_timestamp(),timestamptz '2000-01-01')+interval '5 minutes' where season_id=s.id;
  return answer;
  end if;

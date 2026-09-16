@@ -49,7 +49,21 @@ const fixtureHelpers = [
   ),
   await readFile(
     new URL(
-      "../supabase/tests/fixtures/season_automation.sql",
+      "../supabase/tests/fixtures/season_automation.sql.inc",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+  await readFile(
+    new URL(
+      "../supabase/tests/fixtures/postseason_close_matrix_week.sql.inc",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+  await readFile(
+    new URL(
+      "../supabase/tests/fixtures/automation_postseason.sql.inc",
       import.meta.url,
     ),
     "utf8",
@@ -327,6 +341,62 @@ for (const command of ["PAUSE", "REVOKE"]) {
     ),
     "New commissioner controls the existing scoped policy",
   );
+}
+// A protected Week 18 is already open/final. Race real objective Week 17
+// correction with automatic archive publication in both lock arrival orders.
+for (const [size, correctionFirst] of [
+  [4, true],
+  [10, false],
+]) {
+  const f = json(
+    successful(
+      await sql(`BEGIN; ${fixtureHelpers}
+    CREATE TEMP TABLE post_fixture AS SELECT pg_temp.automation_postseason_fixture(${size},true) c;
+    INSERT INTO private.event_result_versions(event_id,week_id,league_id,version,status,away_score,home_score,source,reason,recorded_by,input_hash)
+    SELECT e.id,e.week_id,e.league_id,1,'FINAL',14,21,'MANUAL_OBJECTIVE','Immutable postseason result fixture',(c->>'owner')::uuid,
+    encode(extensions.digest(e.id::text||':fixture-final','sha256'),'hex') FROM post_fixture f JOIN private.sports_events e ON e.week_id=(c->>'week')::uuid;
+    UPDATE private.sports_events SET state='FINAL' WHERE week_id=(SELECT (c->>'week')::uuid FROM post_fixture);
+    SELECT pg_temp.phase8_close_matrix_week((c->>'season')::uuid,18) FROM post_fixture;
+    SELECT c||jsonb_build_object('run',pg_temp.automation_run(c,'ARCHIVE',18)) FROM post_fixture; COMMIT;`),
+      "Prepare automatic postseason with protected Week 18",
+    ),
+  );
+  const correction = member(
+    f,
+    `SELECT api.correct_finalized_week17_result(${quote(f.event17)}::uuid,'FINAL',17,24,'Verified objective score correction for the native race','native-week17-correction')`,
+  );
+  const results = await race(
+    f,
+    correctionFirst ? correction : complete(f),
+    correctionFirst ? complete(f) : correction,
+    `archive-${size}`,
+  );
+  results.forEach((result) =>
+    successful(
+      result,
+      "Serialized archive/correction retains canonical lineage",
+    ),
+  );
+  const proof = json(
+    successful(
+      await sql(`SELECT jsonb_build_object(
+    'lifecycle',(SELECT lifecycle FROM private.seasons WHERE id=${quote(f.season)}::uuid),
+    'rounds',(SELECT count(*) FROM private.playoff_round_publications WHERE week_id=${quote(f.week)}::uuid),
+    'cards',(SELECT count(*) FROM private.weekly_cards WHERE week_id=${quote(f.week)}::uuid),
+    'terminalArchives',(SELECT count(*) FROM private.season_archive_versions a WHERE season_id=${quote(f.season)}::uuid AND NOT EXISTS(SELECT 1 FROM private.season_archive_versions child WHERE child.supersedes_id=a.id)),
+    'corrections',(SELECT count(*) FROM private.corrections WHERE event_id=${quote(f.event17)}::uuid),
+    'finalResultVersion',(SELECT max(version) FROM private.event_result_versions WHERE event_id=${quote(f.event17)}::uuid));`),
+      "Inspect protected correction lineage",
+    ),
+  );
+  assert.deepEqual(proof, {
+    lifecycle: "FINAL",
+    rounds: 1,
+    cards: size,
+    terminalArchives: 1,
+    corrections: 1,
+    finalResultVersion: 2,
+  });
 }
 console.log(
   "PASS: season automation native races, exact credits, pause/revocation, content revalidation, crash/replay and commissioner transfer",

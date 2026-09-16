@@ -91,7 +91,7 @@ begin
 end;
 $$;
 
-\ir fixtures/postseason_close_matrix_week.sql
+\ir fixtures/postseason_close_matrix_week.sql.inc
 
 do $matrix$
 declare

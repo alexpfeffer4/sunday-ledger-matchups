@@ -502,7 +502,7 @@ test("one season approval opens two future weeks automatically and pause retains
       "supabase/tests/progressive_player_props.test.sql",
       "PROGRESSIVE PLAYER PROPS HELPERS",
     ),
-    readFileSync("supabase/tests/fixtures/season_automation.sql", "utf8"),
+    readFileSync("supabase/tests/fixtures/season_automation.sql.inc", "utf8"),
   ].join("\n");
   const fixture = JSON.parse(
     sql(`begin; ${fixtureSource}

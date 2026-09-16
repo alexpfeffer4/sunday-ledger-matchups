@@ -84,9 +84,14 @@ export function normalizeAutomationSchedule(
     })
     .sort((a, b) => a.gameId.localeCompare(b.gameId));
   const teams = new Map<string, number>();
+  const weeklyTeams = new Set<string>();
   for (const game of games)
-    for (const team of [game.awayTeam, game.homeTeam])
+    for (const team of [game.awayTeam, game.homeTeam]) {
+      const identity = `${game.week}:${team}`;
+      if (weeklyTeams.has(identity)) throw new Error("SCHEDULE_AMBIGUOUS");
+      weeklyTeams.add(identity);
       teams.set(team, (teams.get(team) ?? 0) + 1);
+    }
   if (
     games.length !== 272 ||
     new Set(games.map((game) => game.gameId)).size !== 272 ||
