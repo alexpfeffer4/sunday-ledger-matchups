@@ -113,7 +113,7 @@ export function expectedAutomationGames(
     const day = new Date(`${game.gameDate}T12:00:00Z`).getUTCDay();
     return (
       day === 1 ||
-      (day === 0 && game.gameTime !== null && game.gameTime >= "13:00")
+      (day === 0 && (game.gameTime === null || game.gameTime >= "13:00"))
     );
   });
 }

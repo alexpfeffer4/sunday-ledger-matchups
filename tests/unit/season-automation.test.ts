@@ -131,6 +131,22 @@ describe("official schedule and standing slate policy", () => {
       ),
     ).toThrow();
   });
+  it("keeps unknown Sunday kickoffs in the expected slate so preparation blocks", () => {
+    const unknown = {
+      ...game("2026-09-20", "13:00"),
+      gameTime: null,
+      scheduledStartAt: null,
+    };
+    const expected = expectedAutomationGames(
+      [unknown],
+      3,
+      "SUNDAY_AFTERNOON_AND_MONDAY",
+    );
+    expect(expected).toEqual([unknown]);
+    expect(() => selectAutomationMarkets([], expected)).toThrow(
+      "MARKETS_INCOMPLETE",
+    );
+  });
 });
 const first = "d447e407-982f-4b74-9f5e-291b709c7415",
   second = "d447e407-982f-4b74-9f5e-291b709c7416";

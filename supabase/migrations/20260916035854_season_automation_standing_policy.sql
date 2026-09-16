@@ -253,7 +253,7 @@ language sql stable set search_path='' as $$
  cross join lateral jsonb_array_elements(a.schedule) g
  where a.season_id=p_season and (g->>'week')::integer=p_week
  and (c.slate_preset='ALL_NFL_GAMES' or
-  (extract(isodow from (g->>'gameDate')::date)=7 and (g->>'gameTime')::time>=time '13:00')
+  (extract(isodow from (g->>'gameDate')::date)=7 and (g->>'gameTime' is null or (g->>'gameTime')::time>=time '13:00'))
   or extract(isodow from (g->>'gameDate')::date)=1);
 $$;
 create function private.automation_open_time(p_season uuid,p_week integer) returns timestamptz
