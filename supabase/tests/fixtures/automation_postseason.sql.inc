@@ -70,7 +70,9 @@ begin
  select id into strict result_id from private.event_result_versions where week_id=wk;
  update private.season_weeks set state='LOCKED',locked_at=clock_timestamp() where id=wk;
  perform private.recompute_stage1_week(wk,result_id);
- update private.season_weeks set correction_window_closes_at=clock_timestamp()-interval '1 second' where id=wk;
+ -- The canonical Live season review clock is transaction-stable now(), so
+ -- close the synthetic window against that same clock even in long fixtures.
+ update private.season_weeks set correction_window_closes_at=now()-interval '1 second' where id=wk;
  else perform pg_temp.phase8_close_matrix_week((c->>'season')::uuid,n);end if;
  end loop;
  j:=api.complete_season_automation(pg_temp.automation_run(c,'ARCHIVE',18));
