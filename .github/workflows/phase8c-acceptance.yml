@@ -106,6 +106,13 @@ jobs:
           echo "ODDS_API_KEY=disposable-provider-fixture" >> "$GITHUB_ENV"
           echo "ODDS_TEST_FIXTURE=/tmp/sunday-ledger-odds-fixture.json" >> "$GITHUB_ENV"
 
+      - name: Verify standing season automation concurrency on native Postgres
+        # Exercise the new races in their own fresh state before the broad gate.
+        run: node scripts/verify-season-automation-concurrency.mjs
+
+      - name: Isolate the complete database suite from automation race fixtures
+        run: supabase db reset --local --no-seed
+
       - name: Run complete pgTAP and Phase 8C isolation suite
         run: bash scripts/run-disposable-database-tests.sh
 
@@ -162,9 +169,6 @@ jobs:
         run: |
           supabase db reset --local --no-seed
           node scripts/verify-progressive-player-props-concurrency.mjs
-
-      - name: Verify standing season automation concurrency on native Postgres
-        run: node scripts/verify-season-automation-concurrency.mjs
 
       - name: Isolate progressive Auth journeys from committed native race fixtures
         # Native races intentionally commit LIVE events. Start the new browser
