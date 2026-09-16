@@ -35,3 +35,12 @@ Final UI inspection found snapshot-keyed outcome buttons could lose focus during
 passive updates. Outcome controls now retain stable side identity while their
 selection callback uses the current snapshot, with real desktop/mobile focus
 assertions. The subsequent final candidate must pass the complete Acceptance gate.
+
+Candidate `2da828072888dc8e0767b101d61d01227c6f6c00` passed all seven required
+jobs in Acceptance run 261. After the owner authorized merging, automated review
+identified a stale buffered response crossing final review. The follow-up discards
+responses from before a pause and re-reads stored quotes, with regression coverage
+for responses arriving during and after review. The optional read route also stops
+quietly before its database capability is installed, allowing the authorized app
+merge/deployment while database installation and activation remain pending.
+The follow-up head must pass the same complete Acceptance gate before merge.

@@ -73,34 +73,45 @@ describe("stored board reads", () => {
         ),
     ).toBe(true);
   });
-  it("defers a response that arrives after review starts", async () => {
-    let respond: (value: Response) => void = () => {};
-    vi.mocked(fetch).mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          respond = resolve;
-        }),
-    );
-    const apply = vi.fn();
-    const { rerender } = renderHook(
-      ({ paused }) =>
-        useStoredQuoteUpdates({
-          leagueSlug: "test-league",
-          weekId,
-          enabled: true,
-          paused,
-          apply,
-        }),
-      { initialProps: { paused: false } },
-    );
-    await act(() => vi.advanceTimersByTimeAsync(1));
-    rerender({ paused: true });
-    await act(async () => {
-      respond(Response.json(update));
-    });
-    expect(apply).not.toHaveBeenCalled();
-    rerender({ paused: false });
-    await act(() => vi.advanceTimersByTimeAsync(1));
-    expect(apply).toHaveBeenCalledTimes(1);
-  });
+  it.each([false, true])(
+    "discards a pre-review response arriving after resume: %s",
+    async (respondAfterResume) => {
+      let respond: (value: Response) => void = () => {};
+      vi.mocked(fetch).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            respond = resolve;
+          }),
+      );
+      const apply = vi.fn();
+      const { rerender } = renderHook(
+        ({ paused }) =>
+          useStoredQuoteUpdates({
+            leagueSlug: "test-league",
+            weekId,
+            enabled: true,
+            paused,
+            apply,
+          }),
+        { initialProps: { paused: false } },
+      );
+      await act(() => vi.advanceTimersByTimeAsync(1));
+      rerender({ paused: true });
+      const staleRespond = respond;
+      if (respondAfterResume) rerender({ paused: false });
+      await act(async () => {
+        staleRespond(Response.json(update));
+      });
+      expect(apply).not.toHaveBeenCalled();
+      if (!respondAfterResume) rerender({ paused: false });
+      await act(() => vi.advanceTimersByTimeAsync(1));
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(apply).not.toHaveBeenCalled();
+      const fresh = { ...update, hasOpenEvents: false };
+      await act(async () => {
+        respond(Response.json(fresh));
+      });
+      expect(apply).toHaveBeenCalledExactlyOnceWith(fresh);
+    },
+  );
 });

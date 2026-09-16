@@ -27,6 +27,9 @@ export async function GET(
       p_league_slug: input.data.leagueSlug,
       p_week_id: input.data.weekId,
     });
+    // App deployment may precede the separately approved database installation.
+    if (result.error?.code === "PGRST202")
+      return Response.json({ status: "STOP" }, { headers });
     if (result.error)
       return Response.json(
         { error: "Quotes unavailable." },

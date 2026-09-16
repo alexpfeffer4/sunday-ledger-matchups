@@ -18,6 +18,10 @@ export function useStoredQuoteUpdates(options: {
   useEffect(() => {
     latest.current = options;
   });
+  const pauseRevision = useRef(0);
+  useEffect(() => {
+    if (options.paused) pauseRevision.current += 1;
+  }, [options.paused]);
   const [freshness, setFreshness] = useState(
     new Map<string, QuoteFreshnessData>(),
   );
@@ -30,7 +34,7 @@ export function useStoredQuoteUpdates(options: {
       inFlight = false,
       failures = 0,
       lastRead = 0;
-    let buffered: StoredQuoteUpdate | null = null;
+    let needsFreshRead = false;
     const controller = new AbortController();
     const visible = () =>
       document.visibilityState !== "hidden" && navigator.onLine !== false;
@@ -56,15 +60,13 @@ export function useStoredQuoteUpdates(options: {
         schedule();
         return;
       }
-      if (buffered) {
-        apply(buffered);
-        buffered = null;
-      }
-      if (Date.now() - lastRead < 1000) {
+      if (!needsFreshRead && Date.now() - lastRead < 1000) {
         schedule();
         return;
       }
       inFlight = true;
+      needsFreshRead = false;
+      const startedRevision = pauseRevision.current;
       lastRead = Date.now();
       try {
         const response = await fetch(
@@ -75,6 +77,16 @@ export function useStoredQuoteUpdates(options: {
         const update = storedQuoteUpdatesSchema.parse(await response.json());
         failures = 0;
         if (stopped) return;
+        // Review may have acquired newer quotes, even if it has already ended.
+        // Never replay a response obtained across that boundary.
+        if (
+          startedRevision !== pauseRevision.current ||
+          latest.current.paused ||
+          !visible()
+        ) {
+          needsFreshRead = true;
+          return;
+        }
         if (update.status === "STOP") {
           stopped = true;
           return;
@@ -83,8 +95,7 @@ export function useStoredQuoteUpdates(options: {
           stopped = true;
           return;
         }
-        if (latest.current.paused || !visible()) buffered = update;
-        else apply(update);
+        apply(update);
       } catch {
         if (!controller.signal.aborted) {
           failures = Math.min(3, failures + 1);
@@ -92,7 +103,8 @@ export function useStoredQuoteUpdates(options: {
         }
       } finally {
         inFlight = false;
-        schedule();
+        if (needsFreshRead && !latest.current.paused && visible()) void read();
+        else schedule();
       }
     }
     const visibility = () => {
@@ -100,7 +112,7 @@ export function useStoredQuoteUpdates(options: {
       if (visible()) void read();
     };
     resume.current = () => {
-      if (buffered || Date.now() - lastRead >= 60_000) void read();
+      if (needsFreshRead || Date.now() - lastRead >= 60_000) void read();
     };
     // One authorized read discovers the operational polling switch. No provider.
     timer = setTimeout(() => void read(), 0);

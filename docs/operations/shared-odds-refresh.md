@@ -5,6 +5,11 @@ Implementation and Preview are authorized. **Production installation, deployment
 budget changes and activation are pending separate approval.** Installing the new
 migration leaves background fetching and passive polling disabled.
 
+The owner subsequently authorized merging once checks pass. The automatic app
+deployment is compatible with the existing database: missing optional stored-quote
+RPC capability returns STOP, without a recurring error or provider call. Database
+installation, new limits and activation still require their release approval.
+
 ## Candidate and compatibility
 
 Use the exact final green PR head and its immutable Vercel deployment from PR #69.
@@ -70,6 +75,9 @@ launch spacing, at most 32 events per MAIN call, and bounded per-event fanout.
 Progress resumes on a later tick without refetching successful coverage. Browser
 reads target 60 seconds while visible/online, defer while editing or reviewing,
 and stop when disabled or no events remain. They never contact the provider.
+Responses obtained across an editing/review pause are discarded, including those
+arriving after review ends; resuming obtains a fresh stored read. Older snapshots
+cannot overwrite the newer quotes acquired by final review.
 
 ## Verification and Preview
 
