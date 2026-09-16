@@ -5,8 +5,9 @@ set -euo pipefail
 node -e 'const u = new URL(process.env.TEST_SUPABASE_DB_URL); if (!["localhost", "127.0.0.1"].includes(u.hostname)) throw new Error("Database acceptance requires loopback");'
 mkdir -p acceptance-reports
 
-# Ordinary full-suite runs take about 16 seconds. At 90 seconds retain the
-# actual wait state; at five minutes fail the gate instead of waiting an hour.
+# At 90 seconds retain the actual wait state, then sample every 30 seconds
+# while the suite runs so a later stall is captured as well. At five minutes
+# fail the gate instead of waiting an hour.
 # No assertion, selected suite, or retry policy is changed.
 (
   set -o pipefail
@@ -16,7 +17,8 @@ mkdir -p acceptance-reports
 suite_pid=$!
 
 (
-  if ! timeout 90s tail --pid="$suite_pid" -f /dev/null; then
+  diagnostic_interval=90
+  while ! timeout "${diagnostic_interval}s" tail --pid="$suite_pid" -f /dev/null; do
     PGOPTIONS='-c statement_timeout=10000' psql "$TEST_SUPABASE_DB_URL" -X \
       -c "select clock_timestamp() as observed_at, pid, application_name,
                  state, wait_event_type, wait_event,
@@ -26,8 +28,9 @@ suite_pid=$!
           from pg_stat_activity
           where datname=current_database() and pid<>pg_backend_pid()
           order by query_start nulls last;" \
-      > acceptance-reports/database-waits.log 2>&1 || true
-  fi
+      >> acceptance-reports/database-waits.log 2>&1 || true
+    diagnostic_interval=30
+  done
 ) &
 watchdog_pid=$!
 
@@ -39,5 +42,10 @@ fi
 wait "$watchdog_pid" || true
 if [[ "$suite_status" -eq 124 || "$suite_status" -eq 137 ]]; then
   echo 'Database acceptance exceeded five minutes; inspect retained pgTAP and wait diagnostics.' >&2
+fi
+if [[ "$suite_status" -ne 0 && -f acceptance-reports/database-waits.log ]]; then
+  # Keep the last observed query/wait state readable in the supported job logs
+  # even when the artifact download is temporarily unavailable.
+  tail -n 80 acceptance-reports/database-waits.log >&2
 fi
 exit "$suite_status"
