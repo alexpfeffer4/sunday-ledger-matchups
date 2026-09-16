@@ -110,6 +110,29 @@ jobs:
         # Exercise the new races in their own fresh state before the broad gate.
         run: node scripts/verify-season-automation-concurrency.mjs
 
+      - name: Isolate progressive Auth journeys from committed native race fixtures
+        # Native races intentionally commit LIVE events. Start the new browser
+        # journey with only its own provider-backed fixtures and source policy.
+        run: supabase db reset --local --no-seed
+
+      - name: Install full-stack browser
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Build the production app against disposable Auth
+        run: npm run build
+
+      - name: Verify progressive availability with real Auth on desktop and mobile
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: acceptance-reports/progressive-props.json
+          NODE_OPTIONS: --import=${{ github.workspace }}/tests/fixtures/card-quotes-provider-preload.mjs
+        run: >-
+          npx playwright test tests/e2e/progressive-player-props-full-stack.spec.ts
+          --project=desktop --project=mobile --workers=1 --reporter=github,json
+          --output=test-results/progressive-props
+
+      - name: Require zero skipped progressive availability tests
+        run: node scripts/check-full-stack-report.mjs acceptance-reports/progressive-props.json
+
       - name: Isolate the complete database suite from automation race fixtures
         run: supabase db reset --local --no-seed
 
@@ -169,29 +192,6 @@ jobs:
         run: |
           supabase db reset --local --no-seed
           node scripts/verify-progressive-player-props-concurrency.mjs
-
-      - name: Isolate progressive Auth journeys from committed native race fixtures
-        # Native races intentionally commit LIVE events. Start the new browser
-        # journey with only its own provider-backed fixtures and source policy.
-        run: supabase db reset --local --no-seed
-
-      - name: Install full-stack browser
-        run: npx playwright install --with-deps chromium webkit
-
-      - name: Build the production app against disposable Auth
-        run: npm run build
-
-      - name: Verify progressive availability with real Auth on desktop and mobile
-        env:
-          PLAYWRIGHT_JSON_OUTPUT_FILE: acceptance-reports/progressive-props.json
-          NODE_OPTIONS: --import=${{ github.workspace }}/tests/fixtures/card-quotes-provider-preload.mjs
-        run: >-
-          npx playwright test tests/e2e/progressive-player-props-full-stack.spec.ts
-          --project=desktop --project=mobile --workers=1 --reporter=github,json
-          --output=test-results/progressive-props
-
-      - name: Require zero skipped progressive availability tests
-        run: node scripts/check-full-stack-report.mjs acceptance-reports/progressive-props.json
 
       - name: Isolate legacy Auth journeys from progressive source policy
         # Clear the progressive lane's committed menus and immutable source

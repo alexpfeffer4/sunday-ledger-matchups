@@ -475,12 +475,18 @@ select is((select count(*) from private.player_prop_progressive_activations wher
 select ok(not has_function_privilege('authenticated','api.complete_season_automation(uuid,jsonb,jsonb,text)','execute'),'members cannot execute scheduled commands');
 select ok(not has_function_privilege('anon','api.configure_season_automation(text,text,integer,text,text)','execute'),'anonymous cannot enroll');
 select ok(not has_function_privilege('service_role','private.lifecycle_publish_next_live_week_slate(uuid,uuid,text[],text,uuid)','execute'),'service cannot bypass claimed-run wrapper');
--- Each trial rolls back its own fixture, preserving the installed source policy.
+-- Seed the expensive, already-covered manual Week 2 baseline once. Each
+-- fault still stages and exercises its own automatic week inside a rolled-back
+-- subtransaction, so mutations, receipts and policy changes cannot leak.
+create temporary table automation_trial_context as select pg_temp.automation_context('auto-trial-baseline') c;
+create temporary table automation_other_context as select pg_temp.automation_context('auto-other-baseline') c;
 create function pg_temp.automation_trial(fault text) returns jsonb language plpgsql as $$
 declare c jsonb;other_context jsonb;wk uuid;r uuid;j jsonb;answer jsonb;g uuid;nominees jsonb;
 begin
  begin
- c:=pg_temp.automation_context('auto-trial-'||fault);wk:=pg_temp.automation_stage(c,3,true,case when fault='early' then clock_timestamp()+interval '1 hour' else null end);
+ select t.c into strict c from automation_trial_context t;
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',c->>'owner','role','authenticated')::text,true);
+ wk:=pg_temp.automation_stage(c,3,true,case when fault='early' then clock_timestamp()+interval '1 hour' else null end);
  if fault in('wrong-role','wrong-team','wrong-event','tie','stale','warning') then
  select nominations into nominees from private.player_catalog_nomination_generations where id=(select generation_id from private.player_catalog_nomination_heads where week_id=wk);
  select jsonb_agg(case when n->>'proposedCanonicalKey' is null then n else
@@ -497,7 +503,7 @@ begin
  end if;
  if fault='absent-consent' then update private.season_automation set revoked=true where season_id=(c->>'season')::uuid;end if;
  if fault='wrong-season' then
- other_context:=pg_temp.automation_context('auto-wrong-season-authority');
+ select t.c into strict other_context from automation_other_context t;
  update private.season_automation set consent_id=(select consent_id from private.season_automation where season_id=(other_context->>'season')::uuid) where season_id=(c->>'season')::uuid;
  end if;
  r:=pg_temp.automation_run(c,'VALIDATE',3);
@@ -539,20 +545,27 @@ begin
  raise exception using errcode='ZX001',message=answer::text;
  exception when sqlstate 'ZX001' then return sqlerrm::jsonb;end;
 end $$;
-select is(pg_temp.automation_trial(fault)->>'available','0',fault||' initial candidate stays unavailable without blocking structural validation') from unnest(array['wrong-role','wrong-team','wrong-event','tie','stale','warning'])fault;
-select is(pg_temp.automation_trial(fault)->>'status','40001',fault||' fences stale SYSTEM authority') from unnest(array['absent-consent','wrong-season','pause','revoke','expired-lease','stale-generation','policy-change'])fault;
-select is(pg_temp.automation_trial(fault)->>'cards','0',fault||' leaves no cards or credit grant') from unnest(array['early','missing-game','cutoff','source-off','offers-off'])fault;
-select is(pg_temp.automation_trial('content-race')->>'status','OPENED','changed unoffered menu is revalidated and opens automatically');
-select is(pg_temp.automation_trial('previous-pending')->>'status','OPENED','previous week pending blocks opening until its stored FINAL state');
-select is(pg_temp.automation_trial('replay')->>'replayed','true','completion replay returns its durable result');
-select is(pg_temp.automation_trial('replay')->>'activations','1','completion replay never duplicates activation');
-select is(pg_temp.automation_trial('renew')->>'consents','2','revoked preparation requires a genuine renewed policy approval');
-select is(pg_temp.automation_trial('renew')->>'status','OPENED','identical explicitly renewed scope can recover its prepared week');
+-- Evaluate each fault once; multiple assertions inspect that same execution.
+create temporary table automation_trial_results as
+ select fault,pg_temp.automation_trial(fault) result from unnest(array[
+ 'wrong-role','wrong-team','wrong-event','tie','stale','warning',
+ 'absent-consent','wrong-season','pause','revoke','expired-lease','stale-generation','policy-change',
+ 'early','missing-game','cutoff','source-off','offers-off','content-race','previous-pending','replay','renew'])fault;
+select is(result->>'available','0',fault||' initial candidate stays unavailable without blocking structural validation') from automation_trial_results where fault in('wrong-role','wrong-team','wrong-event','tie','stale','warning');
+select is(result->>'status','40001',fault||' fences stale SYSTEM authority') from automation_trial_results where fault in('absent-consent','wrong-season','pause','revoke','expired-lease','stale-generation','policy-change');
+select is(result->>'cards','0',fault||' leaves no cards or credit grant') from automation_trial_results where fault in('early','missing-game','cutoff','source-off','offers-off');
+select is(result->>'status','OPENED','changed unoffered menu is revalidated and opens automatically') from automation_trial_results where fault='content-race';
+select is(result->>'status','OPENED','previous week pending blocks opening until its stored FINAL state') from automation_trial_results where fault='previous-pending';
+select is(result->>'replayed','true','completion replay returns its durable result') from automation_trial_results where fault='replay';
+select is(result->>'activations','1','completion replay never duplicates activation') from automation_trial_results where fault='replay';
+select is(result->>'consents','2','revoked preparation requires a genuine renewed policy approval') from automation_trial_results where fault='renew';
+select is(result->>'status','OPENED','identical explicitly renewed scope can recover its prepared week') from automation_trial_results where fault='renew';
 
 create function pg_temp.automation_retry_trial() returns jsonb language plpgsql as $$
 declare c jsonb;r uuid;j jsonb;delays jsonb:='[]';answer jsonb;n integer;
 begin begin
- c:=pg_temp.automation_context('auto-retry-bounds');
+ select t.c into strict c from automation_trial_context t;
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',c->>'owner','role','authenticated')::text,true);
  for n in 1..4 loop
  r:=pg_temp.automation_run(c,'SYNC_SCHEDULE',3);
  update private.season_automation set operation_key='SYNC_SCHEDULE:3' where season_id=(c->>'season')::uuid;
@@ -566,10 +579,11 @@ begin begin
  answer:=answer||jsonb_build_object('attempts',(select attempts from private.season_automation where season_id=(c->>'season')::uuid));
  raise exception using errcode='ZX001',message=answer::text;
  exception when sqlstate 'ZX001' then return sqlerrm::jsonb;end;end $$;
-select is(pg_temp.automation_retry_trial()->'delays','[5,15,60,60]'::jsonb,'failure retries are bounded at five, fifteen and sixty minutes');
-select is(pg_temp.automation_retry_trial()->>'suspended','SUSPENDED','fourth failed attempt suspends unchanged work');
-select is(pg_temp.automation_retry_trial()->>'changed','DUE','a relevant dependency change releases suspension');
-select is(pg_temp.automation_retry_trial()->>'attempts','0','authorized explicit retry resets the bounded attempt count');
+create temporary table automation_retry_result as select pg_temp.automation_retry_trial() result;
+select is(result->'delays','[5,15,60,60]'::jsonb,'failure retries are bounded at five, fifteen and sixty minutes') from automation_retry_result;
+select is(result->>'suspended','SUSPENDED','fourth failed attempt suspends unchanged work') from automation_retry_result;
+select is(result->>'changed','DUE','a relevant dependency change releases suspension') from automation_retry_result;
+select is(result->>'attempts','0','authorized explicit retry resets the bounded attempt count') from automation_retry_result;
 -- Reuse the canonical roster-matrix close-week fixture for the changed
 -- automatic publication path at representative bracket sizes.
 \ir fixtures/postseason_close_matrix_week.sql.inc
