@@ -94,6 +94,11 @@ same policy. Revoke requires a new explicit consent; a pending plan can be reuse
 only under identical settings and policy, with a new exact SYSTEM validation.
 Material changes while a plan exists remain blocked for explicit recovery.
 
+Busy provider/result policy or menu-evidence locks defer lifecycle work through
+the same bounded retry path. They do not block an existing result writer in a
+reverse lock order. Protected Week 17 corrections serialize with publication
+before acquiring event locks; their objective-result and lineage gates remain.
+
 A stored evidence change automatically invalidates an unoffered validation and
 schedules revalidation. A failed operation has no successful receipt or partial
 domain effects; successful completion replay returns the stored result. An expired

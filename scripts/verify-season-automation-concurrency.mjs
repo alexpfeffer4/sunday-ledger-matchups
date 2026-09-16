@@ -355,6 +355,42 @@ for (const command of ["PAUSE", "REVOKE"]) {
     "New commissioner controls the existing scoped policy",
   );
 }
+// Existing result and provider accounting transactions lock policy before
+// season. Lifecycle work must yield without making that writer wait in a cycle.
+for (const policy of ["player_result_policy", "odds_refresh_policy"]) {
+  const f = await fixture(`busy-${policy}`);
+  const writer = session(`${prefix}-${policy}`);
+  writer.child.stdin.write(`BEGIN; SET LOCAL statement_timeout='20s';
+    SELECT 1 FROM private.${policy} FOR UPDATE;
+    SELECT 'RESULT_POLICY_LOCK_HELD';\n`);
+  try {
+    for (let attempt = 0; attempt < 60; attempt++) {
+      if (writer.output().includes("RESULT_POLICY_LOCK_HELD")) break;
+      await pause(50);
+    }
+    assert.ok(writer.output().includes("RESULT_POLICY_LOCK_HELD"));
+    const response = json(
+      successful(await sql(complete(f)), "Busy result policy defers opening"),
+    );
+    assert.equal(response.status, "FAILED");
+    assert.equal(response.blocker, "STATE_CHANGED");
+    assert.equal((await state(f)).cards, 0);
+  } finally {
+    writer.child.stdin.end(`SELECT 1 FROM private.seasons
+      WHERE id=${quote(f.season)}::uuid FOR UPDATE; COMMIT;\n`);
+    successful(await writer.done, "Existing result writer retains progress");
+  }
+  const recovered = json(
+    successful(
+      await sql(`BEGIN; ${fixtureHelpers}
+        SELECT api.complete_season_automation(pg_temp.automation_run(${literal(f)},'OPEN',3)); COMMIT;`),
+      "Opening recovers after the independent policy writer commits",
+    ),
+  );
+  assert.equal(recovered.status, "OPENED");
+  assert.equal((await state(f)).credits, 4000);
+}
+
 // A protected Week 18 is already open/final. Race real objective Week 17
 // correction with automatic archive publication in both lock arrival orders.
 for (const [size, correctionFirst] of [

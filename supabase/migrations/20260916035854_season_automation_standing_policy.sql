@@ -357,22 +357,32 @@ end $$;
 
 -- Hold mutable evidence through validation/opening. Directory observations use
 -- mapping foreign keys; FOR UPDATE also fences their concurrent insertion.
+create function private.require_season_automation_readiness() returns void
+language plpgsql set search_path='' as $$
+begin
+ -- Existing result/usage workers lock their global policy before the season.
+ -- Lifecycle work already owns the season: yield instead of waiting in the
+ -- reverse order, then retain the same readiness locks through commit.
+ perform 1 from private.odds_refresh_policy for share nowait;
+ perform 1 from private.player_result_policy for share nowait;
+ perform private.require_week2_props_readiness(true);
+end $$;
 create function private.lock_automation_validation_inputs(p_week uuid) returns void
 language plpgsql set search_path='' as $$
 begin
- perform 1 from private.sports_events where week_id=p_week order by id for update;
- perform 1 from private.player_prop_controls for share;
- perform 1 from private.player_prop_leagues where season_id=(select season_id from private.season_weeks where id=p_week) for share;
- perform 1 from private.prepared_progressive_player_props_rulesets where mode='LIVE' for share;
+ perform private.require_season_automation_readiness();
+ perform 1 from private.sports_events where week_id=p_week order by id for update nowait;
+ perform 1 from private.player_prop_controls for share nowait;
+ perform 1 from private.player_prop_leagues where season_id=(select season_id from private.season_weeks where id=p_week) for share nowait;
+ perform 1 from private.prepared_progressive_player_props_rulesets where mode='LIVE' for share nowait;
  if not exists(select 1 from private.player_prop_controls where offers_enabled)
  or not exists(select 1 from private.player_prop_leagues where season_id=(select season_id from private.season_weeks where id=p_week) and enabled and rules_enabled and catalog_enabled) then
  raise exception using errcode='55000',message='The approved season offer scope is unavailable.';end if;
- perform 1 from private.player_result_policy where singleton for share;
- perform 1 from private.player_catalog_jobs where week_id=p_week for update;
+ perform 1 from private.player_catalog_jobs where week_id=p_week for update nowait;
  if exists(select 1 from private.player_catalog_jobs where week_id=p_week and lease_until>clock_timestamp()) then
  raise exception using errcode='40001',message='Initial catalog acquisition is still running.';end if;
- perform 1 from private.player_catalog_nomination_heads where week_id=p_week for share;
- perform 1 from private.player_provider_mappings m where exists(select 1 from private.sports_events e where e.week_id=p_week and e.fixture_event_key=m.external_event_id) order by m.id for update;
+ perform 1 from private.player_catalog_nomination_heads where week_id=p_week for share nowait;
+ perform 1 from private.player_provider_mappings m where exists(select 1 from private.sports_events e where e.week_id=p_week and e.fixture_event_key=m.external_event_id) order by m.id for update nowait;
 end $$;
 revoke all on function private.lock_automation_validation_inputs(uuid) from public,anon,authenticated,service_role;
 
@@ -387,7 +397,7 @@ begin
  or exists(select 1 from private.player_catalog_jobs where week_id=w.id and lease_until>clock_timestamp()) then
  raise exception using errcode='55000',message='The initial props evidence is still being prepared.';end if;
  perform private.lock_automation_validation_inputs(w.id);
- perform private.require_week2_props_readiness(true);
+ perform private.require_season_automation_readiness();
  v:=private.automation_system_validation(w.id);if v is not null then return v;end if;
  -- No offered identity changes: this is exclusively an unopened, unactivated
  -- proposal. Missing/stale/ambiguous nominees resolve to unavailable slots.
@@ -527,7 +537,7 @@ begin
  and exists(select 1 from private.slate_items i where i.event_id=e.id and private.is_effective_slate_item(i.id)))) then
  raise exception using errcode='55000',message='The prepared slate does not contain every expected game.';end if;
  perform private.lock_automation_validation_inputs(w.id);
- perform private.require_week2_props_readiness(true);
+ perform private.require_season_automation_readiness();
  if private.automation_system_validation(w.id) is null then
  raise exception using errcode='40001',message='The menu evidence changed and will be validated automatically.';end if;
 end $$;
@@ -723,8 +733,8 @@ begin
  r:=private.assert_season_automation_run(p_run);
  if r.operation<>'PREPARE' then raise exception using errcode='42501',message='Only due preparation can acquire markets.';end if;
  select league_id into l from private.seasons where id=r.season_id;
- perform 1 from private.odds_refresh_policy for update;
- perform private.require_week2_props_readiness(true);
+ perform 1 from private.odds_refresh_policy for update nowait;
+ perform private.require_season_automation_readiness();
  if exists(select 1 from private.provider_requests where kind='ODDS' and league_id=l and attempted_at>clock_timestamp()-interval '60 seconds') then raise exception 'QUOTE_REFRESH_COOLDOWN';end if;
  perform private.reserve_provider_credits(3);
  insert into private.provider_requests(kind,league_id,actor_user_id) values('ODDS',l,null) returning provider_requests.id into id;
@@ -751,7 +761,7 @@ begin
  when 'SYNC_SCHEDULE' then
  perform private.record_automation_schedule(r.id,p_schedule);answer:=jsonb_build_object('status','SCHEDULE_READY');
  when 'PREPARE' then
- perform private.require_week2_props_readiness(true);
+ perform private.require_season_automation_readiness();
  if not private.player_props_target_week(s.id,r.nfl_week) or not private.player_catalog_staged_week(s.id,r.nfl_week) then
  raise exception using errcode='55000',message='Props season release scope is unavailable.';end if;
  perform private.record_automation_schedule(r.id,p_schedule);
@@ -795,7 +805,7 @@ begin
  exception when others then
  -- This subtransaction rolls back every partial domain effect. Record a
  -- sanitized failure, never a successful receipt for a failed command.
- failure:=case when sqlstate='40001' then 'STATE_CHANGED' when sqlstate='22023' then 'SLATE_OR_EVIDENCE_INCOMPLETE'
+ failure:=case when sqlstate in('40001','55P03') then 'STATE_CHANGED' when sqlstate='22023' then 'SLATE_OR_EVIDENCE_INCOMPLETE'
  when sqlstate='55000' then 'READINESS_UNAVAILABLE' else 'OPERATION_FAILED' end;
  end;
  end if;
