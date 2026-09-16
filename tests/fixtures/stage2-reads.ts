@@ -97,6 +97,44 @@ export function verifyStage2Reads(slug: string, pending: boolean) {
       });
     }
   }
+  // Explain the exact inner slot projection, in its security-definer execution
+  // role, to distinguish repeated function work from HTTP/RPC latency.
+  const menu = JSON.parse(
+    sql(
+      `begin read only;${claims(owner.id)}select api.get_player_prop_menu(${q(slug)});rollback;`,
+    )
+      .split("\n")
+      .at(-1)!,
+  );
+  for (const [version, definition] of [
+    ["before", before],
+    ["after", after],
+  ]) {
+    const start = definition!.indexOf(
+      version === "before"
+        ? " select coalesce(jsonb_agg"
+        : " with pending as materialized",
+    );
+    const end = definition!.indexOf(" return answer", start);
+    if (start < 0 || end < 0) throw new Error("Menu inner plan source changed");
+    const projection = definition!
+      .slice(start, end)
+      .replace(" into slots", "")
+      .replaceAll(
+        "answer->'slots'",
+        `(${q(JSON.stringify(menu.slots))}::jsonb)`,
+      )
+      .replace(/\bwk\b/g, `(${q(menu.weekId)}::uuid)`);
+    const output =
+      sql(`begin read only;select set_config('request.jwt.claims',${q(JSON.stringify({ sub: owner.id, role: "authenticated" }))},true);
+      explain (analyze,buffers,verbose,format json) ${projection} rollback;`);
+    plans.push({
+      version,
+      name: "inner-slot-projection",
+      role: "security-definer owner with caller claims",
+      plan: JSON.parse(output.slice(output.indexOf("["))),
+    });
+  }
   const sizes = JSON.parse(
     sql(`begin read only;${claims(owner.id)}select jsonb_build_object(
     'menu',octet_length(api.get_player_prop_menu(${q(slug)})::text),
