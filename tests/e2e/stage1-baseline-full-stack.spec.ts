@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import {
   client,
   prerequisites,
@@ -26,6 +26,7 @@ for (const pending of [false, true])
   }, info) => {
     test.setTimeout(900_000);
     requireDisposable(baseURL);
+    mkdirSync("acceptance-reports", { recursive: true });
     const slug = `stage1-${pending ? "pending" : "complete"}-${Date.now().toString(36)}`;
     const source = providerData(slug, pending);
     const { fixture, identity, owner, admin } = await prerequisites(
@@ -490,10 +491,15 @@ for (const pending of [false, true])
         });
         await timed("historical-matchup", async () => {
           await page.goto(`/l/${slug}/matchup?week=2`);
-          await expect(page.locator("main h1").first()).toBeVisible();
+          await expect(
+            page.getByRole("heading", { name: "Week 2 matchup", exact: true }),
+          ).toBeVisible();
         });
         await page.goto(`/l/${slug}/matchup`);
         await usable();
+        await page.evaluate(() => {
+          document.documentElement.style.scrollBehavior = "auto";
+        });
         await page.evaluate(() => window.scrollTo(0, 300));
         const scroll = await page.evaluate(() => window.scrollY);
         await timed("refresh-while-reading", async () => {
@@ -504,7 +510,9 @@ for (const pending of [false, true])
           );
           await page
             .getByRole("button", { name: "Refresh matchup", exact: true })
-            .click();
+            // Activate the real React control without Playwright scrolling an
+            // offscreen button into view and confounding the RSC scroll check.
+            .evaluate((button: HTMLButtonElement) => button.click());
           await response;
           await expect(
             page.getByRole("button", { name: "Refresh matchup", exact: true }),
@@ -512,6 +520,7 @@ for (const pending of [false, true])
         });
         await info.attach(`${condition}-${run}-scroll`, {
           body: JSON.stringify({
+            activation: "DOM click on actual refresh control; no auto-scroll",
             before: scroll,
             after: await page.evaluate(() => window.scrollY),
           }),

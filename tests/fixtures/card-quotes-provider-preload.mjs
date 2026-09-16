@@ -68,6 +68,27 @@ if (
       const started = performance.now();
       const response = await originalFetch(input, init);
       if (
+        process.env.STAGE1_BASELINE === "1" &&
+        !response.ok &&
+        ["127.0.0.1", "localhost"].includes(url.hostname) &&
+        url.pathname.startsWith("/rest/v1/")
+      ) {
+        const failure = await response
+          .clone()
+          .json()
+          .catch(() => ({}));
+        // Only the error code from the disposable database, never SQL text,
+        // request arguments, credentials or private member data.
+        console.error(
+          "STAGE1_RPC_FAILURE",
+          JSON.stringify({
+            endpoint: url.pathname,
+            status: response.status,
+            code: failure.code ?? "UNKNOWN",
+          }),
+        );
+      }
+      if (
         process.env.RELEASE_QUERY_LOG &&
         ["127.0.0.1", "localhost"].includes(url.hostname) &&
         url.pathname.startsWith("/rest/v1/")
