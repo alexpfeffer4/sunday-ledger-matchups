@@ -194,6 +194,7 @@ export function PlayerPropsGame({
                     }}
                     options={outcomes.map((market) => ({
                       id: market.id,
+                      renderKey: market.outcomeKey,
                       ...marketOptionCopy({
                         ...market,
                         awayTeam: event.awayTeam,

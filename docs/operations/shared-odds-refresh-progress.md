@@ -31,3 +31,8 @@ Production migration/deployment/limits/activation remain pending exact approval.
 - Complete reviewed procedures: [release/disable/observation package](shared-odds-refresh.md).
   Remaining: final native/Auth checks, current-main recheck, final PR status and
   private dated rollout record. No live scheduled cycle is claimed.
+
+Final UI inspection found snapshot-keyed outcome buttons could lose focus during
+passive updates. Outcome controls now retain stable side identity while their
+selection callback uses the current snapshot, with real desktop/mobile focus
+assertions. The subsequent final candidate must pass the complete Acceptance gate.

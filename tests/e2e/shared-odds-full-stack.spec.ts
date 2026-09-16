@@ -380,6 +380,11 @@ test("scheduled saved prices preserve the authenticated member draft", async ({
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.getByText(/Odds checked/).first()).toBeVisible();
   expect(readFileSync(`${fixturePath}.calls`, "utf8")).toBe(initialCount);
+  const focusedOutcome = page
+    .locator(".outcome-selector-group")
+    .first()
+    .getByRole("button", { name: /New York Jets/ });
+  await focusedOutcome.focus();
   // A new source timestamp with the same economics must preserve local consent.
   const newer = providerPayload(140);
   newer[0]!.bookmakers[0]!.last_update = new Date().toISOString();
@@ -396,6 +401,7 @@ test("scheduled saved prices preserve the authenticated member draft", async ({
   expect(second.status(), await second.text()).toBe(200);
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.getByText(/Updated quote/)).toHaveCount(0);
+  await expect(focusedOutcome).toBeFocused();
   expect(
     await page.evaluate(() =>
       Object.entries(localStorage).filter(([key]) =>
@@ -446,6 +452,7 @@ test("scheduled saved prices preserve the authenticated member draft", async ({
       return page.getByText(/Updated quote/).count();
     })
     .toBeGreaterThan(0);
+  await expect(focusedOutcome).toBeFocused();
   expect(
     await page.evaluate(() =>
       Object.entries(localStorage).filter(([key]) =>

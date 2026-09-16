@@ -757,6 +757,7 @@ function Stage1CardBuilderEditor({
             });
             return {
               id: market.id,
+              renderKey: market.outcomeKey,
               accessibleLabel: copy.accessibleLabel,
               primary: copy.primary,
               secondary: copy.secondary,
@@ -1314,6 +1315,7 @@ function Stage1CardBuilderEditor({
                               });
                               return {
                                 id: market.id,
+                                renderKey: market.outcomeKey,
                                 accessibleLabel: copy.accessibleLabel,
                                 primary: copy.primary,
                                 secondary: copy.secondary,
