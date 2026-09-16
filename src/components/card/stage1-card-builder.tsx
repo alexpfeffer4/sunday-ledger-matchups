@@ -11,6 +11,8 @@ import { submissionAttemptId } from "@/components/card/submission-attempt";
 import { refreshPlayerPropQuotesAction } from "@/app/l/[leagueSlug]/player-prop-actions";
 import { reviewLiveCardQuotes } from "@/app/l/[leagueSlug]/card-quote-actions";
 import type { CardQuoteReviewResult } from "@/application/providers/card-quote-review";
+import { useStoredQuoteUpdates } from "./use-stored-quote-updates";
+import { QuoteFreshness } from "./quote-freshness";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { acceptStage1CardAction } from "@/app/l/[leagueSlug]/actions";
 import { initialAppActionState } from "@/application/actions/action-state";
@@ -306,6 +308,40 @@ function Stage1CardBuilderEditor({
     initialAppActionState,
   );
   const pending = sealing || checkingQuotes;
+  const passiveQuotes = useStoredQuoteUpdates({
+    leagueSlug: state.league.slug,
+    weekId: state.week?.id,
+    enabled: state.league.mode === "LIVE" && !closed && !sealed,
+    paused:
+      pending ||
+      reviewing ||
+      editor !== null ||
+      drafts.some((draft) => draft.quoteReviewRequired),
+    apply: (update) => {
+      const quotes = new Map(
+        update.quotes.map((event) => [event.eventId, event.markets]),
+      );
+      const events = new Map(
+        update.events.map((event) => [event.eventId, event]),
+      );
+      setSlate(
+        slate.map((event) => ({
+          ...event,
+          markets: quotes.get(event.id) ?? event.markets,
+          entryOpen:
+            event.entryOpen === false
+              ? false
+              : (events.get(event.id)?.entryOpen ?? event.entryOpen),
+          entryClosesAt:
+            events.get(event.id)?.entryClosesAt ?? event.entryClosesAt,
+          playerProps: update.slots.length
+            ? update.slots.filter((slot) => slot.eventId === event.id)
+            : event.playerProps,
+        })),
+      );
+      setStoredReview(null);
+    },
+  });
   useEffect(() => {
     if (!quoteReview) return;
     const timer = window.setTimeout(
@@ -361,14 +397,11 @@ function Stage1CardBuilderEditor({
         nextSlate,
       ).map((draft) => ({
         ...draft,
-        reviewedPayloadHash:
-          draft.reviewedAmericanOdds === draft.americanOdds &&
-          draft.reviewedProposition === draft.proposition
-            ? draft.payloadHash
-            : draft.reviewedPayloadHash,
+        reviewedPayloadHash: !draft.quoteReviewRequired
+          ? draft.payloadHash
+          : draft.reviewedPayloadHash,
         quoteReviewRequired:
-          draft.reviewedAmericanOdds !== draft.americanOdds ||
-          draft.reviewedProposition !== draft.proposition ||
+          draft.quoteReviewRequired ||
           nextSlate
             .flatMap((event) => event.markets)
             .find((market) => market.id === draft.marketSnapshotId)
@@ -517,6 +550,7 @@ function Stage1CardBuilderEditor({
         return {
           ...draft,
           quoteReviewRequired: false,
+          reviewedLineMilli: selected.market.lineMilli,
           reviewedAmericanOdds: selected.market.americanOdds,
           reviewedPayloadHash: selected.market.payloadHash,
           reviewedProposition: selected.market.proposition,
@@ -611,16 +645,12 @@ function Stage1CardBuilderEditor({
           setDrafts(
             restored.map((draft) => ({
               ...draft,
-              reviewedPayloadHash:
-                draft.reviewedAmericanOdds === draft.americanOdds &&
-                draft.reviewedProposition === draft.proposition
-                  ? draft.payloadHash
-                  : draft.reviewedPayloadHash,
+              reviewedPayloadHash: !draft.quoteReviewRequired
+                ? draft.payloadHash
+                : draft.reviewedPayloadHash,
               // Source timestamps may advance with unchanged terms. Only a real
               // proposition/price change needs another per-pick acknowledgment.
-              quoteReviewRequired:
-                draft.reviewedAmericanOdds !== draft.americanOdds ||
-                draft.reviewedProposition !== draft.proposition,
+              quoteReviewRequired: draft.quoteReviewRequired,
             })),
           );
           setQuoteReview(result.status === "ready" ? result.review : null);
@@ -804,6 +834,7 @@ function Stage1CardBuilderEditor({
       payloadHash: editorMarket.payloadHash,
       proposition: editorMarket.proposition,
       quoteReviewRequired: false,
+      reviewedLineMilli: editorMarket.lineMilli,
       reviewedAmericanOdds: editorMarket.americanOdds,
       reviewedPayloadHash: editorMarket.payloadHash,
       reviewedProposition: editorMarket.proposition,
@@ -1183,6 +1214,8 @@ function Stage1CardBuilderEditor({
           {marketView === "PLAYER" && state.week.propsEnabled
             ? visibleEvents.map((event) => (
                 <PlayerPropsGame
+                  freshness={passiveQuotes.freshness.get(event.id)}
+                  updatesDelayed={passiveQuotes.delayed}
                   leagueId={state.league.id}
                   leagueSlug={state.league.slug}
                   refreshAction={refreshPlayerPropQuotesAction}
@@ -1212,8 +1245,13 @@ function Stage1CardBuilderEditor({
                       {rolling && !eventAcceptsBets(event, cutoffNow) ? (
                         <p className="mt-1 font-semibold">Betting closed</p>
                       ) : null}
+                      <QuoteFreshness
+                        freshness={passiveQuotes.freshness.get(event.id)}
+                        family="MAIN"
+                        delayed={passiveQuotes.delayed}
+                      />
                       <p className="mt-1 text-xs">
-                        Odds updated{" "}
+                        Source updated{" "}
                         {formatObservedAt(
                           event.markets.reduce(
                             (latest, market) =>

@@ -53,6 +53,41 @@ export type Database = {
       };
     };
     Functions: {
+      claim_background_quote_run: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      claim_background_quote_request: {
+        Args: { p_run_id: string };
+        Returns: Json;
+      };
+      complete_background_quote_request: {
+        Args: {
+          p_failure?: string;
+          p_import: Json;
+          p_request_id: string;
+          p_retry_after_seconds?: number;
+          p_run_id: string;
+          p_usage?: Json;
+        };
+        Returns: Json;
+      };
+      next_background_quote_application: {
+        Args: { p_run_id: string };
+        Returns: Json;
+      };
+      apply_background_quote_event: {
+        Args: { p_event_id: string; p_request_ids: string[]; p_run_id: string };
+        Returns: Json;
+      };
+      finish_background_quote_run: {
+        Args: { p_run_id: string };
+        Returns: undefined;
+      };
+      get_stored_quote_updates: {
+        Args: { p_league_slug: string; p_week_id: string };
+        Returns: Json;
+      };
       get_season_automation: { Args: { p_league_slug: string }; Returns: Json };
       configure_season_automation: {
         Args: {

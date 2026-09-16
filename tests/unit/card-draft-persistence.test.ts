@@ -67,3 +67,53 @@ describe("unfinished card persistence", () => {
     ).toEqual([]);
   });
 });
+
+describe("passive quote economics", () => {
+  const saved = (line: number | null = null) =>
+    JSON.stringify({
+      version: 1,
+      drafts: [
+        {
+          eventId: slate[0].id,
+          marketType: "MONEYLINE",
+          outcomeKey: "HOME",
+          reviewedAmericanOdds: -125,
+          reviewedLineMilli: line,
+          reviewedPayloadHash: "a".repeat(64),
+          reviewedProposition: "NYJ to win",
+          stakeCredits: 500,
+        },
+      ],
+    });
+  it("a timestamp/hash-only refresh preserves consent and amount", () => {
+    const [draft] = restoreCardDrafts(saved(), slate);
+    expect(draft.quoteReviewRequired).toBe(false);
+    expect(draft.reviewedLineMilli).toBeNull();
+    expect(draft.stakeCredits).toBe(500);
+  });
+  it("both improved and worsened odds need acknowledgment", () => {
+    for (const odds of [-120, -130]) {
+      const changed = structuredClone(slate);
+      changed[0].markets[0].americanOdds = odds;
+      expect(restoreCardDrafts(saved(), changed)[0].quoteReviewRequired).toBe(
+        true,
+      );
+    }
+  });
+  it("a numeric line move needs acknowledgment even if the label stays identical", () => {
+    const changed = structuredClone(slate);
+    changed[0].markets[0].lineMilli = 1000;
+    expect(restoreCardDrafts(saved(), changed)[0].quoteReviewRequired).toBe(
+      true,
+    );
+  });
+  it("withdrawal preserves the selection and credit amount for recovery", () => {
+    const changed = structuredClone(slate);
+    changed[0].markets = [];
+    expect(restoreCardDrafts(saved(), changed)[0]).toMatchObject({
+      quoteReviewRequired: true,
+      stakeCredits: 500,
+      eventId: slate[0].id,
+    });
+  });
+});
