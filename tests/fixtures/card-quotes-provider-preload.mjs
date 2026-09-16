@@ -162,7 +162,14 @@ if (
     appendFileSync(`${process.env.ODDS_TEST_FIXTURE}.calls`, "odds\n");
     if (fixture.delayMs)
       await new Promise((resolve) => setTimeout(resolve, fixture.delayMs));
-    return Response.json(fixture.payload, {
+    const selected = new Set(
+      (url.searchParams.get("eventIds") ?? "").split(",").filter(Boolean),
+    );
+    const payload =
+      process.env.STAGE1_BASELINE === "1" && selected.size
+        ? fixture.payload.filter((event) => selected.has(event.id))
+        : fixture.payload;
+    return Response.json(payload, {
       status: fixture.status ?? 200,
       headers: {
         "x-requests-remaining": String(fixture.remaining ?? 1490),

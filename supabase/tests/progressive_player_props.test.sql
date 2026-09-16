@@ -237,7 +237,7 @@ $$;
 
 -- Disposable fixture only: actual accept/reset/review/cutover/nomination RPCs;
 -- source payloads and no-network scheduler stand-ins are explicit test evidence.
-create function pg_temp.progressive_fixture(p_label text,p_shift interval default interval '0 hours',p_owner_id uuid default null,p_activate boolean default true,p_initial_available boolean default true) returns jsonb
+create function pg_temp.progressive_fixture(p_label text,p_shift interval default interval '0 hours',p_owner_id uuid default null,p_activate boolean default true,p_initial_available boolean default true,p_nfl_year integer default 2026) returns jsonb
 language plpgsql as $$
 declare c jsonb;claim jsonb;proposals jsonb;late jsonb;e private.sports_events%rowtype;
  frozen private.week_player_menu%rowtype;pending private.week_player_menu%rowtype;request_id uuid;stamp timestamptz:=clock_timestamp();
@@ -246,7 +246,7 @@ begin
  perform pg_temp.prepare_after_reset_readiness();
  update private.player_prop_controls set offers_enabled=false;
  update private.player_result_policy set api_sports_contract_validated=false;
- c:=pg_temp.progressive_base_fixture(p_label,p_owner_id=>p_owner_id,p_event_shift=>p_shift);
+ c:=pg_temp.progressive_base_fixture(p_label,p_owner_id=>p_owner_id,p_event_shift=>p_shift,p_nfl_year=>p_nfl_year);
  perform pg_temp.stage_after_reset_fixture(c);
  perform pg_temp.record_separate_reset(c);
  perform private.start_open_week2_props_catalog((c->>'week')::uuid);

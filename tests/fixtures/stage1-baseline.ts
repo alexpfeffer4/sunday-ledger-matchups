@@ -5,6 +5,8 @@ import { expect, type Page } from "@playwright/test";
 import { nflCatalogTeams } from "../../src/adapters/providers/player-catalog-normalizer";
 import {
   easternInstant,
+  expectedAutomationGames,
+  type SlatePreset,
   normalizeAutomationSchedule,
 } from "../../src/application/automation/schedule";
 import { quoteSql as q } from "./player-props-acceptance.mjs";
@@ -58,7 +60,11 @@ function marked(file: string, marker: string) {
   if (!result) throw new Error(`Missing fixture ${marker}`);
   return result;
 }
-export async function prerequisites(slug: string) {
+export async function prerequisites(
+  slug: string,
+  year: number,
+  preset: SlatePreset,
+) {
   const identity = {
     email: `${slug}@acceptance.test`,
     password: `Stage1-${slug}-48!`,
@@ -85,7 +91,7 @@ export async function prerequisites(slug: string) {
   // retains its historical accept/reset audit. No Week 3 or successful run is seeded.
   const fixture = JSON.parse(
     sql(`begin; ${helpers}
-    create temporary table baseline_context as select pg_temp.automation_context(${q(slug)},${q(created.data.user!.id)}::uuid,false) c;
+    create temporary table baseline_context as select pg_temp.automation_context(${q(slug)},${q(created.data.user!.id)}::uuid,false,${year}) c;
     do $$ declare c jsonb; u uuid; ids uuid[]; matches jsonb; begin
       select baseline_context.c into c from baseline_context;
       -- Use the established postseason fixture's prerequisite construction:
@@ -103,8 +109,9 @@ export async function prerequisites(slug: string) {
       select jsonb_agg(jsonb_build_object('week',wk,'sideAEntryId',ids[pair*2-1],'sideBEntryId',ids[pair*2])) into matches from generate_series(1,14)wk cross join generate_series(1,5)pair;
       insert into private.schedule_publications(season_id,league_id,version,algorithm_version,seed,ordered_entry_ids,output_hash,created_by,schedule_json)
       values((c->>'season')::uuid,(c->>'league')::uuid,3,'circle-v1','baseline-fixture',ids,repeat('e',64),(c->>'owner')::uuid,jsonb_build_object('matchups',matches));
-      perform api.configure_season_automation(c->>'slug','ENABLE',3,'ALL_NFL_GAMES',private.season_automation_policy_hash());
+      perform api.configure_season_automation(c->>'slug','ENABLE',3,${q(preset)},private.season_automation_policy_hash());
       perform api.complete_player_catalog_job((c->>'leaseId')::uuid,'PENDING',24,'CATALOG_IDENTITIES_OR_ROLES_UNRESOLVED');
+      update private.odds_refresh_policy set next_request_at='-infinity';
     end $$;
     select c from baseline_context; commit;`),
   );
@@ -113,7 +120,7 @@ export async function prerequisites(slug: string) {
   return { fixture, identity, owner, admin };
 }
 
-export function providerData(slug: string, pending: boolean) {
+export function providerData(slug: string, pending: boolean, now = new Date()) {
   const codes = [
     ...new Map(
       Object.entries(nflCatalogTeams).map(([code, name]) => [name, code]),
@@ -124,23 +131,51 @@ export function providerData(slug: string, pending: boolean) {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date());
+  }).format(now);
   const day = new Date(`${today}T12:00Z`);
   // Games on the next Sunday (or Monday evening when Sunday has passed) keep
   // the real Tuesday due calculation. No database clock/function is replaced.
   const untilSunday = (7 - day.getUTCDay()) % 7;
-  const selected = new Date(
+  let selected = new Date(
     day.getTime() + (day.getUTCDay() === 1 ? 0 : untilSunday) * 86400000,
   );
+  const dateString = (date: Date) => date.toISOString().slice(0, 10);
+  if (
+    Date.parse(easternInstant(dateString(selected), "23:00")) <
+    now.getTime() + 3600000
+  )
+    selected = new Date(
+      selected.getTime() + (selected.getUTCDay() === 0 ? 1 : 6) * 86400000,
+    );
+  const tuesday = (date: Date) =>
+    new Date(date.getTime() - ((date.getUTCDay() + 5) % 7) * 86400000);
+  // Before Tuesday opening there is no due ALL_NFL_GAMES slate with every
+  // kickoff still ahead. Use the already-approved Sunday/Monday preset with
+  // one earlier Thursday game outside that preset. This is a declared 15-game
+  // calendar profile, never pooled with the normal 16-game baseline. All
+  // database clocks, selected-game checks and resulting plans remain real.
+  const calendarProfile =
+    Date.parse(easternInstant(dateString(tuesday(selected)), "10:00")) >
+    now.getTime();
+  const preset: SlatePreset = calendarProfile
+    ? "SUNDAY_AFTERNOON_AND_MONDAY"
+    : "ALL_NFL_GAMES";
   const rows = [
     "game_id,season,week,game_type,away_team,home_team,gameday,gametime",
   ];
-  const year = selected.getUTCFullYear();
+  const year = new Date(selected.getTime() - 14 * 86400000).getUTCFullYear();
   for (let week = 1; week <= 18; week++)
     for (let pair = 0; pair < 16; pair++) {
       if ((week === 9 && pair >= 8) || (week === 10 && pair < 8)) continue;
       const date = new Date(
-        selected.getTime() + ((week - 3) * 7 + (pair >= 8 ? 1 : 0)) * 86400000,
+        selected.getTime() +
+          ((week - 3) * 7 +
+            (calendarProfile && week === 3 && pair === 15
+              ? -10
+              : pair >= 8 && selected.getUTCDay() === 0
+                ? 1
+                : 0)) *
+            86400000,
       )
         .toISOString()
         .slice(0, 10);
@@ -151,8 +186,10 @@ export function providerData(slug: string, pending: boolean) {
       );
     }
   const scheduleCsv = rows.join("\n");
-  const games = normalizeAutomationSchedule(scheduleCsv, year).filter(
-    (g) => g.week === 3,
+  const games = expectedAutomationGames(
+    normalizeAutomationSchedule(scheduleCsv, year),
+    3,
+    preset,
   );
   const roster = [
     "season,team,position,status,gsis_id,espn_id,pfr_id,full_name",
@@ -262,12 +299,12 @@ export function providerData(slug: string, pending: boolean) {
     scheduleCsv,
     main,
     writeMain,
-    opensAt: easternInstant(
-      new Date(selected.getTime() - ((selected.getUTCDay() + 5) % 7) * 86400000)
-        .toISOString()
-        .slice(0, 10),
-      "10:00",
-    ),
+    preset,
+    gameCount: games.length,
+    slotCount: games.length * 6,
+    calendarProfile,
+    calendar: selected.getUTCDay() === 0 ? "sun-mon" : "monday",
+    firstFilterCount: selected.getUTCDay() === 0 ? 8 : games.length,
   };
 }
 export async function signIn(

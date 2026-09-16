@@ -19,7 +19,7 @@ test.skip(
 test.use({ actionTimeout: 20_000 });
 
 for (const pending of [false, true])
-  test(`real worker preparation and ${pending ? "pending" : "complete"} 96-slot baseline`, async ({
+  test(`real worker preparation and ${pending ? "pending" : "complete"} representative baseline`, async ({
     browser,
     baseURL,
     request,
@@ -27,13 +27,21 @@ for (const pending of [false, true])
     test.setTimeout(900_000);
     requireDisposable(baseURL);
     const slug = `stage1-${pending ? "pending" : "complete"}-${Date.now().toString(36)}`;
-    const { fixture, identity, owner, admin } = await prerequisites(slug);
     const source = providerData(slug, pending);
+    const { fixture, identity, owner, admin } = await prerequisites(
+      slug,
+      source.year,
+      source.preset,
+    );
     const season = q(fixture.season),
       league = q(fixture.league);
     const headers = { Authorization: `Bearer ${process.env.SCORE_JOB_SECRET}` };
     const worker = () =>
-      request.post("/api/operations/season-automation", { headers, data: {} });
+      request.post("/api/operations/season-automation", {
+        headers,
+        data: {},
+        timeout: 60_000,
+      });
     const tick = () => {
       // Each successful operation deliberately waits for the next five-minute
       // checkpoint. Advance only this disposable season's stored checkpoint.
@@ -117,13 +125,16 @@ for (const pending of [false, true])
       sql(
         `select count(*) from private.sports_events where week_id=${q(week)}::uuid;`,
       ),
-    ).toBe("16");
+    ).toBe(String(source.gameCount));
     // Normal catalog worker and acquisition leases. Only raw nflverse/odds HTTP
     // responses are replaced by the preload. No nominations or validations inserted.
     for (let attempt = 0; attempt < 5; attempt++) {
       const catalog = await request.post("/api/operations/player-results", {
         headers,
         data: {},
+        // The real catalog route allows 120 seconds and preserves three-second
+        // provider pacing. It is not a twenty-second browser interaction.
+        timeout: 120_000,
       });
       expect(catalog.status(), await catalog.text()).toBe(200);
       const count = Number(
@@ -131,7 +142,7 @@ for (const pending of [false, true])
           `select count(*) from private.player_catalog_quote_evidence where week_id=${q(week)}::uuid;`,
         ),
       );
-      if (count === 48) break;
+      if (count === source.gameCount * 3) break;
       sql(
         `update private.player_catalog_jobs set next_attempt_at=clock_timestamp() where week_id=${q(week)}::uuid;`,
       );
@@ -140,14 +151,7 @@ for (const pending of [false, true])
       sql(
         `select count(*) from private.player_catalog_quote_evidence where week_id=${q(week)}::uuid;`,
       ),
-    ).toBe("48");
-    // Tuesday 08-10 is an intentional preparation-only interval. A fixture created
-    // then records real validation before moving its *resulting* opening checkpoint;
-    // it never inserts a week plan or changes the authoritative clock/function.
-    if (Date.parse(source.opensAt) > Date.now())
-      sql(
-        `update private.season_automation_week_plans set opens_at=clock_timestamp() where week_id=${q(week)}::uuid;`,
-      );
+    ).toBe(String(source.gameCount * 3));
     const validated = await tick();
     expect(validated.status(), await validated.text()).toBe(200);
     expect(
@@ -161,15 +165,15 @@ for (const pending of [false, true])
       p_league_slug: slug,
     });
     expect(current.week).toMatchObject({ id: week, state: "OPEN" });
-    expect(current.slate).toHaveLength(16);
+    expect(current.slate).toHaveLength(source.gameCount);
     expect(current.schedule).toHaveLength(5);
     const menu = await rpc(owner, "get_player_prop_menu", {
       p_league_slug: slug,
     });
-    expect(menu.slots).toHaveLength(96);
+    expect(menu.slots).toHaveLength(source.slotCount);
     expect(
       menu.slots.filter((s: { subjectId: string | null }) => s.subjectId),
-    ).toHaveLength(pending ? 60 : 96);
+    ).toHaveLength(pending ? 60 : source.slotCount);
     const counts = () =>
       sql(
         `select jsonb_build_object('cards',(select count(*) from private.weekly_cards where week_id=${q(week)}::uuid),'validations',(select count(*) from private.player_prop_system_validations where week_id=${q(week)}::uuid),'human',(select count(*) from private.player_prop_progressive_reviews where week_id=${q(week)}::uuid),'consents',(select count(*) from private.season_automation_consents where season_id=${season}::uuid));`,
@@ -200,9 +204,11 @@ for (const pending of [false, true])
       body: JSON.stringify({
         audit: snapshot(),
         counts: JSON.parse(counts()),
-        games: 16,
-        slots: 96,
-        pending: pending ? 36 : 0,
+        games: source.gameCount,
+        slots: source.slotCount,
+        pending: pending ? source.slotCount - 60 : 0,
+        calendarProfile: source.calendarProfile,
+        slatePreset: source.preset,
         priorReceiptUnchanged: true,
       }),
       contentType: "application/json",
@@ -249,7 +255,7 @@ for (const pending of [false, true])
     let submitted = 0;
     for (const mobile of [false, true])
       for (let run = 1; run <= 5; run++) {
-        const condition = `${pending ? "pending" : "complete"}-${mobile ? "mobile-4x-150ms" : "desktop"}`;
+        const condition = `${source.gameCount}g-${source.slotCount}s-${source.calendar}-${pending ? "pending" : "complete"}-${mobile ? "mobile-4x-150ms" : "desktop"}`;
         const context = await browser.newContext({
           storageState,
           viewport: mobile
@@ -315,11 +321,13 @@ for (const pending of [false, true])
           const day = filters.getByRole("button").nth(1);
           await day.click();
           await expect(day).toHaveAttribute("aria-pressed", "true");
-          await expect(page.locator("details")).toHaveCount(8);
+          await expect(page.locator("details")).toHaveCount(
+            source.firstFilterCount,
+          );
           await filters
             .getByRole("button", { name: "All games", exact: true })
             .click();
-          await expect(page.locator("details")).toHaveCount(16);
+          await expect(page.locator("details")).toHaveCount(source.gameCount);
         });
         // Use the default game-market tab again; only enabled, unused markets enter
         // real drafts. Every repetition submits a new 50-credit batch, at most 500.

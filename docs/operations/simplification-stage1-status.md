@@ -11,32 +11,45 @@ September 16, 2026. Workspace reconnected and all local implementation files wer
 - Overall credit caps remain 2,000/day and 18,000/month. Background caps are 1,300/day and 13,500/month. Provider reserve remains 2,000; protected core credits remain 350/day and 2,000/month. No spending or subscription change.
 - The five-minute cron is active. Existing standing consent remains enabled, not revoked, effective from Week 3. The attached season-automation record is earlier than the completed odds rollout; its activation/history and the audit's missing-migration statement must not trigger another rollout.
 
-## Remaining work
+## Candidate and verification in progress
 
-SL-03 remains an actual gap: the existing automation_stage helper directly imports/publishes a future week, inserts its plan and marks PREPARE successful. Existing successful schedule completion coverage must remain.
+PR [#71](https://github.com/alexpfeffer4/sunday-ledger-matchups/pull/71), branch `codex/simplification-stage1-verification`, is draft and unmerged. The workspace reconnected on the next user turn and all implementation files survived; no outage cause was established. The former offline checkpoint is historical.
 
-Required regression: real HTTP worker/runner, actual claim and PREPARE completion, raw substituted 272-game schedule and complete selected-week markets; failure without partial effects, retry/replay without duplicates, normal catalog processing, SYSTEM validation and opening. Fixture prerequisites must explicitly identify prior-week finality and existing consent. Do not seed resulting weeks, plans, successful run markers or validation evidence.
+The real worker scenario exposed a product defect before external acquisition: `api.claim_season_automation_odds(uuid)` declared a local `id` and then used unqualified `seasons.id`. The runner labeled that SQL error `PROVIDER_BUDGET`. Read-only hosted inspection confirmed the same active body. The separate repair commit is `de07a33522d31ee8b13c7c57e838f081da60d0b6`; its focused database regression subsequently passed, including one request, a three-credit reservation and unchanged cooldown. Earlier fixture corrections concerned roster construction, five-minute checkpoint progression and the raw provider event-list response.
 
-Required measurements: representative ten-member league, sixteen games and ninety-six slots, both complete and pending menus. Five primary samples per declared desktop/mobile condition, cold browser and repeat separately, median/range and raw observations. Cover navigation, props/game filters, selection/stake editing, review cache hit/miss/changed terms/expiration, accepted receipts, standings/history and passive-refresh stability. Measure database execution/plans separately from RPC latency. Keep existing WebKit/mobile compatibility gates.
+Pending forward migration: `20260916192632_season_automation_odds_claim_alias.sql`, generated with Supabase CLI 2.116.0. It changes only that function's ambiguous local/column names and preserves signature, service-only access, readiness, lease fences, cooldown and budget reservation. The earlier candidate filename was never installed in Production and was replaced with the CLI-generated filename. Existing applied migration history is unchanged.
 
-Suggested lab settings: Chromium desktop 1440×900 unthrottled; mobile Chromium 390×844, DPR 3, 150 ms latency, 1.6 Mbps down/750 Kbps up and 4× CPU slowdown. Declare synthetic provider delay and browser emulation. No physical-device, hosted authenticated performance or field Web Vitals claim.
+`supabase/operations/stage1-preparation-parity.sql` is a read-only exact body/configuration/permission check. The expected function-body SHA-256 is `b1a3280051b6a95ef4d141237e19c3fc7346bda22c413c1f10b5102c1f14690c`. The existing 22-function shared-odds parity check remains unchanged.
 
-## Recovered interruption (historical)
+At 19:21:56 UTC, existing season consent was still enabled, not revoked or suspended, effective from Week 3, with zero attempts and last outcome `SCHEDULE_READY`. No hosted worker or provider was invoked to inspect it.
 
-Local implementation was written on branch `codex/simplification-stage1-verification`, based on the main SHA above, but was not committed or pushed before the workspace disconnected. The local executor repeatedly returned `409 Conflict, environment_offline: Environment is not connected`. The unavailable workspace prevents retrieving the exact changes, completing local checks and publishing them into the disposable CI lane.
+## Method and outstanding results
 
-Written but unexecuted files were tests/fixtures/stage1-baseline.ts, tests/fixtures/stage1-measurements.ts, tests/e2e/stage1-baseline-full-stack.spec.ts, scripts/summarize-stage1-baseline.mjs, plus provider-preload and Acceptance workflow edits. Do not treat those files as verified or assume they survive environment recovery. Preliminary route type generation/TypeScript completed; a lint warning was corrected but not rerun. Unit-test completion was not retrieved. No database/browser execution or realistic timing results are claimed.
+The new lane uses the existing fresh disposable Supabase/Auth/mail stack and production app build. It begins with approved source policy, a locked ten-member roster, one standing consent and stored prior Week 2 finality. The older fixture retains its real acceptance/reset audit as historical input. It does not insert the resulting Week 3, week plan, successful run or SYSTEM validation. Real HTTP worker calls perform sync, acquisition, PREPARE, catalog processing, validation and opening. Only fixture waiting timestamps are advanced between five-minute checkpoints; no production clock or authority function is replaced.
 
-No implementation PR, migration, Production deployment/configuration, provider acquisition, live data mutation or Stage 2 work was completed. This status-only checkpoint preserves verified facts; it does not satisfy Stage 1.
+The normal workload is sixteen games, ninety-six slots and ten member cards. Complete and pending menus are separate. Each browser sample starts without drafts, edits/submits one 50-credit bet, and grows the owner's receipt count from zero to ten across the five desktop and five mobile runs. History is the stored Week 2 fixture, not a populated eighteen-week archive. Earlier receipt fingerprints must remain unchanged.
 
-## Resume
+Desktop is Chromium 1440×900 without throttling. Mobile is Chromium 390×844, DPR 3, touch, 150 ms latency, 1.6 Mbps download, 750 Kbps upload and 4× CPU slowdown. A cold visit means a fresh authenticated browser context; server/database processes are warm. Five samples support medians/ranges, not percentiles. Cache misses use a stated synthetic 500 ms provider delay. Paused-edit focus deliberately waits 1.1 seconds to observe behavior. WebKit/mobile compatibility remains in the existing required lanes.
 
-Restore/reopen the workspace or start a fresh implementation workspace. Fetch current main and inspect this status plus the original Version 1.0 handoff. Recover the local branch if present; otherwise reconstruct the bounded test/harness work. Refresh only relevant changes since the SHA above. Do not repeat the odds rollout or comprehensive audit.
+A separately labeled 15-game/90-slot Sunday/Monday calendar profile is used only when an all-games week is not yet due. Its complete 272-game source schedule includes an earlier Thursday game excluded by that existing preset. This keeps actual readiness/opening guards intact without changing a resulting plan or the database clock. Monday-only and Sunday/Monday samples are labeled separately. Compare only matching game count, calendar profile, menu state, build and emulation settings.
 
-Complete Stage 1 implementation, execute the existing disposable CI lane, resolve actual failures, and publish one reviewable verification PR with full required Acceptance, applicable Preview metadata and retained baseline artifacts. Produce the final Stage 2 status only after the meaningful paths run successfully. Stage 2 remains unauthorized in this task.
+Artifacts: `stage1-samples.jsonl`, `stage1-summary.json`/`.md`, per-menu `stage1-query-plans-*.json`, preparation/replay evidence and viewport screenshots in the `stage1-baseline` Actions artifact. Database EXPLAIN executions are separate from application RPC latency. Top-level function plans do not identify a particular nested SQL subexpression as the bottleneck. Browser response bytes and long-task/LCP/layout-shift/event observations are lab evidence, not field Web Vitals or a physical phone result.
 
-A test/documentation-only release needs no database deployment. Merge remains a separate owner decision under the common execution contract. Recovery is a revert of test/harness changes, never a reset of bets, receipts, season consent or installed migration history.
+Real preparation/opening and the full repeated baseline are still being verified. No speed measurements, full Stage 1 completion, or readiness for Stage 2 are claimed yet. The final relevant revision must pass the required Acceptance contract, including zero-skipped full-stack scenarios and the new repair parity check.
 
-## Recovery update
+## Prepared rollout and recovery
 
-The next user turn restored executor connectivity. All six implementation/harness files survived. Current cgroup counters report no out-of-memory kill, but they do not identify the connection outage cause. The recovered implementation is on this same PR; the earlier status-only warning is historical. Required database/browser execution remains pending.
+After verification, request approval for the exact PR merge/automatic frontend deployment and the single migration. Current and candidate frontend callers have identical RPC contracts, so either app/database order is compatible. Prefer applying the reviewed migration and verifying its parity before merging. No new activation or cap change is required. If the hosted migration tool assigns its installation timestamp, record that exact version and align the still-unmerged filename before merging; preserve its SQL bytes and reuse same-body evidence.
+
+Immediately before installation, recheck current main and relevant function/migration drift. Apply only this repair through the established migration flow, verify the new read-only parity check and existing shared-odds parity, then observe already scheduled work when naturally due. Do not manufacture a live run, submission or provider sample. If automation becomes suspended before installation, inspect its recorded cause; any owner RETRY uses the existing command and requires specific release authorization. Do not alter stored consent or failure timestamps directly.
+
+Recovery never deletes weeks, accepted bets, receipts, consent or migration history. If the repaired path encounters another blocker, retain its evidence; use the existing commissioner pause only under applicable authorization, and prepare another small forward repair. Reverting the frontend test/harness change does not undo the database function. Reinstalling the ambiguous body would knowingly restore the acquisition failure and is not the normal recovery path.
+
+## Findings and next stage
+
+- SL-03: real uncovered acquisition defect identified and repaired in the candidate; complete end-to-end proof pending.
+- SL-08: reproducible measurement harness implemented; completed observations pending.
+- SL-01/02: read/query optimization deferred to Stage 2, using completed comparable measurements and targeted plans.
+- SL-04/05/06/07/09: deferred to Stage 3. The generic `PROVIDER_BUDGET` label is diagnostic evidence for SL-07, not a new diagnostics project here.
+
+Do not begin Stage 2. Once Stage 1 passes, merges and its approved release is complete, use Version 1.0's Stage 2 prompt with this final status, exact merged commit, final CI/artifact references and observed migration/rollout result. Refresh only relevant differences; preserve every receipt, privacy, rules, consent and budget safeguard. Do not rerun the odds rollout or comprehensive audit.
