@@ -14,7 +14,7 @@ import {
   type CardQuoteReviewResult,
 } from "@/application/providers/card-quote-review";
 import { liveQuoteHeadsSchema } from "@/application/queries/stage1-dtos";
-import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
+import { getCardReviewContext } from "@/application/queries/get-card-review-context";
 
 export async function reviewLiveCardQuotes(
   leagueSlug: string,
@@ -29,7 +29,7 @@ export async function reviewLiveCardQuotes(
   if (!input.success)
     return { status: "error", message: "Choose at least one bet to review." };
   try {
-    const state = await getAuthoritativeLeagueState(input.data.leagueSlug);
+    const state = await getCardReviewContext(input.data.leagueSlug);
     if (
       !state?.week ||
       !state.ownerCard ||
@@ -51,7 +51,7 @@ export async function reviewLiveCardQuotes(
           ["PLANNED", "FINAL"].includes(state.week.state)))
     )
       throw new Error("Card not available");
-    const submittedCount = rolling ? state.ownerCard.positions.length : 0;
+    const submittedCount = rolling ? state.ownerCard.positionCount : 0;
     const submittedCredits = rolling ? state.ownerCard.allocatedCredits : 0;
     const batchCredits = input.data.positions.reduce(
       (sum, p) => sum + p.stakeCredits,

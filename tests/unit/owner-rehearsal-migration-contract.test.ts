@@ -51,7 +51,7 @@ describe("Owner Guided Rehearsal migration contract", () => {
       "utf8",
     );
     expect(authoritativeQuery).toMatch(
-      /state\.league\.mode === "SIMULATION"[\s\S]*getOwnerRehearsalForLeague\(leagueSlug\)[\s\S]*return state/,
+      /state\.league\.mode === "SIMULATION"[\s\S]*getOwnerRehearsalForLeague\(leagueSlug\)[\s\S]*return null/,
     );
   });
 

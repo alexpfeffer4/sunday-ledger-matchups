@@ -660,6 +660,10 @@ export type Database = {
         Args: { p_idempotency_key: string; p_league_id: string };
         Returns: Json;
       };
+      get_card_review_context: {
+        Args: { p_league_slug: string };
+        Returns: Json;
+      };
       get_stage1_state: {
         Args: { p_league_slug: string };
         Returns: Json;

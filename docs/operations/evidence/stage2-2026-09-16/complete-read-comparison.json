@@ -1,0 +1,622 @@
+{
+  "comparisons": "Exact commissioner/member review projection; outsider/privilege denial; effective count/allocation after each measured submission",
+  "sizes": {
+    "menu": 43528,
+    "fullState": 63911,
+    "reviewContext": 4409
+  },
+  "plans": [
+    {
+      "version": "before-context",
+      "run": 0,
+      "name": "get_stage1_state",
+      "plan": [
+        {
+          "Plan": {
+            "Node Type": "Result",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 0,
+            "Total Cost": 0.26,
+            "Plan Rows": 1,
+            "Plan Width": 32,
+            "Actual Startup Time": 55.846,
+            "Actual Total Time": 55.846,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Output": [
+              "api.get_stage1_state('stage1-complete-mu4oqczy'::text)"
+            ],
+            "Shared Hit Blocks": 9500,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Query Identifier": 4286496555672396000,
+          "Planning": {
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 0.035,
+          "Triggers": [],
+          "Execution Time": 55.863
+        }
+      ]
+    },
+    {
+      "version": "after-context",
+      "run": 0,
+      "name": "get_card_review_context",
+      "plan": [
+        {
+          "Plan": {
+            "Node Type": "Result",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 0,
+            "Total Cost": 0.26,
+            "Plan Rows": 1,
+            "Plan Width": 32,
+            "Actual Startup Time": 11.249,
+            "Actual Total Time": 11.25,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Output": [
+              "api.get_card_review_context('stage1-complete-mu4oqczy'::text)"
+            ],
+            "Shared Hit Blocks": 3974,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Query Identifier": 5217849152326883000,
+          "Planning": {
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 0.011,
+          "Triggers": [],
+          "Execution Time": 11.259
+        }
+      ]
+    },
+    {
+      "version": "before-context",
+      "run": 1,
+      "name": "get_stage1_state",
+      "plan": [
+        {
+          "Plan": {
+            "Node Type": "Result",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 0,
+            "Total Cost": 0.26,
+            "Plan Rows": 1,
+            "Plan Width": 32,
+            "Actual Startup Time": 55.347,
+            "Actual Total Time": 55.347,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Output": [
+              "api.get_stage1_state('stage1-complete-mu4oqczy'::text)"
+            ],
+            "Shared Hit Blocks": 9500,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Query Identifier": 4286496555672396000,
+          "Planning": {
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 0.009,
+          "Triggers": [],
+          "Execution Time": 55.359
+        }
+      ]
+    },
+    {
+      "version": "after-context",
+      "run": 1,
+      "name": "get_card_review_context",
+      "plan": [
+        {
+          "Plan": {
+            "Node Type": "Result",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 0,
+            "Total Cost": 0.26,
+            "Plan Rows": 1,
+            "Plan Width": 32,
+            "Actual Startup Time": 11.3,
+            "Actual Total Time": 11.3,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Output": [
+              "api.get_card_review_context('stage1-complete-mu4oqczy'::text)"
+            ],
+            "Shared Hit Blocks": 3974,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Query Identifier": 5217849152326883000,
+          "Planning": {
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 0.011,
+          "Triggers": [],
+          "Execution Time": 11.31
+        }
+      ]
+    },
+    {
+      "version": "before-context",
+      "run": 2,
+      "name": "get_stage1_state",
+      "plan": [
+        {
+          "Plan": {
+            "Node Type": "Result",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 0,
+            "Total Cost": 0.26,
+            "Plan Rows": 1,
+            "Plan Width": 32,
+            "Actual Startup Time": 55.271,
+            "Actual Total Time": 55.272,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Output": [
+              "api.get_stage1_state('stage1-complete-mu4oqczy'::text)"
+            ],
+            "Shared Hit Blocks": 9500,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Query Identifier": 4286496555672396000,
+          "Planning": {
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 0.009,
+          "Triggers": [],
+          "Execution Time": 55.284
+        }
+      ]
+    },
+    {
+      "version": "after-context",
+      "run": 2,
+      "name": "get_card_review_context",
+      "plan": [
+        {
+          "Plan": {
+            "Node Type": "Result",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 0,
+            "Total Cost": 0.26,
+            "Plan Rows": 1,
+            "Plan Width": 32,
+            "Actual Startup Time": 11.244,
+            "Actual Total Time": 11.245,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Output": [
+              "api.get_card_review_context('stage1-complete-mu4oqczy'::text)"
+            ],
+            "Shared Hit Blocks": 3974,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Query Identifier": 5217849152326883000,
+          "Planning": {
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 0.01,
+          "Triggers": [],
+          "Execution Time": 11.254
+        }
+      ]
+    },
+    {
+      "version": "before-context",
+      "run": 3,
+      "name": "get_stage1_state",
+      "plan": [
+        {
+          "Plan": {
+            "Node Type": "Result",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 0,
+            "Total Cost": 0.26,
+            "Plan Rows": 1,
+            "Plan Width": 32,
+            "Actual Startup Time": 55.825,
+            "Actual Total Time": 55.826,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Output": [
+              "api.get_stage1_state('stage1-complete-mu4oqczy'::text)"
+            ],
+            "Shared Hit Blocks": 9500,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Query Identifier": 4286496555672396000,
+          "Planning": {
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 0.008,
+          "Triggers": [],
+          "Execution Time": 55.842
+        }
+      ]
+    },
+    {
+      "version": "after-context",
+      "run": 3,
+      "name": "get_card_review_context",
+      "plan": [
+        {
+          "Plan": {
+            "Node Type": "Result",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 0,
+            "Total Cost": 0.26,
+            "Plan Rows": 1,
+            "Plan Width": 32,
+            "Actual Startup Time": 11.196,
+            "Actual Total Time": 11.196,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Output": [
+              "api.get_card_review_context('stage1-complete-mu4oqczy'::text)"
+            ],
+            "Shared Hit Blocks": 3974,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Query Identifier": 5217849152326883000,
+          "Planning": {
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 0.01,
+          "Triggers": [],
+          "Execution Time": 11.206
+        }
+      ]
+    },
+    {
+      "version": "before-context",
+      "run": 4,
+      "name": "get_stage1_state",
+      "plan": [
+        {
+          "Plan": {
+            "Node Type": "Result",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 0,
+            "Total Cost": 0.26,
+            "Plan Rows": 1,
+            "Plan Width": 32,
+            "Actual Startup Time": 56.226,
+            "Actual Total Time": 56.226,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Output": [
+              "api.get_stage1_state('stage1-complete-mu4oqczy'::text)"
+            ],
+            "Shared Hit Blocks": 9500,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Query Identifier": 4286496555672396000,
+          "Planning": {
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 0.009,
+          "Triggers": [],
+          "Execution Time": 56.239
+        }
+      ]
+    },
+    {
+      "version": "after-context",
+      "run": 4,
+      "name": "get_card_review_context",
+      "plan": [
+        {
+          "Plan": {
+            "Node Type": "Result",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 0,
+            "Total Cost": 0.26,
+            "Plan Rows": 1,
+            "Plan Width": 32,
+            "Actual Startup Time": 11.153,
+            "Actual Total Time": 11.153,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Output": [
+              "api.get_card_review_context('stage1-complete-mu4oqczy'::text)"
+            ],
+            "Shared Hit Blocks": 3974,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Query Identifier": 5217849152326883000,
+          "Planning": {
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 0.01,
+          "Triggers": [],
+          "Execution Time": 11.162
+        }
+      ]
+    },
+    {
+      "version": "before-context",
+      "run": 5,
+      "name": "get_stage1_state",
+      "plan": [
+        {
+          "Plan": {
+            "Node Type": "Result",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 0,
+            "Total Cost": 0.26,
+            "Plan Rows": 1,
+            "Plan Width": 32,
+            "Actual Startup Time": 55.539,
+            "Actual Total Time": 55.54,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Output": [
+              "api.get_stage1_state('stage1-complete-mu4oqczy'::text)"
+            ],
+            "Shared Hit Blocks": 9500,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Query Identifier": 4286496555672396000,
+          "Planning": {
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 0.009,
+          "Triggers": [],
+          "Execution Time": 55.552
+        }
+      ]
+    },
+    {
+      "version": "after-context",
+      "run": 5,
+      "name": "get_card_review_context",
+      "plan": [
+        {
+          "Plan": {
+            "Node Type": "Result",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 0,
+            "Total Cost": 0.26,
+            "Plan Rows": 1,
+            "Plan Width": 32,
+            "Actual Startup Time": 11.192,
+            "Actual Total Time": 11.193,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Output": [
+              "api.get_card_review_context('stage1-complete-mu4oqczy'::text)"
+            ],
+            "Shared Hit Blocks": 3974,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Query Identifier": 5217849152326883000,
+          "Planning": {
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning Time": 0.018,
+          "Triggers": [],
+          "Execution Time": 11.201
+        }
+      ]
+    }
+  ]
+}

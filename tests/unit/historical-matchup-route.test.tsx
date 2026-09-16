@@ -5,6 +5,7 @@ import { historicalFixture } from "../fixtures/historical-matchup";
 
 const queries = vi.hoisted(() => ({
   live: vi.fn(),
+  current: vi.fn(),
   archive: vi.fn(),
   history: vi.fn(),
   cards: vi.fn(),
@@ -17,7 +18,8 @@ vi.mock("next/navigation", () => ({
   },
 }));
 vi.mock("@/application/queries/get-live-stage1-league", () => ({
-  getAuthoritativeLeagueState: queries.live,
+  getLeagueState: queries.live,
+  getAuthoritativeLeagueState: queries.current,
 }));
 vi.mock("@/application/queries/get-season-archive", () => ({
   getSeasonArchive: queries.archive,
@@ -58,6 +60,7 @@ describe("historical matchup route", () => {
     ).toBeVisible();
     expect(queries.cards).toHaveBeenCalledWith("sunday-ledger", cards.weekId);
     expect(queries.operations).not.toHaveBeenCalled();
+    expect(queries.current).not.toHaveBeenCalled();
   });
   it.each(["0", "19", "-1", "1.5", "01", "1oops", ["1", "2"]])(
     "rejects invalid or repeated week parameter %s",

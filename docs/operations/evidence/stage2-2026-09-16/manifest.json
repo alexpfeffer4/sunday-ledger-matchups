@@ -1,0 +1,157 @@
+{
+  "implementationCommit": "3d39f6c30868f0249fdba28a3740be883a157772",
+  "implementationTree": "16cf54c301f079b0ccb20c1187cfe83cba916c72",
+  "testedMergeCommit": "2c7099b52fc869a81c04a51cf31b7e4d556ee2e5",
+  "testedMergeTreeEqualsImplementationTree": true,
+  "run": "https://github.com/alexpfeffer4/sunday-ledger-matchups/actions/runs/35158664285",
+  "attempt": 1,
+  "artifacts": {
+    "complete": {
+      "id": 10472670282,
+      "sha256": "472a01d264235433b80beec2f2f0ad42d7297adc17c0e199d762e834891dafab"
+    },
+    "pending": {
+      "id": 10472650363,
+      "sha256": "ee1fd151496d7ef895c581755a69202c294ec94814dfb915529611988716c5e4"
+    }
+  },
+  "files": {
+    "README.md": {
+      "bytes": 3137,
+      "sha256": "215134c82ce00166ffef061881443c4dccb0497f9cf619290443ace6c0e2d1ec"
+    },
+    "before-after.json": {
+      "bytes": 56095,
+      "sha256": "7eb9d2410097c851f3d1f38ec71817bd471125c35da335764e6d73bfdac1bae0"
+    },
+    "before-after.md": {
+      "bytes": 13157,
+      "sha256": "842255244c36fdb5d23bf47e6c44885b7b40817b33dd6cf4c2a5375708ece15e"
+    },
+    "complete-desktop.png": {
+      "bytes": 93989,
+      "sha256": "8520ce0d9a4d711d4633de584dd7b7f48ccf6c738a84bd5d849532b11c435329"
+    },
+    "complete-mobile.png": {
+      "bytes": 190267,
+      "sha256": "f24520a328517fc4f583ba34c47c8eaa21a17a33923d317fc6eaed5afbd4241e"
+    },
+    "complete-query-plans.json": {
+      "bytes": 26614,
+      "sha256": "7ba2f582c839d1c5df40d19a52f59e7553143e1e1c3f64f377c7b3ac74e2b983"
+    },
+    "complete-read-comparison.json": {
+      "bytes": 19441,
+      "sha256": "a2e104c1c3afdfdcac56e7f326a48c1b7f0c5925650e210838bc4cf6531ebb04"
+    },
+    "complete-samples.jsonl.gz": {
+      "bytes": 53972,
+      "sha256": "5f09b844c08c1183870dd8b5fc5d605ce84e6c99a90bf18731cef0998f0be65e"
+    },
+    "complete-summary.json": {
+      "bytes": 12134,
+      "sha256": "6adea1eaeb0bd90843d687bfd4e5545b7326ca3b9717523f297ee8a49ea4a47c"
+    },
+    "complete-summary.md": {
+      "bytes": 8006,
+      "sha256": "0333ff28916992f411d0d84b0e0167e0d5ac3ae406208e47e2ecf76464073289"
+    },
+    "menu-experiment/README.md": {
+      "bytes": 2684,
+      "sha256": "fab2659a636ab003b8152f960ddcf42dd5bd9f0ce6df0476be9d6f7b1e3088ba"
+    },
+    "menu-experiment/complete-comparison.json.gz": {
+      "bytes": 14322,
+      "sha256": "430d1addbd069e6b4eb3f4b112e313d314231e3bb547c5be5841e6f94a889cb2"
+    },
+    "menu-experiment/discarded-menu-candidate.sql": {
+      "bytes": 2308,
+      "sha256": "c9d0cd389d03e1498be5d528c27dcd4bbd6dbc884123b517c999b6e2de3707c5"
+    },
+    "menu-experiment/pending-comparison.json.gz": {
+      "bytes": 12640,
+      "sha256": "4ae6d8c1f749e29c92791463f00fbeabf4ad93675e72b5dc4767478be31e3f93"
+    },
+    "menu-experiment/unchanged-menu-before.sql": {
+      "bytes": 2244,
+      "sha256": "a4978fad1547bdc3389217959b6b145594bcc9a44cdaf3e3e879a6128a161a6e"
+    },
+    "observed-transfer-before-after.json": {
+      "bytes": 45310,
+      "sha256": "37110f89b4427b90d5952ae87f1775b1d9f165e65dc4e426f2a96e3e3f56d55f"
+    },
+    "observed-transfer-summary.json": {
+      "bytes": 16818,
+      "sha256": "493a2e1c491fa2f8f6dfa162762edf47feb1b532fb711236ecaa793a05e7af08"
+    },
+    "pending-desktop.png": {
+      "bytes": 94039,
+      "sha256": "5b9ba5dd2d6cb8fd60b962b5e6749d7203ba99df229a9535c4d3b2a133c64121"
+    },
+    "pending-mobile.png": {
+      "bytes": 190470,
+      "sha256": "12207c2d2b0abe568329253386e0c67843b2f045b7b84f5d71c4f9bf363e629b"
+    },
+    "pending-query-plans.json": {
+      "bytes": 26617,
+      "sha256": "48e76f0a2aefc990b3eedc400361ba2ae7c57da3df07a844607c5e84673546c1"
+    },
+    "pending-read-comparison.json": {
+      "bytes": 19266,
+      "sha256": "c3c8d4fec2b90117ad95a6f79f21ff5158e1c6751d2150a56eb98aba6cf2b35a"
+    },
+    "pending-samples.jsonl.gz": {
+      "bytes": 55107,
+      "sha256": "4a93075f4bb6acb53aad75d1f70ae7003bab8cc1acf91bfd1e519b8e82ae45ba"
+    },
+    "pending-summary.json": {
+      "bytes": 12120,
+      "sha256": "7493d51c4cd1db4fbb4297149af7c7b46a1e9195449d705eae43c8a1c7f560c0"
+    },
+    "pending-summary.md": {
+      "bytes": 7966,
+      "sha256": "a040eb55e2bab924d18dc1b9237a24e1f22c7e4fee6a987242caccdebd8fb83b"
+    },
+    "preparation-and-scroll-proof.json": {
+      "bytes": 5653,
+      "sha256": "b8d0ecdaf274011898a4f34419c102f0f2a7f487380bf71312b82c42aa8324a0"
+    }
+  },
+  "acceptanceArtifacts": [
+    {
+      "id": 10472670282,
+      "name": "stage1-baseline-complete",
+      "sha256": "472a01d264235433b80beec2f2f0ad42d7297adc17c0e199d762e834891dafab"
+    },
+    {
+      "id": 10472650363,
+      "name": "stage1-baseline-pending",
+      "sha256": "ee1fd151496d7ef895c581755a69202c294ec94814dfb915529611988716c5e4"
+    },
+    {
+      "id": 10472241230,
+      "name": "shared-ui-acceptance",
+      "sha256": "cb6bb5b582e2784d269c07fa8e4fb047562c61c5705c4cdf5cb931aa29f0b285"
+    },
+    {
+      "id": 10472221467,
+      "name": "database-acceptance",
+      "sha256": "0ad7c15b1a5345bad061214f2b6309b0c0aaf3fd5e9e65cd1c13e66d3f7eaee4"
+    },
+    {
+      "id": 10472024959,
+      "name": "full-stack-desktop",
+      "sha256": "b75c9e698552b6438795bbc1665344464fb36c5e3a9ef4f41e12a9bbfece8cbc"
+    },
+    {
+      "id": 10471549344,
+      "name": "full-stack-mobile",
+      "sha256": "51b72d881fb3952f0f94a156889ed8fc2999c8acdd60dc4c33e21548e89fc6f2"
+    }
+  ],
+  "menuExperiment": {
+    "run": "https://github.com/alexpfeffer4/sunday-ledger-matchups/actions/runs/35157645808",
+    "implementationCommit": "ad377ac1c1c0290a711e2c4387f0df29d96b5739",
+    "discarded": true
+  }
+}

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { exampleSeasonSlug } from "@/adapters/example/example-season";
-import { getAuthoritativeLeagueState } from "@/application/queries/get-live-stage1-league";
+import { getLeagueState } from "@/application/queries/get-live-stage1-league";
 import { getSeasonArchive } from "@/application/queries/get-season-archive";
 import { getOwnerRehearsalForLeague } from "@/application/queries/get-owner-rehearsal";
 import { LeagueShell } from "@/components/league/league-shell";
@@ -82,7 +82,7 @@ export default async function LeagueLayout({
   }
 
   const [live, archive, ownerRehearsal] = await Promise.all([
-    getAuthoritativeLeagueState(leagueSlug),
+    getLeagueState(leagueSlug),
     getSeasonArchive(leagueSlug),
     getOwnerRehearsalForLeague(leagueSlug),
   ]);

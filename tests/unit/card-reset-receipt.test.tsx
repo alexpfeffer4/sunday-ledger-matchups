@@ -22,7 +22,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 vi.mock("@/application/queries/get-live-stage1-league", () => ({
-  getAuthoritativeLeagueState: queries.live,
+  getLeagueState: queries.live,
 }));
 import ReceiptPage from "@/app/l/[leagueSlug]/receipt/[receiptId]/page";
 
