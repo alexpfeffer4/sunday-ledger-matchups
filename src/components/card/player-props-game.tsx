@@ -1,5 +1,7 @@
 "use client";
 
+import { QuoteFreshness } from "./quote-freshness";
+import type { QuoteFreshnessData } from "@/application/providers/stored-quote-updates";
 import { useActionState } from "react";
 import {
   initialAppActionState,
@@ -26,7 +28,11 @@ export function PlayerPropsGame({
   leagueId,
   leagueSlug,
   refreshAction,
+  freshness,
+  updatesDelayed,
 }: {
+  freshness?: QuoteFreshnessData;
+  updatesDelayed?: boolean;
   leagueId?: string;
   leagueSlug?: string;
   refreshAction?: (
@@ -81,6 +87,10 @@ export function PlayerPropsGame({
             : "Betting closed · View players"}
         </span>
       </summary>
+      <QuoteFreshness
+        freshness={freshness?.filter((item) => item.family !== "MAIN")}
+        delayed={updatesDelayed}
+      />
       {refreshAction && leagueId && leagueSlug && bettingOpen ? (
         <form action={refresh} className="mt-3">
           <input type="hidden" name="leagueId" value={leagueId} />
@@ -184,6 +194,7 @@ export function PlayerPropsGame({
                     }}
                     options={outcomes.map((market) => ({
                       id: market.id,
+                      renderKey: market.outcomeKey,
                       ...marketOptionCopy({
                         ...market,
                         awayTeam: event.awayTeam,

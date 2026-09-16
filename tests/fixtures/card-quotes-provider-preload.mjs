@@ -112,7 +112,11 @@ if (
     appendFileSync(`${process.env.ODDS_TEST_FIXTURE}.calls`, "odds\n");
     return Response.json(fixture.payload, {
       status: fixture.status ?? 200,
-      headers: { "x-requests-remaining": "1490" },
+      headers: {
+        "x-requests-remaining": String(fixture.remaining ?? 1490),
+        "x-requests-used": String(fixture.used ?? 100),
+        "x-requests-last": String(fixture.last ?? 3),
+      },
     });
   };
 }

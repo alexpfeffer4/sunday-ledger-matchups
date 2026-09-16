@@ -23,7 +23,11 @@ const nflScoresUrl =
   "https://api.the-odds-api.com/v4/sports/americanfootball_nfl/scores";
 
 export class OddsProviderRequestError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly statusCode?: number,
+    readonly retryAfterSeconds?: number,
+  ) {
     super(message);
     this.name = "OddsProviderRequestError";
   }
@@ -68,6 +72,17 @@ async function fetchProviderJson(
   if (!response.ok) {
     throw new OddsProviderRequestError(
       `The Odds API request failed with status ${response.status}.`,
+      response.status,
+      (() => {
+        const raw = response.headers.get("retry-after");
+        if (!raw) return undefined;
+        const seconds = /^\d+$/.test(raw)
+          ? Number(raw)
+          : Math.ceil((Date.parse(raw) - Date.now()) / 1000);
+        return Number.isFinite(seconds)
+          ? Math.max(0, Math.min(86400, seconds))
+          : undefined;
+      })(),
     );
   }
 

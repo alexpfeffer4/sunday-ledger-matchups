@@ -436,6 +436,21 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     localStorage.setItem(key, JSON.stringify(stored));
   });
   await page.reload();
+  // A hash/timestamp-only revision preserves economic consent. Exercise the
+  // acknowledgment gate with an actual economic difference instead.
+  await expect(page.getByText("Updated quote")).toHaveCount(0);
+  await page.evaluate(() => {
+    const key = Object.keys(localStorage).find((candidate) =>
+      candidate.startsWith("sunday-ledger:card-draft:v1:"),
+    );
+    if (!key) throw new Error("card draft was not stored");
+    const stored = JSON.parse(localStorage.getItem(key) ?? "null") as {
+      drafts: Array<{ reviewedAmericanOdds: number }>;
+    };
+    stored.drafts[0]!.reviewedAmericanOdds += 5;
+    localStorage.setItem(key, JSON.stringify(stored));
+  });
+  await page.reload();
   await expect(page.getByText("Updated quote").first()).toBeVisible();
   await page.getByRole("button", { name: "Review 1 updated quote" }).click();
   await page.getByRole("button", { name: "Use updated odds" }).click();

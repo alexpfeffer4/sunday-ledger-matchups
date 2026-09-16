@@ -4,6 +4,7 @@ import { useId } from "react";
 
 export type OutcomeSelectorOption = {
   id: string;
+  renderKey?: string;
   accessibleLabel: string;
   primary: string;
   secondary: string;
@@ -49,7 +50,7 @@ export function OutcomeSelector({
                   : "border-control bg-surface text-ink hover:border-registry hover:bg-subtle"
               } disabled:border-boundary disabled:bg-subtle disabled:text-muted disabled:cursor-not-allowed`}
               disabled={Boolean(option.unavailableReason)}
-              key={option.id}
+              key={option.renderKey ?? option.id}
               onClick={() => onSelect(option.id)}
               type="button"
             >

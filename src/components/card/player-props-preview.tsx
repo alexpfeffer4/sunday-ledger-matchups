@@ -1,5 +1,6 @@
 "use client";
 
+import { restoreCardDrafts } from "./card-draft-storage";
 import { useState } from "react";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import type { RestoredCardDraft } from "./card-draft-storage";
@@ -126,7 +127,13 @@ const previewEvents: Event[] = pairs.map(([awayTeam, homeTeam], eventIndex) => {
 });
 
 /** Isolated visual sample: imports no backend, account, or submission action. */
-export function PlayerPropsPreview() {
+export function PlayerPropsPreview({
+  sharedRefresh = false,
+}: {
+  sharedRefresh?: boolean;
+}) {
+  const [events, setEvents] = useState(previewEvents);
+  const [revision, setRevision] = useState(0);
   const [size, setSize] = useState<14 | 16>(16);
   const [drafts, setDrafts] = useState<RestoredCardDraft[]>([]);
   const [editor, setEditor] = useState<{ event: Event; market: Market } | null>(
@@ -169,6 +176,7 @@ export function PlayerPropsPreview() {
         marketSnapshotId: editor.market.id,
         stakeCredits: value,
         quoteReviewRequired: false,
+        reviewedLineMilli: editor.market.lineMilli,
         reviewedAmericanOdds: editor.market.americanOdds,
         reviewedProposition: editor.market.proposition,
         reviewedPayloadHash: editor.market.payloadHash,
@@ -196,6 +204,59 @@ export function PlayerPropsPreview() {
         One weekly allocation. Six player markets per game. Bets and drafts stay
         on one card.
       </p>
+      {sharedRefresh ? (
+        <div
+          className="my-5 flex flex-wrap gap-3"
+          aria-label="Saved quote examples"
+        >
+          {(["Timestamp only", "Move price", "Withdraw offer"] as const).map(
+            (label) => (
+              <button
+                key={label}
+                className="border-control min-h-11 rounded-lg border px-4 text-sm font-semibold"
+                disabled={review || Boolean(editor)}
+                onClick={() => {
+                  const next = events.map((event, index) =>
+                    index
+                      ? event
+                      : {
+                          ...event,
+                          markets:
+                            label === "Withdraw offer"
+                              ? event.markets.slice(2)
+                              : event.markets.map((market) => ({
+                                  ...market,
+                                  payloadHash: (revision % 2
+                                    ? "c"
+                                    : "d"
+                                  ).repeat(64),
+                                  americanOdds:
+                                    label === "Move price"
+                                      ? market.americanOdds - 5
+                                      : market.americanOdds,
+                                })),
+                        },
+                  );
+                  setEvents(next);
+                  setDrafts(
+                    restoreCardDrafts(
+                      JSON.stringify({ version: 1, drafts }),
+                      next,
+                    ),
+                  );
+                  setRevision(revision + 1);
+                }}
+              >
+                {label}
+              </button>
+            ),
+          )}
+          <p className="text-muted w-full text-sm">
+            Saved update {revision}. Add a draft, then try each update. Updates
+            pause while editing or reviewing.
+          </p>
+        </div>
+      ) : null}
       <div aria-label="Example slate size" className="my-5 flex gap-2">
         {([14, 16] as const).map((count) => (
           <button
@@ -236,7 +297,7 @@ export function PlayerPropsPreview() {
               </button>
             </section>
           ) : (
-            previewEvents
+            events
               .slice(0, size)
               .map((event) => (
                 <PlayerPropsGame
@@ -266,6 +327,9 @@ export function PlayerPropsPreview() {
                 </p>
                 <p className="text-muted mt-1 text-xs">
                   {draft.stakeCredits} credits
+                  {draft.quoteReviewRequired
+                    ? " · Price changed or unavailable — review required"
+                    : ""}
                 </p>
                 <button
                   type="button"

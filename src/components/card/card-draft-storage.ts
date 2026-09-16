@@ -16,6 +16,7 @@ export type RestoredCardDraft = {
   payloadHash: string;
   proposition: string;
   quoteReviewRequired: boolean;
+  reviewedLineMilli?: number | null;
   reviewedAmericanOdds: number;
   reviewedPayloadHash: string;
   reviewedProposition: string;
@@ -34,6 +35,7 @@ export type StoredCardDraft = {
       | "marketSnapshotId"
       | "marketType"
       | "outcomeKey"
+      | "reviewedLineMilli"
       | "reviewedAmericanOdds"
       | "reviewedPayloadHash"
       | "reviewedProposition"
@@ -110,6 +112,7 @@ export function restoreCardDrafts(
             payloadHash: draft.reviewedPayloadHash,
             proposition: draft.reviewedProposition,
             quoteReviewRequired: true,
+            reviewedLineMilli: draft.reviewedLineMilli,
             reviewedAmericanOdds: draft.reviewedAmericanOdds,
             reviewedPayloadHash: draft.reviewedPayloadHash,
             reviewedProposition: draft.reviewedProposition,
@@ -131,8 +134,17 @@ export function restoreCardDrafts(
           payloadHash: market.payloadHash,
           proposition: market.proposition,
           quoteReviewRequired:
-            draft.reviewedPayloadHash !== market.payloadHash ||
+            draft.reviewedAmericanOdds !== market.americanOdds ||
+            (draft.reviewedLineMilli === undefined
+              ? draft.reviewedPayloadHash !== market.payloadHash
+              : draft.reviewedLineMilli !== market.lineMilli) ||
             market.qualityStatus !== "HEALTHY",
+          reviewedLineMilli:
+            draft.reviewedLineMilli !== undefined
+              ? draft.reviewedLineMilli
+              : draft.reviewedPayloadHash === market.payloadHash
+                ? market.lineMilli
+                : undefined,
           reviewedAmericanOdds: draft.reviewedAmericanOdds,
           reviewedPayloadHash: draft.reviewedPayloadHash,
           reviewedProposition: draft.reviewedProposition,

@@ -47,6 +47,8 @@ jobs:
         uses: ./.github/actions/setup-acceptance
       - name: Run complete pgTAP and Phase 8C isolation suite
         run: bash scripts/run-disposable-database-tests.sh
+      - name: Verify exact shared quote release function parity
+        run: psql "$TEST_SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/operations/shared-odds-refresh-parity.sql
       - name: Verify disabled scheduler configuration on disposable database
         run: |
           psql "$TEST_SUPABASE_DB_URL" -v ON_ERROR_STOP=1 --single-transaction \
@@ -122,6 +124,10 @@ jobs:
         run: |
           supabase db reset --local --no-seed
           node scripts/verify-progressive-player-props-concurrency.mjs
+      - name: Verify shared scheduled quote concurrency
+        run: |
+          supabase db reset --local --no-seed
+          node scripts/verify-background-quotes-concurrency.mjs
       - name: Retain disposable acceptance evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -164,6 +170,17 @@ jobs:
       - name: Require zero skipped progressive availability tests
         run: node scripts/check-full-stack-report.mjs acceptance-reports/progressive-props.json
       - name: Isolate legacy Auth journeys from progressive source policy
+        run: supabase db reset --local --no-seed
+      - name: Verify authenticated scheduled quote updates
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: acceptance-reports/shared-odds.json
+          NODE_OPTIONS: --import=${{ github.workspace }}/tests/fixtures/card-quotes-provider-preload.mjs
+        run: >-
+          npx playwright test tests/e2e/shared-odds-full-stack.spec.ts --project=${{ matrix.project }}
+          --workers=1 --reporter=github,json --output=test-results/shared-odds
+      - name: Require zero skipped shared quote tests
+        run: node scripts/check-full-stack-report.mjs acceptance-reports/shared-odds.json
+      - name: Isolate legacy Auth journeys from scheduled quote fixtures
         run: supabase db reset --local --no-seed
       - name: Provision isolated entitled owner
         run: |
