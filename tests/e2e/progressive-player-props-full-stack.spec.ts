@@ -308,10 +308,10 @@ commit;`),
     .click();
   await page.getByLabel("Stake in credits").fill("100");
   await page.getByRole("button", { name: "Add to card", exact: true }).click();
-  await page
-    .getByRole("button", { name: /^Review 1 bet$/ })
-    .first()
-    .click();
+  await completePlayerPropsAction(
+    page,
+    page.getByRole("button", { name: /^Review 1 bets?$/ }).first(),
+  );
   await expect(
     page.getByRole("heading", { name: "Review your bets", exact: true }),
   ).toBeVisible();
