@@ -98,7 +98,7 @@ export async function prerequisites(
       -- existing week marker. Its reset receipts remain immutable. These are
       -- synthetic prior-week inputs, before the measured Week 3 worker path.
       update private.season_weeks set opens_at=clock_timestamp()-interval '8 days',common_lock_at=clock_timestamp()-interval '6 days' where id=(c->>'week')::uuid;
-      update private.sports_events set scheduled_start_at=clock_timestamp()-interval '7 days' where week_id=(c->>'week')::uuid;
+      update private.sports_events set scheduled_start_at=clock_timestamp()-interval '7 days',actual_started_at=clock_timestamp()-interval '7 days',state='LIVE' where week_id=(c->>'week')::uuid;
       for event_id in select id from private.sports_events where week_id=(c->>'week')::uuid loop
         perform private.record_stage1_result_as((c->>'owner')::uuid,event_id,'FINAL',7,14,'Stored prior-week fixture result','MANUAL_OBJECTIVE',${q(slug)}||':prior:'||event_id::text);
       end loop;
