@@ -2,7 +2,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
-\ir ../operations/shared-odds-refresh-parity.sql
 insert into auth.users(id,email) select ('a1000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'rolling-quote-'||n||'@example.test' from generate_series(1,4) n;
 insert into private.profiles(id,display_name) select id,'Rolling Quote Member '||right(id::text,1) from auth.users where id::text like 'a1000000-%';
 create function pg_temp.as_rolling_member(n integer) returns void language plpgsql as $$

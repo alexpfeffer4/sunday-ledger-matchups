@@ -47,6 +47,8 @@ jobs:
         uses: ./.github/actions/setup-acceptance
       - name: Run complete pgTAP and Phase 8C isolation suite
         run: bash scripts/run-disposable-database-tests.sh
+      - name: Verify exact shared quote release function parity
+        run: psql "$TEST_SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/operations/shared-odds-refresh-parity.sql
       - name: Verify disabled scheduler configuration on disposable database
         run: |
           psql "$TEST_SUPABASE_DB_URL" -v ON_ERROR_STOP=1 --single-transaction \
