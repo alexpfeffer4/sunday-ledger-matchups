@@ -25,6 +25,8 @@ const mocks = vi.hoisted(() => ({
   cookieGet: vi.fn(),
 }));
 
+vi.mock("server-only", () => ({}));
+
 vi.mock("next/headers", () => ({
   cookies: vi.fn(async () => ({
     delete: mocks.cookieDelete,

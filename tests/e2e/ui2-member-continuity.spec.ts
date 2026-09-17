@@ -65,6 +65,7 @@ test("Schedule restores its selected week and preserves selector focus", async (
   await page.goto("/preview/member/schedule");
   const select = page.getByRole("combobox", { name: "Selected week" });
   await expect(select).toHaveValue("2");
+  await expect(select).toBeEnabled();
   await select.focus();
   await select.selectOption("1");
   await expect(select).toBeFocused();

@@ -8,6 +8,7 @@ import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import { MagicLinkForm } from "@/components/auth/magic-link-form";
+import { InvitationContext } from "@/components/auth/invitation-context";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Create account" };
@@ -44,12 +45,12 @@ export default async function CreateAccountPage({
     );
 
   return (
-    <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">
+    <main className="bg-canvas min-h-screen px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-md">
         <Link href="/" aria-label="Sunday Ledger home">
           <BrandLockup variant="horizontal" />
         </Link>
-        <section className="border-boundary bg-surface mt-16 rounded-xl border p-6 shadow-[var(--shadow-card)] sm:p-8">
+        <section className="border-boundary bg-surface mt-16 rounded-xl border p-4 [overflow-wrap:anywhere] shadow-[var(--shadow-card)] sm:p-8">
           <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">
             New account
           </p>
@@ -57,10 +58,10 @@ export default async function CreateAccountPage({
             Create account
           </h1>
           <p className="text-graphite mt-3 leading-6">
-            Start with a private one-time email link. Before continuing, you
-            must save the public username your league sees and a password for
-            future sign-ins.
+            Start by verifying your email. Before continuing, you must save the
+            public username your league sees and a password for future sign-ins.
           </p>
+          <InvitationContext next={next} />
           <MagicLinkForm
             sendEmailAction={sendCreateAccountLink}
             intent="create-account"

@@ -637,8 +637,8 @@ export function InteractiveWeekDemo() {
             Review
           </h2>
           <p className="text-graphite mt-3 leading-7">
-            Nothing is sealed yet. Review current terms, then confirm the
-            complete card once.
+            Nothing is sealed yet. In this older full-card example, review
+            current terms, then confirm the complete card once.
           </p>
           {quoteReviewItems.length > 0 ? (
             <p
@@ -790,7 +790,7 @@ export function InteractiveWeekDemo() {
             />
             <p className="text-graphite mt-4 text-sm leading-6">
               Choose an outcome, enter a whole-credit stake, and add the pick.
-              Use exactly{" "}
+              For this older full-card example, use exactly{" "}
               {formatCredits(pocSeason1Ruleset.card.weeklyAllocationCredits)}{" "}
               credits before review.
             </p>
@@ -1009,7 +1009,7 @@ export function InteractiveWeekDemo() {
         helper={
           editorMaximum === null
             ? "Choose an outcome to see its limit."
-            : `This pick may use up to ${formatCredits(editorMaximum)} credits under the current Ruleset.`
+            : `This pick may use up to ${formatCredits(editorMaximum)} credits under this practice example’s rules.`
         }
         maximumStakeCredits={editorMaximum}
         minimumStakeCredits={pocSeason1Ruleset.card.minimumStakeCredits}

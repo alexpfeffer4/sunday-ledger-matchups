@@ -41,7 +41,10 @@ export function EmailCodeForm({
         <label htmlFor="email-code" className="text-sm font-bold">
           Email verification code
         </label>
-        <p id="email-code-help" className="text-muted mt-2 text-xs leading-5">
+        <p
+          id="email-code-help"
+          className="text-muted mt-2 text-xs leading-5 [overflow-wrap:anywhere]"
+        >
           For {email}: if your email includes a code, enter it here to stay in
           this browser. Otherwise, copy the email link into this browser’s
           address bar.

@@ -211,7 +211,7 @@ export async function requestPasswordReset(
       }),
       retryAfterSeconds: 60,
       message:
-        "If an account exists for this email, check for the newest recovery link. Open it in this same browser to save a new password, then return where you left off.",
+        "If an account exists for this email, check for the newest recovery email. Enter its code here, if included, or open its link in this same browser to save a new password, then return where you left off.",
     };
   } catch {
     return {

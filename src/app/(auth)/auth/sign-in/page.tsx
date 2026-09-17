@@ -6,6 +6,7 @@ import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import { SignInMethods } from "@/components/auth/sign-in-methods";
+import { InvitationContext } from "@/components/auth/invitation-context";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -37,17 +38,17 @@ export default async function SignInPage({
   const hasLinkError = Boolean(query.error);
 
   return (
-    <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">
+    <main className="bg-canvas min-h-screen px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-md">
         <Link href="/" aria-label="Sunday Ledger home">
           <BrandLockup variant="horizontal" />
         </Link>
-        <section className="border-boundary bg-surface mt-16 rounded-xl border p-6 shadow-[var(--shadow-card)] sm:p-8">
+        <section className="border-boundary bg-surface mt-16 rounded-xl border p-4 [overflow-wrap:anywhere] shadow-[var(--shadow-card)] sm:p-8">
           <h1 className="text-3xl font-bold tracking-[-0.04em]">Sign in</h1>
           <p className="text-graphite mt-3 leading-6">
-            Use your password or request a one-time email link for an existing
-            account.
+            Use your password or sign in by email to an existing account.
           </p>
+          <InvitationContext next={next} />
           <SignInMethods
             sendEmailAction={sendSignInLink}
             key={`${next}:${query.method ?? ""}:${hasLinkError}`}

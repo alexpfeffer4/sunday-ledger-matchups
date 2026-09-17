@@ -73,8 +73,8 @@ test("recovery code survives switching away and an interrupted submission", asyn
   expect(created.error).toBeNull();
   await page.goto("/auth/recover?next=%2Fleagues");
   await page.getByLabel("Email address").fill(email);
-  await page.getByRole("button", { name: "Email recovery link" }).click();
-  await expect(page.getByRole("status")).toContainText("newest recovery link");
+  await page.getByRole("button", { name: "Send recovery email" }).click();
+  await expect(page.getByRole("status")).toContainText("newest recovery email");
   const recovery = await capturedEmail(request, email, "recovery");
 
   // Approximate returning from another tab/app. Physical Safari/Mail remains
@@ -161,18 +161,22 @@ async function capturedLink(
 async function requestSignup(page: Page, email: string, next: string) {
   await page.goto(`/auth/create-account?next=${encodeURIComponent(next)}`);
   await page.getByLabel("Email address").fill(email);
-  await page.getByRole("button", { name: "Email account link" }).click();
+  await page.getByRole("button", { name: "Send account email" }).click();
   await expect(page.getByRole("status")).toContainText("Check your email");
   await expect(
     page.getByRole("button", { name: /Resend available in/ }),
   ).toBeDisabled();
   await expect(page.getByLabel("Email address")).toHaveValue(email);
 }
-async function confirm(page: Page, link: URL) {
+async function confirm(page: Page, link: URL, leagueName?: string) {
   await page.goto(link.toString());
   await expect(
     page.getByRole("heading", { name: "Confirm your email link" }),
   ).toBeVisible();
+  if (leagueName)
+    await expect(
+      page.getByRole("complementary", { name: "League invitation" }),
+    ).toContainText(leagueName);
   await page.getByRole("button", { name: "Confirm and continue" }).click();
 }
 // A failed navigation assertion must not print an email credential URL.
@@ -192,7 +196,7 @@ async function setup(page: Page, username: string, password: string) {
   await page.getByLabel("Confirm password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Save account and continue" }).click();
 }
-async function fixtureInvite() {
+async function fixtureInvite(name = "Private Email Journey") {
   const email = freshEmail("commissioner");
   const password = "Disposable-Commissioner-48!";
   const created = await client(secret!).auth.admin.createUser({
@@ -211,7 +215,7 @@ async function fixtureInvite() {
   const slug = `auth-league-${Date.now().toString(36)}`;
   const league = await rpc(commissioner, "create_league", {
     p_mode: "LIVE",
-    p_name: "Private Email Journey",
+    p_name: name,
     p_nfl_year: 2026,
     p_slug: slug,
   });
@@ -261,6 +265,9 @@ test("captured signup email preserves invite, session, profile retry and interru
 
   const email = freshEmail("signup");
   await requestSignup(page, email, next);
+  await expect(
+    page.getByRole("complementary", { name: "League invitation" }),
+  ).toContainText("Private Email Journey");
   const link = await capturedLink(request, email, "confirmation");
   expect(link.searchParams.get("next")).toBe(next);
   const throttled = await client(key!).auth.signInWithOtp({
@@ -275,7 +282,7 @@ test("captured signup email preserves invite, session, profile retry and interru
     failureFile!,
     JSON.stringify({ endpoint: "ensure_profile", remaining: 2 }),
   );
-  await confirm(page, link);
+  await confirm(page, link, "Private Email Journey");
   await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "Your email is confirmed and you are signed in",
   );
@@ -286,6 +293,9 @@ test("captured signup email preserves invite, session, profile retry and interru
   ).toBeTruthy();
   expect(new URL(page.url()).searchParams.get("next")).toBe(next);
   await page.getByRole("link", { name: "Retry account setup" }).click();
+  await expect(
+    page.getByRole("complementary", { name: "League invitation" }),
+  ).toContainText("Private Email Journey");
   await expect(page.getByLabel("Username", { exact: true })).toBeVisible();
   // Leave and resume setup without consuming another email.
   await page.goto(`/auth/create-account?next=${encodeURIComponent(next)}`);
@@ -304,6 +314,16 @@ test("captured signup email preserves invite, session, profile retry and interru
   );
   await setup(page, "ChosenMember", "Disposable-Member-48!");
   await expectLocation(page, new RegExp(`/join/${fixture.token}$`));
+  await expect(
+    page.getByRole("button", { name: "Join league", exact: true }),
+  ).toBeVisible();
+  // Account completion must not silently admit the newcomer.
+  const beforeJoin = await rpc(
+    fixture.commissioner,
+    "get_league_invite_preview",
+    { p_token: fixture.token },
+  );
+  expect(beforeJoin[0].member_count).toBe(1);
   await page.getByRole("button", { name: /Join/ }).click();
   await expectLocation(page, new RegExp(`/l/${fixture.slug}/matchup$`));
   const member = client(key!);
@@ -325,6 +345,9 @@ test("captured signup email preserves invite, session, profile retry and interru
     "expired or already been used",
   );
   expect(new URL(replay.url()).searchParams.get("next")).toBe(next);
+  await expect(
+    replay.getByRole("complementary", { name: "League invitation" }),
+  ).toContainText("Private Email Journey");
   await replayContext.close();
   // Same-browser repeat keeps the successful session and a usable setup path.
   await confirm(page, link);
@@ -341,7 +364,9 @@ test("captured token-hash emails work in another browser and existing-account re
   request,
 }) => {
   const email = freshEmail("cross-browser");
-  const next = "/leagues?from=email";
+  const fixture = await fixtureInvite();
+  const next = `/join/${fixture.token}`;
+  const destination = new RegExp(`${next}$`);
   await requestSignup(page, email, next);
   const link = await capturedLink(request, email, "confirmation");
   const other = await browser.newContext();
@@ -349,24 +374,34 @@ test("captured token-hash emails work in another browser and existing-account re
   await confirm(otherPage, link);
   await expectLocation(otherPage, /\/account\/setup/);
   await setup(otherPage, "CrossBrowser", "Disposable-CrossBrowser-48!");
-  await expectLocation(otherPage, /\/leagues\?from=email$/);
+  await expectLocation(otherPage, destination);
   // The practice CTA must not force a completed account through setup again.
   await otherPage.goto(`/auth/create-account?next=${encodeURIComponent(next)}`);
-  await expectLocation(otherPage, /\/leagues\?from=email$/);
+  await expectLocation(otherPage, destination);
+  await expect(
+    otherPage.getByRole("button", { name: "Join league", exact: true }),
+  ).toBeVisible();
+  await otherPage.goto(`/auth/sign-in?next=${encodeURIComponent(next)}`);
+  await expectLocation(otherPage, destination);
   await other.close();
   // A returning email link must skip setup and never create another identity.
   await page.goto(`/auth/sign-in?next=${encodeURIComponent(next)}`);
-  await page.getByRole("button", { name: "Email link", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Email sign-in", exact: true })
+    .click();
   await page.getByLabel("Email address").fill(email);
   // Expire only this disposable account's email throttle; UI cooldown was tested above.
   sql(
     `update auth.users set last_sign_in_at=now()-interval '2 minutes', confirmation_sent_at=now()-interval '2 minutes' where email='${email}';`,
   );
-  await page.getByRole("button", { name: "Send sign-in link" }).click();
+  await page.getByRole("button", { name: "Send sign-in email" }).click();
   await expect(page.getByRole("status")).toContainText("Check your email");
   const returning = await capturedLink(request, email, "magic_link");
-  await confirm(page, returning);
-  await expectLocation(page, /\/leagues\?from=email$/);
+  await confirm(page, returning, "Private Email Journey");
+  await expectLocation(page, destination);
+  await expect(
+    page.getByRole("button", { name: "Join league", exact: true }),
+  ).toBeVisible();
 });
 
 test("legacy PKCE distinguishes a missing browser verifier and still works in requesting browser", async ({
@@ -434,8 +469,8 @@ test("expired email fails validation and recovery email retains its destination"
     `/auth/recover?error=invalid_link&next=${encodeURIComponent(next)}`,
   );
   await page.getByLabel("Email address").fill(recoveryEmail);
-  await page.getByRole("button", { name: "Email recovery link" }).click();
-  await expect(page.getByRole("status")).toContainText("newest recovery link");
+  await page.getByRole("button", { name: "Send recovery email" }).click();
+  await expect(page.getByRole("status")).toContainText("newest recovery email");
   await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: /Resend available in/ }),
@@ -492,7 +527,91 @@ test("revoked and expired invitations have generic initial metadata and no priva
     expect(html).not.toContain("Private Email Journey");
     expect(html).not.toContain("Email Test Commissioner");
     expect(html).toContain("This league link is no longer active");
+    for (const path of [
+      "/auth/create-account",
+      "/auth/sign-in",
+      "/auth/recover",
+      "/auth/verify",
+    ]) {
+      const account = await request.get(
+        `${path}?next=${encodeURIComponent(`/join/${token}`)}`,
+      );
+      const accountHTML = await account.text();
+      expect(accountHTML).toContain("Invitation unavailable");
+      expect(accountHTML).not.toContain("Private Email Journey");
+      expect(accountHTML).not.toContain("Email Test Commissioner");
+    }
   }
+});
+
+test("invitation context reflows, keeps safe next through recovery and survives preview failure", async ({
+  page,
+}) => {
+  const name = "LongUnbrokenLeagueNameForNarrowScreenVerification123456789";
+  const fixture = await fixtureInvite(name);
+  const next = `/join/${fixture.token}`;
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto(`/auth/sign-in?next=${encodeURIComponent(next)}`);
+  const panel = page.getByRole("complementary", { name: "League invitation" });
+  await expect(panel).toContainText(name);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    ),
+  ).toBeTruthy();
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "200%";
+  });
+  // Geometry diagnostics are safe here: this test never enters credentials.
+  const overflow = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("main *"))
+      .filter(
+        (element) =>
+          element.getBoundingClientRect().right > window.innerWidth + 1,
+      )
+      .map((element) => ({
+        tag: element.tagName,
+        classes: element.getAttribute("class"),
+        right: element.getBoundingClientRect().right,
+      })),
+  );
+  expect(overflow).toEqual([]);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    ),
+  ).toBeTruthy();
+  const recovery = page.getByRole("link", { name: "Forgot password?" });
+  await recovery.focus();
+  await expect(recovery).toBeFocused();
+  await recovery.press("Enter");
+  await expect(
+    page.getByRole("heading", { name: "Choose a new password" }),
+  ).toBeVisible();
+  await expect(panel).toContainText(name);
+  expect(new URL(page.url()).searchParams.get("next")).toBe(next);
+  await page.getByRole("link", { name: "Back to sign in" }).click();
+  await page
+    .getByRole("link", { name: "Never made a password? Set one by email" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Send sign-in email" }),
+  ).toBeVisible();
+  await expect(panel).toContainText(name);
+  writeFileSync(
+    failureFile!,
+    JSON.stringify({ endpoint: "get_league_invite_preview", remaining: 1 }),
+  );
+  await page.reload();
+  await expect(panel).toContainText("Invitation unavailable");
+  await expect(panel).not.toContainText(name);
+  await expect(
+    page.getByRole("button", { name: "Send sign-in email" }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(panel).toContainText(name);
 });
 
 test("email code completes signup in the requesting browser and cannot be reused", async ({
@@ -557,15 +676,17 @@ test("passwordless member verifies a code, sets a password and pastes an invite 
   });
   expect(created.error).toBeNull();
   // Exercise the discoverable password-first escape on the same sign-in route.
-  await page.goto("/auth/sign-in?next=/leagues");
+  await page.goto(
+    `/auth/sign-in?next=${encodeURIComponent(`/join/${fixture.token}`)}`,
+  );
   await page
     .getByRole("link", { name: "Never made a password? Set one by email" })
     .click();
   await expect(
-    page.getByRole("button", { name: "Send sign-in link" }),
+    page.getByRole("button", { name: "Send sign-in email" }),
   ).toBeVisible();
   await page.getByLabel("Email address").fill(email);
-  await page.getByRole("button", { name: "Send sign-in link" }).click();
+  await page.getByRole("button", { name: "Send sign-in email" }).click();
   await expect(page.getByRole("status")).toContainText("Check your email");
   const { code } = await capturedEmail(request, email, "magic_link");
   await page.getByLabel("Email verification code").fill(code);
@@ -573,12 +694,19 @@ test("passwordless member verifies a code, sets a password and pastes an invite 
   await expect(
     page.getByRole("heading", { name: "Set a password", exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("complementary", { name: "League invitation" }),
+  ).toContainText("Private Email Journey");
   await page.getByLabel("New password", { exact: true }).fill(password);
   await page.getByLabel("Confirm password", { exact: true }).fill(password);
   await page
     .getByRole("button", { name: "Save password and continue" })
     .click();
-  await expectLocation(page, /\/leagues$/);
+  await expectLocation(page, new RegExp(`/join/${fixture.token}$`));
+  await expect(
+    page.getByRole("button", { name: "Join league", exact: true }),
+  ).toBeVisible();
+  await page.goto("/leagues");
   await page
     .getByRole("button", { name: "Join a league", exact: true })
     .click();
@@ -618,8 +746,8 @@ test("passwordless member verifies a code, sets a password and pastes an invite 
   const next = `/l/${fixture.slug}/matchup`;
   await page.goto(`/auth/recover?next=${encodeURIComponent(next)}`);
   await page.getByLabel("Email address").fill(email);
-  await page.getByRole("button", { name: "Email recovery link" }).click();
-  await expect(page.getByRole("status")).toContainText("newest recovery link");
+  await page.getByRole("button", { name: "Send recovery email" }).click();
+  await expect(page.getByRole("status")).toContainText("newest recovery email");
   const recovery = await capturedEmail(request, email, "recovery");
   await page.getByLabel("Email verification code").fill(recovery.code);
   await page.getByRole("button", { name: "Verify code and continue" }).click();

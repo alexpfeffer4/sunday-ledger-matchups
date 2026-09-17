@@ -23,7 +23,7 @@ export function SignInMethods({
     <div className="mt-7">
       <div
         aria-label="Choose a sign-in method"
-        className="border-boundary bg-subtle grid grid-cols-2 rounded-lg border p-1"
+        className="border-boundary bg-subtle grid grid-cols-[repeat(auto-fit,minmax(min(100%,7rem),1fr))] rounded-lg border p-1"
         role="group"
       >
         <button
@@ -48,7 +48,7 @@ export function SignInMethods({
           onClick={() => setMethod("email")}
           type="button"
         >
-          {method === "email" ? "✓ " : ""}Email link
+          {method === "email" ? "✓ " : ""}Email sign-in
         </button>
       </div>
 

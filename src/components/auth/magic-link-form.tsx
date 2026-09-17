@@ -92,8 +92,8 @@ export function MagicLinkForm({
           </p>
           <p className="text-muted mt-2 text-xs leading-5">
             On your phone, stay on this page and enter the code from your email
-            if one is included. Email links must open in the same browser you
-            are using now.
+            if one is included, or open the newest email link in this browser. A
+            different browser may require you to sign in again.
           </p>
           {emailError ? (
             <p id="email-error" className="text-negative mt-2 text-sm">
@@ -121,10 +121,10 @@ export function MagicLinkForm({
             : secondsRemaining > 0
               ? `Resend available in ${secondsRemaining}s`
               : state.status === "sent"
-                ? "Resend email link"
+                ? "Resend email"
                 : intent === "create-account"
-                  ? "Email account link"
-                  : "Send sign-in link"}
+                  ? "Send account email"
+                  : "Send sign-in email"}
         </button>
         {state.status !== "idle" && !emailError ? (
           <p

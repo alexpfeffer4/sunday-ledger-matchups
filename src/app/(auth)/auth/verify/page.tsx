@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
+import { InvitationContext } from "@/components/auth/invitation-context";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = {
@@ -31,12 +32,12 @@ export default async function VerifyEmailPage({
       ? "create-account"
       : "sign-in";
   return (
-    <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">
+    <main className="bg-canvas min-h-screen px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-md">
         <Link href="/" aria-label="Sunday Ledger home">
           <BrandLockup variant="horizontal" />
         </Link>
-        <section className="border-boundary bg-surface mt-16 rounded-xl border p-6 shadow-[var(--shadow-card)] sm:p-8">
+        <section className="border-boundary bg-surface mt-16 rounded-xl border p-4 [overflow-wrap:anywhere] shadow-[var(--shadow-card)] sm:p-8">
           <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">
             Private account access
           </p>
@@ -54,6 +55,7 @@ export default async function VerifyEmailPage({
                   : "Continue to sign in and return where you left off."
               : "The link is incomplete or could not be verified. Request a fresh email and use the newest link."}
           </p>
+          <InvitationContext next={next} />
           {hasCredential ? (
             <form action="/auth/confirm" method="post" className="mt-7">
               {[

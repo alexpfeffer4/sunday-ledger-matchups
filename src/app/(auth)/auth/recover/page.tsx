@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { PasswordRecoveryForm } from "@/components/auth/password-recovery-form";
+import { InvitationContext } from "@/components/auth/invitation-context";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Recover password" };
@@ -21,12 +22,12 @@ export default async function RecoverPasswordPage({
   );
 
   return (
-    <main className="bg-canvas min-h-screen px-5 py-8 sm:px-8">
+    <main className="bg-canvas min-h-screen px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-md">
         <Link href="/" aria-label="Sunday Ledger home">
           <BrandLockup variant="horizontal" />
         </Link>
-        <section className="border-boundary bg-surface mt-16 rounded-xl border p-6 shadow-[var(--shadow-card)] sm:p-8">
+        <section className="border-boundary bg-surface mt-16 rounded-xl border p-4 [overflow-wrap:anywhere] shadow-[var(--shadow-card)] sm:p-8">
           <p className="text-registry text-xs font-bold tracking-[0.1em] uppercase">
             Account recovery
           </p>
@@ -34,10 +35,10 @@ export default async function RecoverPasswordPage({
             Choose a new password
           </h1>
           <p className="text-graphite mt-3 leading-6">
-            We will email a one-time recovery link. It opens a secure password
-            setup screen where you can save a new password of at least eight
-            characters.
+            Request a recovery email, then verify access to your account before
+            saving a new password of at least eight characters.
           </p>
+          <InvitationContext next={next} />
           <PasswordRecoveryForm
             requestEmailAction={requestPasswordReset}
             next={next}
