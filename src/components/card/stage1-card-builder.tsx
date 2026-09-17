@@ -1147,111 +1147,134 @@ function Stage1CardBuilderEditor({
                   className="border-boundary bg-surface rounded-lg border p-4"
                   key={event.id}
                 >
-                  <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
-                    <h2
-                      className="text-lg font-bold"
-                      id={`card-builder-event-${event.id}`}
-                    >
-                      {event.awayTeam} at {event.homeTeam}
-                    </h2>
-                    <div className="text-muted text-sm sm:text-right">
-                      <p>{formatDate(event.scheduledStartAt)}</p>
-                      {rolling && !eventAcceptsBets(event, cutoffNow) ? (
-                        <p className="mt-1 font-semibold">Betting closed</p>
-                      ) : null}
-                      <QuoteFreshness
-                        freshness={passiveQuotes.freshness.get(event.id)}
-                        family="MAIN"
-                        delayed={passiveQuotes.delayed}
-                      >
-                        Source updated{" "}
-                        {formatObservedAt(
-                          event.markets.reduce(
-                            (latest, market) =>
-                              market.observedAt > latest
-                                ? market.observedAt
-                                : latest,
-                            event.markets[0]?.observedAt ??
-                              event.scheduledStartAt,
-                          ),
-                        )}
-                      </QuoteFreshness>
-                    </div>
-                  </div>
-                  <div className="divide-boundary border-boundary mt-4 divide-y border-y">
-                    {marketTypes.map((marketType) => {
-                      const outcomes = event.markets.filter(
-                        (market) => market.marketType === marketType,
-                      );
-                      if (outcomes.length === 0) return null;
-                      const key = `${event.id}:${marketType}`;
-                      const selectedDraft = drafts.find(
-                        (draft) => selectionKey(draft) === key,
-                      );
-                      return (
-                        <article
-                          className={`grid gap-2 py-3 sm:grid-cols-[110px_minmax(0,1fr)] sm:items-center ${
-                            selectedDraft ? "bg-registry/5" : ""
-                          }`}
-                          key={marketType}
+                  <h2 className="sr-only" id={`card-builder-event-${event.id}`}>
+                    {event.awayTeam} at {event.homeTeam}
+                  </h2>
+                  <details className="group/game-lines" open>
+                    <summary className="min-h-11 cursor-pointer list-none marker:hidden [&::-webkit-details-marker]:hidden">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <span className="block text-lg font-bold break-words">
+                            {event.awayTeam} at {event.homeTeam}
+                          </span>
+                          <span className="text-muted mt-1 block text-xs">
+                            {formatDate(event.scheduledStartAt)}
+                          </span>
+                        </div>
+                        <span
+                          aria-hidden="true"
+                          className="text-muted py-1 text-xl"
                         >
-                          <div className="flex items-center justify-between gap-3 sm:block">
-                            <p className="text-muted text-sm font-semibold">
-                              {marketLabels[marketType]}
-                            </p>
-                            {selectedDraft ? (
-                              <span className="text-positive mt-1 block text-xs font-semibold">
-                                In card
-                              </span>
-                            ) : null}
-                          </div>
-                          <OutcomeSelector
-                            label={`${event.awayTeam} at ${event.homeTeam} ${marketLabels[marketType]} outcomes`}
-                            onSelect={(marketSnapshotId) => {
-                              const market = outcomes.find(
-                                (candidate) =>
-                                  candidate.id === marketSnapshotId,
-                              );
-                              if (market)
-                                openEditor(event, market, selectedDraft);
-                            }}
-                            options={outcomes.map((market) => {
-                              const copy = marketOptionCopy({
-                                americanOdds: market.americanOdds,
-                                awayTeam: event.awayTeam,
-                                fallbackLabel: market.proposition,
-                                homeTeam: event.homeTeam,
-                                lineMilli: market.lineMilli,
-                                marketType: market.marketType,
-                                outcomeKey: market.outcomeKey,
-                              });
-                              return {
-                                id: market.id,
-                                renderKey: market.outcomeKey,
-                                accessibleLabel: copy.accessibleLabel,
-                                primary: copy.primary,
-                                secondary: copy.secondary,
-                                unavailableReason:
-                                  rolling && !eventAcceptsBets(event, cutoffNow)
-                                    ? "Betting closed"
-                                    : rolling &&
-                                        ownerCard.positions.some(
-                                          (position) =>
-                                            position.eventId === event.id &&
-                                            position.marketType === marketType,
-                                        )
-                                      ? "Bet already submitted for this market"
-                                      : market.qualityStatus === "HEALTHY"
-                                        ? undefined
-                                        : "Current quote is unavailable",
-                              } satisfies OutcomeSelectorOption;
-                            })}
-                            selectedId={selectedDraft?.marketSnapshotId ?? null}
-                          />
-                        </article>
-                      );
-                    })}
-                  </div>
+                          <span className="group-open/game-lines:hidden">
+                            +
+                          </span>
+                          <span className="hidden group-open/game-lines:inline">
+                            −
+                          </span>
+                        </span>
+                      </div>
+                      {rolling && !eventAcceptsBets(event, cutoffNow) ? (
+                        <span className="text-graphite mt-3 block text-sm font-semibold">
+                          Betting closed
+                        </span>
+                      ) : null}
+                    </summary>
+                    <QuoteFreshness
+                      freshness={passiveQuotes.freshness.get(event.id)}
+                      family="MAIN"
+                      delayed={passiveQuotes.delayed}
+                    >
+                      Source updated{" "}
+                      {formatObservedAt(
+                        event.markets.reduce(
+                          (latest, market) =>
+                            market.observedAt > latest
+                              ? market.observedAt
+                              : latest,
+                          event.markets[0]?.observedAt ??
+                            event.scheduledStartAt,
+                        ),
+                      )}
+                    </QuoteFreshness>
+                    <div className="divide-boundary border-boundary mt-4 divide-y border-y">
+                      {marketTypes.map((marketType) => {
+                        const outcomes = event.markets.filter(
+                          (market) => market.marketType === marketType,
+                        );
+                        if (outcomes.length === 0) return null;
+                        const key = `${event.id}:${marketType}`;
+                        const selectedDraft = drafts.find(
+                          (draft) => selectionKey(draft) === key,
+                        );
+                        return (
+                          <article
+                            className={`grid gap-2 py-3 sm:grid-cols-[110px_minmax(0,1fr)] sm:items-center ${
+                              selectedDraft ? "bg-registry/5" : ""
+                            }`}
+                            key={marketType}
+                          >
+                            <div className="flex items-center justify-between gap-3 sm:block">
+                              <p className="text-muted text-sm font-semibold">
+                                {marketLabels[marketType]}
+                              </p>
+                              {selectedDraft ? (
+                                <span className="text-positive mt-1 block text-xs font-semibold">
+                                  In card
+                                </span>
+                              ) : null}
+                            </div>
+                            <OutcomeSelector
+                              label={`${event.awayTeam} at ${event.homeTeam} ${marketLabels[marketType]} outcomes`}
+                              onSelect={(marketSnapshotId) => {
+                                const market = outcomes.find(
+                                  (candidate) =>
+                                    candidate.id === marketSnapshotId,
+                                );
+                                if (market)
+                                  openEditor(event, market, selectedDraft);
+                              }}
+                              options={outcomes.map((market) => {
+                                const copy = marketOptionCopy({
+                                  americanOdds: market.americanOdds,
+                                  awayTeam: event.awayTeam,
+                                  fallbackLabel: market.proposition,
+                                  homeTeam: event.homeTeam,
+                                  lineMilli: market.lineMilli,
+                                  marketType: market.marketType,
+                                  outcomeKey: market.outcomeKey,
+                                });
+                                return {
+                                  id: market.id,
+                                  renderKey: market.outcomeKey,
+                                  accessibleLabel: copy.accessibleLabel,
+                                  primary: copy.primary,
+                                  secondary: copy.secondary,
+                                  unavailableReason:
+                                    rolling &&
+                                    !eventAcceptsBets(event, cutoffNow)
+                                      ? "Betting closed"
+                                      : rolling &&
+                                          ownerCard.positions.some(
+                                            (position) =>
+                                              position.eventId === event.id &&
+                                              position.marketType ===
+                                                marketType,
+                                          )
+                                        ? "Bet already submitted for this market"
+                                        : market.qualityStatus === "HEALTHY"
+                                          ? undefined
+                                          : "Current quote is unavailable",
+                                } satisfies OutcomeSelectorOption;
+                              })}
+                              selectedId={
+                                selectedDraft?.marketSnapshotId ?? null
+                              }
+                            />
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </details>
                 </section>
               ))}
           <details className="text-graphite text-sm">
