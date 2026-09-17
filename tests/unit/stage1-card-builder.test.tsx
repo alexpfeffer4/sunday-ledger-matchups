@@ -549,6 +549,54 @@ describe("authenticated card editor", () => {
     );
   });
 
+  it.each([165, 180])(
+    "submission recovery at %s uses the same consent rules and keeps the draft",
+    async (odds) => {
+      storeHomeDraft();
+      vi.mocked(reviewLiveCardQuotes).mockResolvedValue(readyReview());
+      const recovery = readyReview(odds).review;
+      recovery.reviewId = "10000000-0000-4000-8000-000000000097";
+      vi.mocked(acceptStage1CardAction).mockResolvedValue({
+        status: "error",
+        message: "Review the refreshed quote.",
+        quoteReview: recovery,
+      });
+      render(<Stage1CardBuilder state={state} />);
+      fireEvent.click(
+        (await screen.findAllByRole("button", { name: "Review 1 picks" }))[0],
+      );
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Confirm and seal card" }),
+      );
+      await waitFor(() =>
+        expect(document.querySelector('input[name="reviewId"]')).toHaveValue(
+          recovery.reviewId,
+        ),
+      );
+      expect(acceptStage1CardAction).toHaveBeenCalledTimes(1);
+      if (odds !== 165) {
+        expect(
+          screen.getByRole("button", { name: "Review changed quotes first" }),
+        ).toBeDisabled();
+        fireEvent.click(
+          screen.getByRole("button", { name: "Use updated odds" }),
+        );
+      }
+      expect(
+        screen.getByRole("button", { name: "Confirm and seal card" }),
+      ).toBeEnabled();
+      expect(
+        JSON.parse(
+          document.querySelector<HTMLInputElement>('input[name="positions"]')!
+            .value,
+        )[0].stakeCredits,
+      ).toBe(1000);
+      expect(
+        screen.queryByRole("heading", { name: "All 1,000 credits are sealed" }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   it("allows explicit Submit to renew an expired review without another Review click", async () => {
     storeHomeDraft();
     vi.mocked(reviewLiveCardQuotes).mockResolvedValue(

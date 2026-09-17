@@ -1,4 +1,5 @@
 import "server-only";
+import { queryFailure } from "./query-failure";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import { isSupabaseConfigured } from "@/adapters/supabase/config";
@@ -28,6 +29,7 @@ export async function getCardReviewContext(leagueSlug: string) {
   const client = await createSupabaseServerClient();
   const claims = await client.auth.getClaims();
   if (!claims.data?.claims?.sub) return null;
+  const startedAt = performance.now();
   const result = await client.schema("api").rpc("get_card_review_context", {
     p_league_slug: leagueSlug,
   });
@@ -52,7 +54,12 @@ export async function getCardReviewContext(leagueSlug: string) {
   if (result.error) {
     if (["42501", "28000", "P0002"].includes(result.error.code ?? ""))
       return null;
-    throw new Error("Your card could not be loaded for review.");
+    throw queryFailure(
+      "get_card_review_context",
+      startedAt,
+      result.error,
+      "Your card could not be loaded for review.",
+    );
   }
   const state = reviewContextSchema.parse(result.data);
   state.season.rulesetSnapshot = await withVerifiedRulesetHash(

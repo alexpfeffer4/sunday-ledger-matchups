@@ -13,14 +13,12 @@ import { reviewLiveCardQuotes } from "@/app/l/[leagueSlug]/card-quote-actions";
 import type { CardQuoteReviewResult } from "@/application/providers/card-quote-review";
 import { useStoredQuoteUpdates } from "./use-stored-quote-updates";
 import { QuoteFreshness } from "./quote-freshness";
+import { reconcileReviewedQuotes } from "./reconcile-reviewed-quotes";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { acceptStage1CardAction } from "@/app/l/[leagueSlug]/actions";
 import { initialAppActionState } from "@/application/actions/action-state";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
-import {
-  restoreCardDrafts,
-  type RestoredCardDraft,
-} from "@/components/card/card-draft-storage";
+import { type RestoredCardDraft } from "@/components/card/card-draft-storage";
 import {
   formatAmericanOdds,
   formatMarketProposition,
@@ -107,24 +105,30 @@ const weekdayFilters: Record<string, Exclude<KickoffFilter, "ALL">> = {
 
 const formatDate = easternTime;
 
+// Stake-typing profiles identified repeated formatter construction in these
+// render-time helpers. Locale/timezone/options are fixed; the instances carry
+// no league, user, quote or draft state and can be reused safely.
+const observedAtFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
+});
+const kickoffFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  weekday: "short",
+  hour: "numeric",
+  hour12: false,
+});
+
 function formatObservedAt(value: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  }).format(new Date(value));
+  return observedAtFormatter.format(new Date(value));
 }
 
 function kickoffWindow(value: string): Exclude<KickoffFilter, "ALL"> | "OTHER" {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "short",
-    hour: "numeric",
-    hour12: false,
-  }).formatToParts(new Date(value));
+  const parts = kickoffFormatter.formatToParts(new Date(value));
   const weekday = parts.find((part) => part.type === "weekday")?.value;
   const hour = Number(parts.find((part) => part.type === "hour")?.value);
   if (weekday && weekdayFilters[weekday]) return weekdayFilters[weekday];
@@ -369,44 +373,15 @@ function Stage1CardBuilderEditor({
     if (!refreshed || appliedActionReview.current === refreshed.reviewId)
       return;
     appliedActionReview.current = refreshed.reviewId;
-    const freshByEvent = new Map(
-      refreshed.quotes.map((event) => [event.eventId, event.markets]),
-    );
-    const nextSlate = slate.map((event) => ({
-      ...event,
-      markets: freshByEvent.has(event.id)
-        ? [
-            ...event.markets.filter(
-              (market) =>
-                !(freshByEvent.get(event.id) ?? []).some(
-                  (fresh) =>
-                    sameSelection(
-                      { ...fresh, eventId: event.id },
-                      { ...market, eventId: event.id },
-                    ) && fresh.outcomeKey === market.outcomeKey,
-                ),
-            ),
-            ...(freshByEvent.get(event.id) ?? []),
-          ]
-        : event.markets,
-    }));
+    const nextSlate = reconcileReviewedQuotes(
+      slate,
+      [],
+      refreshed.quotes,
+    ).slate;
     setRefreshedSlate({ sourceRevision, slate: nextSlate });
-    setDrafts((current) =>
-      restoreCardDrafts(
-        JSON.stringify({ version: 1, drafts: current }),
-        nextSlate,
-      ).map((draft) => ({
-        ...draft,
-        reviewedPayloadHash: !draft.quoteReviewRequired
-          ? draft.payloadHash
-          : draft.reviewedPayloadHash,
-        quoteReviewRequired:
-          draft.quoteReviewRequired ||
-          nextSlate
-            .flatMap((event) => event.markets)
-            .find((market) => market.id === draft.marketSnapshotId)
-            ?.qualityStatus !== "HEALTHY",
-      })),
+    // Re-read persistence at application time, retaining edits from another tab.
+    setDrafts(
+      (current) => reconcileReviewedQuotes(nextSlate, current, []).drafts,
     );
     setStoredReview({ sourceRevision, review: refreshed });
     setReviewExpired(false);
@@ -607,52 +582,19 @@ function Stage1CardBuilderEditor({
         }
         if (result.status === "disabled") setRequiresLiveReview(false);
         if (result.status === "ready" || result.status === "simulation") {
-          const byEvent = new Map(
-            (result.status === "ready"
-              ? result.review.quotes
-              : result.quotes
-            ).map((event) => [event.eventId, event.markets]),
+          const reconciled = reconcileReviewedQuotes(
+            slate,
+            drafts,
+            result.status === "ready" ? result.review.quotes : result.quotes,
           );
-          const refreshedSlate = slate.map((event) => ({
-            ...event,
-            markets: byEvent.has(event.id)
-              ? [
-                  ...event.markets.filter(
-                    (market) =>
-                      !(byEvent.get(event.id) ?? []).some(
-                        (fresh) =>
-                          sameSelection(
-                            { ...fresh, eventId: event.id },
-                            { ...market, eventId: event.id },
-                          ) && fresh.outcomeKey === market.outcomeKey,
-                      ),
-                  ),
-                  ...(byEvent.get(event.id) ?? []),
-                ]
-              : event.markets,
-          }));
-          const restored = restoreCardDrafts(
-            JSON.stringify({ version: 1, drafts }),
-            refreshedSlate,
-          );
-          if (restored.length !== drafts.length) {
+          if (!reconciled.allDraftsRetained) {
             setCardFeedback(
               "A pick is unavailable. Your draft has been kept; return to editing to review it.",
             );
             return;
           }
-          setSlate(refreshedSlate);
-          setDrafts(
-            restored.map((draft) => ({
-              ...draft,
-              reviewedPayloadHash: !draft.quoteReviewRequired
-                ? draft.payloadHash
-                : draft.reviewedPayloadHash,
-              // Source timestamps may advance with unchanged terms. Only a real
-              // proposition/price change needs another per-pick acknowledgment.
-              quoteReviewRequired: draft.quoteReviewRequired,
-            })),
-          );
+          setSlate(reconciled.slate);
+          setDrafts(reconciled.drafts);
           setQuoteReview(result.status === "ready" ? result.review : null);
           setReviewExpired(false);
           setRequiresLiveReview(result.status === "ready");

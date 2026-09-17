@@ -7,70 +7,28 @@ ChatGPT Sites, Sites hosting, Sites storage, or a Sites-managed application.
 
 ## Current implementation
 
-- Typed POC Season 1 and Simulation ruleset snapshots
-- Pure TypeScript odds, card-completion, settlement, matchup, schedule,
-  standings, reveal, and playoff modules
-- Deterministic Week 6 simulation across the participant and commissioner UI
-- Supabase SSR email-link and password Auth boundary with required account setup
-- Reproducible profile, league, membership, invite, season, and RLS migration
-- Production-shaped Stage 1 Week 1 lifecycle backed by Supabase Postgres:
-  eight-entry formation, four stored matchups, 1,000-credit grants, sealed
-  receipts, reliable event reveal, centicredit settlement, standings,
-  correction replay, and finalization
-- Stage 2 full-season Simulation path for every approved even roster from 4–16:
-  a balanced 14-week schedule, immutable weekly cards and receipts, cumulative
-  standings, third-miss playoff ineligibility, the roster-size-specific playoff
-  bracket, champion and placement results, and exhibition-only Week 18 history
-- Commissioner-only, idempotent season publication into an append-only,
-  member-scoped Supabase archive with per-viewer history projection
-- Stage 3 Live-mode foundation: mode-aware league creation, a server-only The
-  Odds API client, strict DraftKings main-market normalization, and an
-  append-only commissioner review ledger protected from regular members by RLS
-- Commissioner-selected Live Week 1 publication with rules-aware default event
-  selection, an immutable eligible-event set, six stored main-market outcomes
-  per event, and a derived five-minute common lock; solo publication creates no
-  cards, schedule, matchups, or credit grants
-- Current-odds refresh for exactly the published event set: every observation
-  remains append-only, one explicit quote head drives the UI, and receipt
-  insertion rejects superseded prices without changing games or common lock
-- Exact-set NFL score refresh for the locked Live slate, provisional receipt
-  settlement, visible provider/manual correction versions, the frozen 48-hour
-  postponement rule, and database-enforced 24-hour finalization
-- Week 2–14 Live progression after each prior final: commissioner-reviewed NFL
-  slates, frozen-schedule matchup materialization, fresh equal 1,000-credit
-  cards, generalized card/lock/result RPCs, and cumulative standings with the
-  ordered win percentage, Points For, balanced head-to-head, incomplete-week,
-  high-week, and deterministic tiebreak chain
-- Immutable Live playoff qualification after Week 14 finalization: the frozen
-  standings and third-miss eligibility rule produce the roster-size-specific
-  field, qualification seeds, bracket template, and member-visible audit hash
-  before any Week 15 slate can open
-- Live postseason publication for Weeks 15–17: each reviewed NFL slate derives
-  its participants from the immutable bracket and prior final result versions,
-  grants cards only to scheduled entries, applies the published higher-seed
-  advancement rule to exact ties and dual incompletion, reseeds six-entry
-  semifinals, and never rewrites the frozen regular-season standings
-- Champion finality after Week 17, followed by a normal Week 18
-  exhibition/history card and a complete Weeks 1–18 archive that cannot alter
-  the champion, regular-season record, or playoff seed
-- Permission-aware desktop navigation, mobile access to Rules, Commissioner,
-  league switching, and sign-out, plus accurate no-card postseason status
-- Deterministic provider-fixture ports for healthy, stale, outlier, suspended,
-  provider-degraded, live, final, void, and corrected states
-- Owner-approved Phase 11 B+A identity across public, Auth, invitation, league,
-  receipt, platform-icon, PWA, and neutral social-preview surfaces
-- Stable logical-operation keys and caller-scoped command-result recovery for
-  card seals, invitation creation, and consequential commissioner commands
-- Vitest unit/property coverage, complete pgTAP/RLS suites, identity checks,
-  browser/accessibility coverage, and an isolated real Auth/RSC/RPC lane
+- Member and commissioner journeys use immutable, versioned season/week rules,
+  event-timed disclosure, append-only receipts and auditable corrections.
+- Live and isolated Simulation modes share the authoritative season lifecycle;
+  owner rehearsal and the read-only Example Season retain their access boundaries.
+- Current approved Live rules support rolling submissions, shared weekly credits,
+  main markets and progressive player props. Open and historical weeks keep their
+  bound rules; see the [current governing source index](docs/governance/current-source-index.md).
+- Enrolled future weeks prepare, validate and open under genuine standing season
+  consent. Manual/unenrolled scopes retain their applicable review requirements.
+- Public odds are acquired by final card review, explicit commissioner actions,
+  authorized catalog/preparation work and scheduled shared background refresh.
+  Database claims, freshness, pacing, leases and credit reserves bound every path.
+  Browsing reads stored quotes and never buys provider data. Changed economic
+  terms still require explicit acceptance before authoritative submission.
+- Real Auth/RSC/RPC acceptance, complete clean-migration/pgTAP coverage, native
+  concurrency tests and desktop/mobile journeys protect these boundaries.
 
-Live season is the normal/default creation path. The advanced
-`Practice/test · Simulation` path remains visibly labeled and never mixes with
-Live data, while exercising the same authoritative lifecycle. Live provider
-requests are made only by explicit commissioner actions when the environment
-has an authorized API key. Imports remain noncompetitive until the commissioner
-makes the reviewed week available, and cards stay closed until a valid even
-roster is locked.
+Use [change navigation](docs/change-navigation.md) to map a behavior to its
+current governing source, application entry, database authority and verification.
+It also explains the derived effective-function artifact and safe query diagnostics.
+Release status and limits remain in dated operations records; a Preview does not
+establish Production activation.
 
 ## Local development
 

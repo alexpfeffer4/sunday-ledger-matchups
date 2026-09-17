@@ -11,6 +11,7 @@ import {
 } from "../fixtures/stage1-baseline";
 import { verifyStage2Reads } from "../fixtures/stage2-reads";
 import { observe, sample } from "../fixtures/stage1-measurements";
+import { profileStakeTyping } from "../fixtures/stake-edit-profile";
 import { quoteSql as q } from "../fixtures/player-props-acceptance.mjs";
 
 test.skip(
@@ -362,7 +363,9 @@ for (const pending of [false, true])
           .getByRole("button", { name: "Edit pick", exact: true })
           .first()
           .click();
-        await page.getByLabel("Stake in credits").fill("50");
+        await profileStakeTyping(page, condition, run);
+        await expect(page.getByLabel("Stake in credits")).toBeFocused();
+        await expect(page.getByLabel("Stake in credits")).toHaveValue("50");
         // While editing, focus must not start stored quote polling or overwrite input.
         let polled = 0;
         const onRequest = (r: import("@playwright/test").Request) => {
