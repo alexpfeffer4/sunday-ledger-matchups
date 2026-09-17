@@ -86,15 +86,16 @@ export function MagicLinkForm({
             aria-invalid={emailError}
           />
           <p id="email-help" className="text-muted mt-2 text-xs leading-5">
-            {intent === "create-account"
-              ? "Verify your email, then complete required username and password setup."
-              : "Email verification is for existing accounts. Choose password setup below if you have never made a password."}
+            Stay on this page and enter the email code if one is included, or
+            open the newest email link in this browser. A different browser may
+            require you to sign in again.
           </p>
-          <p className="text-muted mt-2 text-xs leading-5">
-            On your phone, stay on this page and enter the code from your email
-            if one is included, or open the newest email link in this browser. A
-            different browser may require you to sign in again.
-          </p>
+          {intent === "sign-in" ? (
+            <p className="text-muted mt-2 text-xs leading-5">
+              Email verification is for existing accounts. Choose password setup
+              below if you have never made a password.
+            </p>
+          ) : null}
           {emailError ? (
             <p id="email-error" className="text-negative mt-2 text-sm">
               {state.message}
@@ -123,7 +124,7 @@ export function MagicLinkForm({
               : state.status === "sent"
                 ? "Resend email"
                 : intent === "create-account"
-                  ? "Send account email"
+                  ? "Send verification email"
                   : "Send sign-in email"}
         </button>
         {state.status !== "idle" && !emailError ? (

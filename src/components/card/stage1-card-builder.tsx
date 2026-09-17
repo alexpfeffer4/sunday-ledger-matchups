@@ -838,11 +838,12 @@ function Stage1CardBuilderEditor({
             ref={reviewHeadingRef}
             tabIndex={-1}
           >
-            {rolling ? "Review your bets" : "Review your complete card"}
+            {rolling ? "Review your bets" : "Review card"}
           </h2>
           <p className="text-graphite mt-3 leading-7">
             Check each game, selection, odds, stake, and total return. Your
             picks stay editable until you confirm.
+            {!rolling ? " Submit your complete card together." : null}
           </p>
           {actionState.quoteChanges?.length ? (
             <div
@@ -1162,8 +1163,7 @@ function Stage1CardBuilderEditor({
                         freshness={passiveQuotes.freshness.get(event.id)}
                         family="MAIN"
                         delayed={passiveQuotes.delayed}
-                      />
-                      <p className="mt-1 text-xs">
+                      >
                         Source updated{" "}
                         {formatObservedAt(
                           event.markets.reduce(
@@ -1175,7 +1175,7 @@ function Stage1CardBuilderEditor({
                               event.scheduledStartAt,
                           ),
                         )}
-                      </p>
+                      </QuoteFreshness>
                     </div>
                   </div>
                   <div className="divide-boundary border-boundary mt-4 divide-y border-y">

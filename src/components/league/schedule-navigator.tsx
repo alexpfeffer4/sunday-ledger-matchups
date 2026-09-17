@@ -30,7 +30,13 @@ function score(value: number | null): string {
   return value === null ? "—" : formatCenticredits(BigInt(value), true);
 }
 
-export function MatchupRow({ matchup }: { matchup: ScheduleMatchupRecord }) {
+export function MatchupRow({
+  matchup,
+  sharedStatus,
+}: {
+  matchup: ScheduleMatchupRecord;
+  sharedStatus?: string;
+}) {
   return (
     <li
       aria-label={`${matchup.sideAName} ${score(matchup.sideAScoreCenticredits)}, ${matchup.sideBName} ${score(matchup.sideBScoreCenticredits)}, ${matchup.competition}, ${matchup.status}`}
@@ -75,7 +81,7 @@ export function MatchupRow({ matchup }: { matchup: ScheduleMatchupRecord }) {
         </dl>
       </div>
       <p className="text-graphite text-xs font-bold sm:text-right">
-        {matchup.status}
+        {matchup.status !== sharedStatus ? matchup.status : null}
         {matchup.href ? (
           <Link
             href={matchup.href}
@@ -200,7 +206,11 @@ export function ScheduleNavigator({
         </div>
         <ol className="divide-boundary divide-y">
           {selected.matchups.map((matchup) => (
-            <MatchupRow key={matchup.id} matchup={matchup} />
+            <MatchupRow
+              key={matchup.id}
+              matchup={matchup}
+              sharedStatus={selected.status}
+            />
           ))}
         </ol>
       </div>

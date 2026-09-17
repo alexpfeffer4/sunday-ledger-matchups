@@ -427,7 +427,7 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
       .getByRole("button", { name: "Check current odds before sealing" })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Review your complete card" }),
+      page.getByRole("heading", { name: "Review card" }),
     ).toBeVisible();
     await expect(
       page.getByText("Odds checked", { exact: false }),

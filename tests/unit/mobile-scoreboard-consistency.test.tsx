@@ -114,9 +114,12 @@ describe("score availability across member routes", () => {
     view.rerender(<Stage1LeagueView state={state} operations={operations} />);
     expect(screen.queryByText("Cards open", { exact: true })).toBeNull();
     const actual = screen.getByRole("region", { name: /scoreboard/ });
-    // The Matchup route alone adds an overview link after the shared scores.
-    expect(expected).toBe(`${actual.textContent}Open League Overview`);
-    const own = actual.querySelector('[aria-current="true"]') as HTMLElement;
+    // The same scores and states have context-appropriate navigation labels.
+    expect(expected).toBe(
+      `${actual.textContent?.replace("View your matchup →", "Viewing matchup")}Open League Overview`,
+    );
+    expect(actual.querySelector('[aria-current="true"]')).toBeNull();
+    const own = within(actual).getByText("View your matchup →").closest("li")!;
     if (["PREGAME", "LOCKED", "DELAYED"].includes(phase)) {
       expect(within(own).getAllByText("—", { exact: true })).toHaveLength(2);
       expect(within(own).queryByText("0.00")).toBeNull();

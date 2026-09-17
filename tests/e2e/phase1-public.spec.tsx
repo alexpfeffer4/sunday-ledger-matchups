@@ -51,10 +51,12 @@ test("distinct auth intents preserve the exact safe destination", async ({
     page.getByRole("heading", { name: "Create account" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Send account email" }),
+    page.getByRole("button", { name: "Send verification email" }),
   ).toBeVisible();
   await expect(
-    page.getByText(/required username and password setup/i),
+    page.getByText(
+      /Before continuing, you must save the public username your league sees and a password/i,
+    ),
   ).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await expectNoSeriousAccessibilityViolations(page);

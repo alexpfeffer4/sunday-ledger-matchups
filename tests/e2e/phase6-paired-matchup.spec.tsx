@@ -71,6 +71,38 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
+test("narrow matchup selectors stack and retain keyboard focus", async ({
+  page,
+}, info) => {
+  for (const [width, scale] of [
+    [390, 100],
+    [320, 100],
+    [320, 200],
+  ]) {
+    await page.setViewportSize({ width, height: 844 });
+    await mountMatchup(page, "STRESS");
+    await page.locator("html").evaluate((element, scale) => {
+      element.style.fontSize = `${scale}%`;
+    }, scale);
+    const week = page.getByRole("combobox", { name: "Week", exact: true });
+    const matchup = page.getByRole("combobox", {
+      name: "Matchup",
+      exact: true,
+    });
+    const a = (await week.boundingBox())!;
+    const b = (await matchup.boundingBox())!;
+    expect(b.y).toBeGreaterThanOrEqual(a.y + a.height);
+    expect(b.width).toBeCloseTo(a.width, 0);
+    expect(a.height).toBeGreaterThanOrEqual(44);
+    await matchup.focus();
+    await expect(matchup).toBeFocused();
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: info.outputPath(`polish-matchup-${width}-${scale}.png`),
+    });
+  }
+});
+
 test("remaining-return values align when metric labels wrap", async ({
   page,
 }, info) => {

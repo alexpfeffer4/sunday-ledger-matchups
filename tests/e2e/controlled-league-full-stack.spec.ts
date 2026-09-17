@@ -271,7 +271,7 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   const invitedEmail = `invited-${run}@controlled.test`;
   const invitedPassword = `Controlled-invited-${run}-48!`;
   await page.getByLabel("Email address").fill(invitedEmail);
-  await page.getByRole("button", { name: "Send account email" }).click();
+  await page.getByRole("button", { name: "Send verification email" }).click();
   await expect(page.getByRole("status")).toContainText("Check your email");
 
   const generated = await admin.auth.admin.generateLink({

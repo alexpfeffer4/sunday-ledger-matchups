@@ -50,8 +50,8 @@ export default function PracticePage() {
             Practice week
           </h1>
           <p className="text-graphite mt-4 max-w-3xl text-lg leading-7">
-            Try picks, review and scoring with neutral examples. This public
-            practice is not saved and cannot affect a league.
+            Try picks, review and scoring with neutral examples. Your practice
+            cannot affect a league.
           </p>
           <section
             aria-labelledby="practice-scope"
@@ -61,26 +61,30 @@ export default function PracticePage() {
               Practice uses older full-card rules
             </h2>
             <p className="text-graphite mt-2 text-sm leading-6">
-              In this example only, use all {allocation} credits and seal the
-              complete card once. This is not a walkthrough of current rolling
-              submissions.
+              Use all {allocation} credits and seal once in this unsaved
+              example. Rolling weeks let you submit separate bets.
             </p>
-            <p className="text-graphite mt-2 text-sm leading-6">
-              In weeks with rolling submissions, submit one or more bets at a
-              time. Partial cards count; accepted bets cannot be changed. You
-              can use remaining credits on eligible games until each game’s
-              cutoff. Unused credits expire at the final cutoff.
-            </p>
-            <Link
-              href="/rules"
-              className="text-action mt-2 inline-flex min-h-11 items-center text-sm font-semibold hover:underline"
-            >
-              Compare submission rules
-            </Link>
-            <p className="text-muted text-xs leading-5">
-              Your league’s Rules page is the authority for each week, including
-              historical weeks.
-            </p>
+            <details className="mt-1 text-sm">
+              <summary className="text-action min-h-11 cursor-pointer py-3 font-semibold">
+                How this differs from your league
+              </summary>
+              <p className="text-graphite leading-6">
+                In weeks with rolling submissions, submit one or more bets at a
+                time. Partial cards count; accepted bets cannot be changed. You
+                can use remaining credits on eligible games until each game’s
+                cutoff. Unused credits expire at the final cutoff.
+              </p>
+              <Link
+                href="/rules"
+                className="text-action mt-2 inline-flex min-h-11 items-center text-sm font-semibold hover:underline"
+              >
+                Compare submission rules
+              </Link>
+              <p className="text-muted text-xs leading-5">
+                Your league’s Rules page is the authority for each week,
+                including historical weeks.
+              </p>
+            </details>
           </section>
         </header>
 

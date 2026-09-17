@@ -73,8 +73,7 @@ export default async function AccountPage({
             Account
           </h1>
           <p className="text-graphite mt-3 leading-6">
-            Sunday Ledger uses your email only for private account access. Your
-            username appears in league member lists and season records.
+            Your username appears in league member lists and season records.
           </p>
           <UsernameForm currentUsername={currentUsername} />
         </section>
@@ -87,9 +86,8 @@ export default async function AccountPage({
             Set or change password
           </h2>
           <p className="text-graphite mt-3 leading-6">
-            Your private sign-in email is {email}. Use a password of at least
-            eight characters for future sign-ins, even if you originally joined
-            using an email link.
+            Your sign-in email is {email}. You can use a password even if you
+            originally joined using an email link.
           </p>
           <SetPasswordForm />
         </section>

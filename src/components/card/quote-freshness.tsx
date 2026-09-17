@@ -1,16 +1,19 @@
 import type { QuoteFreshnessData } from "@/application/providers/stored-quote-updates";
+import type { ReactNode } from "react";
 export function QuoteFreshness({
   freshness,
   family,
   delayed = false,
+  children,
 }: {
   freshness?: QuoteFreshnessData;
   family?: string;
   delayed?: boolean;
+  children?: ReactNode;
 }) {
   const values =
     freshness?.filter((item) => !family || item.family === family) ?? [];
-  if (!values.length && !delayed) return null;
+  if (!values.length && !delayed && !children) return null;
   const checked = values
     .map((item) => item.checkedAt)
     .filter((value): value is string => Boolean(value))
@@ -24,8 +27,8 @@ export function QuoteFreshness({
         ),
       )
     : null;
-  return (
-    <p className="text-muted mt-1 text-xs">
+  const label = (
+    <>
       {age === null
         ? "Odds check pending"
         : age < 1
@@ -34,6 +37,14 @@ export function QuoteFreshness({
       {delayed || values.some((item) => item.delayed)
         ? " · Updates delayed"
         : ""}
-    </p>
+    </>
+  );
+  return children ? (
+    <details className="text-muted text-xs">
+      <summary className="min-h-11 cursor-pointer py-3">{label}</summary>
+      <p className="pb-2">{children}</p>
+    </details>
+  ) : (
+    <p className="text-muted mt-1 text-xs">{label}</p>
   );
 }

@@ -22,11 +22,13 @@ export function LeagueScoreboard({
   games,
   leagueSlug,
   showOverviewLink = true,
+  onOverview = false,
   week,
 }: {
   games: LeagueScoreboardGame[];
   leagueSlug: string;
   showOverviewLink?: boolean;
+  onOverview?: boolean;
   week: number;
 }) {
   return (
@@ -44,7 +46,7 @@ export function LeagueScoreboard({
       <ol className="border-boundary divide-boundary bg-surface mt-3 divide-y overflow-hidden rounded-lg border">
         {games.map((game) => (
           <li
-            aria-current={game.selected ? "true" : undefined}
+            aria-current={game.selected && !onOverview ? "true" : undefined}
             className={`${game.selected ? "bg-registry/5 border-l-registry border-l-4" : ""}`}
             key={game.id}
           >
@@ -79,7 +81,11 @@ export function LeagueScoreboard({
               </dl>
               {game.href ? (
                 <p className="text-action mt-2 text-xs font-semibold">
-                  {game.selected ? "Viewing matchup" : "View matchup →"}
+                  {onOverview && (game.own ?? game.selected)
+                    ? "View your matchup →"
+                    : game.selected && !onOverview
+                      ? "Viewing matchup"
+                      : "View matchup →"}
                 </p>
               ) : null}
             </ScoreboardRowLink>

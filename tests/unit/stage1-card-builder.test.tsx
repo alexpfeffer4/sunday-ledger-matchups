@@ -215,7 +215,7 @@ describe("authenticated card editor", () => {
       screen.getAllByRole("button", { name: "Review 1 picks" })[0],
     );
     expect(
-      await screen.findByRole("heading", { name: "Review your complete card" }),
+      await screen.findByRole("heading", { name: "Review card" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Over 45.5")).toBeInTheDocument();
   });

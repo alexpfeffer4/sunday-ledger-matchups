@@ -26,7 +26,7 @@ export function MatchupStateRefresh({
 
   return (
     <button
-      className="bg-registry hover:bg-registry-hover text-canvas inline-flex min-h-11 items-center justify-center rounded-lg px-4 text-sm font-semibold aria-disabled:cursor-wait aria-disabled:opacity-75"
+      className="border-control hover:border-registry hover:text-registry inline-flex min-h-11 items-center justify-center rounded-lg border px-4 text-sm font-semibold aria-disabled:cursor-wait aria-disabled:opacity-75"
       aria-disabled={isPending}
       onClick={() => {
         if (!isPending) startTransition(() => router.refresh());

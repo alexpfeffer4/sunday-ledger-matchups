@@ -173,9 +173,10 @@ describe("owner reset history presentation", () => {
     const progress = screen.getByRole("region", {
       name: "Your weekly card",
     });
-    expect(progress).toHaveTextContent(
-      "0 submitted bets · 0 credits committed",
-    );
+    expect(progress).toHaveTextContent("No accepted bets");
+    expect(
+      within(progress).getByText("Accepted bets").nextElementSibling,
+    ).toHaveTextContent("0");
     expect(
       within(progress).getByText("Left to allocate").nextElementSibling,
     ).toHaveTextContent("1,000");
@@ -209,9 +210,11 @@ describe("owner reset history presentation", () => {
     state.ownerCard!.allocatedCredits = 300;
     state.ownerCard!.remainingCredits = 700;
     render(<Stage1CardView state={state} />);
+    const progress = screen.getByRole("region", { name: "Your weekly card" });
+    expect(progress).toHaveTextContent("1 accepted bet");
     expect(
-      screen.getByRole("region", { name: "Your weekly card" }),
-    ).toHaveTextContent("1 submitted bet · 300 credits committed");
+      within(progress).getByText("Accepted bets").nextElementSibling,
+    ).toHaveTextContent("300");
     expect(screen.getByRole("link", { name: "View receipt" })).toHaveAttribute(
       "href",
       `/l/${state.league.slug}/receipt/${active.id}`,

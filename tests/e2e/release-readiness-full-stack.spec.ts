@@ -449,11 +449,29 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
   await inspectMemberSurface(page, info, "twenty-pick-builder-320-200-percent");
   await reviewButton.click({ timeout: 10_000 });
   await expect(
-    page.getByRole("heading", { name: "Review your complete card" }),
+    page.getByRole("heading", { name: "Review card" }),
   ).toBeFocused();
   await expect(page.getByRole("article", { name: /^Pick \d+:/ })).toHaveCount(
     20,
   );
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.locator("html").evaluate((element) => {
+      element.style.fontSize = "100%";
+    });
+    await page
+      .getByRole("heading", { name: "Review card", exact: true })
+      .scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: info.outputPath(
+        `twenty-pick-review-${width}-100-percent-viewport.png`,
+      ),
+    });
+  }
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.locator("html").evaluate((element) => {
+    element.style.fontSize = "200%";
+  });
   await inspectMemberSurface(page, info, "twenty-pick-review-320-200-percent");
   // Accessibility inspection may consume the 30-second review window. Refresh
   // legitimately before acceptance rather than disabling its enforcement.

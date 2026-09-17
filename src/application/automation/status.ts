@@ -160,7 +160,13 @@ export function automationPresentation(
       true,
     );
   const cause = next.blocker ?? value.blocker;
-  const detail = automationBlocker(cause);
+  const detail =
+    cause === "PREVIOUS_WEEK_RESULTS" &&
+    Number.isInteger(next.week) &&
+    next.week! > 1 &&
+    next.week! <= 18
+      ? `Waiting for Week ${next.week! - 1} to be final. Player results may arrive overnight.`
+      : automationBlocker(cause);
   const operation = next.operation ? operationLabels[next.operation] : null;
   const dueAt =
     next.dueAt && Number.isFinite(Date.parse(next.dueAt)) ? next.dueAt : null;
@@ -220,7 +226,7 @@ export function automationPresentation(
     false,
     operationLabel ??
       (next.week
-        ? `Week ${next.week}: preparation target Tuesday 8 a.m. ET; opening target 10 a.m. ET, after finality and readiness checks. The next dated operation is not yet available.`
+        ? `Week ${next.week}: target Tuesday 8 a.m. ET preparation, 10 a.m. opening, subject to finality and readiness. Exact date pending.`
         : "Waiting for the next eligible season step"),
     dueAt,
   );
