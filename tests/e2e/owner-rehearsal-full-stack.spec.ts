@@ -517,7 +517,12 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
 
   const leagueLink = page.getByRole("link", { name: "Enter rehearsal" });
   await leagueLink.click();
-  await expect(page.getByText("Season final").first()).toBeVisible();
+  await expect(
+    page
+      .getByText("Season final", { exact: true })
+      .filter({ visible: true })
+      .first(),
+  ).toBeVisible();
   await expect(
     page.getByText(
       "Owner rehearsal · Simulated data · Does not affect Live leagues",
