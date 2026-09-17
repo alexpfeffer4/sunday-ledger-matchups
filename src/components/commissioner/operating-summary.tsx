@@ -171,7 +171,7 @@ export function CommissionerOperatingSummary({
               Optional future-week automation comes after the season starts.
             </p>
           </>
-        ) : (
+        ) : ownerRehearsal ? null : (
           <nav
             aria-label="Commissioner sections"
             className="mt-3 flex flex-wrap gap-x-5"

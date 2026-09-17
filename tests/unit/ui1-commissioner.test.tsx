@@ -231,6 +231,33 @@ it("a deep exception link opens both disclosures and focuses the target", () => 
   expect(container.querySelector("#inner > summary")).toHaveFocus();
 });
 
+it("renders one player review in Recovery for a prepared Simulation week", () => {
+  const { state } = makePhase6State("PREGAME");
+  state.league.mode = "SIMULATION";
+  state.commissioner.isCommissioner = true;
+  state.week!.state = "PLANNED";
+  const { container } = render(
+    <Stage1CommissionerView
+      state={state}
+      invites={[]}
+      leagueManagement={null}
+      latestLiveImport={null}
+      liveWeekOperations={null}
+      providerConfigured
+      week17CorrectionOperations={null}
+      playerMenu={<p>One authoritative player review</p>}
+    />,
+  );
+  expect(screen.getAllByText("One authoritative player review")).toHaveLength(
+    1,
+  );
+  expect(container.querySelectorAll("#player-menu")).toHaveLength(1);
+  expect(container.querySelectorAll("#commissioner-recovery")).toHaveLength(1);
+  expect(
+    container.querySelector("#commissioner-recovery #player-menu"),
+  ).not.toBeNull();
+});
+
 it("an entirely unavailable automatic menu stays collapsed and never asks for consent", () => {
   const slots = Array.from({ length: 54 }, (_, i) => ({
     eventId: `game-${Math.floor(i / 6)}`,

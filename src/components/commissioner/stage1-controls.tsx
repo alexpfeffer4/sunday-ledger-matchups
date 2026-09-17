@@ -662,7 +662,7 @@ export function Stage1CommissionerControls({
           }
           className="scroll-mt-28"
         >
-          {recovery}
+          {state.week.state !== "PLANNED" ? recovery : null}
           <SimulationCommissionerControls state={state} />
         </div>
       )}
