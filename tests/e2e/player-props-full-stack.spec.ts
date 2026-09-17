@@ -382,6 +382,7 @@ for (const games of [14, 16]) {
         })
         .toBe(true);
       await page.reload();
+      await page.getByRole("link", { name: /View player details/ }).click();
       // Opening removes this form, so the committed OPEN state below is its
       // completion check instead of feedback inside the removed component.
       await completePlayerPropsAction(
