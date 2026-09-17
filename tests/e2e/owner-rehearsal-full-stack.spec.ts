@@ -485,8 +485,9 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   await page.getByRole("link", { name: "See corrected result" }).click();
   await expect(
     page
-      .locator(".paired-matchup-card")
-      .getByText(/^Corrected(?: final| · picks settled)?$/),
+      .locator("[data-league-header]")
+      .getByText(/Corrected/)
+      .filter({ visible: true }),
   ).toBeVisible();
   await page.goto("/owner/rehearsal");
   // This checkpoint runs several complete weeks through the real lifecycle.
