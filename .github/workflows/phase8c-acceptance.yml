@@ -333,13 +333,13 @@ jobs:
         run: >-
           npx playwright test tests/e2e/phase8a-playoffs.spec.ts tests/e2e/phase8b-finality.spec.ts tests/e2e/phase8c-simulation.spec.ts
           tests/e2e/phase8-accessibility.spec.ts tests/e2e/phase10-navigation-records.spec.ts tests/e2e/phase11-identity.spec.ts
-          tests/e2e/phase1-public.spec.tsx tests/e2e/phase3-practice-card.spec.ts tests/e2e/audit-stage4-presentation.spec.ts tests/e2e/ui1-commissioner.spec.ts
+          tests/e2e/phase1-public.spec.tsx tests/e2e/phase3-practice-card.spec.ts tests/e2e/audit-stage4-presentation.spec.ts tests/e2e/ui1-commissioner.spec.ts tests/e2e/ui2-member-continuity.spec.ts
           --project=desktop --reporter=github --output=test-results/shared-desktop
       - name: WebKit Phase 8 acceptance
         run: >-
           npx playwright test tests/e2e/phase8a-playoffs.spec.ts tests/e2e/phase8b-finality.spec.ts tests/e2e/phase8c-simulation.spec.ts
           tests/e2e/phase8-accessibility.spec.ts tests/e2e/phase10-navigation-records.spec.ts tests/e2e/phase11-identity.spec.ts
-          tests/e2e/phase1-public.spec.tsx tests/e2e/phase3-practice-card.spec.ts tests/e2e/audit-stage4-presentation.spec.ts tests/e2e/ui1-commissioner.spec.ts
+          tests/e2e/phase1-public.spec.tsx tests/e2e/phase3-practice-card.spec.ts tests/e2e/audit-stage4-presentation.spec.ts tests/e2e/ui1-commissioner.spec.ts tests/e2e/ui2-member-continuity.spec.ts
           --project=webkit --reporter=github --output=test-results/shared-webkit
       - name: Matchup privacy and season history on all existing browser projects
         run: >-

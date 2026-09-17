@@ -35,6 +35,24 @@ vi.mock("@/app/(auth)/auth/actions", () => ({
 }));
 
 describe("league navigation", () => {
+  it.each([
+    "league",
+    "standings",
+    "schedule",
+    "playoffs",
+    "history",
+    "rivalry/member-a/member-b",
+  ])("keeps the League group active on %s", (segment) => {
+    navigationState.pathname = `/l/live-test/${segment}`;
+    const view = render(<LeagueDesktopNav leagueSlug="live-test" />);
+    expect(
+      within(view.container).getByRole("link", { name: "League" }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      within(view.container).getByRole("link", { name: "My Card" }),
+    ).not.toHaveAttribute("aria-current");
+    view.unmount();
+  });
   it("shows the league subnavigation on mobile league pages", () => {
     navigationState.pathname = "/l/live-test/standings";
     render(<LeagueMobileSecondaryNav leagueSlug="live-test" />);
@@ -75,7 +93,7 @@ describe("league navigation", () => {
       screen.queryByRole("link", { name: "Commissioner" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("This week")).toBeInTheDocument();
-    expect(screen.getByText("League")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "League" })).toBeInTheDocument();
     expect(screen.getByText("Utilities")).toBeInTheDocument();
     expect(screen.queryByText("Live")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Make picks" })).toHaveAttribute(

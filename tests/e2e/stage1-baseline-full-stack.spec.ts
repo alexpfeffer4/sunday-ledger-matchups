@@ -300,7 +300,7 @@ for (const pending of [false, true])
         for (const [label, path] of [
           ["Make picks", "slate"],
           ["My Card", "card"],
-          [mobile ? "League" : "Overview", "league"],
+          ["League", "league"],
           ["Matchup", "matchup"],
         ]) {
           await timed(`nav-${path}`, async () => {
@@ -308,7 +308,9 @@ for (const pending of [false, true])
               .getByRole("link", { name: label, exact: true })
               .last()
               .click();
-            await expect(page).toHaveURL(new RegExp(`/l/${slug}/${path}$`));
+            await expect(page).toHaveURL(
+              new RegExp(`/l/${slug}/${path}(?:\\?|$)`),
+            );
             await expect(page.locator("main h1").first()).toBeVisible();
           });
         }
@@ -335,9 +337,15 @@ for (const pending of [false, true])
             .click();
           await expect(propGames).toHaveCount(source.gameCount);
         });
-        // Use the default game-market tab again; only enabled, unused markets enter
-        // real drafts. Every repetition submits a new 50-credit batch, at most 500.
+        // Reload retains the chosen tab. Select game lines explicitly before
+        // using enabled, unused markets for each 50-credit batch, at most 500.
         await page.reload();
+        await expect(
+          page.getByRole("button", { name: "Player props", exact: true }),
+        ).toHaveAttribute("aria-pressed", "true");
+        await page
+          .getByRole("button", { name: "Game lines", exact: true })
+          .click();
         const outcome = page
           .locator(".outcome-selector-group button:not([disabled])")
           .first();
@@ -499,8 +507,11 @@ for (const pending of [false, true])
             }),
           ).toHaveCount(0);
           await expect(
-            page.getByRole("region", { name: "Your weekly card", exact: true }),
-          ).toContainText(`${submitted + 1} submitted bet`);
+            page
+              .getByRole("region", { name: "Your weekly card", exact: true })
+              .getByText("Accepted bets", { exact: true })
+              .locator(".."),
+          ).toHaveText(`Accepted bets${(submitted + 1) * 50}`);
         });
         submitted++;
         const preflight = await rpc(owner, "get_card_review_context", {

@@ -546,7 +546,12 @@ export function SeasonArchiveSchedule({
         </StatusBadge>
       }
     >
-      <ScheduleNavigator initialWeek={18} weeks={weeks} />
+      <ScheduleNavigator
+        initialWeek={18}
+        weeks={weeks}
+        archived
+        browsingScope={`${leagueSlug}:${archive.viewerEntryId}:${archive.nflYear}:archive`}
+      />
       <AuditDetails
         className="mt-5"
         context="This evidence verifies the final schedule shown below and the publication that remained fixed throughout the season."

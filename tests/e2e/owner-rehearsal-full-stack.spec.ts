@@ -323,7 +323,7 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
 
   await advance(page, "Lock roster and open Week 1");
   await page.getByRole("link", { name: "Make my Week 1 card" }).click();
-  await expect(page).toHaveURL(new RegExp(`/l/${leagueSlug}/slate$`));
+  await expect(page).toHaveURL(new RegExp(`/l/${leagueSlug}/slate(?:\\?|$)`));
   const positiveOutcome = page
     .locator(".outcome-selector-group button:not([disabled])")
     .filter({ hasText: /\+\d/ })
@@ -338,7 +338,8 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   ).toBeVisible();
 
   let droppedSealResponse = false;
-  await page.route("**/l/*/slate", async (route) => {
+  const slateRoute = (url: URL) => url.pathname === `/l/${leagueSlug}/slate`;
+  await page.route(slateRoute, async (route) => {
     if (
       !droppedSealResponse &&
       route.request().method() === "POST" &&
@@ -353,7 +354,7 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   });
   await page.getByRole("button", { name: "Confirm and seal card" }).click();
   await expect.poll(() => droppedSealResponse).toBe(true);
-  await page.unroute("**/l/*/slate");
+  await page.unroute(slateRoute);
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "All 1,000 credits are sealed" }),

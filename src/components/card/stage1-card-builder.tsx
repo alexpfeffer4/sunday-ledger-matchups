@@ -2,6 +2,12 @@
 
 import Link from "next/link";
 import {
+  PickFilters,
+  kickoffFilterLabels,
+  type KickoffFilter,
+} from "./pick-filters";
+import { useBrowsingChoices } from "@/components/league/use-browsing-choices";
+import {
   selectionKey,
   sameSelection,
   marketLabels,
@@ -78,21 +84,6 @@ type EditorState = {
 };
 
 const marketTypes = ["MONEYLINE", "SPREAD", "TOTAL"] as const;
-
-const kickoffFilterLabels = {
-  ALL: "All games",
-  THU: "Thursday",
-  FRI: "Friday",
-  SAT: "Saturday",
-  SUN_EARLY: "Sun early",
-  SUN_LATE: "Sun late",
-  SUN_NIGHT: "Sun night",
-  MON: "Monday",
-  TUE: "Tuesday",
-  WED: "Wednesday",
-} as const;
-
-type KickoffFilter = keyof typeof kickoffFilterLabels;
 
 const weekdayFilters: Record<string, Exclude<KickoffFilter, "ALL">> = {
   Thu: "THU",
@@ -252,8 +243,27 @@ function Stage1CardBuilderEditor({
     ? drafts.filter((draft) => !excludedKeys.has(selectionKey(draft)))
     : drafts;
   const submittedKeys = useRef<Set<string>>(new Set());
-  const [marketView, setMarketView] = useState<"GAME" | "PLAYER">("GAME");
-  const [kickoffFilter, setKickoffFilter] = useState<KickoffFilter>("ALL");
+  const availableFilters = (
+    Object.keys(kickoffFilterLabels) as KickoffFilter[]
+  ).filter(
+    (filter) =>
+      filter === "ALL" ||
+      slate.some((event) => kickoffWindow(event.scheduledStartAt) === filter),
+  );
+  const browsing = useBrowsingChoices(
+    state.week
+      ? `picks:${state.viewer.userId}:${state.league.id}:${state.week.id}`
+      : null,
+    {
+      day: { options: availableFilters, fallback: "ALL" },
+      type: {
+        options: state.week?.propsEnabled ? ["GAME", "PLAYER"] : ["GAME"],
+        fallback: "GAME",
+      },
+    },
+  );
+  const marketView = browsing.values.type;
+  const activeKickoffFilter = browsing.values.day;
   const [reviewing, setReviewing] = useState(initialReview);
   const storageKey = cardDraftStorageKey(context);
   useEffect(() => {
@@ -611,16 +621,6 @@ function Stage1CardBuilderEditor({
     setReviewing(true);
   }
 
-  const availableFilters = (
-    Object.keys(kickoffFilterLabels) as KickoffFilter[]
-  ).filter(
-    (filter) =>
-      filter === "ALL" ||
-      slate.some((event) => kickoffWindow(event.scheduledStartAt) === filter),
-  );
-  const activeKickoffFilter = availableFilters.includes(kickoffFilter)
-    ? kickoffFilter
-    : "ALL";
   const visibleEvents = slate.filter(
     (event) =>
       activeKickoffFilter === "ALL" ||
@@ -1115,45 +1115,15 @@ function Stage1CardBuilderEditor({
           ) : null}
           {rolling ? <ActionFeedback state={actionState} /> : null}
 
-          <nav
-            aria-label="Filter games by kickoff"
-            className="flex flex-wrap gap-2"
-          >
-            {availableFilters.map((filter) => (
-              <button
-                aria-pressed={activeKickoffFilter === filter}
-                className={`min-h-11 rounded-full border px-4 text-sm font-semibold transition-colors ${
-                  activeKickoffFilter === filter
-                    ? "border-registry bg-registry text-white"
-                    : "border-control bg-surface hover:border-registry"
-                }`}
-                key={filter}
-                onClick={() => setKickoffFilter(filter)}
-                type="button"
-              >
-                {kickoffFilterLabels[filter]}
-              </button>
-            ))}
-          </nav>
-
-          {state.week.propsEnabled ? (
-            <div
-              aria-label="Bet type"
-              className="border-boundary bg-surface grid grid-cols-2 rounded-lg border p-1"
-            >
-              {(["GAME", "PLAYER"] as const).map((view) => (
-                <button
-                  type="button"
-                  key={view}
-                  aria-pressed={marketView === view}
-                  className={`min-h-11 rounded-md px-3 text-sm font-semibold ${marketView === view ? "bg-registry text-white" : "text-graphite hover:bg-subtle"}`}
-                  onClick={() => setMarketView(view)}
-                >
-                  {view === "GAME" ? "Game lines" : "Player props"}
-                </button>
-              ))}
-            </div>
-          ) : null}
+          <PickFilters
+            availableFilters={availableFilters}
+            activeKickoffFilter={activeKickoffFilter}
+            marketView={marketView}
+            propsEnabled={Boolean(state.week.propsEnabled)}
+            invalid={browsing.invalid}
+            disabled={!browsing.ready}
+            select={browsing.select}
+          />
           {marketView === "PLAYER" && state.week.propsEnabled
             ? visibleEvents.map((event) => (
                 <PlayerPropsGame
@@ -1325,7 +1295,9 @@ function Stage1CardBuilderEditor({
             ) : null}
             {drafts.length === 0 ? (
               <p className="text-muted mt-4 text-sm">
-                Choose a side from the slate to add your first pick.
+                {ownerCard.positions.length
+                  ? "Choose a side from the slate to add another bet."
+                  : "Choose a side from the slate to add your first pick."}
               </p>
             ) : (
               <div className="divide-boundary mt-4 divide-y">
@@ -1461,10 +1433,12 @@ function Stage1CardBuilderEditor({
               </div>
             )}
             <p className="border-boundary text-graphite mt-4 border-t pt-4 text-sm font-semibold">
-              {formatCredits(totalCredits)}{" "}
-              {rolling ? "submitted or drafted" : "used"} ·{" "}
+              {rolling
+                ? `${formatCredits(ownerCard.allocatedCredits)} accepted · ${formatCredits(draftCredits)} in unsubmitted drafts`
+                : `${formatCredits(totalCredits)} used`}{" "}
+              ·{" "}
               {remainingCredits >= 0
-                ? `${formatCredits(remainingCredits)} left`
+                ? `${formatCredits(remainingCredits)} left to allocate`
                 : `${formatCredits(Math.abs(remainingCredits))} over`}
             </p>
           </section>
@@ -1504,7 +1478,8 @@ function Stage1CardBuilderEditor({
       </div>
       <CardTray
         aboveMobileNavigation
-        allocatedCredits={totalCredits}
+        allocatedCredits={rolling ? draftCredits : totalCredits}
+        acceptedCredits={rolling ? ownerCard.allocatedCredits : undefined}
         onReview={reviewCard}
         pickCount={drafts.length}
         remainingCredits={remainingCredits}

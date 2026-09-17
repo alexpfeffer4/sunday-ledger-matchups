@@ -32,6 +32,7 @@ export function PairedMatchupView({
   weeks?: MatchupWeekOption[];
   seasonArchived?: boolean;
 }) {
+  const currentWeek = weeks?.find((week) => week.current)?.week;
   const pregame = matchup.phase === "PREGAME";
   const completed =
     matchup.resultStatus === "FINAL" || matchup.phase === "FINAL";
@@ -57,15 +58,33 @@ export function PairedMatchupView({
         />
         {matchup.historical ? (
           <div className="text-muted mb-3 flex flex-wrap items-center gap-x-5 text-sm">
-            <span>Completed week · Read-only</span>
+            <span>
+              Viewing Week {matchup.week.nflWeek} · Completed week · Read-only
+            </span>
             <Link
               href={`/l/${matchup.league.slug}/matchup`}
               className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
             >
               {seasonArchived
                 ? "Back to season overview"
-                : "Back to current week"}
+                : `Back to current week${currentWeek ? ` · Week ${currentWeek}` : ""}`}
             </Link>
+            {!seasonArchived && currentWeek ? (
+              <>
+                <Link
+                  href={`/l/${matchup.league.slug}/card`}
+                  className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
+                >
+                  My Card · Current Week {currentWeek}
+                </Link>
+                <Link
+                  href={`/l/${matchup.league.slug}/slate`}
+                  className="text-action inline-flex min-h-11 items-center font-semibold hover:underline"
+                >
+                  Make picks · Current Week {currentWeek}
+                </Link>
+              </>
+            ) : null}
           </div>
         ) : null}
         {matchup.spectator ? (

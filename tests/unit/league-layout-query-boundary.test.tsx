@@ -67,6 +67,7 @@ describe("league layout query boundary", () => {
 
   it("retains persisted lookups for a member league", async () => {
     queryMocks.getLeagueState.mockResolvedValueOnce({
+      season: { rulesetSnapshot: null },
       league: {
         name: "Member League",
         nflYear: 2026,

@@ -7,6 +7,10 @@ import { getOwnerRehearsalForLeague } from "@/application/queries/get-owner-rehe
 import { LeagueShell } from "@/components/league/league-shell";
 import { OwnerRehearsalGuide } from "@/components/rehearsal/owner-rehearsal-guide";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
+import {
+  resolveSeasonCardRules,
+  usesRollingSubmissions,
+} from "@/rulesets/card-rules";
 import { formatCredits } from "@/domain/odds/american";
 
 function shellPhaseLabel(state: Stage1StateDto): string {
@@ -123,6 +127,12 @@ export default async function LeagueLayout({
     );
   }
   if (live) {
+    const resolved = resolveSeasonCardRules(
+      live.season.rulesetSnapshot,
+      live.league.mode,
+    );
+    const rolling =
+      resolved.supported && usesRollingSubmissions(resolved.rules);
     return (
       <LeagueShell
         leagueSlug={leagueSlug}
@@ -136,7 +146,7 @@ export default async function LeagueLayout({
         }
         cardStatusLabel={
           live.ownerCard
-            ? `${formatCredits(live.ownerCard.allocatedCredits)} / 1,000 used`
+            ? `Week ${live.week?.nflWeek ?? 1} · ${formatCredits(live.ownerCard.allocatedCredits)} ${rolling ? "accepted" : "sealed"}`
             : ["PLAYOFFS", "CHAMPION_FINAL"].includes(live.league.lifecycle)
               ? live.league.lifecycle === "CHAMPION_FINAL"
                 ? "Champion final · Week 18 next"

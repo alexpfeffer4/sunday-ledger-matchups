@@ -415,3 +415,5 @@ export function PlayerPropsPreview({
     </main>
   );
 }
+
+export { previewEvents };

@@ -276,6 +276,18 @@ begin
   end if;
 
   for v_week in 1..17 loop
+    -- Like the rolling lifecycle fixture, this rollback-only test grows whole
+    -- seasons in one transaction. Background ANALYZE cannot see these rows;
+    -- refresh statistics before each week so lineage checks use current counts.
+    -- Keep the real authority calls, assertions and suite time limit unchanged.
+    analyze private.season_weeks, private.season_entries, private.weekly_cards,
+      private.sports_events, private.slates, private.slate_items,
+      private.market_snapshots, private.live_quote_heads,
+      private.position_receipts, private.settlement_versions,
+      private.event_result_versions, private.weekly_score_versions,
+      private.matchups, private.matchup_result_versions,
+      private.standings_snapshots, private.playoff_publications,
+      private.playoff_round_publications;
     perform pg_temp.phase8_commissioner();
     v_open_at := pg_temp.phase8_week_open(v_week);
     perform api.advance_simulated_time(

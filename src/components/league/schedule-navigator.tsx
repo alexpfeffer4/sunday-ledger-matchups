@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
+import { useBrowsingChoices } from "./use-browsing-choices";
 import { formatCenticredits } from "@/domain/odds/american";
 
 export type ScheduleMatchupRecord = {
@@ -92,8 +93,12 @@ export function MatchupRow({ matchup }: { matchup: ScheduleMatchupRecord }) {
 export function ScheduleNavigator({
   initialWeek,
   weeks,
+  browsingScope,
+  archived = false,
 }: {
   initialWeek: number;
+  browsingScope?: string;
+  archived?: boolean;
   weeks: ScheduleWeekRecord[];
 }) {
   const availableWeeks = useMemo(
@@ -101,11 +106,22 @@ export function ScheduleNavigator({
     [weeks],
   );
   const fallbackWeek = availableWeeks[0]?.week ?? initialWeek;
-  const [selectedWeek, setSelectedWeek] = useState(
-    availableWeeks.some((week) => week.week === initialWeek)
-      ? initialWeek
-      : fallbackWeek,
+  const browsing = useBrowsingChoices(
+    browsingScope ? `schedule:${browsingScope}` : null,
+    {
+      week: {
+        options: availableWeeks.map((week) => String(week.week)),
+        fallback: String(
+          availableWeeks.some((week) => week.week === initialWeek)
+            ? initialWeek
+            : fallbackWeek,
+        ),
+      },
+    },
   );
+  const selectedWeek = Number(browsing.values.week);
+  const setSelectedWeek = (week: number) =>
+    browsing.select("week", String(week));
 
   const selectedIndex = availableWeeks.findIndex(
     (week) => week.week === selectedWeek,
@@ -116,6 +132,18 @@ export function ScheduleNavigator({
 
   return (
     <section aria-labelledby="selected-schedule-week" className="mt-6">
+      {browsing.invalid ? (
+        <p role="status" className="text-muted mb-3 text-sm">
+          That week is unavailable. Showing Week {selectedWeek}.
+        </p>
+      ) : null}
+      <p className="text-muted mb-3 text-sm" aria-live="polite">
+        {archived
+          ? `Archived season · Viewing Week ${selectedWeek}`
+          : selectedWeek === initialWeek
+            ? `Current week · Week ${initialWeek}`
+            : `Viewing Week ${selectedWeek} · Current week is Week ${initialWeek}`}
+      </p>
       <div className="border-boundary bg-surface flex flex-wrap items-end gap-3 rounded-lg border p-3">
         <label className="min-w-[10rem] flex-1" htmlFor="schedule-week">
           <span className="text-muted block text-xs font-bold uppercase">
@@ -124,6 +152,7 @@ export function ScheduleNavigator({
           <select
             className="border-control bg-surface mt-1 min-h-12 w-full rounded-lg border px-3 text-sm font-semibold"
             id="schedule-week"
+            disabled={!browsing.ready}
             onChange={(event) => setSelectedWeek(Number(event.target.value))}
             value={selectedWeek}
           >
@@ -137,7 +166,7 @@ export function ScheduleNavigator({
         <div className="grid grid-cols-2 gap-2">
           <button
             className="border-control hover:border-registry hover:text-registry min-h-12 rounded-lg border px-4 text-sm font-semibold disabled:opacity-40"
-            disabled={selectedIndex <= 0}
+            disabled={!browsing.ready || selectedIndex <= 0}
             onClick={() =>
               setSelectedWeek(availableWeeks[selectedIndex - 1]!.week)
             }
@@ -147,7 +176,9 @@ export function ScheduleNavigator({
           </button>
           <button
             className="border-control hover:border-registry hover:text-registry min-h-12 rounded-lg border px-4 text-sm font-semibold disabled:opacity-40"
-            disabled={selectedIndex >= availableWeeks.length - 1}
+            disabled={
+              !browsing.ready || selectedIndex >= availableWeeks.length - 1
+            }
             onClick={() =>
               setSelectedWeek(availableWeeks[selectedIndex + 1]!.week)
             }
