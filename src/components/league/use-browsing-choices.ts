@@ -72,9 +72,16 @@ export function useBrowsingChoices(scope: string | null, choices: Choices) {
     choices,
   );
   const serialized = JSON.stringify(values);
+  const ready =
+    Boolean(raw) &&
+    (invalid ||
+      Object.entries(values).every(
+        ([name, value]) => new URLSearchParams(search).get(name) === value,
+      ));
 
   useEffect(() => {
-    if (!raw || invalid) return;
+    // A pending effect must never normalize over a newer deliberate selection.
+    if (!raw || invalid || raw !== snapshot()) return;
     try {
       if (scope) sessionStorage.setItem(prefix + scope, serialized);
     } catch {
@@ -95,10 +102,10 @@ export function useBrowsingChoices(scope: string | null, choices: Choices) {
       );
       window.dispatchEvent(new Event(changed));
     }
-  }, [raw, invalid, scope, serialized]);
+  }, [raw, invalid, scope, serialized, snapshot]);
 
   function select(name: string, value: string) {
-    if (!choices[name]?.options.includes(value)) return;
+    if (!ready || !choices[name]?.options.includes(value)) return;
     const next = { ...values, [name]: value };
     const url = new URL(window.location.href);
     for (const [key, selection] of Object.entries(next))
@@ -112,7 +119,7 @@ export function useBrowsingChoices(scope: string | null, choices: Choices) {
     }
     window.dispatchEvent(new Event(changed));
   }
-  return { values, invalid, select };
+  return { values, invalid, ready, select };
 }
 
 /** Signing out clears only browsing preferences, never the private draft store. */

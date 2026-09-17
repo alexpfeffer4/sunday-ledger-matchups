@@ -1121,6 +1121,7 @@ function Stage1CardBuilderEditor({
             marketView={marketView}
             propsEnabled={Boolean(state.week.propsEnabled)}
             invalid={browsing.invalid}
+            disabled={!browsing.ready}
             select={browsing.select}
           />
           {marketView === "PLAYER" && state.week.propsEnabled

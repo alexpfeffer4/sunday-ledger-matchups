@@ -760,6 +760,7 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   await page
     .getByRole("combobox", { name: "Selected week", exact: true })
     .selectOption("1");
+  await expect(page).toHaveURL(new RegExp(`/l/${slug}/schedule\\?week=1$`));
   await page.reload();
   await expect(
     page.getByRole("combobox", { name: "Selected week", exact: true }),

@@ -7,6 +7,8 @@ import {
   screen,
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import { renderToString } from "react-dom/server";
+import { hydrateRoot, type Root } from "react-dom/client";
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
 import { OwnerCardProgress } from "@/components/card/owner-card-progress";
 import {
@@ -56,6 +58,46 @@ function fixture() {
   state.slate[1].scheduledStartAt = "2026-09-15T00:15:00Z";
   return state;
 }
+
+it("restores the saved week before enabling a server-rendered Schedule", async () => {
+  window.history.replaceState(null, "", "/l/test/schedule");
+  sessionStorage.setItem(
+    "sunday-ledger:browsing:v1:schedule:hydration",
+    '{"week":"1"}',
+  );
+  const schedule = (
+    <ScheduleNavigator
+      initialWeek={2}
+      browsingScope="hydration"
+      weeks={[1, 2].map((week) => ({
+        week,
+        label: `Week ${week}`,
+        status: "Published",
+        matchups: [],
+      }))}
+    />
+  );
+  const container = document.createElement("div");
+  document.body.append(container);
+  container.innerHTML = renderToString(schedule);
+  const select = container.querySelector("select")!;
+  expect(select).toBeDisabled();
+  let root: Root | undefined;
+  try {
+    await act(async () => {
+      root = hydrateRoot(container, schedule);
+    });
+    expect(select).toBeEnabled();
+    expect(select).toHaveValue("1");
+    expect(window.location.search).toBe("?week=1");
+    fireEvent.change(select, { target: { value: "2" } });
+    expect(select).toHaveValue("2");
+    expect(window.location.search).toBe("?week=2");
+  } finally {
+    await act(async () => root?.unmount());
+    container.remove();
+  }
+});
 
 it("keeps both filters through My Card, reload and Back without modifying the owner's draft", () => {
   const state = fixture();

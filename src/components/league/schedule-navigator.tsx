@@ -152,6 +152,7 @@ export function ScheduleNavigator({
           <select
             className="border-control bg-surface mt-1 min-h-12 w-full rounded-lg border px-3 text-sm font-semibold"
             id="schedule-week"
+            disabled={!browsing.ready}
             onChange={(event) => setSelectedWeek(Number(event.target.value))}
             value={selectedWeek}
           >
@@ -165,7 +166,7 @@ export function ScheduleNavigator({
         <div className="grid grid-cols-2 gap-2">
           <button
             className="border-control hover:border-registry hover:text-registry min-h-12 rounded-lg border px-4 text-sm font-semibold disabled:opacity-40"
-            disabled={selectedIndex <= 0}
+            disabled={!browsing.ready || selectedIndex <= 0}
             onClick={() =>
               setSelectedWeek(availableWeeks[selectedIndex - 1]!.week)
             }
@@ -175,7 +176,9 @@ export function ScheduleNavigator({
           </button>
           <button
             className="border-control hover:border-registry hover:text-registry min-h-12 rounded-lg border px-4 text-sm font-semibold disabled:opacity-40"
-            disabled={selectedIndex >= availableWeeks.length - 1}
+            disabled={
+              !browsing.ready || selectedIndex >= availableWeeks.length - 1
+            }
             onClick={() =>
               setSelectedWeek(availableWeeks[selectedIndex + 1]!.week)
             }

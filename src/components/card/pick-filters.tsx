@@ -21,6 +21,7 @@ export function PickFilters({
   marketView,
   propsEnabled,
   invalid,
+  disabled,
   select,
 }: {
   availableFilters: KickoffFilter[];
@@ -28,6 +29,7 @@ export function PickFilters({
   marketView: string;
   propsEnabled: boolean;
   invalid: boolean;
+  disabled: boolean;
   select: (name: string, value: string) => void;
 }) {
   return (
@@ -52,6 +54,7 @@ export function PickFilters({
                 : "border-control bg-surface hover:border-registry"
             }`}
             key={filter}
+            disabled={disabled}
             onClick={() => select("day", filter)}
             type="button"
           >
@@ -68,6 +71,7 @@ export function PickFilters({
             <button
               type="button"
               key={view}
+              disabled={disabled}
               aria-pressed={marketView === view}
               className={`min-h-11 rounded-md px-3 text-sm font-semibold ${marketView === view ? "bg-registry text-white" : "text-graphite hover:bg-subtle"}`}
               onClick={() => select("type", view)}

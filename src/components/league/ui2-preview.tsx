@@ -192,6 +192,7 @@ export function Ui2Preview({
                 marketView={browsing.values.type!}
                 propsEnabled
                 invalid={browsing.invalid}
+                disabled={!browsing.ready}
                 select={browsing.select}
               />
               {events
