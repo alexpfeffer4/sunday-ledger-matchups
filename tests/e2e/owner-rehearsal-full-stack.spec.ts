@@ -483,7 +483,9 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   await advance(page, "Show Week 8 result");
   await advance(page, "Apply Week 8 correction");
   await page.getByRole("link", { name: "See corrected result" }).click();
-  await expect(page.getByText(/Corrected/).first()).toBeVisible();
+  await expect(
+    page.getByText("Corrected final", { exact: true }).first(),
+  ).toBeVisible();
   await page.goto("/owner/rehearsal");
   // This checkpoint runs several complete weeks through the real lifecycle.
   // Allow its batched work to finish on shared CI before asserting completion.

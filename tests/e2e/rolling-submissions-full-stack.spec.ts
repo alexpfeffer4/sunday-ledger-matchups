@@ -357,9 +357,11 @@ commit;
     await expect(page.getByLabel("Rolling Member 0 unused credits")).toHaveText(
       "350 credits available to bet",
     );
+    const nextAction = page.getByRole("region", { name: "Your weekly card" });
+    await expect(nextAction).toContainText("350 credits not yet submitted");
     await expect(
-      page.getByRole("region", { name: "Matchup remains open" }),
-    ).toContainText("More bets can still be submitted");
+      nextAction.getByRole("link", { name: "Add another bet", exact: true }),
+    ).toHaveAttribute("href", `/l/${slug}/slate`);
     await expect(
       page.getByRole("heading", { name: /You won|You lost/ }),
     ).toHaveCount(0);
