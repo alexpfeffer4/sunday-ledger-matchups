@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
+import { WebAnalytics } from "@/components/web-analytics";
 import { RouteFocusManager } from "@/components/navigation/route-focus-manager";
 import "./globals.css";
 
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           {children}
         </div>
+        {process.env.VERCEL_ENV === "production" && <WebAnalytics />}
       </body>
     </html>
   );
