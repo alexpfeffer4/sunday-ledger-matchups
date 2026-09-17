@@ -1,3 +1,4 @@
+import { openGameLinesFor } from "./game-lines";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   expect,
@@ -328,6 +329,7 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
     .locator(".outcome-selector-group button:not([disabled])")
     .filter({ hasText: /\+\d/ })
     .first();
+  await openGameLinesFor(positiveOutcome);
   await expect(positiveOutcome).toBeVisible();
   await positiveOutcome.click();
   await page.getByLabel("Stake in credits").fill("1000");

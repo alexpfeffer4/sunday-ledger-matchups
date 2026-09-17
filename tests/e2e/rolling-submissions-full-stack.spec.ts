@@ -1,3 +1,4 @@
+import { openGameLinesFor } from "./game-lines";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
@@ -75,6 +76,7 @@ async function submitBet(
     name: `${event.awayTeam} at ${event.homeTeam}`,
     exact: true,
   });
+  await openGameLinesFor(game);
   // The first/third market groups are the existing moneyline/total controls.
   const market = game
     .locator(".outcome-selector-group")

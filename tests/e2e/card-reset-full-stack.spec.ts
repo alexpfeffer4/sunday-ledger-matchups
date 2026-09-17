@@ -1,3 +1,4 @@
+import { openGameLinesFor } from "./game-lines";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
@@ -354,6 +355,7 @@ commit;`),
     name: `${sameEvent.awayTeam} at ${sameEvent.homeTeam}`,
     exact: true,
   });
+  await openGameLinesFor(game);
   await game
     .locator(".outcome-selector-group")
     .first()

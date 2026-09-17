@@ -1150,7 +1150,7 @@ function Stage1CardBuilderEditor({
                   <h2 className="sr-only" id={`card-builder-event-${event.id}`}>
                     {event.awayTeam} at {event.homeTeam}
                   </h2>
-                  <details className="group/game-lines" open>
+                  <details className="group/game-lines">
                     <summary className="min-h-11 cursor-pointer list-none marker:hidden [&::-webkit-details-marker]:hidden">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">

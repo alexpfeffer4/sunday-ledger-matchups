@@ -1,3 +1,4 @@
+import { openGameLinesFor } from "./game-lines";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
@@ -419,6 +420,7 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     `Rendered enabled card outcomes: ${JSON.stringify(outcomeLabels)}`,
   ).toBeGreaterThanOrEqual(0);
   const standardOutcome = availableOutcomes.nth(standardOutcomeIndex);
+  await openGameLinesFor(standardOutcome);
   await expect(standardOutcome).toBeVisible();
   await standardOutcome.click();
   await page.getByLabel("Stake in credits").fill("1000");
