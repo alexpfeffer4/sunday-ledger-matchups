@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { queryFailure } from "@/application/queries/query-failure";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import { SignOutForm } from "@/components/auth/sign-out-form";
@@ -84,8 +85,9 @@ function LeagueList({
   );
 }
 
-export default async function LeaguesPage() {
+async function loadLeagues() {
   const supabase = await createSupabaseServerClient();
+  const startedAt = performance.now();
   const leaguesResult = await supabase
     .schema("api")
     .from("my_leagues")
@@ -93,6 +95,18 @@ export default async function LeaguesPage() {
       "id, name, slug, role, mode, nfl_year, lifecycle, archived_at, member_count, current_week, joined_at",
     )
     .order("joined_at", { ascending: false });
+  if (leaguesResult.error)
+    throw queryFailure(
+      "my_leagues",
+      startedAt,
+      leaguesResult.error,
+      "Your league list could not be loaded.",
+    );
+  return leaguesResult;
+}
+
+export default async function LeaguesPage() {
+  const leaguesResult = await loadLeagues();
   const leagues: LeagueSummary[] = (leaguesResult.data ?? []).flatMap(
     (league) => {
       if (

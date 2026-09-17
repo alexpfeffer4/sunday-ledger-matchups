@@ -1,3 +1,4 @@
+import { afterEach } from "vitest";
 import "@testing-library/jest-dom/vitest";
 
 // JSDOM does not perform layout. Geometry and ResizeObserver behavior are
@@ -17,3 +18,11 @@ if (typeof HTMLDialogElement !== "undefined") {
     this.dispatchEvent(new Event("close"));
   };
 }
+
+// Browser preferences/history belong to one test's tab, like private drafts.
+afterEach(() => {
+  if (typeof window !== "undefined") {
+    window.sessionStorage.clear();
+    window.history.replaceState(null, "", "/");
+  }
+});

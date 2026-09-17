@@ -87,7 +87,7 @@ export function LeagueShell({
               {leagueName}
             </span>
             <span className="text-muted mt-0.5 block text-xs">
-              {nflYear} · Week {week}
+              {nflYear} · {archiveMode ? "Week" : "Current week"} {week}
             </span>
             <span className="text-muted mt-0.5 block text-xs leading-4">
               {phaseLabel} ·{" "}
@@ -137,7 +137,8 @@ export function LeagueShell({
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold">{leagueName}</p>
                 <p className="text-muted text-xs leading-4">
-                  Week {week} · {phaseLabel} ·{" "}
+                  {archiveMode ? "Week" : "Current week"} {week} · {phaseLabel}{" "}
+                  ·{" "}
                   {exampleMode
                     ? "Example Season · Read-only"
                     : mode === "LIVE"
@@ -154,7 +155,8 @@ export function LeagueShell({
                 {leagueName} / {nflYear}
               </p>
               <p className="text-muted text-xs">
-                NFL · Week {week} · {phaseLabel} ·{" "}
+                NFL · {archiveMode ? "Week" : "Current week"} {week} ·{" "}
+                {phaseLabel} ·{" "}
                 {exampleMode
                   ? "Example Season · Read-only"
                   : mode === "LIVE"

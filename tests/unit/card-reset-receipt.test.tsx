@@ -177,7 +177,7 @@ describe("owner reset history presentation", () => {
       "0 submitted bets · 0 credits committed",
     );
     expect(
-      within(progress).getByText("Available to bet").nextElementSibling,
+      within(progress).getByText("Left to allocate").nextElementSibling,
     ).toHaveTextContent("1,000");
     expect(screen.getByRole("status")).toHaveTextContent(
       "Your Week 2 picks were reset",

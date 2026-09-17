@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 type QueryOperation =
+  | "my_leagues"
   | "get_stage1_state"
   | "get_live_quote_heads"
   | "get_player_prop_menu"

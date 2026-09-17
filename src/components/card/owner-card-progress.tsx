@@ -67,6 +67,46 @@ export function OwnerCardProgress({
   if (!context.week || !context.ownerCard) return null;
   if (usesRollingSubmissions(context.rules)) {
     const card = context.ownerCard;
+    const draftCredits = drafts.reduce(
+      (sum, draft) => sum + draft.stakeCredits,
+      0,
+    );
+    const leftToAllocate = card.remainingCredits - draftCredits;
+    const allocation = (
+      <dl
+        aria-label="Weekly credit allocation"
+        className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3"
+      >
+        <div>
+          <dt className="text-muted">Accepted bets</dt>
+          <dd className="mt-1 font-mono text-lg font-bold">
+            {formatCredits(card.allocatedCredits)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted">Unsubmitted drafts</dt>
+          <dd className="mt-1 font-mono text-lg font-bold">
+            {hydrated ? formatCredits(draftCredits) : "Checking…"}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted">
+            {closed
+              ? "Expired credits"
+              : leftToAllocate < 0
+                ? "Over allocation"
+                : "Left to allocate"}
+          </dt>
+          <dd className="mt-1 font-mono text-lg font-bold">
+            {closed
+              ? formatCredits(card.remainingCredits)
+              : hydrated
+                ? formatCredits(Math.abs(leftToAllocate))
+                : "Checking…"}
+          </dd>
+        </div>
+      </dl>
+    );
     const unsettled = card.positions.filter((position) => !position.settlement);
     const canSubmit =
       !closed &&
@@ -85,7 +125,7 @@ export function OwnerCardProgress({
               {closed
                 ? "Weekly betting is closed"
                 : canSubmit
-                  ? `${formatCredits(card.remainingCredits)} credits available to bet`
+                  ? `${formatCredits(card.remainingCredits)} credits not yet submitted`
                   : card.positions.length
                     ? "Your bets are submitted"
                     : "No bets submitted"}
@@ -101,12 +141,15 @@ export function OwnerCardProgress({
             </p>
             {hydrated && drafts.length ? (
               <p className="text-muted mt-1 text-xs">
-                {drafts.length} unsubmitted{" "}
+                {formatCredits(card.allocatedCredits)} accepted ·{" "}
+                {formatCredits(draftCredits)} in {drafts.length} unsubmitted{" "}
                 {drafts.length === 1 ? "draft" : "drafts"}.{" "}
                 {saved
                   ? "Saved on this device."
                   : "Device storage is unavailable."}{" "}
-                Drafts never submit automatically.
+                {closed
+                  ? "Drafts were not submitted."
+                  : `${formatCredits(Math.max(0, leftToAllocate))} left to allocate. Drafts do not reserve credits.`}
               </p>
             ) : null}
           </div>
@@ -117,9 +160,42 @@ export function OwnerCardProgress({
             {canSubmit
               ? drafts.length
                 ? "Continue picks"
-                : "Make picks"
+                : card.positions.length
+                  ? "Add another bet"
+                  : "Make picks"
               : "View card"}
           </Link>
+        </section>
+      );
+    if (onSlatePage && !closed)
+      return (
+        <section
+          aria-label="Your weekly card"
+          className="border-boundary border-b pb-3"
+        >
+          {allocation}
+          <p className="mt-3 text-sm font-semibold">
+            Each game closes at kickoff.
+            {deadline ? (
+              <>
+                {" "}
+                Unused credits expire{" "}
+                <time dateTime={deadline}>{easternTime(deadline)}</time>.
+              </>
+            ) : null}
+          </p>
+          <p className="text-muted mt-1 text-sm">
+            Drafts are unsubmitted and do not reserve credits.{" "}
+            {saved
+              ? "Saved on this device."
+              : "Device storage is unavailable; keep this page open."}
+          </p>
+          {card.remainingCredits > 0 && card.remainingCredits < 50 ? (
+            <p className="mt-2 text-sm">
+              The remaining {card.remainingCredits} credits cannot fund the
+              50-credit minimum and will expire.
+            </p>
+          ) : null}
         </section>
       );
     return (
@@ -132,30 +208,19 @@ export function OwnerCardProgress({
             {closed ? "Submissions closed" : "Your weekly card"}
           </h2>
           <StatusBadge tone={card.positions.length ? "sealed" : "pending"}>
-            {card.positions.length ? "Submitted" : "Not submitted"}
+            {card.positions.length
+              ? `${card.positions.length} accepted ${card.positions.length === 1 ? "bet" : "bets"}`
+              : "No accepted bets"}
           </StatusBadge>
         </div>
-        <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <dt className="text-muted">
-              {closed ? "Expired credits" : "Available to bet"}
-            </dt>
-            <dd className="mt-1 font-mono text-xl font-bold">
-              {formatCredits(card.remainingCredits)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted">In unsettled bets</dt>
-            <dd className="mt-1 font-mono text-xl font-bold">
-              {formatCredits(
-                unsettled.reduce(
-                  (sum, position) => sum + position.stakeCredits,
-                  0,
-                ),
-              )}
-            </dd>
-          </div>
-        </dl>
+        {allocation}
+        <p className="text-muted mt-2 text-sm">
+          {formatCredits(
+            unsettled.reduce((sum, position) => sum + position.stakeCredits, 0),
+          )}{" "}
+          credits in unsettled bets. Returns count toward your score and cannot
+          be re-bet.
+        </p>
         <p className="text-graphite mt-3 text-sm">
           {card.positions.length} submitted{" "}
           {card.positions.length === 1 ? "bet" : "bets"} ·{" "}
@@ -185,7 +250,7 @@ export function OwnerCardProgress({
             {saved
               ? "Saved on this device."
               : "Keep this page open; device storage is unavailable."}{" "}
-            Drafts never submit automatically.
+            Drafts do not reserve credits and never submit automatically.
           </p>
         ) : null}
         {closed && !card.positions.length ? (
@@ -202,7 +267,7 @@ export function OwnerCardProgress({
             {drafts.length
               ? "Continue picks"
               : card.positions.length
-                ? "Add more bets"
+                ? "Add another bet"
                 : "Make picks"}
           </Link>
         ) : null}

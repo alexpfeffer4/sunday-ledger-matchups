@@ -432,6 +432,39 @@ for (const games of [14, 16]) {
           exact: true,
         }),
       ).toHaveCount(1);
+      // UI-2: real authenticated round trip, using a published kickoff group.
+      const dayButton = page
+        .getByRole("navigation", { name: "Filter games by kickoff" })
+        .getByRole("button")
+        .nth(1);
+      const dayLabel = await dayButton.innerText();
+      await dayButton.click();
+      await page
+        .getByRole("link", { name: "My Card", exact: true })
+        .filter({ visible: true })
+        .click();
+      await expect(
+        page
+          .getByRole("heading", { name: /My Card|Your card/, exact: false })
+          .first(),
+      ).toBeVisible();
+      await page
+        .getByRole("link", { name: "Make picks", exact: true })
+        .filter({ visible: true })
+        .click();
+      await expect(
+        page.getByRole("button", { name: dayLabel, exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
+      await expect(
+        page.getByRole("button", { name: "Player props", exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
+      await page.reload();
+      await expect(
+        page.getByRole("button", { name: dayLabel, exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
+      await page
+        .getByRole("button", { name: "All games", exact: true })
+        .click();
       // First game-only submission freezes every known identity despite the
       // absent QB line. No quote absence can freeze an empty catalog.
       await addGameDraft(page, early, 100);

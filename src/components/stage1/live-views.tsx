@@ -1336,7 +1336,11 @@ export function Stage1ScheduleView({
         <FormationPanel state={state} />
       ) : (
         <>
-          <ScheduleNavigator initialWeek={currentWeek} weeks={weeks} />
+          <ScheduleNavigator
+            initialWeek={currentWeek}
+            weeks={weeks}
+            browsingScope={`${state.viewer.userId}:${state.league.id}:${state.season.id}:${state.week?.id ?? "formation"}`}
+          />
           <AuditDetails
             className="mt-5"
             context="This evidence verifies the fixed schedule shown above. It never contains private card terms."

@@ -704,8 +704,17 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   await expect(
     page.getByText(opponentMarket.proposition, { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Completed week · Read-only")).toBeVisible();
+  await expect(page.getByText(/Completed week · Read-only/)).toBeVisible();
   expect(await page.content()).not.toContain(opponentReceipt.receiptHash);
+  await expect(
+    page.getByRole("link", { name: "My Card · Current Week 2", exact: true }),
+  ).toHaveAttribute("href", `/l/${slug}/card`);
+  await expect(
+    page.getByRole("link", {
+      name: "Make picks · Current Week 2",
+      exact: true,
+    }),
+  ).toHaveAttribute("href", `/l/${slug}/slate`);
   const ownHistoricalUrl = page.url();
   const otherMatchup = await page
     .getByRole("combobox", { name: "Matchup", exact: true })
@@ -720,7 +729,7 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     .getByRole("combobox", { name: "Matchup", exact: true })
     .selectOption(otherMatchup[0]!);
   await expect(page).toHaveURL(new RegExp(`week=1&matchup=${otherMatchup[0]}`));
-  await expect(page.getByText("Completed week · Read-only")).toBeVisible();
+  await expect(page.getByText(/Completed week · Read-only/)).toBeVisible();
   await page.getByRole("link", { name: "Back to your matchup" }).click();
   await expect(page).toHaveURL(ownHistoricalUrl);
   for (const width of [1440, 390, 320]) {
@@ -737,7 +746,7 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     path: test.info().outputPath("historical-matchup-320.png"),
     fullPage: true,
   });
-  await page.getByRole("link", { name: "Back to current week" }).click();
+  await page.getByRole("link", { name: /Back to current week/ }).click();
   await expect(
     page.getByRole("heading", { name: "Week 2 matchup", exact: true }),
   ).toBeVisible();
@@ -750,6 +759,13 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   await page
     .getByRole("combobox", { name: "Selected week", exact: true })
     .selectOption("1");
+  await page.reload();
+  await expect(
+    page.getByRole("combobox", { name: "Selected week", exact: true }),
+  ).toHaveValue("1");
+  await expect(
+    page.getByText("Viewing Week 1 · Current week is Week 2"),
+  ).toBeVisible();
   await page
     .getByRole("link", { name: /View .* matchup and bets/ })
     .first()
@@ -765,6 +781,54 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
     denied.page.getByRole("heading", {
       name: /This league is not available|There is no Ledger page here/,
     }),
+  ).toBeVisible();
+  // UI-2 forced list failure is confined to this disposable loopback stack.
+  // Restore the existing grant before using the boundary's real retry action.
+  execFileSync(
+    "psql",
+    [
+      databaseUrl!,
+      "-X",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "REVOKE SELECT ON api.my_leagues FROM authenticated",
+    ],
+    { stdio: "pipe" },
+  );
+  try {
+    await page.goto("/leagues");
+    await expect(
+      page.getByRole("heading", { name: "We could not open Your leagues" }),
+    ).toBeVisible();
+    await expect(page.getByText("No active leagues yet")).toHaveCount(0);
+    await expect(
+      page.getByText(/No membership, archive, or league record was changed/),
+    ).toBeVisible();
+    await page.screenshot({
+      path: test.info().outputPath("ui2-league-load-error.png"),
+      fullPage: true,
+    });
+  } finally {
+    execFileSync(
+      "psql",
+      [
+        databaseUrl!,
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-c",
+        "GRANT SELECT ON api.my_leagues TO authenticated",
+      ],
+      { stdio: "pipe" },
+    );
+  }
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Your leagues", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Open league", exact: true }).first(),
   ).toBeVisible();
   await denied.context.close();
   await commissionerBrowser.context.close();

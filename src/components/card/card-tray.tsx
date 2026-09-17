@@ -6,6 +6,7 @@ import { formatCredits } from "@/domain/odds/american";
 export function CardTray({
   aboveMobileNavigation = false,
   allocatedCredits,
+  acceptedCredits,
   onReview,
   pickCount,
   remainingCredits,
@@ -13,6 +14,7 @@ export function CardTray({
 }: {
   aboveMobileNavigation?: boolean;
   allocatedCredits: number;
+  acceptedCredits?: number;
   onReview: () => void;
   pickCount: number;
   remainingCredits: number;
@@ -54,12 +56,23 @@ export function CardTray({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0 flex-1 basis-40">
             <p className="text-sm font-semibold">
-              {pickCount} {pickCount === 1 ? "pick" : "picks"} ·{" "}
-              {formatCredits(allocatedCredits)} allocated
+              {pickCount}{" "}
+              {acceptedCredits !== undefined
+                ? pickCount === 1
+                  ? "draft"
+                  : "drafts"
+                : pickCount === 1
+                  ? "pick"
+                  : "picks"}{" "}
+              · {formatCredits(allocatedCredits)}{" "}
+              {acceptedCredits !== undefined ? "unsubmitted" : "allocated"}
             </p>
             <p className="text-muted mt-0.5 text-xs">
+              {acceptedCredits !== undefined
+                ? `${formatCredits(acceptedCredits)} accepted · `
+                : null}
               {remainingCredits >= 0
-                ? `${formatCredits(remainingCredits)} remaining`
+                ? `${formatCredits(remainingCredits)} ${acceptedCredits !== undefined ? "left to allocate" : "remaining"}`
                 : `${formatCredits(Math.abs(remainingCredits))} over`}
             </p>
           </div>

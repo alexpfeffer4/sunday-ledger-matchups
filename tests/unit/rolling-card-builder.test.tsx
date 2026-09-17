@@ -251,8 +251,10 @@ describe("rolling member submission flow", () => {
       ],
     };
     render(<OwnerCardProgress context={ownerCardContext(state)} />);
-    expect(screen.getByText("Submitted")).toBeVisible();
-    expect(screen.getByText("700")).toBeVisible();
+    expect(screen.getByText("1 accepted bet")).toBeVisible();
+    expect(
+      screen.getByText("Left to allocate").nextElementSibling,
+    ).toHaveTextContent("300");
     expect(screen.getByText(/1 unsubmitted draft/)).toBeVisible();
     expect(JSON.parse(localStorage.getItem(key)!).drafts).toHaveLength(1);
   });
@@ -278,7 +280,9 @@ describe("rolling member submission flow", () => {
         .getAllByRole("button")
         .every((button) => !button.hasAttribute("disabled")),
     ).toBe(true);
-    expect(screen.getByText("Not submitted")).toBeVisible();
+    expect(
+      screen.getByText("Accepted bets").nextElementSibling,
+    ).toHaveTextContent("0");
     expect(screen.queryByText(/missed-week result/)).not.toBeInTheDocument();
   });
   it("keeps active stake entry and focus when server quote heads refresh", () => {

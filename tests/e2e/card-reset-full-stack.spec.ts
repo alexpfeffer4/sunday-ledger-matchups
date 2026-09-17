@@ -242,13 +242,13 @@ commit;`),
     }),
   ).toMatchObject({ status: "RESET" });
   await page.reload();
-  await expect(progress).toContainText(
-    "0 submitted bets · 0 credits committed",
-  );
+  await expect(
+    progress.locator("dt", { hasText: /^Accepted bets$/ }).locator(".."),
+  ).toContainText("0");
   await expect(
     progress
       .locator("div")
-      .filter({ has: page.locator("dt", { hasText: /^Available to bet$/ }) })
+      .filter({ has: page.locator("dt", { hasText: /^Left to allocate$/ }) })
       .last(),
   ).toContainText("1,000");
   await expect(progress).not.toContainText("unsubmitted draft");

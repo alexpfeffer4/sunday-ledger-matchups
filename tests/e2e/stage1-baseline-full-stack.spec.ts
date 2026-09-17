@@ -300,7 +300,7 @@ for (const pending of [false, true])
         for (const [label, path] of [
           ["Make picks", "slate"],
           ["My Card", "card"],
-          [mobile ? "League" : "Overview", "league"],
+          ["League", "league"],
           ["Matchup", "matchup"],
         ]) {
           await timed(`nav-${path}`, async () => {

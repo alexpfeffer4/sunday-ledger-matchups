@@ -1,3 +1,6 @@
+"use client";
+
+import { clearBrowsingChoices } from "@/components/league/use-browsing-choices";
 import { signOutAction } from "@/app/(auth)/auth/actions";
 
 export function SignOutForm({
@@ -8,7 +11,7 @@ export function SignOutForm({
   role?: "menuitem";
 }) {
   return (
-    <form action={signOutAction}>
+    <form action={signOutAction} onSubmit={clearBrowsingChoices}>
       <button className={className} role={role} type="submit">
         Sign out
       </button>

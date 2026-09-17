@@ -48,7 +48,7 @@ describe("historical matchups", () => {
     expect(screen.getByText("Harbor Club", { exact: true })).toBeVisible();
     expect(screen.getByText("Lake Club +2.5")).toBeVisible();
     expect(
-      screen.getByRole("link", { name: "Back to current week" }),
+      screen.getByRole("link", { name: /Back to current week/ }),
     ).toHaveAttribute("href", "/l/sunday-ledger/matchup");
     expect(
       screen.queryByRole("button", { name: /refresh|submit|seal/i }),

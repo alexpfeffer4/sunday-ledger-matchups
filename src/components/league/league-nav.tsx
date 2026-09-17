@@ -22,7 +22,7 @@ const thisWeekItems: readonly NavItem[] = [
 ];
 
 const leaguePrimaryItems: readonly NavItem[] = [
-  { label: "Overview", segment: "league", icon: "league" },
+  { label: "League", segment: "league", icon: "league" },
 ];
 
 const mobileItems: readonly NavItem[] = [
@@ -62,7 +62,12 @@ function DesktopNavGroup({
       <ul className="space-y-1">
         {items.map((item) => {
           const href = item.href ?? `${base}/${item.segment}`;
-          const active = isActive(pathname, href);
+          const active =
+            isActive(pathname, href) ||
+            (item.segment === "league" &&
+              leagueSectionSegments.some((segment) =>
+                isActive(pathname, `${base}/${segment}`),
+              ));
 
           return (
             <li className="group relative" key={item.href ?? item.segment}>
@@ -129,7 +134,7 @@ export function LeagueDesktopNav({
       <DesktopNavGroup
         base={base}
         items={leaguePrimaryItems}
-        label="League"
+        label="Season"
         pathname={pathname}
       />
       <div className="border-boundary my-5 border-t" />
