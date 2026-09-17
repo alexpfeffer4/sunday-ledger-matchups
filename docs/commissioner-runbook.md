@@ -132,9 +132,15 @@ final within 48 hours of its original scheduled kickoff. This is a conservative
 operating target; do not wait until the last game of the entire slate finishes.
 Automatic retries stop at kickoff +60 hours. A previously captured final remains
 stored when that event disappears from the provider; other dates continue importing.
-If a game has never been captured, use the existing objective result/correction path
-with an identifiable official source, or the frozen 48-hour void policy when its
-conditions genuinely apply. Never fabricate a score or finalize an unresolved week.
+If a game's first final has never been captured, use the bounded score check in
+**Recovery**. The existing correction form and `api.correct_live_event_result`
+require a previous result; they cannot create the first final. No verified manual
+first-result operating process is established. The owner must separately decide
+who may enter it, which official evidence is required and how duplicate/retry and
+audit protections work. Leave the game unresolved if retrieval still fails.
+The frozen postponement-void policy applies only when its own conditions are met;
+missing provider data is not a reason to void. Never invent a score or finalize
+an unresolved week.
 
 ## Corrections, retry recovery, and safe failures
 

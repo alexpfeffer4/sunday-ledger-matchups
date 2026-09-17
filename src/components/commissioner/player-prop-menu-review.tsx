@@ -143,7 +143,9 @@ export function PlayerPropMenuReview({
         </p>
       ) : (
         <p className="text-muted mt-3 text-sm">
-          Prepare the automatic proposal for the published games.
+          {automaticValidation
+            ? "Waiting for the complete structural menu and source evidence. This is separate from individual unavailable props; no weekly confirmation is required."
+            : "Prepare the proposal for the published games."}
         </p>
       )}
       {!readOnly ? (
@@ -199,9 +201,6 @@ export function PlayerPropMenuReview({
               <details
                 key={eventId}
                 className="border-boundary rounded-lg border px-4 py-2"
-                open={gameSlots.some(
-                  (slot) => !slot.subjectId || Boolean(slot.unavailableReason),
-                )}
               >
                 <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">
                   {gameSlots[0]?.eventLabel ??
@@ -361,8 +360,9 @@ export function PlayerPropMenuReview({
         <form action={openWeek} className="border-boundary mt-5 border-t pt-5">
           <input type="hidden" name="leagueSlug" value={leagueSlug} />
           <p className="text-graphite text-sm leading-6">
-            The player menu is reviewed. Open the week to make game lines and
-            available player props ready for bets.{" "}
+            {automaticValidation
+              ? "The player menu has system validation. Automatic opening remains subject to its schedule and readiness checks; this is an eligible manual fallback."
+              : "The player menu is reviewed. Open the week to make game lines and available player props ready for bets."}{" "}
             {progressiveAvailability
               ? "Eligible empty slots can fill automatically before their game’s betting cutoff. Published players stay fixed."
               : "Confirmed unresolved slots remain unavailable; known players can receive lines later."}

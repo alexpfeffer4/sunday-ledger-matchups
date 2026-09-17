@@ -44,7 +44,12 @@ export function SeasonAutomationPreview() {
         prior.preset ??
         "ALL_NFL_GAMES") as SeasonAutomationStatus["preset"],
       approvedAt: "2026-09-16T14:00:00Z",
-      next: { status: "WAITING", week: 3, blocker: "PREVIOUS_WEEK_RESULTS" },
+      next:
+        command === "REVOKE"
+          ? { status: "REVOKED" }
+          : command === "PAUSE"
+            ? { status: "PAUSED" }
+            : { status: "WAITING", week: 3, blocker: "PREVIOUS_WEEK_RESULTS" },
     }));
     return {
       status: "success",
@@ -69,6 +74,12 @@ export function SeasonAutomationPreview() {
           leagueSlug="fixture-preview"
           status={status}
           action={action}
+        />
+        <SeasonAutomationPanel
+          leagueSlug="fixture-preview"
+          status={status}
+          action={action}
+          section="audit"
         />
         <div className="flex flex-wrap gap-3">
           <button

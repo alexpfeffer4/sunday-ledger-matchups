@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Stage1CommissionerControls } from "@/components/commissioner/stage1-controls";
 import {
   InvitePreviewPanel,
@@ -28,7 +28,14 @@ vi.mock("@/app/l/[leagueSlug]/actions", () => ({
   setStage1EventLiveAction: vi.fn(),
 }));
 
-afterEach(cleanup);
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-09-10T12:00:00Z"));
+});
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 const preview = {
   commissioner_name: "Alex",
@@ -134,7 +141,7 @@ describe("Phase 1 invitation experience", () => {
       />,
     );
 
-    expect(screen.getByText("Complete the league roster")).toBeVisible();
+    expect(screen.getByText("Roster needs members")).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Create default invitation link" }),
     ).toBeVisible();
@@ -162,10 +169,6 @@ describe("Phase 1 invitation experience", () => {
       />,
     );
 
-    expect(screen.getByRole("link", { name: "Start season" })).toHaveAttribute(
-      "href",
-      "#season-start",
-    );
     expect(
       screen.getByRole("button", { name: "Import NFL markets for review" }),
     ).toBeVisible();

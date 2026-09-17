@@ -318,6 +318,7 @@ for (const games of [14, 16]) {
     const spectator = await spectatorContext.newPage();
     try {
       await signIn(page, identities[0]!, `/l/${slug}/commissioner`);
+      await page.getByRole("link", { name: /View player details/ }).click();
       await expect(
         page.getByRole("heading", {
           name: "Review the proposed player menu",
@@ -381,6 +382,7 @@ for (const games of [14, 16]) {
         })
         .toBe(true);
       await page.reload();
+      await page.getByRole("link", { name: /View player details/ }).click();
       // Opening removes this form, so the committed OPEN state below is its
       // completion check instead of feedback inside the removed component.
       await completePlayerPropsAction(

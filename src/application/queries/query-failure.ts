@@ -6,7 +6,8 @@ type QueryOperation =
   | "get_live_quote_heads"
   | "get_player_prop_menu"
   | "get_card_review_context"
-  | "get_weekly_close_state";
+  | "get_weekly_close_state"
+  | "get_season_automation";
 
 const safeCodes = new Set([
   "42501",

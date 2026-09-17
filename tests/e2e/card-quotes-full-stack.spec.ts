@@ -782,6 +782,7 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
       .getByRole("button", { name: "Sign in with password" })
       .click();
     await operator.waitForURL(`**/l/${slug}/commissioner`);
+    await operator.getByRole("link", { name: "Recovery", exact: true }).click();
     await operator
       .getByRole("button", {
         name: "Refresh NFL scores & settle completed games",

@@ -1,10 +1,33 @@
+import {
+  automationOwnsWeek,
+  automationPresentation,
+  type SeasonAutomationStatus,
+} from "@/application/automation/status";
 import Link from "next/link";
 import type { Stage1StateDto } from "@/application/queries/stage1-dtos";
 import { PageFrame } from "@/components/league/page-frame";
 import { MatchupStateRefresh } from "@/components/matchup/matchup-state-refresh";
 import { StatusBadge } from "@/components/ui/status-badge";
 
-export function PlayoffPendingView({ state }: { state: Stage1StateDto }) {
+export function PlayoffPendingView({
+  state,
+  automation,
+}: {
+  state: Stage1StateDto;
+  automation?: SeasonAutomationStatus | null;
+}) {
+  const covered = automationOwnsWeek(automation ?? null, 15);
+  const status = automationPresentation(automation ?? null);
+  const publication =
+    state.league.mode === "SIMULATION"
+      ? "Week 14 is final. Your commissioner can publish the playoff field after the applicable review period."
+      : automation === undefined
+        ? "Week 14 is final. If covered by active season automation, the field publishes after the review and readiness checks; otherwise the commissioner uses the publication controls."
+        : automation === null
+          ? "Week 14 is final, but automation status could not be confirmed. Check Commissioner before choosing the next publication step."
+          : covered
+            ? `${status.label}. ${status.detail} Check Commissioner for the next publication step.`
+            : "Week 14 is final. This publication is outside active season automation. Your commissioner can publish the field after the applicable review period.";
   const expected = [
     "PLAYOFFS",
     "CHAMPION_FINAL",
@@ -27,7 +50,7 @@ export function PlayoffPendingView({ state }: { state: Stage1StateDto }) {
         expected
           ? "We could not load the published playoff field. Your qualification and results are unchanged."
           : week14Final
-            ? "Week 14 is final. Your commissioner can publish the playoff field before Week 15 opens."
+            ? publication
             : "The official playoff field is set after Week 14 is final. Follow your position in standings until then."
       }
       aside={
