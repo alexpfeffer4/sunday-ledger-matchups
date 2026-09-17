@@ -62,7 +62,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           {children}
         </div>
-        <WebAnalytics />
+        {process.env.VERCEL_ENV === "production" && <WebAnalytics />}
       </body>
     </html>
   );
