@@ -112,6 +112,17 @@ test("public Practice is factual, unsaved, accessible, and usable at 320 px", as
     page.getByRole("heading", { level: 1, name: "Practice week" }),
   ).toBeVisible();
   await expect(page.getByText("Practice · Unsaved")).toBeVisible();
+  const scope = page.getByRole("region", {
+    name: "Practice uses older full-card rules",
+  });
+  await expect(scope).toContainText("complete card once");
+  await expect(scope).toContainText(
+    "Partial cards count; accepted bets cannot be changed",
+  );
+  await expect(scope).toContainText("Unused credits expire");
+  await expect(
+    scope.getByRole("link", { name: "Compare submission rules" }),
+  ).toHaveAttribute("href", "/rules");
   await expect(
     page.getByText(/not saved and cannot affect a league/i),
   ).toBeVisible();

@@ -37,9 +37,9 @@ test("distinct auth intents preserve the exact safe destination", async ({
     "aria-pressed",
     "true",
   );
-  await page.getByRole("button", { name: "Email link" }).click();
+  await page.getByRole("button", { name: "Email sign-in" }).click();
   await expect(
-    page.getByRole("button", { name: /Email link/ }),
+    page.getByRole("button", { name: /Email sign-in/ }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByText(/existing accounts/i)).toBeVisible();
 
@@ -51,7 +51,7 @@ test("distinct auth intents preserve the exact safe destination", async ({
     page.getByRole("heading", { name: "Create account" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Email account link" }),
+    page.getByRole("button", { name: "Send account email" }),
   ).toBeVisible();
   await expect(
     page.getByText(/required username and password setup/i),
@@ -79,7 +79,7 @@ test("invalid invitation and invalid email-link states are focused and usable", 
   const alert = page.getByRole("main").getByRole("alert");
   await expect(alert).toBeFocused();
   await expect(
-    page.getByRole("button", { name: /Email link/ }),
+    page.getByRole("button", { name: /Email sign-in/ }),
   ).toHaveAttribute("aria-pressed", "true");
 });
 

@@ -90,7 +90,7 @@ export function PasswordRecoveryForm({
             ? "Sending…"
             : secondsRemaining > 0
               ? `Resend available in ${secondsRemaining}s`
-              : "Email recovery link"}
+              : "Send recovery email"}
         </button>
         {state.status !== "idle" && state.field !== "email" ? (
           <p

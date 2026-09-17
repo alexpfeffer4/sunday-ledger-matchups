@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import { SetPasswordForm } from "@/components/auth/set-password-form";
+import { InvitationContext } from "@/components/auth/invitation-context";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Set a password" };
@@ -39,6 +40,7 @@ export default async function SetPasswordPage({
             You are signed in. Save a password for future visits, then continue
             to your invitation or leagues.
           </p>
+          <InvitationContext next={next} />
           <SetPasswordForm next={next} />
         </section>
       </div>

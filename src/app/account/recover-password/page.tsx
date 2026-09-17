@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import { RecoveryPasswordForm } from "@/components/auth/recovery-password-form";
+import { InvitationContext } from "@/components/auth/invitation-context";
 import { SignOutForm } from "@/components/auth/sign-out-form";
 import { BrandLockup } from "@/components/ui/register-mark";
 
@@ -34,15 +35,16 @@ export default async function RecoverPasswordPage({
         </Link>
         <section className="border-boundary bg-surface mt-16 rounded-xl border p-6 shadow-[var(--shadow-card)] sm:p-8">
           <p className="text-positive text-xs font-bold tracking-[0.1em] uppercase">
-            Recovery link confirmed
+            Recovery verified
           </p>
           <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em]">
             Save a new password
           </h1>
-          <p className="text-graphite mt-3 leading-6">
+          <p className="text-graphite mt-3 leading-6 [overflow-wrap:anywhere]">
             Set a password of at least eight characters for {email}. You will
             return to where you left off only after it saves successfully.
           </p>
+          <InvitationContext next={next} />
           <RecoveryPasswordForm next={next} />
         </section>
         <div className="mt-5 flex justify-end">

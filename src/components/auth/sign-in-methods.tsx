@@ -48,7 +48,7 @@ export function SignInMethods({
           onClick={() => setMethod("email")}
           type="button"
         >
-          {method === "email" ? "✓ " : ""}Email link
+          {method === "email" ? "✓ " : ""}Email sign-in
         </button>
       </div>
 

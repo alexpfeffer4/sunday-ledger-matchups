@@ -8,6 +8,7 @@ import { isSupabaseConfigured } from "@/adapters/supabase/config";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
 import { createSupabaseServerClient } from "@/adapters/supabase/server";
 import { MagicLinkForm } from "@/components/auth/magic-link-form";
+import { InvitationContext } from "@/components/auth/invitation-context";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = { title: "Create account" };
@@ -57,10 +58,10 @@ export default async function CreateAccountPage({
             Create account
           </h1>
           <p className="text-graphite mt-3 leading-6">
-            Start with a private one-time email link. Before continuing, you
-            must save the public username your league sees and a password for
-            future sign-ins.
+            Start by verifying your email. Before continuing, you must save the
+            public username your league sees and a password for future sign-ins.
           </p>
+          <InvitationContext next={next} />
           <MagicLinkForm
             sendEmailAction={sendCreateAccountLink}
             intent="create-account"

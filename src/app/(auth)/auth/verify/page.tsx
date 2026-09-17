@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { safeInternalPath } from "@/adapters/supabase/redirect";
+import { InvitationContext } from "@/components/auth/invitation-context";
 import { BrandLockup } from "@/components/ui/register-mark";
 
 export const metadata: Metadata = {
@@ -54,6 +55,7 @@ export default async function VerifyEmailPage({
                   : "Continue to sign in and return where you left off."
               : "The link is incomplete or could not be verified. Request a fresh email and use the newest link."}
           </p>
+          <InvitationContext next={next} />
           {hasCredential ? (
             <form action="/auth/confirm" method="post" className="mt-7">
               {[

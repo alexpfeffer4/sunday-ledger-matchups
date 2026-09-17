@@ -103,7 +103,7 @@ describe("password authentication options", () => {
     await act(async () => {
       fireEvent.submit(
         screen
-          .getByRole("button", { name: "Send sign-in link" })
+          .getByRole("button", { name: "Send sign-in email" })
           .closest("form")!,
       );
     });
@@ -120,9 +120,7 @@ describe("password authentication options", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("expired");
     await act(async () => {
       fireEvent.submit(
-        screen
-          .getByRole("button", { name: "Resend email link" })
-          .closest("form")!,
+        screen.getByRole("button", { name: "Resend email" }).closest("form")!,
       );
     });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -178,7 +176,7 @@ describe("password authentication options", () => {
       "email",
     );
     expect(
-      form.getByRole("button", { name: "Email recovery link" }),
+      form.getByRole("button", { name: "Send recovery email" }),
     ).toBeVisible();
     expect(form.getByDisplayValue("/join/invite-token")).toHaveAttribute(
       "name",
@@ -204,7 +202,7 @@ describe("password authentication options", () => {
 
     expect(screen.getByText(/existing accounts/i)).toBeVisible();
     expect(
-      screen.getByRole("button", { name: "Send sign-in link" }),
+      screen.getByRole("button", { name: "Send sign-in email" }),
     ).toBeVisible();
   });
 
@@ -221,7 +219,7 @@ describe("password authentication options", () => {
       screen.getByText(/required username and password setup/i),
     ).toBeVisible();
     expect(
-      screen.getByRole("button", { name: "Email account link" }),
+      screen.getByRole("button", { name: "Send account email" }),
     ).toBeVisible();
   });
 
@@ -246,7 +244,7 @@ describe("password authentication options", () => {
     await act(async () => {
       fireEvent.submit(
         screen
-          .getByRole("button", { name: "Email account link" })
+          .getByRole("button", { name: "Send account email" })
           .closest("form")!,
       );
     });
@@ -279,7 +277,7 @@ describe("password authentication options", () => {
     await act(async () =>
       fireEvent.submit(
         screen
-          .getByRole("button", { name: "Email recovery link" })
+          .getByRole("button", { name: "Send recovery email" })
           .closest("form")!,
       ),
     );
@@ -335,13 +333,13 @@ describe("password authentication options", () => {
       form.getByRole("button", { name: "Sign in with password" }),
     ).toBeVisible();
     expect(
-      form.queryByRole("button", { name: "Send sign-in link" }),
+      form.queryByRole("button", { name: "Send sign-in email" }),
     ).not.toBeInTheDocument();
 
-    fireEvent.click(form.getByRole("button", { name: "Email link" }));
+    fireEvent.click(form.getByRole("button", { name: "Email sign-in" }));
 
     expect(
-      form.getByRole("button", { name: "Send sign-in link" }),
+      form.getByRole("button", { name: "Send sign-in email" }),
     ).toBeVisible();
     expect(
       form.queryByRole("button", { name: "Sign in with password" }),

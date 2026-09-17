@@ -50,10 +50,38 @@ export default function PracticePage() {
             Practice week
           </h1>
           <p className="text-graphite mt-4 max-w-3xl text-lg leading-7">
-            Use all {allocation} virtual credits across neutral example
-            matchups. This public practice is not saved and cannot affect a
-            league.
+            Try picks, review and scoring with neutral examples. This public
+            practice is not saved and cannot affect a league.
           </p>
+          <section
+            aria-labelledby="practice-scope"
+            className="border-boundary bg-surface mt-6 max-w-3xl rounded-lg border p-5"
+          >
+            <h2 id="practice-scope" className="font-bold">
+              Practice uses older full-card rules
+            </h2>
+            <p className="text-graphite mt-2 text-sm leading-6">
+              In this example only, use all {allocation} credits and seal the
+              complete card once. This is not a walkthrough of current rolling
+              submissions.
+            </p>
+            <p className="text-graphite mt-2 text-sm leading-6">
+              In weeks with rolling submissions, submit one or more bets at a
+              time. Partial cards count; accepted bets cannot be changed. You
+              can use remaining credits on eligible games until each game’s
+              cutoff. Unused credits expire at the final cutoff.
+            </p>
+            <Link
+              href="/rules"
+              className="text-action mt-2 inline-flex min-h-11 items-center text-sm font-semibold hover:underline"
+            >
+              Compare submission rules
+            </Link>
+            <p className="text-muted text-xs leading-5">
+              Your league’s Rules page is the authority for each week, including
+              historical weeks.
+            </p>
+          </section>
         </header>
 
         <InteractiveWeekDemo />
