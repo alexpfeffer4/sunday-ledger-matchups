@@ -21,6 +21,10 @@ The final status record and PR carry actual verification/release results.
   newest link in the requesting browser. Recovery success explains both paths.
   Existing challenges, expiry, resend guidance, replay protection and errors
   remain unchanged. No hosted template, sender, SMTP or Auth setting is changed.
+- Account screens preserve room for 200% text on narrow displays. Method choices
+  stack when their text no longer fits side by side, and password/recovery labels
+  wrap. This fixes overflow reproduced by the new 320px real-Auth check; desktop
+  spacing and all form actions remain unchanged.
 - Public practice prominently identifies its older full-allocation, seal-once
   example. It briefly explains rolling submissions, immutable accepted bets,
   remaining eligible-game credits and expiry, and links to the existing Rules

@@ -554,9 +554,30 @@ test("invitation context reflows, keeps safe next through recovery and survives 
   await page.goto(`/auth/sign-in?next=${encodeURIComponent(next)}`);
   const panel = page.getByRole("complementary", { name: "League invitation" });
   await expect(panel).toContainText(name);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    ),
+  ).toBeTruthy();
+  await page.setViewportSize({ width: 320, height: 800 });
   await page.evaluate(() => {
     document.documentElement.style.fontSize = "200%";
   });
+  // Geometry diagnostics are safe here: this test never enters credentials.
+  const overflow = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("main *"))
+      .filter(
+        (element) =>
+          element.getBoundingClientRect().right > window.innerWidth + 1,
+      )
+      .map((element) => ({
+        tag: element.tagName,
+        classes: element.getAttribute("class"),
+        right: element.getBoundingClientRect().right,
+      })),
+  );
+  expect(overflow).toEqual([]);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth + 1,

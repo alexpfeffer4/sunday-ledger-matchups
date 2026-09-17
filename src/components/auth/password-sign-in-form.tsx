@@ -38,7 +38,7 @@ export function PasswordSignInForm({ next }: { next: string }) {
         ) : null}
       </div>
       <div>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <label htmlFor="password" className="text-sm font-bold">
             Password
           </label>
