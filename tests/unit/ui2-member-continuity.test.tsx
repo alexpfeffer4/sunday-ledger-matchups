@@ -113,9 +113,9 @@ it("keeps both filters through My Card, reload and Back without modifying the ow
   view.unmount();
   window.history.replaceState(null, "", "/l/test/card");
   const card = render(<OwnerCardProgress context={context} onCardPage />);
-  expect(
-    screen.getByText("Left to allocate").nextElementSibling,
-  ).toHaveTextContent("800");
+  expect(screen.getByText("Left to use").nextElementSibling).toHaveTextContent(
+    "800",
+  );
   card.unmount();
   window.history.replaceState(null, "", "/l/test/slate");
   const returned = render(<Stage1CardBuilder state={state} />);

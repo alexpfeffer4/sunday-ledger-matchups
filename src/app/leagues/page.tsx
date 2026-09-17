@@ -49,11 +49,11 @@ function LeagueList({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-lg font-bold">{league.name}</h3>
-              <span className="border-control text-muted rounded-full border px-2 py-0.5 text-[11px] font-semibold">
-                {league.mode === "SIMULATION"
-                  ? "Practice/test · Simulation"
-                  : "Live season"}
-              </span>
+              {league.mode === "SIMULATION" ? (
+                <span className="border-control text-muted rounded-full border px-2 py-0.5 text-[11px] font-semibold">
+                  Practice/test · Simulation
+                </span>
+              ) : null}
               {archived ? (
                 <StatusBadge tone="void">Archived</StatusBadge>
               ) : null}

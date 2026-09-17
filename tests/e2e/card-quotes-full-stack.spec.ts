@@ -499,7 +499,11 @@ for (const frozenVersion of ["1.1", "1.2"] as const) {
       otherPage.getByRole("heading", { name: "Card sealed" }),
     ).toBeVisible();
     await expect(
-      otherPage.getByRole("link", { name: "View receipt", exact: true }),
+      otherPage.getByRole("link", {
+        name: "View receipt",
+        exact: true,
+        includeHidden: true,
+      }),
     ).toHaveCount(1);
     await expect
       .poll(() =>

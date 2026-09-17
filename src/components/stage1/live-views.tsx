@@ -626,7 +626,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
         leagueSlug={state.league.slug}
         receipts={state.ownerCard.resetReceipts ?? []}
       />
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mt-6 space-y-4">
         <div>
           {state.ownerCard.positions.length === 0 ? (
             <p className="border-boundary bg-surface rounded-xl border p-6">
@@ -687,8 +687,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
                   </dl>
                   {position.subjectId ? (
                     <p className="text-muted mt-2 text-xs">
-                      {position.subjectLabel} · {position.subjectTeam} ·{" "}
-                      {marketLabel(position.marketType)} · Full game
+                      {marketLabel(position.marketType)}
                     </p>
                   ) : null}
                   {position.settlement?.finalYards !== null &&
@@ -708,6 +707,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
                     <div className="mt-3">
                       <PickReturn
                         compact
+                        showBreakdown={false}
                         stakeCredits={position.stakeCredits}
                         americanOdds={position.americanOdds}
                       />
@@ -741,13 +741,19 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
                           <dd>{formatDate(position.acceptedAt)}</dd>
                         </div>
                       </dl>
+                      {!position.settlement ? (
+                        <PickReturn
+                          stakeCredits={position.stakeCredits}
+                          americanOdds={position.americanOdds}
+                        />
+                      ) : null}
+                      <Link
+                        className="text-action inline-flex min-h-11 items-center text-sm font-semibold hover:underline"
+                        href={`/l/${state.league.slug}/receipt/${position.id}`}
+                      >
+                        View receipt
+                      </Link>
                     </details>
-                    <Link
-                      className="text-action inline-flex min-h-11 items-center text-sm font-semibold hover:underline"
-                      href={`/l/${state.league.slug}/receipt/${position.id}`}
-                    >
-                      View receipt
-                    </Link>
                   </div>
                 </li>
               ))}
@@ -899,7 +905,7 @@ export function Stage1LeagueView({
       description={
         state.league.lifecycle === "PLAYOFFS"
           ? "Current playoff matchups and final scores."
-          : "This week’s league matchups and scores."
+          : undefined
       }
       aside={paired ? undefined : liveStatus(state)}
     >
@@ -933,9 +939,11 @@ export function Stage1LeagueView({
                       </span>
                     ) : null}
                   </span>
-                  <span className="text-muted shrink-0 text-xs">
-                    {member.role === "COMMISSIONER" ? "Commissioner" : "Member"}
-                  </span>
+                  {member.role === "COMMISSIONER" ? (
+                    <span className="text-muted shrink-0 text-xs">
+                      Commissioner
+                    </span>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -997,7 +1005,6 @@ export function Stage1StandingsView({
             : "Updated after the latest final matchup."
           : undefined
       }
-      aside={liveStatus(state)}
     >
       {state.standings.length === 0 ? (
         <div className="border-boundary bg-surface mt-7 rounded-xl border p-6">

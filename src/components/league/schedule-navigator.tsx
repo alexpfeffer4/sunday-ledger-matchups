@@ -48,7 +48,13 @@ export function MatchupRow({
     >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-muted text-xs font-bold tracking-[0.05em] uppercase">
+          <p
+            className={
+              matchup.competition === "Regular season"
+                ? "sr-only"
+                : "text-muted text-xs font-bold tracking-[0.05em] uppercase"
+            }
+          >
             {matchup.competition}
           </p>
           {matchup.currentMember ? (
@@ -143,7 +149,7 @@ export function ScheduleNavigator({
           That week is unavailable. Showing Week {selectedWeek}.
         </p>
       ) : null}
-      <p className="text-muted mb-3 text-sm" aria-live="polite">
+      <p className="sr-only" aria-live="polite">
         {archived
           ? `Archived season · Viewing Week ${selectedWeek}`
           : selectedWeek === initialWeek
@@ -165,6 +171,7 @@ export function ScheduleNavigator({
             {availableWeeks.map((week) => (
               <option key={week.week} value={week.week}>
                 {week.label}
+                {!archived && week.week === initialWeek ? " · Current" : ""}
               </option>
             ))}
           </select>
@@ -197,7 +204,7 @@ export function ScheduleNavigator({
 
       <div className="border-boundary bg-surface mt-3 overflow-hidden rounded-lg border">
         <div className="border-boundary bg-subtle flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
-          <h2 className="font-bold" id="selected-schedule-week">
+          <h2 className="sr-only" id="selected-schedule-week">
             {selected.label}
           </h2>
           <span className="text-muted text-xs font-bold">

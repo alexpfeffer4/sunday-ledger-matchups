@@ -83,9 +83,7 @@ describe("rolling submission matchup presentation", () => {
     const opponentGames = within(game).getByLabelText(
       "Jordan Rival · Harbor Club at Lake Club",
     );
-    expect(opponentGames).toHaveTextContent(
-      "Bets hidden until confirmed kickoff",
-    );
+    expect(opponentGames).toHaveTextContent("Bet placed");
     expect(opponentGames).not.toHaveTextContent(
       /credits|MONEYLINE|SPREAD|TOTAL|3 bets|[+]100/,
     );
@@ -186,11 +184,7 @@ describe("rolling submission matchup presentation", () => {
       screen.getByLabelText("Jordan Rival outstanding picks and credits"),
     ).toHaveTextContent("100 credits outstanding");
     expect(screen.queryByLabelText("Jordan Rival unused credits")).toBeNull();
-    expect(
-      screen.getByText(
-        "More bets can still be submitted. This matchup remains open.",
-      ),
-    ).toBeVisible();
+    expect(screen.getByText("Betting still open")).toBeVisible();
     expect(screen.queryByText(/clinched|remaining upside/)).toBeNull();
   });
 
@@ -205,11 +199,7 @@ describe("rolling submission matchup presentation", () => {
     expect(projected.scorePath.furtherSubmissionsPossible).toBe(true);
     render(<PairedMatchupView matchup={projected} refreshControl={null} />);
     expect(screen.queryByRole("heading", { name: "You won" })).toBeNull();
-    expect(
-      screen.getByText(
-        "More bets can still be submitted. This matchup remains open.",
-      ),
-    ).toBeVisible();
+    expect(screen.getByText("Betting still open")).toBeVisible();
   });
 
   it("shows unused allocation as expired alongside normal partial-card final scores", () => {
@@ -265,7 +255,7 @@ describe("rolling submission matchup presentation", () => {
     render(<PairedMatchupView matchup={projected} refreshControl={null} />);
     expect(
       screen.getByLabelText("Soup · River Club at Capital Club"),
-    ).toHaveTextContent("Bets hidden until confirmed kickoff");
+    ).toHaveTextContent("Bet placed");
     expect(
       screen.queryByRole("region", { name: "Alex Ledger selected games" }),
     ).toBeNull();
@@ -315,4 +305,44 @@ describe("rolling submission matchup presentation", () => {
       )?.title,
     ).toBe("Betting continues game by game");
   });
+});
+
+it("puts a previous result below current bets without moving the current result", () => {
+  const matchup = fixture("PARTIAL_REVEAL").project();
+  const props = {
+    matchup,
+    refreshControl: null,
+    weeklyClose: <section aria-label="Result summary">Result</section>,
+  };
+  const view = render(<PairedMatchupView {...props} previousResult />);
+  const bets = screen.getByRole("region", { name: "Picks by game" });
+  expect(
+    bets.compareDocumentPosition(
+      screen.getByRole("region", { name: "Result summary" }),
+    ) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  view.rerender(<PairedMatchupView {...props} />);
+  expect(
+    screen
+      .getByRole("region", { name: "Result summary" })
+      .compareDocumentPosition(bets) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+});
+
+it("keeps opponent pregame participation without a redundant own-status badge", () => {
+  const matchup = fixture().project();
+  render(<PairedMatchupView matchup={matchup} refreshControl={null} />);
+  expect(
+    screen.queryByRole("group", {
+      name: `${matchup.self.displayName} card status`,
+    }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("group", {
+      name: `${matchup.opponent.displayName} card status`,
+    }),
+  ).toHaveTextContent(matchup.opponent.cardStatus);
+  expect(
+    screen.queryByText("Pregame", { exact: true }),
+  ).not.toBeInTheDocument();
 });

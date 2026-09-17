@@ -65,7 +65,7 @@ describe("immediate current-week game visibility with legacy betting rules", () 
     expect(games).toHaveLength(2);
     for (const lane of games) {
       expect(within(lane).getAllByText("Bet placed")).toHaveLength(1);
-      expect(lane).toHaveTextContent("Bets hidden until confirmed kickoff");
+      expect(lane).toHaveTextContent("Bet placed");
       expect(lane).not.toHaveTextContent(
         /credits|moneyline|spread|total|[+]100|2 bets/i,
       );
@@ -91,7 +91,7 @@ describe("immediate current-week game visibility with legacy betting rules", () 
     render(<PairedMatchupView matchup={matchup} refreshControl={null} />);
     expect(
       screen.getByLabelText("Jordan Rival · River Club at Capital Club"),
-    ).toHaveTextContent("Bets hidden until confirmed kickoff");
+    ).toHaveTextContent("Bet placed");
     expect(screen.getByText("Lake Club +2.5")).toBeVisible();
     expect(
       screen.getByLabelText("Jordan Rival outstanding picks and credits"),
@@ -146,10 +146,10 @@ describe("immediate current-week game visibility with legacy betting rules", () 
     render(<PairedMatchupView matchup={selected} refreshControl={null} />);
     expect(
       screen.getByLabelText("Soup · Harbor Club at Lake Club"),
-    ).toHaveTextContent("Bets hidden until confirmed kickoff");
+    ).toHaveTextContent("Bet placed");
     expect(
       screen.getByLabelText("Lee · River Club at Capital Club"),
-    ).toHaveTextContent("Bets hidden until confirmed kickoff");
+    ).toHaveTextContent("Bet placed");
     expect(
       screen.queryByRole("region", { name: "Alex Ledger selected games" }),
     ).toBeNull();

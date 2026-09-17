@@ -112,7 +112,9 @@ export function WeeklyCloseModule({
                 {stateSentence}
               </p>
             </div>
-            <StatusBadge tone={resultTone}>{resultLabel}</StatusBadge>
+            {matchup.corrected || matchup.status !== "FINAL" ? (
+              <StatusBadge tone={resultTone}>{resultLabel}</StatusBadge>
+            ) : null}
           </div>
 
           <div
@@ -144,14 +146,17 @@ export function WeeklyCloseModule({
 
       <RecordBridge bridge={bridge} cutline={cutline} />
 
-      <p className="text-graphite mt-3 text-sm leading-6">
-        {matchup.status === "PROVISIONAL"
-          ? "Both cards are settled. The week becomes final when all its games finish and picks settle."
-          : "This matchup result is final."}
-        {matchup.nflWeek === 17 && matchup.scope === "PLAYOFF"
-          ? " Champion confirmation and the complete season archive are separate steps."
-          : ""}
-      </p>
+      {(presentation === "standalone" && matchup.status === "PROVISIONAL") ||
+      (matchup.nflWeek === 17 && matchup.scope === "PLAYOFF") ? (
+        <p className="text-graphite mt-3 text-sm leading-6">
+          {presentation === "standalone" && matchup.status === "PROVISIONAL"
+            ? "Both cards are settled. The week becomes final when all its games finish and picks settle."
+            : ""}
+          {matchup.nflWeek === 17 && matchup.scope === "PLAYOFF"
+            ? " Champion confirmation and the complete season archive are separate steps."
+            : ""}
+        </p>
+      ) : null}
 
       <div className="border-boundary mt-6 border-t pt-5">
         {bridge.nextOpponent ? (

@@ -362,8 +362,15 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
     page.getByRole("heading", { name: "All 1,000 credits are sealed" }),
   ).toBeVisible();
   await page.getByRole("link", { name: "View card", exact: true }).click();
+  await page.getByText("Pick details", { exact: true }).first().click();
   await expect(
-    page.getByRole("link", { name: "View receipt", exact: true }).first(),
+    page
+      .getByRole("link", {
+        name: "View receipt",
+        exact: true,
+        includeHidden: true,
+      })
+      .first(),
   ).toBeVisible();
 
   await page.goto("/owner/rehearsal");
@@ -476,7 +483,12 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   await advance(page, "Show Week 8 result");
   await advance(page, "Apply Week 8 correction");
   await page.getByRole("link", { name: "See corrected result" }).click();
-  await expect(page.getByText(/Corrected/).first()).toBeVisible();
+  await expect(
+    page
+      .locator("[data-league-header]")
+      .getByText(/Corrected/)
+      .filter({ visible: true }),
+  ).toBeVisible();
   await page.goto("/owner/rehearsal");
   // This checkpoint runs several complete weeks through the real lifecycle.
   // Allow its batched work to finish on shared CI before asserting completion.
@@ -505,7 +517,12 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
 
   const leagueLink = page.getByRole("link", { name: "Enter rehearsal" });
   await leagueLink.click();
-  await expect(page.getByText("Season final").first()).toBeVisible();
+  await expect(
+    page
+      .getByText("Season final", { exact: true })
+      .filter({ visible: true })
+      .first(),
+  ).toBeVisible();
   await expect(
     page.getByText(
       "Owner rehearsal · Simulated data · Does not affect Live leagues",

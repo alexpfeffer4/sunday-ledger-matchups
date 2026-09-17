@@ -63,9 +63,6 @@ function Bet({ row }: { row: PositionLedgerItem }) {
         </span>{" "}
         · {marketLabel(row.marketType)}
       </p>
-      {row.subjectTeam ? (
-        <p className="text-muted mt-1 text-xs">{row.subjectTeam} · Full game</p>
-      ) : null}
       {row.finalYards !== null && row.finalYards !== undefined ? (
         <p className="mt-2 text-xs font-semibold">
           Final: {row.finalYards} {marketLabel(row.marketType).toLowerCase()}
@@ -88,16 +85,18 @@ function Bet({ row }: { row: PositionLedgerItem }) {
           <dd className="mt-1 font-mono font-semibold">{returned}</dd>
         </div>
       </dl>
-      <div className="mt-3">
-        <StatusBadge tone={tone} icon={false}>
-          {state}
-        </StatusBadge>
-        {row.corrected && row.outcome ? (
-          <span className="mt-1 block text-xs">
-            {row.outcome.toLowerCase()}
-          </span>
-        ) : null}
-      </div>
+      {state !== "Remaining" ? (
+        <div className="mt-3">
+          <StatusBadge tone={tone} icon={false}>
+            {state}
+          </StatusBadge>
+          {row.corrected && row.outcome ? (
+            <span className="mt-1 block text-xs">
+              {row.outcome.toLowerCase()}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </li>
   );
 }
@@ -114,8 +113,14 @@ export function MatchupLineup({ matchup }: { matchup: PairedMatchupDto }) {
         <h2 className="text-xl font-bold" id="position-ledger-heading">
           Picks by game
         </h2>
-        <p className="text-muted text-xs">Kickoff order · All times Eastern</p>
+        <p className="text-muted text-xs">All times Eastern</p>
       </div>
+      {games.some((game) => game.selfSelected || game.opponentSelected) &&
+      matchup.phase !== "PREGAME" ? (
+        <p className="text-muted mb-3 text-xs">
+          Bets reveal after each game’s start is confirmed.
+        </p>
+      ) : null}
       {games.map((game) => {
         const unrevealed =
           game.selfSelected ||
@@ -190,11 +195,6 @@ export function MatchupLineup({ matchup }: { matchup: PairedMatchupDto }) {
                       <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" />
                     </svg>
                     <span>{selected ? "Bet placed" : "Picks hidden"}</span>
-                  </p>
-                  <p className="text-muted mt-1 text-xs leading-5">
-                    {selected
-                      ? "Bets hidden until confirmed kickoff"
-                      : "Picks hidden until confirmed kickoff"}
                   </p>
                 </div>
               ) : (

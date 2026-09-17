@@ -56,7 +56,13 @@ function DesktopNavGroup({
 }) {
   return (
     <div>
-      <p className="text-muted mb-2 hidden px-3 text-xs font-semibold xl:block">
+      <p
+        className={
+          label === "Utilities"
+            ? "sr-only"
+            : "text-muted mb-2 hidden px-3 text-xs font-semibold xl:block"
+        }
+      >
         {label}
       </p>
       <ul className="space-y-1">

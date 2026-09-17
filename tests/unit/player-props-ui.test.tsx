@@ -610,8 +610,8 @@ describe("full-slate props member experience", () => {
     );
     const games = document.querySelectorAll("details");
     expect(
-      [...games].filter((game) =>
-        game.textContent?.includes("6 of 6 props available"),
+      [...games].filter(
+        (game) => game.querySelectorAll("article").length === 6,
       ),
     ).toHaveLength(16);
     expect([...games].filter((game) => game.open)).toHaveLength(0);
@@ -636,9 +636,7 @@ describe("full-slate props member experience", () => {
       screen.getByText("Player unavailable for this week"),
     ).toBeInTheDocument();
     expect(screen.getByText("Awaiting line")).toBeInTheDocument();
-    expect(
-      screen.getByText("4 of 6 props available · View players"),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/of 6 props available/)).not.toBeInTheDocument();
   });
 
   it("adds two passing-yard drafts for the same game using the shared editor and tray", async () => {

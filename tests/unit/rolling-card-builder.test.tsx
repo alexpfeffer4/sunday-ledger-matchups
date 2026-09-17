@@ -251,11 +251,15 @@ describe("rolling member submission flow", () => {
       ],
     };
     render(<OwnerCardProgress context={ownerCardContext(state)} />);
-    expect(screen.getByText("1 accepted bet")).toBeVisible();
+    expect(screen.getByText("Submitted").nextElementSibling).toHaveTextContent(
+      "300",
+    );
     expect(
-      screen.getByText("Left to allocate").nextElementSibling,
+      screen.getByText("Left to use").nextElementSibling,
     ).toHaveTextContent("300");
-    expect(screen.getByText(/1 unsubmitted draft/)).toBeVisible();
+    expect(screen.getByText("In drafts").nextElementSibling).toHaveTextContent(
+      "400",
+    );
     expect(JSON.parse(localStorage.getItem(key)!).drafts).toHaveLength(1);
   });
   it("keeps later games accessible after common lock and disables started games independently", () => {
@@ -280,9 +284,9 @@ describe("rolling member submission flow", () => {
         .getAllByRole("button")
         .every((button) => !button.hasAttribute("disabled")),
     ).toBe(true);
-    expect(
-      screen.getByText("Accepted bets").nextElementSibling,
-    ).toHaveTextContent("0");
+    expect(screen.getByText("Submitted").nextElementSibling).toHaveTextContent(
+      "0",
+    );
     expect(screen.queryByText(/missed-week result/)).not.toBeInTheDocument();
   });
   it("keeps active stake entry and focus when server quote heads refresh", () => {

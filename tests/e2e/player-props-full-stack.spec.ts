@@ -430,9 +430,7 @@ for (const games of [14, 16]) {
         .getByRole("button", { name: "Player props", exact: true })
         .click();
       await expect(
-        page.getByText("5 of 6 props available · View players", {
-          exact: true,
-        }),
+        page.getByText("Awaiting line", { exact: true }),
       ).toHaveCount(1);
       // UI-2: real authenticated round trip, using a published kickoff group.
       const dayButton = page

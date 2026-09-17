@@ -450,14 +450,14 @@ update private.player_catalog_jobs set next_attempt_at=clock_timestamp() where w
     exact: true,
   });
   await expect(
-    weeklyCard.getByText("Accepted bets", { exact: true }).locator(".."),
-  ).toHaveText("Accepted bets100");
+    weeklyCard.getByText("Submitted", { exact: true }).locator(".."),
+  ).toHaveText("Submitted100");
   await expect(
-    weeklyCard.getByText("Unsubmitted drafts", { exact: true }).locator(".."),
-  ).toHaveText("Unsubmitted drafts0");
+    weeklyCard.getByText("In drafts", { exact: true }).locator(".."),
+  ).toHaveText("In drafts0");
   await expect(
-    weeklyCard.getByText("Left to allocate", { exact: true }).locator(".."),
-  ).toHaveText("Left to allocate900");
+    weeklyCard.getByText("Left to use", { exact: true }).locator(".."),
+  ).toHaveText("Left to use900");
   expect(readFileSync(`${providerFixture}.calls`, "utf8")).toContain(
     `props:${pendingGame.key}:`,
   );

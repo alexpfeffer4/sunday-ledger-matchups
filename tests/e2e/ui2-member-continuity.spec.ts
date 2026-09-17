@@ -22,7 +22,7 @@ test("filters survive card round trips, direct queries, reload and browser histo
   await expect(
     page.getByRole("heading", { name: "My Card", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Left to allocate").locator("..")).toContainText(
+  await expect(page.getByText("Left to use").locator("..")).toContainText(
     "500",
   );
   await page.getByRole("link", { name: "Make picks", exact: true }).click();
@@ -112,9 +112,9 @@ test("member summaries and filters remain usable at desktop, mobile and enlarged
     await page.evaluate((zoom) => {
       document.documentElement.style.fontSize = `${zoom}%`;
     }, zoom);
-    await expect(
-      page.getByText("Left to allocate").locator(".."),
-    ).toContainText("500");
+    await expect(page.getByText("Left to use").locator("..")).toContainText(
+      "500",
+    );
     expect(
       (
         await new AxeBuilder({ page })

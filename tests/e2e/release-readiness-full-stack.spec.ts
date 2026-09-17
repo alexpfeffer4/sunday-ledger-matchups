@@ -549,7 +549,11 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     element.style.fontSize = "200%";
   });
   await expect(
-    page.getByRole("link", { name: "View receipt", exact: true }),
+    page.getByRole("link", {
+      name: "View receipt",
+      exact: true,
+      includeHidden: true,
+    }),
   ).toHaveCount(20);
   await inspectMemberSurface(page, info, "twenty-receipts-320-200-percent");
   for (const destination of ["standings", "playoffs"]) {

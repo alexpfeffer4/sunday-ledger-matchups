@@ -173,12 +173,12 @@ describe("owner reset history presentation", () => {
     const progress = screen.getByRole("region", {
       name: "Your weekly card",
     });
-    expect(progress).toHaveTextContent("No accepted bets");
+    expect(progress).not.toHaveTextContent("No accepted bets");
     expect(
-      within(progress).getByText("Accepted bets").nextElementSibling,
+      within(progress).getByText("Submitted").nextElementSibling,
     ).toHaveTextContent("0");
     expect(
-      within(progress).getByText("Left to allocate").nextElementSibling,
+      within(progress).getByText("Left to use").nextElementSibling,
     ).toHaveTextContent("1,000");
     expect(screen.getByRole("status")).toHaveTextContent(
       "Your Week 2 picks were reset",
@@ -211,9 +211,9 @@ describe("owner reset history presentation", () => {
     state.ownerCard!.remainingCredits = 700;
     render(<Stage1CardView state={state} />);
     const progress = screen.getByRole("region", { name: "Your weekly card" });
-    expect(progress).toHaveTextContent("1 accepted bet");
+    expect(document.querySelectorAll("main ol > li")).toHaveLength(1);
     expect(
-      within(progress).getByText("Accepted bets").nextElementSibling,
+      within(progress).getByText("Submitted").nextElementSibling,
     ).toHaveTextContent("300");
     expect(screen.getByRole("link", { name: "View receipt" })).toHaveAttribute(
       "href",
