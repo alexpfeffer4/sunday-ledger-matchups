@@ -252,6 +252,7 @@ commit;`),
   // Only the provider transport is scripted. Refresh, quote proof, confirmation
   // and immutable receipt creation all follow the real application path.
   await page.reload();
+  await page.getByRole("link", { name: /View player details/ }).click();
   await expect(
     page.getByRole("heading", {
       name: "Published players and pending slots",

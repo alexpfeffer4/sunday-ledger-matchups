@@ -597,7 +597,9 @@ export function Stage1CommissionerControls({
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-graphite">Roster lock</dt>
-              <dd className="font-semibold">Not started</dd>
+              <dd className="font-semibold">
+                {state.league.lifecycle === "DRAFT" ? "Not started" : "Locked"}
+              </dd>
             </div>
           </dl>
           <form action={refreshQuotesAction} className="mt-4">
@@ -618,14 +620,16 @@ export function Stage1CommissionerControls({
             </p>
           ) : null}
           <ActionFeedback state={refreshQuotesState} />
-          <div className="border-boundary mt-5 border-t pt-4">
-            <p className="text-sm font-bold">
-              Roster readiness · {state.league.memberCount}/4 minimum
-            </p>
-            <p className="text-muted mt-1 text-xs leading-5">
-              Cards can open when the roster has an even 4–16 members.
-            </p>
-          </div>
+          {state.league.lifecycle === "DRAFT" ? (
+            <div className="border-boundary mt-5 border-t pt-4">
+              <p className="text-sm font-bold">
+                Roster readiness · {state.league.memberCount}/4 minimum
+              </p>
+              <p className="text-muted mt-1 text-xs leading-5">
+                Cards can open when the roster has an even 4–16 members.
+              </p>
+            </div>
+          ) : null}
         </section>
       ) : state.league.mode === "LIVE" ? (
         <CommissionerDisclosure id="commissioner-recovery" title="Recovery">
@@ -639,10 +643,15 @@ export function Stage1CommissionerControls({
           />
         </CommissionerDisclosure>
       ) : (
-        <>
+        <div
+          id={
+            state.week.state !== "PLANNED" ? "commissioner-recovery" : undefined
+          }
+          className="scroll-mt-28"
+        >
           {recovery}
           <SimulationCommissionerControls state={state} />
-        </>
+        </div>
       )}
       {!state.week || state.week.state === "PLANNED" ? (
         <CommissionerDisclosure id="commissioner-recovery" title="Recovery">

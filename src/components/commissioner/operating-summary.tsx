@@ -80,9 +80,11 @@ export function CommissionerOperatingSummary({
           ? manual.title
           : state.league.mode === "SIMULATION"
             ? manual.title
-            : delayed || overdue || missingOperations || manualChecks
-              ? "Needs attention · game updates"
-              : automatic.label;
+            : automatic.attention
+              ? automatic.label
+              : delayed || overdue || missingOperations || manualChecks
+                ? "Needs attention · game updates"
+                : automatic.label;
   const attention = Boolean(
     missed ||
     delayed ||
@@ -206,8 +208,16 @@ export function CommissionerOperatingSummary({
                   ? "Game-update status could not be confirmed. Refresh this page; do not infer that automatic checks are healthy."
                   : delayed
                     ? scoreFreshness(operations, now).message
-                    : automatic.detail}
+                    : manualChecks
+                      ? "Automatic game checks are off. Use the bounded score checks in Recovery at the scheduled times; season approval does not activate current-week game checks."
+                      : automatic.detail}
           </p>
+          {automatic.attention &&
+          (overdue || missingOperations || delayed || manualChecks) ? (
+            <p className="text-graphite mt-2 text-sm leading-6">
+              {automatic.detail}
+            </p>
+          ) : null}
           <a
             href="#commissioner-recovery"
             className="text-action mt-2 inline-flex min-h-11 items-center text-sm font-semibold"

@@ -164,6 +164,55 @@ it("does not reveal passed commissioner panels to a member", () => {
   expect(screen.queryByRole("link", { name: "Recovery" })).toBeNull();
 });
 
+it("keeps a suspended season and disabled game checks visible together", () => {
+  const { state, operations } = makePhase6State("PREGAME");
+  state.league.mode = "LIVE";
+  state.commissioner.isCommissioner = true;
+  operations.automationEnabled = false;
+  render(
+    <Stage1CommissionerView
+      state={state}
+      automation={scenarios.Suspended}
+      invites={[]}
+      leagueManagement={null}
+      latestLiveImport={null}
+      liveWeekOperations={operations}
+      providerConfigured
+      week17CorrectionOperations={null}
+    />,
+  );
+  expect(
+    screen.getByRole("heading", { name: /automation suspended/ }),
+  ).toBeVisible();
+  expect(
+    screen.getByText(/Automatic game checks are off\. Use the bounded/),
+  ).toBeVisible();
+});
+
+it("a prepared later week does not ask to lock the roster again", () => {
+  const { state, operations } = makePhase6State("PREGAME");
+  state.league.mode = "LIVE";
+  state.league.lifecycle = "REGULAR";
+  state.commissioner.isCommissioner = true;
+  state.week!.state = "PLANNED";
+  state.week!.nflWeek = 3;
+  render(
+    <Stage1CommissionerView
+      state={state}
+      automation={scenarios["Manual league"]}
+      invites={[]}
+      leagueManagement={null}
+      latestLiveImport={null}
+      liveWeekOperations={operations}
+      providerConfigured
+      week17CorrectionOperations={null}
+    />,
+  );
+  expect(screen.getByText(/Open Week 3 when ready:/)).toBeVisible();
+  expect(screen.queryByText("Not started")).toBeNull();
+  expect(screen.queryByRole("button", { name: /Lock.*roster/ })).toBeNull();
+});
+
 it("a deep exception link opens both disclosures and focuses the target", () => {
   Element.prototype.scrollIntoView = vi.fn();
   const { container } = render(

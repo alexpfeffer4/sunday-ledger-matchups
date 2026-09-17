@@ -215,8 +215,9 @@ export function SeasonAutomationPanel({
             <p className="text-graphite mb-3 text-sm leading-6">
               Pause stops covered future preparation and publication.
               Current-week quotes, scores, player results and approved pending
-              props continue. Resume keeps this approval; revoking it requires a
-              new review and approval.
+              props continue. Pause does not transfer covered weeks to manual
+              preparation. Resume keeps this approval; revoking it requires a
+              new review and approval before re-enrollment.
             </p>
             <div className="flex flex-wrap gap-3">
               <button

@@ -23,7 +23,7 @@ export function timedCommissionerAction(
         : "Betting continues game by game",
       detail: week.entryClosed
         ? "Weekly betting has closed. Submitted bets settle from confirmed results and the week finalizes automatically."
-        : "Members can add bets until each game’s kickoff. Game checks run automatically; a partial allocation counts as participation.",
+        : `Members can add bets until each game’s kickoff; a partial allocation counts as participation. ${operations?.automationEnabled === true ? "Game checks run automatically." : operations?.automationEnabled === false ? "Automatic game checks are off; use the bounded checks in Recovery." : "Automatic game-check status could not be confirmed."}`,
       prerequisites: week.entryClosesAt
         ? `Weekly betting ${week.entryClosed ? "closed" : "closes"} ${easternTime(week.entryClosesAt)}`
         : "Each game closes at its own kickoff",
@@ -37,7 +37,7 @@ export function timedCommissionerAction(
     return {
       title: "Week opening deadline missed",
       detail:
-        "The published lock has passed. Do not move the deadline or use stale odds; follow the recovery runbook before opening a replacement season.",
+        "The published opening deadline has passed and cannot be reopened here. Review the limitation in Recovery; do not move the deadline or use stale odds.",
       prerequisites: `Card deadline was ${deadline}`,
     };
   if (week.state === "OPEN")
@@ -183,6 +183,14 @@ export function commissionerNextStep({
   }
 
   if (state.league.mode === "LIVE" && state.week.state === "PLANNED") {
+    if (state.league.lifecycle !== "DRAFT") {
+      return {
+        detail:
+          "The slate is prepared. For a manual week, complete its existing player-menu review and opening in Recovery. An enrolled week follows its approved automatic validation and opening instead.",
+        prerequisites: `Week ${state.week.nflWeek} slate prepared · cards not open`,
+        title: `Open Week ${state.week.nflWeek} when ready`,
+      };
+    }
     if (!rosterIsValid) {
       return {
         detail:
