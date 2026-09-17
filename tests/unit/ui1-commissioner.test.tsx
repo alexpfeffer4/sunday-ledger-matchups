@@ -15,6 +15,7 @@ import {
   Stage1MatchupView,
 } from "@/components/stage1/live-views";
 import { SeasonAutomationPanel } from "@/components/commissioner/season-automation-panel";
+import { LiveWeekCommissionerControls } from "@/components/commissioner/live-week-controls";
 import { PlayerPropMenuReview } from "@/components/commissioner/player-prop-menu-review";
 import { PlayoffPendingView } from "@/components/playoffs/playoff-pending-view";
 import { makePhase6State } from "../fixtures/phase6-paired-matchup";
@@ -353,3 +354,70 @@ it("postseason guidance respects active scope, unavailable status and member vis
     screen.getByText(/If covered by active season automation/),
   ).toBeVisible();
 });
+
+it.each([2, 14, 17, 18])(
+  "retains eligible manual recovery without prescribing it for approved Week %s publication",
+  (week) => {
+    const { state } = makePhase6State("FINAL");
+    state.league.mode = "LIVE";
+    state.week!.nflWeek = week;
+    state.league.lifecycle =
+      week === 17 ? "PLAYOFFS" : week === 18 ? "WEEK_18_EXHIBITION" : "REGULAR";
+    const props = {
+      state: {
+        ...state,
+        slate: state.slate.map((event) => ({
+          ...event,
+          latestObservedAt: event.scheduledStartAt,
+        })),
+      },
+      latestLiveImport: null,
+      liveWeekOperations: null,
+      providerConfigured: true,
+      week17CorrectionOperations: null,
+    };
+    const { rerender } = render(
+      <LiveWeekCommissionerControls {...props} automation={scenarios.Paused} />,
+    );
+    expect(
+      screen.getByText(/Saved season approval covers this publication/),
+    ).toBeVisible();
+    const command =
+      week === 2
+        ? "Import Week 3 NFL markets for review"
+        : week === 14
+          ? "Confirm playoff field"
+          : week === 17
+            ? "Finalize champion & bracket"
+            : "Publish complete season archive";
+    expect(screen.getByRole("button", { name: command })).toBeEnabled();
+    if (week === 17) {
+      rerender(
+        <LiveWeekCommissionerControls
+          {...props}
+          automation={{ ...healthy, effectiveWeek: 18 }}
+        />,
+      );
+      expect(
+        screen.queryByText(/Saved season approval covers this publication/),
+      ).toBeNull();
+      expect(
+        screen.getByText(/Confirm the champion and final bracket/),
+      ).toBeVisible();
+    }
+    rerender(
+      <LiveWeekCommissionerControls
+        {...props}
+        automation={scenarios["Manual league"]}
+      />,
+    );
+    expect(
+      screen.queryByText(/Saved season approval covers this publication/),
+    ).toBeNull();
+    expect(screen.getByRole("button", { name: command })).toBeEnabled();
+    rerender(<LiveWeekCommissionerControls {...props} automation={null} />);
+    expect(
+      screen.getByText(/Season automation status could not be confirmed/),
+    ).toBeVisible();
+  },
+);

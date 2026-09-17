@@ -26,6 +26,10 @@ import type { Week17CorrectionOperations } from "@/application/queries/get-week1
 import type { Stage1CommissionerControlState } from "@/components/commissioner/stage1-controls";
 import { ActionFeedback } from "@/components/forms/action-feedback";
 import { AuditDetails } from "@/components/ui/audit-details";
+import {
+  automationOwnsWeek,
+  type SeasonAutomationStatus,
+} from "@/application/automation/status";
 
 const buttonClass =
   "border-control hover:border-registry hover:text-registry min-h-11 w-full rounded-lg border px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
@@ -225,12 +229,14 @@ function LateWeek17CorrectionControls({
 }
 
 export function LiveWeekCommissionerControls({
+  automation = null,
   latestLiveImport,
   liveWeekOperations,
   providerConfigured,
   state,
   week17CorrectionOperations,
 }: {
+  automation?: SeasonAutomationStatus | null;
   latestLiveImport: LiveOddsImportReview | null;
   liveWeekOperations: LiveWeekOperations | null;
   providerConfigured: boolean;
@@ -301,6 +307,15 @@ export function LiveWeekCommissionerControls({
   const rolling = state.week.rollingSubmissionsEnabled === true;
   const weekNumber = state.week.nflWeek;
   const nextWeekNumber = weekNumber + 1;
+  const publicationWeek =
+    weekNumber === 17 && state.league.lifecycle === "PLAYOFFS"
+      ? 17
+      : Math.min(18, nextWeekNumber);
+  const publicationGuidance = !automation
+    ? "Season automation status could not be confirmed. Refresh this page before deciding whether manual publication is needed. Existing recovery commands remain subject to eligibility checks."
+    : automationOwnsWeek(automation, publicationWeek)
+      ? "Saved season approval covers this publication. Follow the operating status and automation recovery above; routine manual publication is not required. These manual fallback controls remain subject to server eligibility. Pausing automation does not transfer covered preparation to manual operation."
+      : null;
   const nextWeekImport =
     latestLiveImport &&
     new Date(latestLiveImport.fetchedAt).getTime() >
@@ -676,11 +691,14 @@ export function LiveWeekCommissionerControls({
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
             Week {nextWeekNumber} setup
           </p>
-          <h2 className="mt-2 font-bold">Open Week {nextWeekNumber}</h2>
+          <h2 className="mt-2 font-bold">
+            {publicationGuidance
+              ? `Week ${nextWeekNumber} publication recovery`
+              : `Open Week ${nextWeekNumber}`}
+          </h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Import current NFL markets, review the selected games, and publish
-            the week. Matchups come from the season schedule, and every member
-            receives a fresh 1,000-credit card.
+            {publicationGuidance ??
+              "Import current NFL markets, review the selected games, and publish the week. Matchups come from the season schedule, and every member receives a fresh 1,000-credit card."}
           </p>
           <form action={oddsImportAction} className="mt-4">
             <ContextFields state={state} />
@@ -783,8 +801,9 @@ export function LiveWeekCommissionerControls({
             </div>
           ) : (
             <p className="text-muted mt-4 text-sm leading-6">
-              Import current odds after Week {weekNumber} cards lock to prepare
-              Week {nextWeekNumber}.
+              {publicationGuidance
+                ? "No manual import is ready for review."
+                : `Import current odds after Week ${weekNumber} cards lock to prepare Week ${nextWeekNumber}.`}
             </p>
           )}
         </section>
@@ -797,11 +816,14 @@ export function LiveWeekCommissionerControls({
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
             Week {nextWeekNumber} playoff setup
           </p>
-          <h2 className="mt-2 font-bold">Open playoff Week {nextWeekNumber}</h2>
+          <h2 className="mt-2 font-bold">
+            {publicationGuidance
+              ? `Playoff Week ${nextWeekNumber} publication recovery`
+              : `Open playoff Week ${nextWeekNumber}`}
+          </h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Import current NFL markets and review the selected games. Matchups
-            are derived from the terminal bracket and results. Every member
-            receives exactly one matchup and one new card.
+            {publicationGuidance ??
+              "Import current NFL markets and review the selected games. Matchups are derived from the terminal bracket and results. Every member receives exactly one matchup and one new card."}
             {weekNumber === 14 && state.league.memberCount <= 8
               ? " Week 15 is the required non-elimination exhibition round."
               : null}
@@ -907,8 +929,9 @@ export function LiveWeekCommissionerControls({
             </div>
           ) : (
             <p className="text-muted mt-4 text-sm leading-6">
-              Import current odds after Week {weekNumber} cards lock to prepare
-              the next playoff round.
+              {publicationGuidance
+                ? "No manual import is ready for review."
+                : `Import current odds after Week ${weekNumber} cards lock to prepare the next playoff round.`}
             </p>
           )}
         </section>
@@ -923,8 +946,8 @@ export function LiveWeekCommissionerControls({
           </p>
           <h2 className="mt-2 font-bold">Week 17 results are final</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Confirm the champion and final bracket from the stored Week 17
-            results. Placement and the champion cannot be selected manually.
+            {publicationGuidance ??
+              "Confirm the champion and final bracket from the stored Week 17 results. Placement and the champion cannot be selected manually."}
           </p>
           <form action={championAction} className="mt-4">
             <ContextFields state={state} />
@@ -953,9 +976,8 @@ export function LiveWeekCommissionerControls({
             Champion fixed · archive still open
           </h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Import the Week 18 provider slate. Final placement and adjacent
-            pairings are derived automatically, and every member receives one
-            normal card and one exhibition matchup.
+            {publicationGuidance ??
+              "Import the Week 18 provider slate. Final placement and adjacent pairings are derived automatically, and every member receives one normal card and one exhibition matchup."}
           </p>
           <form action={oddsImportAction} className="mt-4">
             <ContextFields state={state} />
@@ -1030,8 +1052,8 @@ export function LiveWeekCommissionerControls({
           </p>
           <h2 className="mt-2 font-bold">Week 18 exhibitions are final</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            Publish the complete Weeks 1–18 archive from stored cards, receipts,
-            results, qualification evidence, and champion history.
+            {publicationGuidance ??
+              "Publish the complete Weeks 1–18 archive from stored cards, receipts, results, qualification evidence, and champion history."}
           </p>
           <form action={archiveAction} className="mt-4">
             <ContextFields state={state} />
@@ -1065,7 +1087,8 @@ export function LiveWeekCommissionerControls({
           </p>
           <h2 className="mt-2 font-bold">Week 14 standings are final</h2>
           <p className="text-graphite mt-2 text-sm leading-6">
-            The regular season is complete. Next, confirm the playoff field.
+            {publicationGuidance ??
+              "The regular season is complete. Next, confirm the playoff field."}
           </p>
           {state.league.lifecycle === "REGULAR" ? (
             <>

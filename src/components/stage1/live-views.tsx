@@ -1240,6 +1240,7 @@ export function Stage1CommissionerView({
             </section>
           ) : (
             <Stage1CommissionerControls
+              automation={automation}
               recovery={
                 <>
                   {automationRecovery}

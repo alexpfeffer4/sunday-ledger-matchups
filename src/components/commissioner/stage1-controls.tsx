@@ -32,6 +32,7 @@ import { InviteLinkFeedback } from "@/components/commissioner/invite-link-feedba
 import { SimulationCommissionerControls } from "@/components/commissioner/simulation-controls";
 import { CommissionerDisclosure } from "./commissioner-disclosure";
 import { ActionFeedback } from "@/components/forms/action-feedback";
+import type { SeasonAutomationStatus } from "@/application/automation/status";
 
 export type Stage1CommissionerControlState = {
   league: Pick<
@@ -109,6 +110,7 @@ const eventTimestampFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 export function Stage1CommissionerControls({
+  automation = null,
   recovery,
   settings,
   audit,
@@ -119,6 +121,7 @@ export function Stage1CommissionerControls({
   state,
   week17CorrectionOperations = null,
 }: {
+  automation?: SeasonAutomationStatus | null;
   recovery?: ReactNode;
   settings?: ReactNode;
   audit?: ReactNode;
@@ -648,6 +651,7 @@ export function Stage1CommissionerControls({
         <CommissionerDisclosure id="commissioner-recovery" title="Recovery">
           {recovery}
           <LiveWeekCommissionerControls
+            automation={automation}
             latestLiveImport={latestLiveImport}
             liveWeekOperations={liveWeekOperations}
             providerConfigured={providerConfigured}
