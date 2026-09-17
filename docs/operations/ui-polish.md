@@ -1,8 +1,9 @@
 # UI polish — September 17, 2026
 
 One bounded implementation of the current UI polish audit. The owner requested
-implementation in the audit chat, with one PR and a reviewable Preview. Merge
-and Production release remain pending review; this is not release authorization.
+implementation in the audit chat, with one PR and a reviewable Preview. The owner
+subsequently authorized merge and release after the remaining review and required
+checks pass. Deployment verification remains a release step.
 
 ## Baseline and scope
 
@@ -28,7 +29,7 @@ or representative normal-phone screenshots.
 | P12     | Show the selected week's common Schedule state once, retaining distinct row states and accessible row context. Preserve historical/current-week distinction.                                                        |
 | O01     | Hide redundant zero outstanding rows only for verified final results with both values zero. Keep unavailable and provisional totals.                                                                                |
 | O02–O04 | Use readable practice market/result labels, space historical score separators, normalize displayed line minus signs, and remove repeated account help.                                                              |
-| C01     | Shorten the conditional future-week schedule sentence, name the previous week when known, and remove duplicated status inside This week.                                                                            |
+| C01     | Shorten conditional schedule wording and remove duplicated status inside This week. Keep finality waiting generic because the RPC week can mean the current or upcoming week.                                       |
 
 No competitive rule, provider policy/budget, authentication flow, database schema,
 permission, receipt, score, history, season consent or navigation destination is
@@ -37,6 +38,12 @@ credits. Changed-term review and explicit acceptance remain intact. Full archive
 and exception statuses are retained when their wording differs from the week.
 
 ## Verification and evidence
+
+The final review identified ambiguous `PREVIOUS_WEEK_RESULTS` payloads: after
+reconciliation `week` identifies the current week, while another path supplies
+the upcoming week. The UI therefore names neither an inferred pending week nor
+an opening schedule in that waiting state. Regression cases cover current,
+planned and Week 18 finality without changing the RPC or worker.
 
 Run the unchanged complete Acceptance workflow on the candidate head, including
 quality, database, concurrency, real Auth/member journeys, shared UI and the
