@@ -124,7 +124,7 @@ describe("practice week flow", () => {
       screen.getByRole("heading", { name: "Card sealed" }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Practice receipt 01/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Not saved/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/not saved to a league/i)).toBeVisible();
     expect(screen.queryByText(/opponent.*pick 01/i)).not.toBeInTheDocument();
 
     fireEvent.click(

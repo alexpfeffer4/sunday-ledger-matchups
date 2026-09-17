@@ -70,7 +70,7 @@ function DesktopNavGroup({
               ));
 
           return (
-            <li className="group relative" key={item.href ?? item.segment}>
+            <li key={item.href ?? item.segment}>
               <Link
                 aria-current={active ? "page" : undefined}
                 aria-label={item.label}
@@ -85,12 +85,6 @@ function DesktopNavGroup({
                 <LeagueNavIcon className="size-5 shrink-0" name={item.icon} />
                 <span className="hidden xl:inline">{item.label}</span>
               </Link>
-              <span
-                className="border-boundary bg-ink pointer-events-none absolute top-1/2 left-[calc(100%+0.5rem)] z-50 hidden -translate-y-1/2 rounded-md border px-2 py-1 text-xs font-semibold whitespace-nowrap text-white shadow-lg group-focus-within:block group-hover:block xl:hidden"
-                role="tooltip"
-              >
-                {item.label}
-              </span>
             </li>
           );
         })}

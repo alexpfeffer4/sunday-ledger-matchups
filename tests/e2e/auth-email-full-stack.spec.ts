@@ -161,7 +161,7 @@ async function capturedLink(
 async function requestSignup(page: Page, email: string, next: string) {
   await page.goto(`/auth/create-account?next=${encodeURIComponent(next)}`);
   await page.getByLabel("Email address").fill(email);
-  await page.getByRole("button", { name: "Send account email" }).click();
+  await page.getByRole("button", { name: "Send verification email" }).click();
   await expect(page.getByRole("status")).toContainText("Check your email");
   await expect(
     page.getByRole("button", { name: /Resend available in/ }),

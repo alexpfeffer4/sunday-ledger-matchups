@@ -40,7 +40,7 @@ export function PageFrame({
             <h1
               data-route-heading
               tabIndex={-1}
-              className={`text-ink font-bold tracking-[-0.025em] ${
+              className={`text-ink font-bold tracking-[-0.025em] max-[360px]:text-2xl ${
                 compact
                   ? "text-[1.75rem] leading-9"
                   : "mt-2 text-[1.75rem] leading-9 tracking-[-0.035em] sm:text-[2rem]"

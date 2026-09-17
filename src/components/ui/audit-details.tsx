@@ -11,7 +11,7 @@ export function AuditDetails({
 }) {
   return (
     <details className={`border-boundary border-y py-3 text-sm ${className}`}>
-      <summary className="inline-flex min-h-11 cursor-pointer items-center font-bold">
+      <summary className="min-h-11 cursor-pointer py-3 font-bold">
         Audit details
       </summary>
       <p className="text-graphite mt-2 leading-6">{context}</p>

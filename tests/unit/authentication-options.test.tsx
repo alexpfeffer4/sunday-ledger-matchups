@@ -206,7 +206,7 @@ describe("password authentication options", () => {
     ).toBeVisible();
   });
 
-  it("explains the completion gate during account creation", () => {
+  it("keeps signup email guidance conditional on a code being included", () => {
     render(
       <MagicLinkForm
         sendEmailAction={sendCreateAccountLink}
@@ -216,10 +216,10 @@ describe("password authentication options", () => {
     );
 
     expect(
-      screen.getByText(/required username and password setup/i),
+      screen.getByText(/enter the email code if one is included/i),
     ).toBeVisible();
     expect(
-      screen.getByRole("button", { name: "Send account email" }),
+      screen.getByRole("button", { name: "Send verification email" }),
     ).toBeVisible();
   });
 
@@ -244,7 +244,7 @@ describe("password authentication options", () => {
     await act(async () => {
       fireEvent.submit(
         screen
-          .getByRole("button", { name: "Send account email" })
+          .getByRole("button", { name: "Send verification email" })
           .closest("form")!,
       );
     });

@@ -84,7 +84,9 @@ function formatOdds(odds: number): string {
 function formatLine(lineMilli: number | null, marketType: string): string {
   if (lineMilli === null) return marketType === "MONEYLINE" ? "Moneyline" : "—";
   const line = lineMilli / 1000;
-  return marketType === "SPREAD" && line > 0 ? `+${line}` : `${line}`;
+  return marketType === "SPREAD" && line > 0
+    ? `+${line}`
+    : `${line}`.replace("-", "−");
 }
 
 function formatScore(value: number): string {
@@ -753,7 +755,7 @@ export function Stage1CardView({ state }: { state: Stage1StateDto }) {
           )}
         </div>
         {state.ownerCard.positions.length > 0 ? (
-          <aside className="border-boundary bg-surface h-fit rounded-xl border p-5">
+          <aside className="h-fit">
             <ReturnExplanation disclosure />
           </aside>
         ) : null}
@@ -910,6 +912,7 @@ export function Stage1LeagueView({
             games={games}
             leagueSlug={state.league.slug}
             showOverviewLink={false}
+            onOverview
             week={week}
           />
           <section aria-labelledby="league-members-heading" className="h-fit">
@@ -1149,9 +1152,7 @@ export function Stage1CommissionerView({
             <div className="flex justify-between gap-3 sm:block">
               <dt className="text-muted">Week</dt>
               <dd className="font-semibold sm:mt-1">
-                {state.week
-                  ? `${state.week.nflWeek} · ${weekStatus(state)}`
-                  : "Formation"}
+                {state.week?.nflWeek ?? "Formation"}
               </dd>
             </div>
             <div className="flex justify-between gap-3 sm:block">
@@ -1330,7 +1331,7 @@ export function Stage1ScheduleView({
       eyebrow="Published at roster lock"
       title="Schedule"
       description="Choose a week, then open a matchup to see its score and revealed bets."
-      aside={liveStatus(state)}
+      aside={!state.week && !liveSchedule ? liveStatus(state) : undefined}
     >
       {!state.week && !liveSchedule ? (
         <FormationPanel state={state} />

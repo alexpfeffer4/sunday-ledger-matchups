@@ -167,9 +167,10 @@ commit;`),
     name: "Your weekly card",
     exact: true,
   });
-  await expect(progress).toContainText(
-    "4 submitted bets · 1,000 credits committed",
-  );
+  await expect(progress).toContainText("4 accepted bets");
+  await expect(
+    progress.getByText("Accepted bets", { exact: true }).locator(".."),
+  ).toContainText("1,000");
   await expect(
     page.getByRole("link", { name: "View receipt", exact: true }),
   ).toHaveCount(4);
@@ -415,9 +416,10 @@ commit;`),
   ).toBe(originalTerms);
 
   await page.goto(`/l/${slug}/card`);
-  await expect(progress).toContainText(
-    "1 submitted bet · 300 credits committed",
-  );
+  await expect(progress).toContainText("1 accepted bet");
+  await expect(
+    progress.getByText("Accepted bets", { exact: true }).locator(".."),
+  ).toContainText("300");
   await expect(
     page.getByRole("link", { name: "View receipt", exact: true }),
   ).toHaveCount(1);

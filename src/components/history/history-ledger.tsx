@@ -95,7 +95,8 @@ export function HistoryLedger({
                   aria-label={`${matchup.self.name} ${score(matchup.self.scoreCenticredits)} credits, ${matchup.opponent.name} ${score(matchup.opponent.scoreCenticredits)} credits`}
                   className="mt-4 font-mono text-xl font-bold"
                 >
-                  {score(matchup.self.scoreCenticredits)}–
+                  {score(matchup.self.scoreCenticredits)}
+                  {" – "}
                   {score(matchup.opponent.scoreCenticredits)}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">

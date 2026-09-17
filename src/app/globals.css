@@ -534,7 +534,7 @@ a {
   }
   .matchup-navigation {
     gap: 0.6rem;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+    grid-template-columns: minmax(0, 1fr);
   }
   .lineup-side {
     padding-inline: 0.65rem;

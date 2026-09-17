@@ -16,7 +16,12 @@ import {
 afterEach(cleanup);
 
 function fixture(
-  phase: "PREGAME" | "LOCKED" | "PARTIAL_REVEAL" | "FINAL" = "PARTIAL_REVEAL",
+  phase:
+    | "PREGAME"
+    | "LOCKED"
+    | "PARTIAL_REVEAL"
+    | "PROVISIONAL"
+    | "FINAL" = "PARTIAL_REVEAL",
 ) {
   const { state, operations, now } = makePhase6State(phase);
   const cards: LeagueMatchupCards = {
@@ -30,7 +35,7 @@ function fixture(
         outstanding:
           phase === "PREGAME"
             ? null
-            : phase === "FINAL"
+            : phase === "FINAL" || phase === "PROVISIONAL"
               ? { picks: 0, credits: 0 }
               : i === 0
                 ? { picks: 2, credits: 600 }
@@ -104,8 +109,23 @@ describe("post-lock outstanding matchup totals", () => {
       />,
     );
     expect(
+      screen.queryByLabelText("Jordan Rival outstanding picks and credits"),
+    ).toBeNull();
+    cleanup();
+    const provisional = fixture("PROVISIONAL").project();
+    render(<PairedMatchupView matchup={provisional} refreshControl={null} />);
+    expect(
       screen.getByLabelText("Jordan Rival outstanding picks and credits"),
     ).toHaveTextContent("0 picks outstanding0 credits outstanding");
+    cleanup();
+    const unavailableFinal = fixture("FINAL").project();
+    unavailableFinal.opponent.outstanding = null;
+    render(
+      <PairedMatchupView matchup={unavailableFinal} refreshControl={null} />,
+    );
+    expect(
+      screen.getByLabelText("Jordan Rival outstanding picks and credits"),
+    ).toHaveTextContent("Outstanding totals unavailable");
   });
 
   it("uses the selected members' totals when browsing another pairing", () => {

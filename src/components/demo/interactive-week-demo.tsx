@@ -126,7 +126,8 @@ function PracticeReceipts({
               <div>
                 <p className="text-muted text-xs">
                   Practice receipt {String(index + 1).padStart(2, "0")} ·{" "}
-                  {opportunity.eventLabel} · {opportunity.marketType}
+                  {opportunity.eventLabel} ·{" "}
+                  {marketLabels[opportunity.marketType]}
                 </p>
                 <p className="mt-1 text-sm font-semibold">
                   {opportunity.displayLine}
@@ -138,7 +139,7 @@ function PracticeReceipts({
               </p>
             </div>
             <p className="text-muted mt-2 text-xs">
-              Sealed with your complete card · Practice only · Not saved
+              Sealed with your complete card
             </p>
           </article>
         );
@@ -174,7 +175,15 @@ function SettledCard({
                       : "text-pending font-bold"
                 }
               >
-                {position.settlement.outcome}
+                {
+                  {
+                    WIN: "Won",
+                    LOSS: "Lost",
+                    PUSH: "Push",
+                    VOID: "Void",
+                    PENDING: "Pending",
+                  }[position.settlement.outcome]
+                }
               </span>
             </div>
             <p className="text-muted mt-1 text-xs">
@@ -484,7 +493,7 @@ export function InteractiveWeekDemo() {
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
             <div>
               <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-                Practice Week · Unsaved · Final
+                Practice result
               </p>
               <h2
                 ref={phaseHeading}
@@ -515,7 +524,9 @@ export function InteractiveWeekDemo() {
               <p className="mt-2 font-mono text-3xl font-bold">
                 {formatCenticredits(opponentScore, true)}
               </p>
-              <p className="text-copper mt-2 font-bold">{opponentDecision}</p>
+              <p className="text-copper mt-2 font-bold">
+                {{ WIN: "Won", LOSS: "Lost", TIE: "Tied" }[opponentDecision]}
+              </p>
             </div>
           </div>
         </section>
@@ -575,7 +586,7 @@ export function InteractiveWeekDemo() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-                Practice Week · Unsaved
+                Practice card
               </p>
               <h2
                 ref={phaseHeading}
@@ -627,7 +638,7 @@ export function InteractiveWeekDemo() {
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section className="border-registry bg-surface rounded-xl border p-5 shadow-[var(--shadow-card)] sm:p-6">
           <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
-            Practice Week · Unsaved · Final review
+            Final review
           </p>
           <h2
             ref={phaseHeading}
@@ -898,7 +909,7 @@ export function InteractiveWeekDemo() {
               Your practice card
             </p>
             <p className="text-muted mt-2 text-xs">
-              Unsaved · this draft disappears when you leave
+              This draft disappears when you leave
             </p>
             {drafts.length === 0 ? (
               <p className="text-muted mt-4 text-sm">

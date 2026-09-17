@@ -224,9 +224,7 @@ describe("weekly card journey", () => {
     }
     expect(screen.getByText(/Sealing is final/)).toBeVisible();
     expect(screen.getByText(/A loss returns 0/)).toBeVisible();
-    expect(
-      screen.getByRole("heading", { name: "Review your complete card" }),
-    ).toHaveFocus();
+    expect(screen.getByRole("heading", { name: "Review card" })).toHaveFocus();
   });
 
   it("does not call the provider when navigating directly to review and requires an explicit fresh check", () => {

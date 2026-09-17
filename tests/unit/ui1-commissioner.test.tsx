@@ -40,6 +40,29 @@ describe("authoritative automation presentation", () => {
     });
   });
   it.each([
+    { scenario: "current week after reconciliation", week: 2 },
+    { scenario: "upcoming planned week", week: 3 },
+    { scenario: "last week awaiting finality", week: 18 },
+  ])("does not infer a pending week or opening from $scenario", ({ week }) => {
+    const display = automationPresentation({
+      ...healthy,
+      next: {
+        status: "WAITING",
+        week,
+        blocker: "PREVIOUS_WEEK_RESULTS",
+      },
+    });
+    expect(display).toEqual({
+      label: "No action needed now",
+      detail:
+        "Waiting for final week results. Player results may arrive overnight.",
+      attention: false,
+      next: "Waiting for final results before the next eligible season step",
+      dueAt: null,
+      retry: false,
+    });
+  });
+  it.each([
     "Suspended",
     "Worker unavailable",
     "Readiness missing",

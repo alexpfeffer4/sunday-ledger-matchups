@@ -115,7 +115,11 @@ test("public Practice is factual, unsaved, accessible, and usable at 320 px", as
   const scope = page.getByRole("region", {
     name: "Practice uses older full-card rules",
   });
-  await expect(scope).toContainText("complete card once");
+  await expect(scope).toContainText("seal once in this unsaved example");
+  const difference = scope.locator("details");
+  await expect(difference).not.toHaveAttribute("open");
+  await difference.locator("summary").click();
+  await expect(difference).toHaveAttribute("open", "");
   await expect(scope).toContainText(
     "Partial cards count; accepted bets cannot be changed",
   );
@@ -124,7 +128,7 @@ test("public Practice is factual, unsaved, accessible, and usable at 320 px", as
     scope.getByRole("link", { name: "Compare submission rules" }),
   ).toHaveAttribute("href", "/rules");
   await expect(
-    page.getByText(/not saved and cannot affect a league/i),
+    page.getByText(/Your practice cannot affect a league/i),
   ).toBeVisible();
   expect(competitiveRequests).toEqual([]);
 

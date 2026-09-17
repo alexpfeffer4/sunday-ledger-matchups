@@ -60,6 +60,7 @@ function MemberScore({
   opponent = false,
   pregame = false,
   completed = false,
+  final = false,
   spectator = false,
   rolling = false,
   entryClosed = false,
@@ -68,6 +69,7 @@ function MemberScore({
   opponent?: boolean;
   pregame?: boolean;
   completed?: boolean;
+  final?: boolean;
   spectator?: boolean;
   rolling?: boolean;
   entryClosed?: boolean;
@@ -103,7 +105,12 @@ function MemberScore({
           {formatScore(member.scoreCenticredits)}
         </p>
       ) : null}
-      {!pregame || (rolling && member.outstanding !== null) ? (
+      {(!pregame || (rolling && member.outstanding !== null)) &&
+      !(
+        final &&
+        member.outstanding?.picks === 0 &&
+        member.outstanding.credits === 0
+      ) ? (
         <div
           role="group"
           aria-label={`${member.displayName} outstanding picks and credits`}
@@ -252,6 +259,7 @@ export function PairedMatchupHeader({
           member={matchup.self}
           pregame={matchup.phase === "PREGAME"}
           completed={completed || matchup.resultStatus !== null}
+          final={completed}
           spectator={matchup.spectator}
           rolling={matchup.week.rollingSubmissionsEnabled}
           entryClosed={matchup.week.entryClosed}
@@ -261,6 +269,7 @@ export function PairedMatchupHeader({
           opponent
           pregame={matchup.phase === "PREGAME"}
           completed={completed || matchup.resultStatus !== null}
+          final={completed}
           spectator={matchup.spectator}
           rolling={matchup.week.rollingSubmissionsEnabled}
           entryClosed={matchup.week.entryClosed}

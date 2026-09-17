@@ -27,7 +27,7 @@ export const seasonAutomationSchema = z.object({
 export type SeasonAutomationStatus = z.infer<typeof seasonAutomationSchema>;
 const blockers: Record<string, string> = {
   PREVIOUS_WEEK_RESULTS:
-    "Waiting for the previous week’s final results. Player results may arrive overnight.",
+    "Waiting for final week results. Player results may arrive overnight.",
   PROPS_PREPARING:
     "Initial player evidence is being prepared. Individual unavailable slots can stay empty when the complete slate and source readiness are verified.",
   ENTRY_CUTOFF_PASSED:
@@ -160,6 +160,8 @@ export function automationPresentation(
       true,
     );
   const cause = next.blocker ?? value.blocker;
+  // The RPC's waiting week can be the current reconciliation week or the
+  // upcoming planned week. It does not identify which week is awaited.
   const detail = automationBlocker(cause);
   const operation = next.operation ? operationLabels[next.operation] : null;
   const dueAt =
@@ -219,9 +221,11 @@ export function automationPresentation(
       "The next operation runs when its time and readiness checks allow. No weekly player confirmation is required.",
     false,
     operationLabel ??
-      (next.week
-        ? `Week ${next.week}: preparation target Tuesday 8 a.m. ET; opening target 10 a.m. ET, after finality and readiness checks. The next dated operation is not yet available.`
-        : "Waiting for the next eligible season step"),
+      (cause === "PREVIOUS_WEEK_RESULTS"
+        ? "Waiting for final results before the next eligible season step"
+        : next.week
+          ? `Week ${next.week}: target Tuesday 8 a.m. ET preparation, 10 a.m. opening, subject to finality and readiness. Exact date pending.`
+          : "Waiting for the next eligible season step"),
     dueAt,
   );
 }

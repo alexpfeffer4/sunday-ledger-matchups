@@ -224,10 +224,7 @@ export function OwnerCardProgress({
           be re-bet.
         </p>
         <p className="text-graphite mt-3 text-sm">
-          {card.positions.length} submitted{" "}
-          {card.positions.length === 1 ? "bet" : "bets"} ·{" "}
-          {formatCredits(card.allocatedCredits)} credits committed. Submitted
-          bets cannot be changed.
+          Submitted bets cannot be changed.
         </p>
         {!closed && deadline ? (
           <p className="mt-2 text-sm">

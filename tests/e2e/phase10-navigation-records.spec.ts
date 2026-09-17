@@ -25,6 +25,42 @@ async function expectNoPageOverflow(page: Page) {
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
 }
 
+test("page headings keep normal mobile sizing and fit enlarged narrow text", async ({
+  page,
+}, info) => {
+  for (const [width, scale] of [
+    [390, 100],
+    [320, 100],
+    [320, 200],
+  ]) {
+    await page.setViewportSize({ width, height: 844 });
+    await loadMarkup(page, markup.standings);
+    await page.locator("html").evaluate((element, scale) => {
+      element.style.fontSize = `${scale}%`;
+    }, scale);
+    const heading = page.getByRole("heading", {
+      name: "Standings",
+      exact: true,
+    });
+    const size = await heading.evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const style = getComputedStyle(element);
+      return {
+        textHeight: range.getBoundingClientRect().height,
+        lineHeight: parseFloat(style.lineHeight),
+        fontSize: parseFloat(style.fontSize),
+      };
+    });
+    expect(size.textHeight).toBeLessThanOrEqual(size.lineHeight + 1);
+    expect(size.fontSize).toBe(width === 390 ? 28 : scale === 200 ? 48 : 24);
+    await expectNoPageOverflow(page);
+    await page.screenshot({
+      path: info.outputPath(`polish-standings-${width}-${scale}.png`),
+    });
+  }
+});
+
 for (const width of [320, 390, 768, 1024, 1440]) {
   test(`stable navigation and dense records reflow at ${width}px`, async ({
     page,
@@ -80,6 +116,19 @@ for (const width of [320, 390, 768, 1024, 1440]) {
         .boundingBox())!.width;
       expect(railWidth).toBeGreaterThanOrEqual(width >= 1280 ? 224 : 70);
       expect(railWidth).toBeLessThanOrEqual(width >= 1280 ? 236 : 74);
+      const makePicks = desktop.getByRole("link", { name: "Make picks" });
+      await makePicks.hover();
+      await makePicks.focus();
+      await expect(makePicks).toBeFocused();
+      // The native title names the compact icon without a custom tooltip
+      // extending the navigation scroller (also at full labelled width).
+      await expect(makePicks).toHaveAttribute("title", "Make picks");
+      const scroller = desktop.locator("..");
+      expect(
+        await scroller.evaluate((element) => element.scrollWidth),
+      ).toBeLessThanOrEqual(
+        await scroller.evaluate((element) => element.clientWidth),
+      );
     }
 
     await expect(page.locator("main.broadcast-dark")).toBeVisible();
