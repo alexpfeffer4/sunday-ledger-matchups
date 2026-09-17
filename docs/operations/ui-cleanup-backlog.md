@@ -41,9 +41,12 @@ reviewed application revert; no stored-data recovery is involved.
 
 ## Publication status
 
-The local branch is `codex/ui-cleanup-backlog`. Automatic approval review
-rejected publication to the public `alexpfeffer4/sunday-ledger-matchups` repository
-and requires explicit owner approval of that publication. No PR has been created,
-no merge occurred, and no Production change was made. Hosted Preview and CI
-verification remain pending that approval; local browser binaries were unavailable
-and the normal download timed out. Do not bypass the rejection.
+The owner explicitly approved publication on September 17, 2026. PR #80 is open:
+https://github.com/alexpfeffer4/sunday-ledger-matchups/pull/80
+
+The GitHub app published the exact locally verified tree after command-line Git
+could not authenticate. Hosted Preview built successfully. The fictional card,
+slate and schedule pages were inspected in the browser; sample draft allocation
+updated correctly. The full desktop/mobile acceptance workflow is running on the
+PR and its result must be checked before merge. No merge or Production change
+has occurred. Name editing remains in the separate substantive backlog.
