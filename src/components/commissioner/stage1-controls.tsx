@@ -189,9 +189,15 @@ export function Stage1CommissionerControls({
       <div className="mt-3 flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
           <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
-            League formation
+            {state.league.lifecycle === "DRAFT"
+              ? "League formation"
+              : "League membership"}
           </p>
-          <h2 className="mt-2 text-lg font-bold">Invite members first</h2>
+          <h2 className="mt-2 text-lg font-bold">
+            {state.league.lifecycle === "DRAFT"
+              ? "Invite members first"
+              : "Roster locked"}
+          </h2>
         </div>
         <span
           className={`inline-flex min-h-7 items-center self-start rounded-full border px-3 text-xs font-bold ${
@@ -200,7 +206,11 @@ export function Stage1CommissionerControls({
               : "border-pending/30 bg-pending/10 text-pending"
           }`}
         >
-          {rosterIsValid ? "✓ Roster ready" : "Roster needs members"}
+          {state.league.lifecycle !== "DRAFT"
+            ? "Locked roster"
+            : rosterIsValid
+              ? "✓ Roster ready"
+              : "Roster needs members"}
         </span>
       </div>
       <p className="text-graphite mt-3 text-sm leading-6">
@@ -232,9 +242,11 @@ export function Stage1CommissionerControls({
           ))}
         </ul>
         <p className="text-muted mt-3 text-xs leading-5">
-          {rosterIsValid
-            ? `${state.league.memberCount} is a valid even roster. You may continue to Week 1 setup.`
-            : "Continue inviting until 4–16 members have joined and the total is even."}
+          {state.league.lifecycle !== "DRAFT"
+            ? `${state.league.memberCount} members in the locked competitive roster.`
+            : rosterIsValid
+              ? `${state.league.memberCount} is a valid even roster. You may continue to Week 1 setup.`
+              : "Continue inviting until 4–16 members have joined and the total is even."}
         </p>
       </div>
 
@@ -298,8 +310,9 @@ export function Stage1CommissionerControls({
       <InviteLinkFeedback key={inviteState.value} state={inviteState} />
 
       <p className="border-boundary text-negative mt-5 border-t pt-4 text-xs leading-5 font-semibold">
-        Locking the roster later freezes membership and the season schedule.
-        Invitation links cannot add members after that point.
+        {state.league.lifecycle === "DRAFT"
+          ? "Locking the roster later freezes membership and the season schedule. Invitation links cannot add members after that point."
+          : "Membership and the season schedule are frozen. Invitation links cannot add members."}
       </p>
 
       {invites.length > 0 ? (

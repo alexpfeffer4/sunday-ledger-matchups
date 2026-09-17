@@ -210,6 +210,8 @@ it("a prepared later week does not ask to lock the roster again", () => {
   );
   expect(screen.getByText(/Open Week 3 when ready:/)).toBeVisible();
   expect(screen.queryByText("Not started")).toBeNull();
+  expect(screen.queryByText(/You may continue to Week 1 setup/)).toBeNull();
+  expect(screen.queryByText("Invite members first")).toBeNull();
   expect(screen.queryByRole("button", { name: /Lock.*roster/ })).toBeNull();
 });
 
