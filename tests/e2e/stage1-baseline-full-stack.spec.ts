@@ -511,9 +511,9 @@ for (const pending of [false, true])
           await expect(
             page
               .getByRole("region", { name: "Your weekly card", exact: true })
-              .getByText("Accepted bets", { exact: true })
+              .getByText("Submitted", { exact: true })
               .locator(".."),
-          ).toHaveText(`Accepted bets${(submitted + 1) * 50}`);
+          ).toHaveText(`Submitted${(submitted + 1) * 50}`);
         });
         submitted++;
         const preflight = await rpc(owner, "get_card_review_context", {

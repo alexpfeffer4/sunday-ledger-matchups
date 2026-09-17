@@ -47,6 +47,11 @@ export function LeagueShell({
   ownerRehearsal?: boolean;
   ownerRehearsalGuide?: ReactNode;
 }) {
+  const modeLabel = exampleMode
+    ? "Example Season · Read-only"
+    : mode === "SIMULATION"
+      ? "Practice/test · Simulation"
+      : null;
   return (
     <div
       className="bg-canvas min-h-screen lg:grid lg:grid-cols-[72px_minmax(0,1fr)] xl:grid-cols-[232px_minmax(0,1fr)]"
@@ -87,16 +92,14 @@ export function LeagueShell({
               {leagueName}
             </span>
             <span className="text-muted mt-0.5 block text-xs">
-              {nflYear} · {archiveMode ? "Week" : "Current week"} {week}
+              {nflYear}
+              {archiveMode ? " · Archived" : ""}
             </span>
-            <span className="text-muted mt-0.5 block text-xs leading-4">
-              {phaseLabel} ·{" "}
-              {exampleMode
-                ? "Example read-only"
-                : mode === "LIVE"
-                  ? "Live season"
-                  : "Practice/test · Simulation"}
-            </span>
+            {modeLabel ? (
+              <span className="text-muted mt-0.5 block text-xs leading-4">
+                {modeLabel}
+              </span>
+            ) : null}
           </span>
           <span aria-hidden="true" className="text-muted hidden xl:block">
             <InterfaceIcon name="switch" />
@@ -137,13 +140,8 @@ export function LeagueShell({
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold">{leagueName}</p>
                 <p className="text-muted text-xs leading-4">
-                  {archiveMode ? "Week" : "Current week"} {week} · {phaseLabel}{" "}
-                  ·{" "}
-                  {exampleMode
-                    ? "Example Season · Read-only"
-                    : mode === "LIVE"
-                      ? "Live season"
-                      : "Practice/test · Simulation"}
+                  {archiveMode ? "Week" : "Current week"} {week} · {phaseLabel}
+                  {modeLabel ? ` · ${modeLabel}` : ""}
                 </p>
               </div>
             </Link>
@@ -155,13 +153,8 @@ export function LeagueShell({
                 {leagueName} / {nflYear}
               </p>
               <p className="text-muted text-xs">
-                NFL · {archiveMode ? "Week" : "Current week"} {week} ·{" "}
-                {phaseLabel} ·{" "}
-                {exampleMode
-                  ? "Example Season · Read-only"
-                  : mode === "LIVE"
-                    ? "Live season"
-                    : "Practice/test · Simulation"}
+                {archiveMode ? "Week" : "Current week"} {week} · {phaseLabel}
+                {modeLabel ? ` · ${modeLabel}` : ""}
               </p>
             </div>
             <div className="flex items-center gap-2">

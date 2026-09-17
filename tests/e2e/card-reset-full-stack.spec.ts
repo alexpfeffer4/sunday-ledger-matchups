@@ -168,12 +168,16 @@ commit;`),
     name: "Your weekly card",
     exact: true,
   });
-  await expect(progress).toContainText("4 accepted bets");
+  await expect(page.locator("main ol > li")).toHaveCount(4);
   await expect(
-    progress.getByText("Accepted bets", { exact: true }).locator(".."),
+    progress.getByText("Submitted", { exact: true }).locator(".."),
   ).toContainText("1,000");
   await expect(
-    page.getByRole("link", { name: "View receipt", exact: true }),
+    page.getByRole("link", {
+      name: "View receipt",
+      exact: true,
+      includeHidden: true,
+    }),
   ).toHaveCount(4);
   await page.goto(`/l/${slug}/matchup?week=1`);
   await expect(
@@ -223,8 +227,8 @@ commit;`),
   );
   await page.goto(`/l/${slug}/slate`);
   await expect(
-    progress.getByText("Unsubmitted drafts", { exact: true }).locator(".."),
-  ).toHaveText("Unsubmitted drafts100");
+    progress.getByText("In drafts", { exact: true }).locator(".."),
+  ).toHaveText("In drafts100");
   await expect(
     page.getByRole("button", { name: "Edit pick", exact: true }),
   ).toHaveCount(1);
@@ -250,17 +254,17 @@ commit;`),
   ).toMatchObject({ status: "RESET" });
   await page.reload();
   await expect(
-    progress.locator("dt", { hasText: /^Accepted bets$/ }).locator(".."),
+    progress.locator("dt", { hasText: /^Submitted$/ }).locator(".."),
   ).toContainText("0");
   await expect(
     progress
       .locator("div")
-      .filter({ has: page.locator("dt", { hasText: /^Left to allocate$/ }) })
+      .filter({ has: page.locator("dt", { hasText: /^Left to use$/ }) })
       .last(),
   ).toContainText("1,000");
   await expect(
-    progress.getByText("Unsubmitted drafts", { exact: true }).locator(".."),
-  ).toHaveText("Unsubmitted drafts0");
+    progress.getByText("In drafts", { exact: true }).locator(".."),
+  ).toHaveText("In drafts0");
   await expect(
     page
       .getByRole("status")
@@ -282,7 +286,11 @@ commit;`),
 
   await page.goto(`/l/${slug}/card`);
   await expect(
-    page.getByRole("link", { name: "View receipt", exact: true }),
+    page.getByRole("link", {
+      name: "View receipt",
+      exact: true,
+      includeHidden: true,
+    }),
   ).toHaveCount(0);
   const resetHistory = page.locator("details").filter({
     has: page.locator("summary", { hasText: "Reset receipt history" }),
@@ -418,12 +426,16 @@ commit;`),
   ).toBe(originalTerms);
 
   await page.goto(`/l/${slug}/card`);
-  await expect(progress).toContainText("1 accepted bet");
+  await expect(page.locator("main ol > li")).toHaveCount(1);
   await expect(
-    progress.getByText("Accepted bets", { exact: true }).locator(".."),
+    progress.getByText("Submitted", { exact: true }).locator(".."),
   ).toContainText("300");
   await expect(
-    page.getByRole("link", { name: "View receipt", exact: true }),
+    page.getByRole("link", {
+      name: "View receipt",
+      exact: true,
+      includeHidden: true,
+    }),
   ).toHaveCount(1);
   await page.goto(`/l/${slug}/matchup?week=1`);
   await expect(

@@ -21,6 +21,7 @@ export function PairedMatchupView({
   matchup,
   refreshControl,
   weeklyClose,
+  previousResult = false,
   cardProgress,
   weeks,
   seasonArchived = false,
@@ -28,6 +29,7 @@ export function PairedMatchupView({
   matchup: PairedMatchupDto;
   refreshControl: ReactNode;
   weeklyClose?: ReactNode;
+  previousResult?: boolean;
   cardProgress?: ReactNode;
   weeks?: MatchupWeekOption[];
   seasonArchived?: boolean;
@@ -40,7 +42,7 @@ export function PairedMatchupView({
   return (
     <PageFrame
       dark={matchup.broadcast}
-      eyebrow={`${matchup.league.name} · ${matchup.league.mode === "LIVE" ? "Live season" : "Practice/test · Simulation"}`}
+      eyebrow={`${matchup.league.name}${matchup.league.mode === "LIVE" ? "" : " · Practice/test · Simulation"}`}
       title={`Week ${matchup.week.nflWeek} matchup`}
     >
       <div className="matchup-comparison mx-auto max-w-5xl">
@@ -106,18 +108,14 @@ export function PairedMatchupView({
           />
         </StickyMatchupScore>
         <div className="space-y-5 pt-4">
-          {weeklyClose}
+          {!previousResult ? weeklyClose : null}
           {!completed && !matchup.resultStatus ? cardProgress : null}
-          {!pregame &&
+          {!cardProgress &&
+          !pregame &&
           !completed &&
           !matchup.resultStatus &&
           matchup.scorePath.furtherSubmissionsPossible ? (
-            <section
-              aria-label="Matchup remains open"
-              className="text-muted text-sm"
-            >
-              More bets can still be submitted. This matchup remains open.
-            </section>
+            <p className="text-muted text-sm">Betting still open</p>
           ) : null}
           {scenario ? (
             <section
@@ -131,6 +129,7 @@ export function PairedMatchupView({
             </section>
           ) : null}
           <MatchupLineup matchup={matchup} />
+          {previousResult ? weeklyClose : null}
           {!matchup.spectator &&
           !pregame &&
           !completed &&

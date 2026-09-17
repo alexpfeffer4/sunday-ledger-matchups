@@ -9,7 +9,6 @@ import {
   seasonRulesetPresentation,
   type RulesetPresentation,
 } from "@/components/rules/ruleset-presentation";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCredits } from "@/domain/odds/american";
 import { usesRollingSubmissions } from "@/rulesets/card-rules";
 import { hashRuleset } from "@/rulesets/canonicalize";
@@ -85,7 +84,7 @@ export default async function LeagueRulesPage({
     },
     {
       title: "Markets and big-favorite limit",
-      body: `${marketNames}. A favorite shorter than ${odds(ruleset.concentration.heavyFavoriteThresholdAmerican)} may use at most ${formatCredits(ruleset.concentration.heavyFavoriteSinglePositionCapCredits)} credits; a price at ${odds(ruleset.concentration.heavyFavoriteThresholdAmerican)} or longer may use up to ${formatCredits(ruleset.concentration.standardSinglePositionCapCredits)}. There is no blanket odds band or aggregate favorite cap.${hasExpandedLifecycle ? " This package is settled for POC V1." : ""}`,
+      body: `${marketNames}. A favorite shorter than ${odds(ruleset.concentration.heavyFavoriteThresholdAmerican)} may use at most ${formatCredits(ruleset.concentration.heavyFavoriteSinglePositionCapCredits)} credits; a price at ${odds(ruleset.concentration.heavyFavoriteThresholdAmerican)} or longer may use up to ${formatCredits(ruleset.concentration.standardSinglePositionCapCredits)}. There is no blanket odds band or aggregate favorite cap.`,
     },
     ...(playerProps
       ? [
@@ -161,23 +160,6 @@ export default async function LeagueRulesPage({
             ? `Rules for Week ${presentation.throughWeek}. Submission and scoring updates take effect in future weeks; earlier play keeps its rules.`
             : "Starting rules for this season. During development, approved submission and scoring updates can take effect when a new week opens."
       }
-      aside={
-        <StatusBadge
-          tone={
-            presentation.context === "EXAMPLE"
-              ? "pending"
-              : presentation.frozenAt
-                ? "positive"
-                : "sealed"
-          }
-        >
-          {presentation.context === "EXAMPLE"
-            ? "Example Season"
-            : presentation.frozenAt
-              ? "Recorded"
-              : "Published"}
-        </StatusBadge>
-      }
     >
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="divide-boundary border-boundary divide-y border-y">
@@ -193,6 +175,21 @@ export default async function LeagueRulesPage({
         </div>
 
         <aside className="space-y-5">
+          <section className="border-boundary border-t pt-5">
+            <h2 className="font-bold">Commissioner limits</h2>
+            <p className="text-graphite mt-2 text-sm leading-6">
+              Commissioners cannot read unrevealed bet details or directly edit
+              scores, records, schedules, seeds, brackets, or winners. Official
+              corrections stay visible.
+            </p>
+          </section>
+        </aside>
+      </div>
+      <details className="border-boundary mt-6 border-t text-sm">
+        <summary className="text-action min-h-11 cursor-pointer py-3 font-semibold">
+          Technical details
+        </summary>
+        <div className="max-w-xl space-y-4 pb-4">
           {presentation.weekRules && presentation.weekRules.length > 0 ? (
             <section className="border-boundary border-t pt-5">
               <h2 className="font-bold">Rules by week</h2>
@@ -205,17 +202,9 @@ export default async function LeagueRulesPage({
               </ul>
             </section>
           ) : null}
-          <section className="border-boundary border-t pt-5">
-            <h2 className="font-bold">Commissioner limits</h2>
-            <p className="text-graphite mt-2 text-sm leading-6">
-              Commissioners cannot read unrevealed bet details or directly edit
-              scores, records, schedules, seeds, brackets, or winners. Official
-              corrections stay visible.
-            </p>
-          </section>
           <RulesetAuditDetails presentation={presentation} />
-        </aside>
-      </div>
+        </div>
+      </details>
     </PageFrame>
   );
 }

@@ -362,8 +362,15 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
     page.getByRole("heading", { name: "All 1,000 credits are sealed" }),
   ).toBeVisible();
   await page.getByRole("link", { name: "View card", exact: true }).click();
+  await page.getByText("Pick details", { exact: true }).first().click();
   await expect(
-    page.getByRole("link", { name: "View receipt", exact: true }).first(),
+    page
+      .getByRole("link", {
+        name: "View receipt",
+        exact: true,
+        includeHidden: true,
+      })
+      .first(),
   ).toBeVisible();
 
   await page.goto("/owner/rehearsal");

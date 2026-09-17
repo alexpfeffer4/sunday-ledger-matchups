@@ -49,7 +49,7 @@ describe("paired game lineups", () => {
     const lane = screen.getByLabelText(
       `${matchup.opponent.displayName} · ${upcoming.eventLabel}`,
     );
-    expect(lane).toHaveTextContent("Picks hidden until confirmed kickoff");
+    expect(lane).toHaveTextContent("Picks hidden");
     expect(lane).not.toHaveTextContent(
       /Bet placed|No bet|credits|moneyline|spread|total/i,
     );

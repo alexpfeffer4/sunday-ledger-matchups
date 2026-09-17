@@ -1033,8 +1033,8 @@ function Stage1CardBuilderEditor({
           <form action={action}>
             <p className="mb-3 text-sm leading-6">
               {rolling
-                ? "Submitting is final: these bets are accepted together with a receipt for each. You cannot edit or cancel them. You can return to add more bets with your remaining credits."
-                : "Sealing is final: all picks are saved together with a receipt for each. You cannot edit or cancel them."}
+                ? "These bets cannot be edited or canceled after submission."
+                : "These picks cannot be edited or canceled after sealing."}
             </p>
             <input name="leagueSlug" type="hidden" value={state.league.slug} />
             <input
@@ -1292,7 +1292,7 @@ function Stage1CardBuilderEditor({
                 </>
               )}{" "}
               {rolling ? (
-                "Only zero submitted bets at the final cutoff counts as a missed week. Drafts stay editable; submitted bets are permanent. Wins, pushes and voids do not replenish available credits."
+                "Only zero submitted bets at the final cutoff counts as a missed week. Drafts are saved on this device, do not reserve credits and never submit automatically. Submitted bets are permanent. Wins, pushes and voids do not replenish available credits."
               ) : (
                 <>
                   {state.week.scope === "EXHIBITION"
@@ -1302,6 +1302,12 @@ function Stage1CardBuilderEditor({
                 </>
               )}
             </p>
+            {state.week.propsEnabled ? (
+              <p className="pb-3 leading-6">
+                Player props cover the full game, including overtime, and share
+                your weekly credits with game lines.
+              </p>
+            ) : null}
           </details>
         </div>
 
@@ -1310,12 +1316,6 @@ function Stage1CardBuilderEditor({
             <p className="text-registry text-xs font-bold tracking-[0.09em] uppercase">
               {rolling ? "Your drafts" : "Your picks"}
             </p>
-            {ownerCard.positions.length > 0 ? (
-              <p className="text-muted mt-2 text-xs">
-                {formatCredits(ownerCard.allocatedCredits)} credits are already{" "}
-                {rolling ? "submitted" : "sealed"} and can’t be changed.
-              </p>
-            ) : null}
             {drafts.length === 0 ? (
               <p className="text-muted mt-4 text-sm">
                 {ownerCard.positions.length
@@ -1457,11 +1457,11 @@ function Stage1CardBuilderEditor({
             )}
             <p className="border-boundary text-graphite mt-4 border-t pt-4 text-sm font-semibold">
               {rolling
-                ? `${formatCredits(ownerCard.allocatedCredits)} accepted · ${formatCredits(draftCredits)} in unsubmitted drafts`
+                ? `${formatCredits(ownerCard.allocatedCredits)} submitted · ${formatCredits(draftCredits)} in drafts`
                 : `${formatCredits(totalCredits)} used`}{" "}
               ·{" "}
               {remainingCredits >= 0
-                ? `${formatCredits(remainingCredits)} left to allocate`
+                ? `${formatCredits(remainingCredits)} left to use`
                 : `${formatCredits(Math.abs(remainingCredits))} over`}
             </p>
           </section>
@@ -1478,9 +1478,9 @@ function Stage1CardBuilderEditor({
           ) : null}
 
           <button
-            className="bg-registry hover:bg-registry-hover min-h-12 w-full rounded-lg px-5 font-semibold text-white"
+            className="bg-registry hover:bg-registry-hover min-h-12 w-full rounded-lg px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
             onClick={reviewCard}
-            disabled={pending}
+            disabled={pending || (rolling && batchDrafts.length === 0)}
             type="button"
           >
             {draftValidation.accepted

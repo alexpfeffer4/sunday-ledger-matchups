@@ -206,6 +206,7 @@ export default async function MatchupPage({
             intervalMs={matchup.gameIdentitiesVisible ? 30_000 : undefined}
           />
         }
+        previousResult={!currentClose}
         weeklyClose={
           !matchup.spectator &&
           memory?.recordBridge &&

@@ -102,8 +102,15 @@ async function submitBet(
       .last(),
   ).toBeVisible();
   await page.goto(`/l/${slug}/card`);
+  await page.getByText("Pick details", { exact: true }).first().click();
   await expect(
-    page.getByRole("link", { name: "View receipt", exact: true }).first(),
+    page
+      .getByRole("link", {
+        name: "View receipt",
+        exact: true,
+        includeHidden: true,
+      })
+      .first(),
   ).toBeVisible();
 }
 

@@ -159,25 +159,14 @@ function MemberScore({
         </p>
       ) : null}
       {!completed &&
-      (rolling || ((!pregame || opponent) && !(spectator && pregame))) ? (
+      ((rolling && pregame && (opponent || spectator)) ||
+        (!rolling && (!pregame || opponent) && !(spectator && pregame))) ? (
         <div
           role="group"
           aria-label={`${member.displayName} card status`}
           className="matchup-secondary text-muted mt-2 text-xs font-semibold"
         >
-          {pregame ? (
-            <StatusBadge
-              tone={
-                ["Sealed", "Submitted"].includes(member.cardStatus)
-                  ? "sealed"
-                  : "pending"
-              }
-            >
-              {member.cardStatus}
-            </StatusBadge>
-          ) : (
-            member.cardStatus
-          )}
+          {member.cardStatus}
         </div>
       ) : null}
     </div>
@@ -203,24 +192,24 @@ export function PairedMatchupHeader({
       <h2 className="sr-only" id="paired-matchup-heading">
         {matchup.self.displayName} versus {matchup.opponent.displayName}
       </h2>
-      <div className="matchup-secondary border-boundary flex flex-wrap items-center justify-between gap-3 border-b pb-3">
-        <div>
+      {matchup.phase !== "PREGAME" || matchup.week.scope !== "REGULAR" ? (
+        <div className="matchup-secondary border-boundary flex flex-wrap items-center justify-between gap-3 border-b pb-3">
           <p className="text-muted text-sm font-semibold">
-            Weekly score · Week {matchup.week.nflWeek} ·{" "}
-            {matchup.week.competition ??
-              (matchup.week.scope === "REGULAR"
-                ? "Regular season"
-                : matchup.week.scope.toLowerCase())}
+            {matchup.week.scope === "REGULAR"
+              ? "Weekly score"
+              : (matchup.week.competition ?? matchup.week.scope.toLowerCase())}
           </p>
+          {matchup.phase !== "PREGAME" ? (
+            <StatusBadge tone={phaseTones[matchup.phase]}>
+              {matchup.phase === "CORRECTED" && matchup.resultStatus
+                ? completed
+                  ? "Corrected final"
+                  : "Corrected · picks settled"
+                : matchup.phaseLabel}
+            </StatusBadge>
+          ) : null}
         </div>
-        <StatusBadge tone={phaseTones[matchup.phase]}>
-          {matchup.phase === "CORRECTED" && matchup.resultStatus
-            ? completed
-              ? "Corrected final"
-              : "Corrected · picks settled"
-            : matchup.phaseLabel}
-        </StatusBadge>
-      </div>
+      ) : null}
 
       {matchup.self.decision ? (
         <div className="matchup-secondary mt-5">
@@ -284,9 +273,19 @@ export function PairedMatchupHeader({
           Weekly score is the confirmed credit return from settled bets,
           including returned stakes. Outstanding includes live and unstarted
           picks. Credits outstanding are their original stakes, not potential
-          returns. Available credits are unused credits you can still bet. This
-          week’s rules determine incomplete-card results.
+          returns. Available credits are unused credits you can still bet.
+          Returned credits cannot be re-bet. This week’s rules determine
+          incomplete-card results.
         </p>
+        {matchup.freshness.updatedAt ? (
+          <p className="text-muted pb-3">
+            Scores last checked{" "}
+            <time dateTime={matchup.freshness.updatedAt}>
+              {easternTime(matchup.freshness.updatedAt)}
+            </time>
+            .
+          </p>
+        ) : null}
       </details>
 
       {matchup.phase === "PREGAME" ? (
@@ -304,13 +303,7 @@ export function PairedMatchupHeader({
           <div>
             <p className="text-muted text-xs">
               {matchup.freshness.updatedAt ? (
-                <>
-                  Scores checked {matchup.freshness.ageLabel}
-                  {" · "}
-                  <time dateTime={matchup.freshness.updatedAt}>
-                    {easternTime(matchup.freshness.updatedAt)}
-                  </time>
-                </>
+                <>Scores checked {matchup.freshness.ageLabel}</>
               ) : (
                 "Scores not checked yet"
               )}

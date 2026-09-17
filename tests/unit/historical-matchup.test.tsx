@@ -141,8 +141,8 @@ describe("historical matchups", () => {
         ),
       ).toBeVisible();
       expect(
-        within(playerColumn).getByText(`${subject.subjectTeam} · Full game`),
-      ).toBeVisible();
+        within(playerColumn).queryByText(`${subject.subjectTeam} · Full game`),
+      ).not.toBeInTheDocument();
       expect(
         within(playerColumn).queryByText(
           `${subjects[1 - index]!.subjectLabel} · Under 200.5 passing yards`,

@@ -72,19 +72,28 @@ export function OwnerCardProgress({
       0,
     );
     const leftToAllocate = card.remainingCredits - draftCredits;
+    const draftStatus =
+      hydrated && drafts.length ? (
+        <p className="text-muted mt-2 text-xs" role="status">
+          {saved
+            ? "Draft saved on this device"
+            : "Draft not saved. Keep this page open to avoid losing it."}
+          {closed ? " · Not submitted" : ""}
+        </p>
+      ) : null;
     const allocation = (
       <dl
         aria-label="Weekly credit allocation"
         className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-3 text-sm"
       >
         <div>
-          <dt className="text-muted">Accepted bets</dt>
+          <dt className="text-muted">Submitted</dt>
           <dd className="mt-1 font-mono text-lg font-bold">
             {formatCredits(card.allocatedCredits)}
           </dd>
         </div>
         <div>
-          <dt className="text-muted">Unsubmitted drafts</dt>
+          <dt className="text-muted">In drafts</dt>
           <dd className="mt-1 font-mono text-lg font-bold">
             {hydrated ? formatCredits(draftCredits) : "Checking…"}
           </dd>
@@ -95,7 +104,7 @@ export function OwnerCardProgress({
               ? "Expired credits"
               : leftToAllocate < 0
                 ? "Over allocation"
-                : "Left to allocate"}
+                : "Left to use"}
           </dt>
           <dd className="mt-1 font-mono text-lg font-bold">
             {closed
@@ -107,7 +116,6 @@ export function OwnerCardProgress({
         </div>
       </dl>
     );
-    const unsettled = card.positions.filter((position) => !position.settlement);
     const canSubmit =
       !closed &&
       card.canSubmit !== false &&
@@ -139,19 +147,7 @@ export function OwnerCardProgress({
                     ? "Follow your selections below."
                     : "Open your card for details."}
             </p>
-            {hydrated && drafts.length ? (
-              <p className="text-muted mt-1 text-xs">
-                {formatCredits(card.allocatedCredits)} accepted ·{" "}
-                {formatCredits(draftCredits)} in {drafts.length} unsubmitted{" "}
-                {drafts.length === 1 ? "draft" : "drafts"}.{" "}
-                {saved
-                  ? "Saved on this device."
-                  : "Device storage is unavailable."}{" "}
-                {closed
-                  ? "Drafts were not submitted."
-                  : `${formatCredits(Math.max(0, leftToAllocate))} left to allocate. Drafts do not reserve credits.`}
-              </p>
-            ) : null}
+            {draftStatus}
           </div>
           <Link
             className={`${canSubmit ? "bg-registry hover:bg-registry-hover text-white" : "text-action"} inline-flex min-h-11 items-center justify-center rounded-lg px-4 text-sm font-semibold`}
@@ -173,6 +169,7 @@ export function OwnerCardProgress({
           aria-label="Your weekly card"
           className="border-boundary border-b pb-3"
         >
+          <h2 className="text-sm font-semibold">Credits</h2>
           {allocation}
           <p className="mt-3 text-sm font-semibold">
             Each game closes at kickoff.
@@ -184,14 +181,7 @@ export function OwnerCardProgress({
               </>
             ) : null}
           </p>
-          <p className="text-muted mt-1 text-sm">
-            Drafts are unsubmitted and do not reserve credits.{" "}
-            {!hydrated
-              ? "Checking saved drafts…"
-              : saved
-                ? "Saved on this device."
-                : "Device storage is unavailable; keep this page open."}
-          </p>
+          {draftStatus}
           {card.remainingCredits > 0 && card.remainingCredits < 50 ? (
             <p className="mt-2 text-sm">
               The remaining {card.remainingCredits} credits cannot fund the
@@ -205,27 +195,10 @@ export function OwnerCardProgress({
         aria-label="Your weekly card"
         className="border-boundary bg-subtle rounded-lg border p-4"
       >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-bold">
-            {closed ? "Submissions closed" : "Your weekly card"}
-          </h2>
-          <StatusBadge tone={card.positions.length ? "sealed" : "pending"}>
-            {card.positions.length
-              ? `${card.positions.length} accepted ${card.positions.length === 1 ? "bet" : "bets"}`
-              : "No accepted bets"}
-          </StatusBadge>
-        </div>
+        <h2 className="text-sm font-semibold">
+          {closed ? "Submissions closed" : "Credits"}
+        </h2>
         {allocation}
-        <p className="text-muted mt-2 text-sm">
-          {formatCredits(
-            unsettled.reduce((sum, position) => sum + position.stakeCredits, 0),
-          )}{" "}
-          credits in unsettled bets. Returns count toward your score and cannot
-          be re-bet.
-        </p>
-        <p className="text-graphite mt-3 text-sm">
-          Submitted bets cannot be changed.
-        </p>
         {!closed && deadline ? (
           <p className="mt-2 text-sm">
             Each game closes at kickoff. Unused credits expire{" "}
@@ -238,20 +211,7 @@ export function OwnerCardProgress({
             50-credit minimum and will expire.
           </p>
         ) : null}
-        {hydrated && drafts.length ? (
-          <p className="text-graphite mt-2 text-sm">
-            {drafts.length} unsubmitted{" "}
-            {drafts.length === 1 ? "draft" : "drafts"} ·{" "}
-            {formatCredits(
-              drafts.reduce((sum, draft) => sum + draft.stakeCredits, 0),
-            )}{" "}
-            draft credits.{" "}
-            {saved
-              ? "Saved on this device."
-              : "Keep this page open; device storage is unavailable."}{" "}
-            Drafts do not reserve credits and never submit automatically.
-          </p>
-        ) : null}
+        {draftStatus}
         {closed && !card.positions.length ? (
           <p className="text-graphite mt-2 text-sm">
             No bets were submitted. The missed-week result follows this week’s

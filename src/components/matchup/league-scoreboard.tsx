@@ -52,7 +52,14 @@ export function LeagueScoreboard({
           >
             <ScoreboardRowLink game={game}>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-muted text-xs font-semibold">
+                <p
+                  className={
+                    (game.own ?? game.selected) ||
+                    game.competition !== "Regular season"
+                      ? "text-muted text-xs font-semibold"
+                      : "sr-only"
+                  }
+                >
                   {(game.own ?? game.selected)
                     ? "Your matchup"
                     : game.competition}

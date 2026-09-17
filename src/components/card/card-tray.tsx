@@ -69,10 +69,10 @@ export function CardTray({
             </p>
             <p className="text-muted mt-0.5 text-xs">
               {acceptedCredits !== undefined
-                ? `${formatCredits(acceptedCredits)} accepted · `
+                ? `${formatCredits(acceptedCredits)} submitted · `
                 : null}
               {remainingCredits >= 0
-                ? `${formatCredits(remainingCredits)} ${acceptedCredits !== undefined ? "left to allocate" : "remaining"}`
+                ? `${formatCredits(remainingCredits)} ${acceptedCredits !== undefined ? "left to use" : "remaining"}`
                 : `${formatCredits(Math.abs(remainingCredits))} over`}
             </p>
           </div>

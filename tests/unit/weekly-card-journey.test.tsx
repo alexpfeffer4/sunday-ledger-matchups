@@ -222,7 +222,9 @@ describe("weekly card journey", () => {
       expect(row).toHaveTextContent("Profit if won250");
       expect(row).toHaveTextContent("Total returned if won750");
     }
-    expect(screen.getByText(/Sealing is final/)).toBeVisible();
+    expect(
+      screen.getByText(/cannot be edited or canceled after sealing/),
+    ).toBeVisible();
     expect(screen.getByText(/A loss returns 0/)).toBeVisible();
     expect(screen.getByRole("heading", { name: "Review card" })).toHaveFocus();
   });

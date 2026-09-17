@@ -54,16 +54,6 @@ export function PlayerPropsGame({
     initialAppActionState,
   );
   const slots = event.playerProps ?? [];
-  const available = slots.filter(
-    (slot) =>
-      slot.subjectId &&
-      event.markets.some(
-        (market) =>
-          market.subjectId === slot.subjectId &&
-          market.statistic === slot.statistic &&
-          market.qualityStatus === "HEALTHY",
-      ),
-  ).length;
   return (
     <details className="group border-boundary bg-surface rounded-lg border p-4">
       <summary className="min-h-11 cursor-pointer list-none marker:hidden">
@@ -81,11 +71,9 @@ export function PlayerPropsGame({
             <span className="hidden group-open:inline">−</span>
           </span>
         </span>
-        <span className="text-graphite mt-3 block text-sm font-semibold">
-          {bettingOpen
-            ? `${available} of 6 props available · View players`
-            : "Betting closed · View players"}
-        </span>
+        {!bettingOpen ? (
+          <span className="text-muted mt-2 block text-sm">Betting closed</span>
+        ) : null}
       </summary>
       <QuoteFreshness
         freshness={freshness?.filter((item) => item.family !== "MAIN")}
@@ -216,10 +204,6 @@ export function PlayerPropsGame({
           })
         )}
       </div>
-      <p className="text-muted mt-2 text-xs leading-5">
-        Full game, including overtime. Game lines and player props share your
-        weekly credits.
-      </p>
     </details>
   );
 }
