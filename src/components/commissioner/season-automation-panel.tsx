@@ -6,7 +6,7 @@ import {
 } from "@/application/actions/action-state";
 import {
   automationBlocker,
-  automationNextLabel,
+  automationPresentation,
   type SeasonAutomationStatus,
 } from "@/application/automation/status";
 import { ActionFeedback } from "@/components/forms/action-feedback";
@@ -25,7 +25,9 @@ export function SeasonAutomationPanel({
   leagueSlug,
   status,
   action,
+  section = "settings",
 }: {
+  section?: "settings" | "recovery" | "audit";
   leagueSlug: string;
   status: SeasonAutomationStatus;
   action: (state: AppActionState, form: FormData) => Promise<AppActionState>;
@@ -34,57 +36,105 @@ export function SeasonAutomationPanel({
     action,
     initialAppActionState,
   );
-  const blocker = automationBlocker(status.next.blocker ?? status.blocker);
+  const display = automationPresentation(status);
+  if (section === "recovery")
+    return (
+      <section aria-labelledby="automation-recovery-heading">
+        <h2 id="automation-recovery-heading" className="font-bold">
+          Future week automation recovery
+        </h2>
+        <p className="mt-2 text-sm leading-6">
+          {display.label}. {display.detail}
+        </p>
+        {display.retry ? (
+          <form action={submit} className="mt-3">
+            <input type="hidden" name="leagueSlug" value={leagueSlug} />
+            <button
+              className={button}
+              name="command"
+              value="RETRY"
+              disabled={pending}
+            >
+              {pending ? "Requesting retry…" : "Retry when eligible"}
+            </button>
+            <p className="text-muted mt-2 text-sm">
+              A guarded retry does not bypass readiness, deadlines or provider
+              credit limits. If a retry is already scheduled, this is an
+              optional fallback.
+            </p>
+            <ActionFeedback state={feedback} />
+          </form>
+        ) : (
+          <p className="text-muted mt-2 text-sm">
+            Refresh the page to recheck status. A manual retry is offered for a
+            failed or suspended operation.
+          </p>
+        )}
+      </section>
+    );
+  if (section === "audit")
+    return (
+      <details
+        id="commissioner-audit"
+        className="border-boundary mt-5 border-y py-3 text-sm"
+      >
+        <summary className="min-h-11 cursor-pointer content-center font-bold">
+          Audit details
+        </summary>
+        <p className="mt-2">
+          Policy: {status.policyRevision}. Last outcome:{" "}
+          {status.lastOutcome ?? "No action yet"}.{" "}
+          {status.approvedAt && Number.isFinite(Date.parse(status.approvedAt))
+            ? `Approved ${date.format(new Date(status.approvedAt))}.`
+            : ""}
+        </p>
+        {status.validatedWeek ? (
+          <p className="mt-2">
+            Week {status.validatedWeek} players validated automatically under
+            the saved season policy.
+          </p>
+        ) : null}
+      </details>
+    );
+  if (!status.eligible && !status.enrolled)
+    return (
+      <section>
+        <h2 className="font-bold">Optional season automation</h2>
+        <p className="mt-2 text-sm">
+          Available after the Live roster is locked and the season starts.
+          Complete setup first.
+        </p>
+      </section>
+    );
   return (
     <section
       aria-labelledby="season-automation-heading"
-      className="border-boundary bg-surface mx-auto my-5 w-full max-w-7xl rounded-xl border p-5"
+      className="border-boundary bg-surface rounded-xl border p-5"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="season-automation-heading" className="text-xl font-bold">
-          Season automation
-        </h2>
-        <span className="text-registry text-sm font-semibold">
-          {status.revoked
-            ? "Revoked"
-            : status.enabled
-              ? "Enabled"
-              : status.enrolled
-                ? "Paused"
-                : "Not enabled"}
-        </span>
-      </div>
-      <p className="mt-3 font-semibold">{automationNextLabel(status)}</p>
-      {status.next.dueAt ? (
-        <p className="text-muted mt-1 text-sm">
-          {date.format(new Date(status.next.dueAt))}
-        </p>
-      ) : null}
+      <h2 id="season-automation-heading" className="text-xl font-bold">
+        Season automation
+      </h2>
+      <p className="mt-2 text-sm font-semibold">{display.label}</p>
       {status.enrolled ? (
         <p className="text-graphite mt-2 text-sm">
           From Week {status.effectiveWeek} ·{" "}
           {status.preset === "ALL_NFL_GAMES"
             ? "All NFL games"
-            : "Sunday afternoon onward and Monday"}{" "}
-          · Tuesday at 10 a.m. ET
+            : "Sunday afternoon onward and Monday"}
+          . Preparation target: Tuesday 8 a.m. ET. Opening target: 10 a.m. ET,
+          conditional on prior finality and readiness.
         </p>
       ) : null}
-      {blocker ? (
-        <p role="status" className="text-graphite mt-3 text-sm leading-6">
-          {blocker}
+      {status.revoked ? (
+        <p className="mt-2 text-sm">
+          Revoked approval cannot be resumed. Review and approve the policy
+          again below.
         </p>
       ) : null}
-      {status.validatedWeek ? (
-        <p className="text-graphite mt-3 text-sm">
-          Week {status.validatedWeek} players validated automatically under your
-          season policy. Eligible unavailable props are checked automatically
-          before their game’s cutoff.
-        </p>
-      ) : null}
-      {!status.workerReady && status.enrolled ? (
-        <p className="text-pending mt-3 text-sm">
-          Your settings are saved. The scheduled worker is awaiting release
-          activation.
+      {status.blocker === "POLICY_UNAVAILABLE" ||
+      status.next.blocker === "POLICY_UNAVAILABLE" ? (
+        <p className="text-pending mt-2 text-sm">
+          {automationBlocker("POLICY_UNAVAILABLE")}
         </p>
       ) : null}
       <form action={submit} className="mt-4 space-y-4">
@@ -161,63 +211,37 @@ export function SeasonAutomationPanel({
             ) : null}
           </>
         ) : (
-          <div className="flex flex-wrap gap-3">
-            <button
-              className={button}
-              name="command"
-              value={status.enabled ? "PAUSE" : "RESUME"}
-              disabled={pending}
-            >
-              {status.enabled ? "Pause automation" : "Resume automation"}
-            </button>
-            {status.enabled &&
-            (blocker || status.next.status === "SUSPENDED") ? (
+          <div>
+            <p className="text-graphite mb-3 text-sm leading-6">
+              Pause stops covered future preparation and publication.
+              Current-week quotes, scores, player results and approved pending
+              props continue. Resume keeps this approval; revoking it requires a
+              new review and approval.
+            </p>
+            <div className="flex flex-wrap gap-3">
               <button
                 className={button}
                 name="command"
-                value="RETRY"
+                value={status.enabled ? "PAUSE" : "RESUME"}
                 disabled={pending}
               >
-                Retry when eligible
+                {status.enabled
+                  ? "Pause future week automation"
+                  : "Resume future week automation"}
               </button>
-            ) : null}
-            <a
-              href="#player-menu-heading"
-              className={`${button} inline-flex items-center`}
-            >
-              View player menu
-            </a>
+              <button
+                className={button}
+                name="command"
+                value="REVOKE"
+                disabled={pending}
+              >
+                Revoke season approval
+              </button>
+            </div>
           </div>
         )}
         <ActionFeedback state={feedback} />
       </form>
-      <details className="text-muted mt-4 text-xs">
-        <summary className="min-h-8 cursor-pointer">Audit details</summary>
-        <p className="mt-2">
-          Policy: {status.policyRevision}. Last outcome:{" "}
-          {status.lastOutcome ?? "No action yet"}.{" "}
-          {status.approvedAt
-            ? `Approved ${date.format(new Date(status.approvedAt))}.`
-            : ""}
-        </p>
-        <p className="mt-2">
-          Pausing stops future preparation and publication. Current quotes,
-          accepted results and approved pending-slot additions continue.
-        </p>
-        {status.enrolled && !status.revoked ? (
-          <form action={submit} className="mt-3">
-            <input type="hidden" name="leagueSlug" value={leagueSlug} />
-            <button
-              className={button}
-              name="command"
-              value="REVOKE"
-              disabled={pending}
-            >
-              Revoke season approval
-            </button>
-          </form>
-        ) : null}
-      </details>
     </section>
   );
 }

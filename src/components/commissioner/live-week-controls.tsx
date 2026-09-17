@@ -396,9 +396,11 @@ export function LiveWeekCommissionerControls({
             ) : null}
           </div>
           <p className="text-graphite mt-2 text-sm leading-6">
-            {liveWeekOperations?.automationEnabled
-              ? "Automatic game checks are on."
-              : "Automatic game checks are off; use the check below."}{" "}
+            {!liveWeekOperations
+              ? "Game-check status could not be confirmed. Refresh this page."
+              : liveWeekOperations.automationEnabled
+                ? "Automatic game checks are on."
+                : "Automatic game checks are off; use the check below."}{" "}
             Starts are checked near kickoff; results are checked about four
             hours later. Only confirmed finals settle picks. Overtime stays
             pending, and corrections remain visible.
@@ -417,10 +419,13 @@ export function LiveWeekCommissionerControls({
                 captured results. Credit limits also apply to manual checks.
               </li>
               <li>
-                If an event remains unavailable, record an identifiable official
-                source through the existing objective-result controls. Capture
-                each game within 48 hours of its scheduled start; automatic
-                retries stop at 60 hours.
+                If the first final has not been captured, try the bounded score
+                check. The correction form requires an existing final and cannot
+                create the first result. No manual first-result recovery process
+                is established here; that authority and evidence process still
+                require an owner decision. Keep the event unresolved if
+                retrieval fails. Capture target: within 48 hours of scheduled
+                start; automatic retries stop at 60 hours.
               </li>
               <li>
                 Before you become unavailable, transfer commissioner controls to

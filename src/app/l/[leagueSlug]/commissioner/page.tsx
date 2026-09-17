@@ -13,7 +13,7 @@ import { Stage1CommissionerView } from "@/components/stage1/live-views";
 import { getCommissionerCardStatus } from "@/application/queries/get-commissioner-card-status";
 import { getPlayerPropMenu } from "@/application/queries/get-player-prop-menu";
 import { PlayerPropMenuReview } from "@/components/commissioner/player-prop-menu-review";
-import { getSeasonAutomation } from "@/application/queries/get-season-automation";
+import { getCommissionerAutomationStatus } from "@/application/queries/get-season-automation";
 import { SeasonAutomationPanel } from "@/components/commissioner/season-automation-panel";
 import { configureSeasonAutomationAction } from "../automation-actions";
 import {
@@ -54,7 +54,7 @@ export default async function CommissionerPage({
   if (live) {
     const [automation, menu, cardStatus] = await Promise.all([
       live.commissioner.isCommissioner && !ownerRehearsal
-        ? getSeasonAutomation(leagueSlug)
+        ? getCommissionerAutomationStatus(leagueSlug)
         : null,
       live.commissioner.isCommissioner ? getPlayerPropMenu(leagueSlug) : null,
       live.commissioner.isCommissioner &&
@@ -64,53 +64,72 @@ export default async function CommissionerPage({
         ? getCommissionerCardStatus(leagueSlug)
         : null,
     ]);
+    const playerMenu = menu?.enabled ? (
+      <PlayerPropMenuReview
+        leagueId={live.league.id}
+        leagueSlug={leagueSlug}
+        slots={menu.slots.map((slot) => ({
+          ...slot,
+          candidates: slot.candidates ?? [],
+        }))}
+        frozen={menu.frozen}
+        automaticValidation={menu.automaticValidation ?? false}
+        amendmentPending={menu.amendmentPending ?? false}
+        amendmentApplied={menu.amendmentApplied ?? false}
+        progressiveAvailability={menu.progressiveAvailability ?? false}
+        progressiveActivated={menu.progressiveActivated ?? false}
+        prepareAction={preparePlayerPropMenuAction}
+        confirmAction={confirmPlayerPropMenuAction}
+        refreshAction={refreshPlayerPropQuotesAction}
+        canOpen={menu.canOpen ?? false}
+        openAction={openPlayerPropWeekAction.bind(null, menu.weekId ?? "")}
+      />
+    ) : null;
     return (
-      <>
-        {automation && (
-          <SeasonAutomationPanel
-            leagueSlug={leagueSlug}
-            status={automation}
-            action={configureSeasonAutomationAction}
-          />
-        )}
-        {menu?.enabled && (
-          <PlayerPropMenuReview
-            leagueId={live.league.id}
-            leagueSlug={leagueSlug}
-            slots={menu.slots.map((slot) => ({
-              ...slot,
-              candidates: slot.candidates ?? [],
-            }))}
-            frozen={menu.frozen}
-            automaticValidation={menu.automaticValidation ?? false}
-            amendmentPending={menu.amendmentPending ?? false}
-            amendmentApplied={menu.amendmentApplied ?? false}
-            progressiveAvailability={menu.progressiveAvailability ?? false}
-            progressiveActivated={menu.progressiveActivated ?? false}
-            prepareAction={preparePlayerPropMenuAction}
-            confirmAction={confirmPlayerPropMenuAction}
-            refreshAction={refreshPlayerPropQuotesAction}
-            canOpen={menu.canOpen ?? false}
-            openAction={openPlayerPropWeekAction.bind(null, menu.weekId ?? "")}
-          />
-        )}
-        <Stage1CommissionerView
-          seasonAutomated={Boolean(
-            automation?.enabled &&
-            live.week &&
-            live.week.nflWeek >= (automation.effectiveWeek ?? 99) - 1,
-          )}
-          cardStatus={cardStatus}
-          invites={invites}
-          leagueManagement={leagueManagement}
-          latestLiveImport={latestLiveImport}
-          liveWeekOperations={liveWeekOperations}
-          providerConfigured={isOddsProviderConfigured()}
-          ownerRehearsal={ownerRehearsal !== null}
-          state={live}
-          week17CorrectionOperations={week17CorrectionOperations}
-        />
-      </>
+      <Stage1CommissionerView
+        automation={automation}
+        playerMenu={playerMenu}
+        menu={menu}
+        automationSettings={
+          automation ? (
+            <SeasonAutomationPanel
+              leagueSlug={leagueSlug}
+              status={automation}
+              action={configureSeasonAutomationAction}
+              section="settings"
+            />
+          ) : null
+        }
+        automationRecovery={
+          automation ? (
+            <SeasonAutomationPanel
+              leagueSlug={leagueSlug}
+              status={automation}
+              action={configureSeasonAutomationAction}
+              section="recovery"
+            />
+          ) : null
+        }
+        automationAudit={
+          automation ? (
+            <SeasonAutomationPanel
+              leagueSlug={leagueSlug}
+              status={automation}
+              action={configureSeasonAutomationAction}
+              section="audit"
+            />
+          ) : null
+        }
+        cardStatus={cardStatus}
+        invites={invites}
+        leagueManagement={leagueManagement}
+        latestLiveImport={latestLiveImport}
+        liveWeekOperations={liveWeekOperations}
+        providerConfigured={isOddsProviderConfigured()}
+        ownerRehearsal={ownerRehearsal !== null}
+        state={live}
+        week17CorrectionOperations={week17CorrectionOperations}
+      />
     );
   }
   if (archive) redirect(`/l/${leagueSlug}/matchup`);

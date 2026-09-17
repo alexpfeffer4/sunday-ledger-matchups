@@ -88,7 +88,7 @@ export function timedCommissionerAction(
   if (overdue)
     return {
       title: "Recover the missing final result",
-      detail: `${overdue.awayTeam} at ${overdue.homeTeam} is unresolved. Capture an identifiable official result now; use the documented void path only if its conditions apply. Never finalize an unresolved week.`,
+      detail: `${overdue.awayTeam} at ${overdue.homeTeam} is unresolved. Try the bounded score check in Recovery. The correction tool requires an existing final; no manual first-result process is established here. Leave the game unresolved if retrieval fails.`,
       prerequisites: `Capture target was ${easternTime(new Date(Date.parse(overdue.scheduledStartAt) + 48 * 60 * 60_000).toISOString())}`,
     };
   if (freshness.delayed)
@@ -115,5 +115,146 @@ export function timedCommissionerAction(
     prerequisites: next
       ? `Next check ${easternTime(next)}${operations?.automationEnabled ? "" : " · automatic checks are off"}`
       : "Review captured results",
+  };
+}
+
+export function isRosterValid(state: Stage1CommissionerControlState) {
+  return (
+    state.league.memberCount >= 4 &&
+    state.league.memberCount <= 16 &&
+    state.league.memberCount % 2 === 0
+  );
+}
+
+export function commissionerNextStep({
+  hasLiveImport,
+  providerConfigured,
+  state,
+}: {
+  hasLiveImport: boolean;
+  providerConfigured: boolean;
+  state: Stage1CommissionerControlState;
+}) {
+  const rosterIsValid = isRosterValid(state);
+
+  if (!state.week && !rosterIsValid) {
+    return {
+      detail:
+        "Invite members until the roster has an even total between 4 and 16.",
+      prerequisites: `${state.league.memberCount} members now · even 4–16 required`,
+      title: "Complete the league roster",
+    };
+  }
+
+  if (!state.week && state.league.mode === "LIVE") {
+    if (!providerConfigured) {
+      return {
+        detail:
+          "Odds are not connected yet. Finish league setup before importing the Week 1 slate.",
+        prerequisites: "Odds connection needed",
+        title: "Connect weekly odds",
+      };
+    }
+    if (!hasLiveImport) {
+      return {
+        detail:
+          "Import the current NFL markets for private review. This does not open member cards.",
+        prerequisites: "Odds connected",
+        title: "Import current NFL markets",
+      };
+    }
+    return {
+      detail:
+        "Review the imported games, then publish the eligible Week 1 slate and card-lock time.",
+      prerequisites: "Imported odds ready",
+      title: "Publish the Week 1 slate",
+    };
+  }
+
+  if (!state.week) {
+    return {
+      detail:
+        "Advance the practice clock, then make the reviewed Week 1 slate available.",
+      prerequisites: rosterIsValid
+        ? "Practice/test Week 1 is ready"
+        : `${state.league.memberCount} members · even 4–16 required`,
+      title: "Make practice Week 1 available",
+    };
+  }
+
+  if (state.league.mode === "LIVE" && state.week.state === "PLANNED") {
+    if (!rosterIsValid) {
+      return {
+        detail:
+          "The slate is published. Invite members until the roster has an even total between 4 and 16.",
+        prerequisites: `${state.league.memberCount} members now · even 4–16 required`,
+        title: "Complete the league roster",
+      };
+    }
+    return {
+      detail:
+        "Refresh the odds one final time, freeze the roster and schedule, and open every member card.",
+      prerequisites: `${state.league.memberCount}-member roster ready`,
+      title: "Lock the roster and open Week 1",
+    };
+  }
+
+  if (state.week.state === "OPEN") {
+    if (state.week.rollingSubmissionsEnabled)
+      return {
+        detail:
+          "Members can submit bets until each game’s kickoff. Any accepted bet counts as participation; unused allocation expires at the final cutoff.",
+        prerequisites: `Week ${state.week.nflWeek} betting is open`,
+        title: "Betting continues game by game",
+      };
+    return {
+      detail:
+        state.league.mode === "LIVE"
+          ? "Monitor card completion and quote health. Cards lock for everyone at the published deadline."
+          : "Members complete their authoritative cards before the shared deadline; then lock the week.",
+      prerequisites: `Week ${state.week.nflWeek} cards are open`,
+      title: "Monitor cards until lock",
+    };
+  }
+
+  if (state.week.state === "LOCKED") {
+    return {
+      detail:
+        "Record final game results as they arrive. Matchup scores update from the accepted card terms.",
+      prerequisites: state.week.rollingSubmissionsEnabled
+        ? "Submitted bets remain permanent; later games can still accept bets"
+        : "All member cards are locked",
+      title: "Record final results",
+    };
+  }
+
+  if (state.week.state === "PROVISIONAL") {
+    if (state.week.finalizationMode === "AFTER_RESULTS")
+      return {
+        detail:
+          "The week closes automatically once all published games and picks are settled.",
+        prerequisites: "Review any unresolved game result",
+        title: "Check weekly settlement",
+      };
+    return {
+      detail:
+        "Review any correction, then finalize the week after the correction window closes.",
+      prerequisites: state.week.correctionWindowClosesAt
+        ? `Window closes ${easternTime(state.week.correctionWindowClosesAt)}`
+        : "Awaiting correction-window close",
+      title: "Finalize the week",
+    };
+  }
+
+  return {
+    detail:
+      state.league.lifecycle === "FINAL"
+        ? "The champion and season history are final. No further commissioner action is required."
+        : "This week is final. Continue the season when the next weekly slate is available.",
+    prerequisites: `Week ${state.week.nflWeek} is final`,
+    title:
+      state.league.lifecycle === "FINAL"
+        ? "Season complete"
+        : "Prepare the next week",
   };
 }

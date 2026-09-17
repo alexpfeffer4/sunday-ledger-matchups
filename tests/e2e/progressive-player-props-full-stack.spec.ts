@@ -202,6 +202,7 @@ commit;`),
   expect(initial.slots.every((slot) => !slot.confirmed)).toBe(true);
 
   await signIn(page, identity, `/l/${slug}/commissioner`);
+  await page.getByRole("link", { name: /View player details/ }).click();
   await expect(
     page.getByRole("heading", {
       name: "Review available players and pending slots",
@@ -509,8 +510,13 @@ test("one season approval opens two future weeks automatically and pause retains
     select pg_temp.automation_context(${quoteSql(slug)},${quoteSql(created.data.user!.id)}::uuid,false); commit;`),
   );
   await signIn(page, identity, `/l/${slug}/commissioner`);
+  await page
+    .getByRole("link", { name: "Season settings", exact: true })
+    .click();
   const panel = page.getByRole("region", { name: "Season automation" });
-  await expect(panel.getByText("Not enabled", { exact: true })).toBeVisible();
+  await expect(
+    panel.getByText("Manual season operation", { exact: true }),
+  ).toBeVisible();
   const consent = panel.getByRole("checkbox");
   await expect(consent).not.toBeChecked();
   await consent.check();
@@ -520,8 +526,39 @@ test("one season approval opens two future weeks automatically and pause retains
     "Season automation approved",
   );
   await expect(
-    panel.getByRole("button", { name: "Pause automation" }),
+    panel.getByRole("button", { name: "Pause future week automation" }),
   ).toBeVisible();
+  // Real status RPC and changed screen: failures must outrank saved approval.
+  sql(
+    `update private.season_automation set suspended=true,last_outcome='FAILED',blocker='OPERATION_FAILED',operation_key='SYNC_SCHEDULE:3',failure_dependency_hash=private.automation_dependency_hash(season_id) where season_id=${quoteSql(fixture.season)}::uuid;`,
+  );
+  expect(
+    (await rpc(owner, "get_season_automation", { p_league_slug: slug })).next
+      .status,
+  ).toBe("SUSPENDED");
+  await page.goto(`/l/${slug}/commissioner`);
+  await expect(page.locator("#commissioner-operating-summary")).toContainText(
+    "suspended",
+  );
+  await expect(
+    page.getByRole("heading", { name: "Needs attention", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Open recovery controls" }).click();
+  await expect(
+    page.getByRole("button", { name: "Retry when eligible" }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: `test-results/ui1-suspended-${info.project.name}.png`,
+    fullPage: true,
+  });
+  sql(
+    `update private.season_automation set suspended=false,last_outcome=null,blocker=null,operation_key=null,failure_dependency_hash=null where season_id=${quoteSql(fixture.season)}::uuid; update private.season_automation_settings set enabled=false;`,
+  );
+  await page.reload();
+  await expect(page.locator("#commissioner-operating-summary")).toContainText(
+    "automation unavailable",
+  );
+  sql(`update private.season_automation_settings set enabled=true;`);
   const data = `${quoteSql(JSON.stringify(fixture))}::jsonb`;
   for (const week of [3, 4]) {
     const stage = sql(`begin; ${fixtureSource}
@@ -541,10 +578,41 @@ test("one season approval opens two future weeks automatically and pause retains
     }
     await page.reload();
     await expect(
-      panel.getByText(
+      page.getByRole("heading", { name: "Commissioner", exact: true }),
+    ).toBeVisible();
+    await page.goto(`/l/${slug}/commissioner`);
+    const summary = page.locator("#commissioner-operating-summary");
+    await expect(summary).toBeVisible();
+    expect(
+      await page
+        .locator("[aria-labelledby='player-menu-heading'] details[open]")
+        .count(),
+    ).toBe(0);
+    await expect(page.locator("#commissioner-recovery")).not.toHaveAttribute(
+      "open",
+      "",
+    );
+    await page.screenshot({
+      path: `test-results/ui1-week${week}-${info.project.name}.png`,
+      fullPage: true,
+    });
+    await page.getByRole("link", { name: /View player details/ }).click();
+    await expect(page.locator("#player-menu > summary")).toBeFocused();
+    await expect(
+      page.getByRole("heading", { name: "Automatic player menu", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Refresh full-slate player lines" }),
+    ).toBeVisible();
+    await page.locator("#commissioner-audit > summary").click();
+    await expect(
+      page.getByText(
         new RegExp(`Week ${week} players validated automatically`),
       ),
     ).toBeVisible();
+    await page
+      .getByRole("link", { name: "Season settings", exact: true })
+      .click();
     await expect(
       page.getByRole("button", {
         name: /Confirm reviewed|Confirm available|Open reviewed week/,
@@ -559,11 +627,11 @@ test("one season approval opens two future weeks automatically and pause retains
   }
   await completePlayerPropsAction(
     page,
-    panel.getByRole("button", { name: "Pause automation" }),
+    panel.getByRole("button", { name: "Pause future week automation" }),
     "Future preparation and publication paused",
   );
   await expect(
-    panel.getByRole("button", { name: "Resume automation" }),
+    panel.getByRole("button", { name: "Resume future week automation" }),
   ).toBeVisible();
   const audit = JSON.parse(
     sql(`select jsonb_build_object(
@@ -627,17 +695,20 @@ test("isolated season automation Preview shows one approval and pause controls",
     .getByRole("button", { name: "Approve and enable for this season" })
     .click();
   await expect(
-    panel.getByRole("button", { name: "Pause automation" }),
+    panel.getByRole("button", { name: "Pause future week automation" }),
   ).toBeVisible();
-  await panel.getByRole("button", { name: "Pause automation" }).click();
+  await panel
+    .getByRole("button", { name: "Pause future week automation" })
+    .click();
   await expect(
-    panel.getByRole("button", { name: "Resume automation" }),
+    panel.getByRole("button", { name: "Resume future week automation" }),
   ).toBeVisible();
   await page
     .getByRole("button", { name: "Show automatically opened week" })
     .click();
+  await page.locator("#commissioner-audit > summary").click();
   await expect(
-    panel.getByText(/Week 3 players validated automatically/),
+    page.getByText(/Week 3 players validated automatically/),
   ).toBeVisible();
   expect(
     await page.evaluate(

@@ -318,6 +318,7 @@ for (const games of [14, 16]) {
     const spectator = await spectatorContext.newPage();
     try {
       await signIn(page, identities[0]!, `/l/${slug}/commissioner`);
+      await page.getByRole("link", { name: /View player details/ }).click();
       await expect(
         page.getByRole("heading", {
           name: "Review the proposed player menu",

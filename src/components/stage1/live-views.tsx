@@ -25,6 +25,11 @@ import type { Week17CorrectionOperations } from "@/application/queries/get-week1
 import { Stage1CardBuilder } from "@/components/card/stage1-card-builder";
 import { marketLabel } from "@/components/card/selection-identity";
 import { formatMarketProposition } from "@/components/card/market-option-copy";
+import { CommissionerDisclosure } from "@/components/commissioner/commissioner-disclosure";
+import { CommissionerOperatingSummary } from "@/components/commissioner/operating-summary";
+import type { SeasonAutomationStatus } from "@/application/automation/status";
+import type { PlayerPropMenu } from "@/application/queries/player-prop-dtos";
+import type { Stage1CommissionerControlState } from "@/components/commissioner/stage1-controls";
 import { Stage1CommissionerControls } from "@/components/commissioner/stage1-controls";
 import { CommissionerCardStatusPanel } from "@/components/commissioner/card-status";
 import type { CommissionerCardStatus } from "@/application/queries/get-commissioner-card-status";
@@ -148,6 +153,10 @@ function liveStatus(state: Stage1StateDto): ReactNode {
 
 function FormationPanel({ state }: { state: Stage1StateDto }) {
   const liveSlatePublished = state.week?.state === "PLANNED";
+  const missedDeadline =
+    state.league.mode === "LIVE" &&
+    liveSlatePublished &&
+    Date.parse(state.week!.commonLockAt) <= new Date().getTime();
   const validRoster =
     state.league.memberCount >= 4 &&
     state.league.memberCount <= 16 &&
@@ -158,25 +167,31 @@ function FormationPanel({ state }: { state: Stage1StateDto }) {
         League formation
       </p>
       <h2 className="mt-2 text-xl font-bold">
-        {liveSlatePublished
-          ? `Week 1 slate published · ${state.league.memberCount} members joined`
-          : `${state.league.memberCount} members joined`}
+        {missedDeadline
+          ? "Season not started — opening deadline passed"
+          : liveSlatePublished
+            ? `Week 1 slate published · ${state.league.memberCount} members joined`
+            : `${state.league.memberCount} members joined`}
       </h2>
       <p className="text-graphite mt-3 max-w-2xl leading-7">
-        {liveSlatePublished
-          ? "The Week 1 games and card-lock time are set. Cards open after an even roster of 4–16 members is locked."
-          : "Invite an even roster from 4 through 16 members, then open the season from the Commissioner page."}
+        {missedDeadline
+          ? "This published setup cannot be opened after its deadline. The commissioner can review the limitation in Recovery; existing games and deadlines stay unchanged."
+          : liveSlatePublished
+            ? "The Week 1 games and card-lock time are set. Cards open after an even roster of 4–16 members is locked."
+            : "Invite an even roster from 4 through 16 members, then open the season from the Commissioner page."}
       </p>
       {state.commissioner.isCommissioner ? (
         <Link
           className="bg-registry hover:bg-registry-hover mt-4 inline-flex min-h-12 items-center rounded-lg px-5 font-semibold text-white"
-          href={`/l/${state.league.slug}/commissioner#${validRoster ? "season-start" : "league-invitations"}`}
+          href={`/l/${state.league.slug}/commissioner#${missedDeadline ? "commissioner-recovery" : validRoster ? "season-start" : "league-invitations"}`}
         >
-          {validRoster
-            ? liveSlatePublished
-              ? "Lock roster & start season"
-              : "Start season"
-            : "Invite members"}
+          {missedDeadline
+            ? "Review setup limitation"
+            : validRoster
+              ? liveSlatePublished
+                ? "Lock roster & start season"
+                : "Start season"
+              : "Invite members"}
         </Link>
       ) : null}
     </div>
@@ -216,7 +231,7 @@ export function Stage1MatchupView({ state }: { state: Stage1StateDto }) {
   if (!state.week || !state.matchup || !state.ownerCard) {
     return (
       <PageFrame
-        eyebrow={`${state.league.name} · Practice/test · Simulation`}
+        eyebrow={`${state.league.name} · ${state.league.mode === "LIVE" ? "Live season" : "Practice/test · Simulation"}`}
         title="Your matchup"
         description="Your first matchup appears when the commissioner opens the season."
       >
@@ -1007,7 +1022,12 @@ export function Stage1StandingsView({
 }
 
 export function Stage1CommissionerView({
-  seasonAutomated = false,
+  automation = null,
+  playerMenu,
+  menu = null,
+  automationSettings,
+  automationRecovery,
+  automationAudit,
   cardStatus = null,
   invites,
   leagueManagement,
@@ -1018,7 +1038,12 @@ export function Stage1CommissionerView({
   state,
   week17CorrectionOperations,
 }: {
-  seasonAutomated?: boolean;
+  automation?: SeasonAutomationStatus | null;
+  playerMenu?: ReactNode;
+  menu?: PlayerPropMenu | null;
+  automationSettings?: ReactNode;
+  automationRecovery?: ReactNode;
+  automationAudit?: ReactNode;
   cardStatus?: CommissionerCardStatus | null;
   invites: LeagueInviteSummary[];
   leagueManagement: MyLeagueSummary | null;
@@ -1033,7 +1058,7 @@ export function Stage1CommissionerView({
     return (
       <PageFrame
         eyebrow={`${state.league.name} · Permission boundary`}
-        title="Commissioner console"
+        title="Commissioner"
         description="This account is not the league commissioner."
       >
         <div className="border-negative/25 bg-negative/10 mt-7 rounded-xl border p-5">
@@ -1042,20 +1067,69 @@ export function Stage1CommissionerView({
       </PageFrame>
     );
   }
+  const controls: Stage1CommissionerControlState = {
+    league: {
+      id: state.league.id,
+      slug: state.league.slug,
+      memberCount: state.league.memberCount,
+      lifecycle: state.league.lifecycle,
+      mode: state.league.mode,
+    },
+    week: state.week
+      ? {
+          nflWeek: state.week.nflWeek,
+          scope: state.week.scope,
+          state: state.week.state,
+          commonLockAt: state.week.commonLockAt,
+          correctionWindowClosesAt: state.week.correctionWindowClosesAt,
+          finalizationMode: state.week.finalizationMode,
+          rollingSubmissionsEnabled: state.week.rollingSubmissionsEnabled,
+          entryClosesAt: state.week.entryClosesAt,
+          entryClosed: state.week.entryClosed,
+        }
+      : null,
+    slate: state.slate.map((event) => ({
+      id: event.id,
+      key: event.key,
+      state: event.state,
+      scheduledStartAt: event.scheduledStartAt,
+      awayTeam: event.awayTeam,
+      homeTeam: event.homeTeam,
+      latestObservedAt: event.markets.reduce(
+        (latest, market) =>
+          market.observedAt > latest ? market.observedAt : latest,
+        event.markets[0]?.observedAt ?? event.scheduledStartAt,
+      ),
+    })),
+    members: state.members.map((member) => ({
+      displayName: member.displayName,
+      role: member.role,
+      userId: member.userId,
+    })),
+  };
   return (
     <PageFrame
       eyebrow={`${state.league.name} · Commissioner`}
-      title="Commissioner console"
-      description="Manage this week and the next season checkpoint."
+      title="Commissioner"
+      description="League status, next steps and operating controls."
     >
       <>
+        <CommissionerOperatingSummary
+          state={state}
+          controls={controls}
+          automation={automation}
+          operations={liveWeekOperations}
+          hasLiveImport={latestLiveImport !== null}
+          providerConfigured={providerConfigured}
+          ownerRehearsal={ownerRehearsal}
+        />
         <section
           aria-labelledby="commissioner-current-state"
           className="border-boundary bg-surface mt-6 rounded-lg border p-4"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-bold" id="commissioner-current-state">
-              Current season
+              This week
             </h2>
             {liveStatus(state)}
           </div>
@@ -1089,13 +1163,61 @@ export function Stage1CommissionerView({
           </dl>
         </section>
 
+        {menu?.enabled ? (
+          <section
+            className="border-boundary bg-surface mt-4 rounded-xl border p-5"
+            aria-labelledby="props-summary"
+          >
+            <h3 id="props-summary" className="font-bold">
+              Player props
+            </h3>
+            <p className="mt-2 text-sm">
+              {menu.slots.filter((slot) => slot.subjectId).length} players{" "}
+              {menu.frozen || menu.progressiveActivated
+                ? "published"
+                : "selected"}{" "}
+              ·{" "}
+              {
+                menu.slots.filter(
+                  (slot) => !slot.subjectId && slot.lateFillEligible,
+                ).length
+              }{" "}
+              pending slots ·{" "}
+              {
+                menu.slots.filter(
+                  (slot) => !slot.subjectId && !slot.lateFillEligible,
+                ).length
+              }{" "}
+              unavailable slots
+            </p>
+            <p className="text-muted mt-2 text-sm">
+              {menu.automaticValidation
+                ? "No weekly confirmation is required. Individual unavailable props do not prevent a valid complete slate from opening."
+                : menu.frozen || menu.progressiveActivated
+                  ? "Published players stay fixed. Pending slots may fill before their game’s cutoff."
+                  : "This manual menu retains its required review before opening."}{" "}
+              Player selection does not guarantee a currently available line.
+            </p>
+            <a
+              href="#player-menu"
+              className="text-action mt-2 inline-flex min-h-11 items-center text-sm font-semibold"
+            >
+              View player details
+              {!menu.automaticValidation &&
+              !menu.frozen &&
+              !menu.progressiveActivated
+                ? " and review"
+                : ""}
+            </a>
+          </section>
+        ) : null}
         {!ownerRehearsal && state.week && state.week.state !== "PLANNED" ? (
           <CommissionerCardStatusPanel
             status={cardStatus?.weekId === state.week.id ? cardStatus : null}
           />
         ) : null}
 
-        <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="mt-5 space-y-5">
           {ownerRehearsal ? (
             <section className="border-boundary bg-surface rounded-xl border p-5">
               <p className="text-registry text-xs font-bold tracking-[0.08em] uppercase">
@@ -1110,95 +1232,81 @@ export function Stage1CommissionerView({
                 The guide exposes only the next safe checkpoint and never
                 reveals sealed opponent positions.
               </p>
+              {playerMenu ? (
+                <CommissionerDisclosure id="player-menu" title="Player menu">
+                  {playerMenu}
+                </CommissionerDisclosure>
+              ) : null}
             </section>
           ) : (
             <Stage1CommissionerControls
-              seasonAutomated={seasonAutomated}
+              recovery={
+                <>
+                  {automationRecovery}
+                  {playerMenu ? (
+                    <CommissionerDisclosure
+                      id="player-menu"
+                      title="Player menu and props recovery"
+                    >
+                      {playerMenu}
+                    </CommissionerDisclosure>
+                  ) : null}
+                </>
+              }
+              settings={
+                <>
+                  {automationSettings}
+                  {leagueManagement && !ownerRehearsal ? (
+                    <details className="border-boundary bg-surface mt-6 overflow-hidden rounded-lg border">
+                      <summary className="hover:bg-subtle flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 font-bold [&::-webkit-details-marker]:hidden">
+                        <span>Lifecycle and league settings</span>
+                        <span className="text-muted text-xs font-semibold">
+                          Reversible and destructive actions separated
+                        </span>
+                      </summary>
+                      <div className="border-boundary border-t px-5 pb-5">
+                        <LeagueSettings
+                          archived={leagueManagement.archivedAt !== null}
+                          canDelete={leagueManagement.canDelete}
+                          leagueName={leagueManagement.name}
+                          leagueSlug={leagueManagement.slug}
+                          lifecycle={leagueManagement.lifecycle}
+                          members={state.members.map((member) => ({
+                            displayName: member.displayName,
+                            role: member.role,
+                            userId: member.userId,
+                          }))}
+                        />
+                      </div>
+                    </details>
+                  ) : null}
+                </>
+              }
+              audit={
+                <>
+                  {automationAudit}{" "}
+                  <aside>
+                    <details className="border-negative/25 bg-negative/10 overflow-hidden rounded-lg border">
+                      <summary className="text-negative flex min-h-12 cursor-pointer list-none items-center px-5 py-3 font-bold [&::-webkit-details-marker]:hidden">
+                        Member privacy boundary
+                      </summary>
+                      <p className="text-graphite px-5 pb-5 text-sm leading-6">
+                        Only authorized card status is shown. Members’ picks
+                        stay private until each game’s start is confirmed.
+                      </p>
+                    </details>
+                  </aside>
+                </>
+              }
               invites={invites}
               latestLiveImport={latestLiveImport}
               liveWeekOperations={liveWeekOperations}
               providerConfigured={providerConfigured}
-              state={{
-                league: {
-                  id: state.league.id,
-                  slug: state.league.slug,
-                  memberCount: state.league.memberCount,
-                  lifecycle: state.league.lifecycle,
-                  mode: state.league.mode,
-                },
-                week: state.week
-                  ? {
-                      nflWeek: state.week.nflWeek,
-                      scope: state.week.scope,
-                      state: state.week.state,
-                      commonLockAt: state.week.commonLockAt,
-                      correctionWindowClosesAt:
-                        state.week.correctionWindowClosesAt,
-                      finalizationMode: state.week.finalizationMode,
-                      rollingSubmissionsEnabled:
-                        state.week.rollingSubmissionsEnabled,
-                      entryClosesAt: state.week.entryClosesAt,
-                      entryClosed: state.week.entryClosed,
-                    }
-                  : null,
-                slate: state.slate.map((event) => ({
-                  id: event.id,
-                  key: event.key,
-                  state: event.state,
-                  scheduledStartAt: event.scheduledStartAt,
-                  awayTeam: event.awayTeam,
-                  homeTeam: event.homeTeam,
-                  latestObservedAt: event.markets.reduce(
-                    (latest, market) =>
-                      market.observedAt > latest ? market.observedAt : latest,
-                    event.markets[0]?.observedAt ?? event.scheduledStartAt,
-                  ),
-                })),
-                members: state.members.map((member) => ({
-                  displayName: member.displayName,
-                  role: member.role,
-                  userId: member.userId,
-                })),
-              }}
+              state={controls}
               week17CorrectionOperations={week17CorrectionOperations}
             />
           )}
-          <aside>
-            <details className="border-negative/25 bg-negative/10 overflow-hidden rounded-lg border">
-              <summary className="text-negative flex min-h-12 cursor-pointer list-none items-center px-5 py-3 font-bold [&::-webkit-details-marker]:hidden">
-                Member privacy boundary
-              </summary>
-              <p className="text-graphite px-5 pb-5 text-sm leading-6">
-                Only authorized card status is shown. Members’ picks stay
-                private until each game’s start is confirmed.
-              </p>
-            </details>
-          </aside>
         </div>
-        {leagueManagement && !ownerRehearsal ? (
-          <details className="border-boundary bg-surface mt-6 overflow-hidden rounded-lg border">
-            <summary className="hover:bg-subtle flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 font-bold [&::-webkit-details-marker]:hidden">
-              <span>Lifecycle and league settings</span>
-              <span className="text-muted text-xs font-semibold">
-                Reversible and destructive actions separated
-              </span>
-            </summary>
-            <div className="border-boundary border-t px-5 pb-5">
-              <LeagueSettings
-                archived={leagueManagement.archivedAt !== null}
-                canDelete={leagueManagement.canDelete}
-                leagueName={leagueManagement.name}
-                leagueSlug={leagueManagement.slug}
-                lifecycle={leagueManagement.lifecycle}
-                members={state.members.map((member) => ({
-                  displayName: member.displayName,
-                  role: member.role,
-                  userId: member.userId,
-                }))}
-              />
-            </div>
-          </details>
-        ) : null}
       </>
     </PageFrame>
   );

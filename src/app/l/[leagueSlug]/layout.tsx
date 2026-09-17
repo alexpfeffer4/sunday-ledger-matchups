@@ -16,6 +16,15 @@ function shellPhaseLabel(state: Stage1StateDto): string {
   }
   if (state.league.lifecycle === "FINAL") return "Archive final";
   if (!state.week) return "Formation";
+  if (state.league.lifecycle === "DRAFT" || state.week.state === "PLANNED")
+    return state.league.mode === "LIVE" &&
+      Date.parse(state.week.commonLockAt) <= Date.now()
+      ? state.league.lifecycle === "DRAFT"
+        ? "Season not started — opening deadline passed"
+        : "Week opening deadline passed"
+      : state.league.lifecycle === "DRAFT"
+        ? "Setup · slate published"
+        : "Week prepared";
   const slate = state.slate ?? [];
   if (slate.some((event) => event.state === "CORRECTED")) {
     return "Corrected";
