@@ -524,9 +524,6 @@ test("one season approval opens two future weeks automatically and pause retains
   const approve = panel.getByRole("button", {
     name: "Approve and enable for this season",
   });
-  // The long consent text puts this below the mobile viewport. Finish the
-  // scroll before activation so WebKit does not move it during the click.
-  await approve.scrollIntoViewIfNeeded();
   await completePlayerPropsAction(page, approve, "Season automation approved");
   await expect(
     panel.getByRole("button", { name: "Pause future week automation" }),

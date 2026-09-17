@@ -22,8 +22,8 @@ export function CommissionerDisclosure({
       if (!target || !ref.current?.contains(target)) return;
       ref.current.open = true;
       if (target === ref.current) {
-        ref.current.querySelector("summary")?.focus();
-        ref.current.scrollIntoView({ block: "start" });
+        ref.current.querySelector("summary")?.focus({ preventScroll: true });
+        ref.current.scrollIntoView({ block: "start", behavior: "instant" });
       }
     }
     reveal();

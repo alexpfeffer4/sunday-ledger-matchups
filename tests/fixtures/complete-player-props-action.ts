@@ -10,6 +10,9 @@ export async function completePlayerPropsAction(
   successMessage?: string | RegExp,
   clickOptions?: { timeout: number },
 ) {
+  // Deep-link disclosures and long menus can move an offscreen button. Finish
+  // scrolling before click's stability check, especially in mobile WebKit.
+  await button.scrollIntoViewIfNeeded();
   const pathname = new URL(page.url()).pathname;
   const [response] = await Promise.all([
     page.waitForResponse(
