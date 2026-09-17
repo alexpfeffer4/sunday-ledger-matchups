@@ -7,6 +7,9 @@ test("commissioner summary, exception links and keyboard disclosures reflow on d
 }, info) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
   const external: string[] = [];
   page.on("request", (r) => {
     if (!new URL(r.url()).hostname.match(/^(127\.0\.0\.1|localhost)$/))
@@ -16,6 +19,12 @@ test("commissioner summary, exception links and keyboard disclosures reflow on d
   await expect(
     page.getByRole("heading", { name: "Commissioner", exact: true }),
   ).toBeVisible();
+  // Wait for root hydration before test-only text resizing changes <html>.
+  // Otherwise WebKit can report our injected style as a hydration mismatch.
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-route-focus-ready",
+    "true",
+  );
   const observations = [];
   for (const [width, size] of [
     [1440, 100],
