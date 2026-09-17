@@ -445,9 +445,19 @@ update private.player_catalog_jobs set next_attempt_at=clock_timestamp() where w
   await expect(
     newPlayer.locator(".outcome-selector-group button:not([disabled])"),
   ).toHaveCount(2);
+  const weeklyCard = page.getByRole("region", {
+    name: "Your weekly card",
+    exact: true,
+  });
   await expect(
-    page.getByRole("region", { name: "Your weekly card", exact: true }),
-  ).toContainText("1 submitted bet · 100 credits committed");
+    weeklyCard.getByText("Accepted bets", { exact: true }).locator(".."),
+  ).toHaveText("Accepted bets100");
+  await expect(
+    weeklyCard.getByText("Unsubmitted drafts", { exact: true }).locator(".."),
+  ).toHaveText("Unsubmitted drafts0");
+  await expect(
+    weeklyCard.getByText("Left to allocate", { exact: true }).locator(".."),
+  ).toHaveText("Left to allocate900");
   expect(readFileSync(`${providerFixture}.calls`, "utf8")).toContain(
     `props:${pendingGame.key}:`,
   );

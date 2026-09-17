@@ -61,7 +61,7 @@ async function signIn(
   await page.getByLabel("Email address").fill(identity.email);
   await page.getByLabel("Password", { exact: true }).fill(identity.password);
   await page.getByRole("button", { name: "Sign in with password" }).click();
-  await page.waitForURL(`**${next}`);
+  await page.waitForURL((url) => url.pathname === next);
 }
 async function submitBet(
   page: Page,

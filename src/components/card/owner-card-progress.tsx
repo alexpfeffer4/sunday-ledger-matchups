@@ -75,7 +75,7 @@ export function OwnerCardProgress({
     const allocation = (
       <dl
         aria-label="Weekly credit allocation"
-        className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3"
+        className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-3 text-sm"
       >
         <div>
           <dt className="text-muted">Accepted bets</dt>
@@ -186,9 +186,11 @@ export function OwnerCardProgress({
           </p>
           <p className="text-muted mt-1 text-sm">
             Drafts are unsubmitted and do not reserve credits.{" "}
-            {saved
-              ? "Saved on this device."
-              : "Device storage is unavailable; keep this page open."}
+            {!hydrated
+              ? "Checking saved drafts…"
+              : saved
+                ? "Saved on this device."
+                : "Device storage is unavailable; keep this page open."}
           </p>
           {card.remainingCredits > 0 && card.remainingCredits < 50 ? (
             <p className="mt-2 text-sm">

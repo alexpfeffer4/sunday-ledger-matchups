@@ -323,7 +323,7 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
 
   await advance(page, "Lock roster and open Week 1");
   await page.getByRole("link", { name: "Make my Week 1 card" }).click();
-  await expect(page).toHaveURL(new RegExp(`/l/${leagueSlug}/slate$`));
+  await expect(page).toHaveURL(new RegExp(`/l/${leagueSlug}/slate(?:\\?|$)`));
   const positiveOutcome = page
     .locator(".outcome-selector-group button:not([disabled])")
     .filter({ hasText: /\+\d/ })
