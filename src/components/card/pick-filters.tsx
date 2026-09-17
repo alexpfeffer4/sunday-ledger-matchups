@@ -62,7 +62,7 @@ export function PickFilters({
       {propsEnabled ? (
         <div
           aria-label="Bet type"
-          className="border-boundary bg-surface grid grid-cols-2 rounded-lg border p-1"
+          className="border-boundary bg-surface grid grid-cols-[repeat(auto-fit,minmax(min(100%,7.5rem),1fr))] rounded-lg border p-1"
         >
           {(["GAME", "PLAYER"] as const).map((view) => (
             <button

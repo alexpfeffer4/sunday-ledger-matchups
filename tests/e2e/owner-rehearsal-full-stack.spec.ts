@@ -338,7 +338,8 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   ).toBeVisible();
 
   let droppedSealResponse = false;
-  await page.route("**/l/*/slate", async (route) => {
+  const slateRoute = (url: URL) => url.pathname === `/l/${leagueSlug}/slate`;
+  await page.route(slateRoute, async (route) => {
     if (
       !droppedSealResponse &&
       route.request().method() === "POST" &&
@@ -353,7 +354,7 @@ test("owner-only guided rehearsal runs real formation through archive and reset"
   });
   await page.getByRole("button", { name: "Confirm and seal card" }).click();
   await expect.poll(() => droppedSealResponse).toBe(true);
-  await page.unroute("**/l/*/slate");
+  await page.unroute(slateRoute);
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "All 1,000 credits are sealed" }),

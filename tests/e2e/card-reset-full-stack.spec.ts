@@ -220,7 +220,12 @@ commit;`),
     { storageKey: oldStorageKey, draft: staleDraft, attempt: oldAttempt },
   );
   await page.goto(`/l/${slug}/slate`);
-  await expect(progress).toContainText("1 unsubmitted draft");
+  await expect(
+    progress.getByText("Unsubmitted drafts", { exact: true }).locator(".."),
+  ).toHaveText("Unsubmitted drafts100");
+  await expect(
+    page.getByRole("button", { name: "Edit pick", exact: true }),
+  ).toHaveCount(1);
 
   const reset = JSON.parse(
     sql(`select private.reset_prestart_week2_card(
@@ -251,7 +256,9 @@ commit;`),
       .filter({ has: page.locator("dt", { hasText: /^Left to allocate$/ }) })
       .last(),
   ).toContainText("1,000");
-  await expect(progress).not.toContainText("unsubmitted draft");
+  await expect(
+    progress.getByText("Unsubmitted drafts", { exact: true }).locator(".."),
+  ).toHaveText("Unsubmitted drafts0");
   await expect(
     page
       .getByRole("status")

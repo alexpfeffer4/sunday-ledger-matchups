@@ -439,18 +439,22 @@ for (const games of [14, 16]) {
         .nth(1);
       const dayLabel = await dayButton.innerText();
       await dayButton.click();
-      await page
+      const memberNavigation = page
+        .getByRole("navigation", {
+          name: /^(Mobile league|League) navigation$/,
+        })
+        .filter({ visible: true });
+      await memberNavigation
         .getByRole("link", { name: "My Card", exact: true })
-        .filter({ visible: true })
         .click();
       await expect(
-        page
-          .getByRole("heading", { name: /My Card|Your card/, exact: false })
-          .first(),
+        page.getByRole("heading", {
+          name: `My Week ${owner.week!.nflWeek} card`,
+          exact: true,
+        }),
       ).toBeVisible();
-      await page
+      await memberNavigation
         .getByRole("link", { name: "Make picks", exact: true })
-        .filter({ visible: true })
         .click();
       await expect(
         page.getByRole("button", { name: dayLabel, exact: true }),

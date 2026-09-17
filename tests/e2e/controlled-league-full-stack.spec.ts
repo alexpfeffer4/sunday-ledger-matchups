@@ -456,7 +456,8 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   await page.getByRole("button", { name: "Use updated odds" }).click();
 
   let droppedSealResponse = false;
-  await page.route(`**/l/${slug}/slate`, async (route) => {
+  const slateRoute = (url: URL) => url.pathname === `/l/${slug}/slate`;
+  await page.route(slateRoute, async (route) => {
     if (
       !droppedSealResponse &&
       route.request().method() === "POST" &&
@@ -471,7 +472,7 @@ test("real invite, Auth, RSC, retry, privacy, settlement, and finalization path"
   });
   await page.getByRole("button", { name: "Confirm and seal card" }).click();
   await expect.poll(() => droppedSealResponse).toBe(true);
-  await page.unroute(`**/l/${slug}/slate`);
+  await page.unroute(slateRoute);
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "All 1,000 credits are sealed" }),
