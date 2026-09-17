@@ -1147,16 +1147,16 @@ function Stage1CardBuilderEditor({
                   className="border-boundary bg-surface rounded-lg border p-4"
                   key={event.id}
                 >
+                  <h2 className="sr-only" id={`card-builder-event-${event.id}`}>
+                    {event.awayTeam} at {event.homeTeam}
+                  </h2>
                   <details className="group/game-lines" open>
                     <summary className="min-h-11 cursor-pointer list-none marker:hidden [&::-webkit-details-marker]:hidden">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h2
-                            className="text-lg font-bold break-words"
-                            id={`card-builder-event-${event.id}`}
-                          >
+                          <span className="block text-lg font-bold break-words">
                             {event.awayTeam} at {event.homeTeam}
-                          </h2>
+                          </span>
                           <span className="text-muted mt-1 block text-xs">
                             {formatDate(event.scheduledStartAt)}
                           </span>
