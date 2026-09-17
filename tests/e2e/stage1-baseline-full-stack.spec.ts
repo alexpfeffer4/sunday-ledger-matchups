@@ -1,3 +1,4 @@
+import { openGameLinesFor } from "./game-lines";
 import { expect, test } from "@playwright/test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import {
@@ -349,6 +350,7 @@ for (const pending of [false, true])
         const outcome = page
           .locator(".outcome-selector-group button:not([disabled])")
           .first();
+        await openGameLinesFor(outcome);
         await timed("selection-and-stake", async () => {
           await outcome.click();
           await page.getByLabel("Stake in credits").fill("50");

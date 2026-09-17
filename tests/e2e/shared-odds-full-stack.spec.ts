@@ -1,3 +1,4 @@
+import { openGameLinesFor } from "./game-lines";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
@@ -67,6 +68,7 @@ async function buildCard(
       .last()
       .click();
   }
+  await openGameLinesFor(page.locator(".outcome-selector-group").first());
   await page
     .locator(".outcome-selector-group")
     .first()

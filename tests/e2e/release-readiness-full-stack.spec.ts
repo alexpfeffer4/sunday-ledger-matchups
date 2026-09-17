@@ -1,3 +1,4 @@
+import { openGameLinesFor } from "./game-lines";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 import { execFileSync } from "node:child_process";
@@ -314,6 +315,13 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
   await expect(makePicks).toBeVisible();
   await measure(info, "mobile-navigation-to-usable-slate", async () => {
     await makePicks.click();
+    const firstGame = page
+      .locator('section[aria-labelledby^="card-builder-event-"] > details')
+      .first();
+    await expect(firstGame).not.toHaveAttribute("open");
+    await expect(page.locator(".outcome-selector-group").first()).toBeHidden();
+    await firstGame.locator(":scope > summary").press("Enter");
+    await expect(firstGame).toHaveAttribute("open", "");
     await expect(
       page
         .locator(".outcome-selector-group")
@@ -370,6 +378,7 @@ test("ten-member league: narrow keyboard journey, 20 picks, recovery, and measur
     .filter({ hasNot: page.locator("dialog") });
   // A real 20-pick card, one side of each distinct event/market. No draft injection.
   for (let index = 0; index < 20; index++) {
+    await openGameLinesFor(groups.nth(index));
     const outcome = groups.nth(index).getByRole("button").first();
     await outcome.focus();
     await page.keyboard.press("Enter");
