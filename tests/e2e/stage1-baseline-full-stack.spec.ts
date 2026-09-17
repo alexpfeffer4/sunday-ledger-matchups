@@ -317,7 +317,7 @@ for (const pending of [false, true])
         }
         await page.goto(`/l/${slug}/slate`);
         const propGames = page.locator("details").filter({
-          has: page.locator("summary").filter({ hasText: "View players" }),
+          has: page.locator("summary").filter({ hasText: / at / }),
         });
         await timed("props-filter", async () => {
           await page
