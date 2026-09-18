@@ -180,7 +180,9 @@ export async function verifyCurrentStatePerformance({
                 ["Matchup", "matchup", "Week 3 matchup"],
               ]) {
                 const queryOffset = queries().length;
-                const resourceStart = await page.evaluate(() => performance.now());
+                const resourceStart = await page.evaluate(() =>
+                  performance.now(),
+                );
                 const started = Date.now();
                 await page
                   .getByRole("link", { name: label, exact: true })
@@ -217,7 +219,12 @@ export async function verifyCurrentStatePerformance({
                 );
                 const completed = Date.now();
                 const calls = queries().slice(queryOffset);
-                if (path !== "slate") expect(calls.some((q) => q.endpoint.endsWith("/get_player_prop_menu"))).toBe(false);
+                if (path !== "slate")
+                  expect(
+                    calls.some((q) =>
+                      q.endpoint.endsWith("/get_player_prop_menu"),
+                    ),
+                  ).toBe(false);
                 measurements.push({
                   version,
                   mobile,
@@ -227,9 +234,17 @@ export async function verifyCurrentStatePerformance({
                   clickMs: clicked - started,
                   afterClickMs: completed - clicked,
                   queries: calls,
-                  resources: await page.evaluate((lower) => performance.getEntriesByType("resource")
-                    .filter((r) => r.startTime >= lower)
-                    .map((r) => ({ path: new URL(r.name).pathname, ms: r.duration })), resourceStart),
+                  resources: await page.evaluate(
+                    (lower) =>
+                      performance
+                        .getEntriesByType("resource")
+                        .filter((r) => r.startTime >= lower)
+                        .map((r) => ({
+                          path: new URL(r.name).pathname,
+                          ms: r.duration,
+                        })),
+                    resourceStart,
+                  ),
                   target,
                   endpoint:
                     "specific final heading + domain content + two frames; not field INP",
