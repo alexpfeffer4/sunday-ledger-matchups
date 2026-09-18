@@ -49,11 +49,36 @@ export default async function MatchupPage({
       !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(requested))
   )
     notFound();
-  const [live, archive, weeklyCloseState] = await Promise.all([
-    getLeagueState(leagueSlug),
-    getSeasonArchive(leagueSlug),
-    getWeeklyCloseState(leagueSlug),
-  ]);
+  const readCurrent = (
+    live: NonNullable<Awaited<ReturnType<typeof getLeagueState>>>,
+  ) =>
+    Promise.all([
+      getAuthoritativeLeagueState(leagueSlug, "quotes"),
+      getLiveWeekOperations(leagueSlug),
+      ["PLAYOFFS", "CHAMPION_FINAL", "WEEK_18_EXHIBITION", "FINAL"].includes(
+        live.league.lifecycle,
+      )
+        ? getAuthoritativePlayoffState(leagueSlug)
+        : null,
+      live.week ? getLeagueMatchupCards(leagueSlug, live.week.id) : null,
+    ] as const);
+  const base = getLeagueState(leagueSlug);
+  const archiveRead = getSeasonArchive(leagueSlug);
+  // Default current-week reads need the authorized week, not full history.
+  // Explicit week queries retain historical validation before any enrichment.
+  const currentRead = Promise.all([base, archiveRead]).then(
+    ([state, archive]) =>
+      state && !archive && requestedWeek === undefined
+        ? readCurrent(state)
+        : null,
+  );
+  const [live, archive, weeklyCloseState, prefetchedCurrent] =
+    await Promise.all([
+      base,
+      archiveRead,
+      getWeeklyCloseState(leagueSlug),
+      currentRead,
+    ]);
   const selectedWeek = weeklyCloseState?.weeks.find(
     (week) => week.nflWeek === requestedWeek,
   );
@@ -144,16 +169,8 @@ export default async function MatchupPage({
     return <SeasonArchiveHome archive={archive} leagueSlug={leagueSlug} />;
   }
   if (live) {
-    const [current, operations, playoffState, leagueCards] = await Promise.all([
-      getAuthoritativeLeagueState(leagueSlug),
-      getLiveWeekOperations(leagueSlug),
-      ["PLAYOFFS", "CHAMPION_FINAL", "WEEK_18_EXHIBITION", "FINAL"].includes(
-        live.league.lifecycle,
-      )
-        ? getAuthoritativePlayoffState(leagueSlug)
-        : null,
-      live.week ? getLeagueMatchupCards(leagueSlug, live.week.id) : null,
-    ]);
+    const [current, operations, playoffState, leagueCards] =
+      prefetchedCurrent ?? (await readCurrent(live));
     if (!current) notFound();
     const qualificationSeeds = new Map(
       (playoffState?.publication.qualifiers ?? []).map((qualifier) => [

@@ -13,6 +13,7 @@ const queries = vi.hoisted(() => ({
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
   notFound: () => {
     throw new Error("not found");
   },
@@ -47,6 +48,32 @@ function page(query: {
   });
 }
 describe("historical matchup route", () => {
+  it("starts current-week reads while the independent history read is pending", async () => {
+    let finishHistory!: (value: null) => void;
+    queries.history.mockReturnValue(
+      new Promise<null>((resolve) => {
+        finishHistory = resolve;
+      }),
+    );
+    queries.live.mockResolvedValue({
+      league: { lifecycle: "REGULAR" },
+      week: { id: "current-week" },
+    });
+    queries.archive.mockResolvedValue(null);
+    queries.current.mockResolvedValue(null);
+    const result = page({});
+    const completion = expect(result).rejects.toThrow("not found");
+    await vi.waitFor(() =>
+      expect(queries.cards).toHaveBeenCalledWith(
+        "sunday-ledger",
+        "current-week",
+      ),
+    );
+    expect(queries.current).toHaveBeenCalledOnce();
+    expect(queries.operations).toHaveBeenCalledOnce();
+    finishHistory(null);
+    await completion;
+  });
   it("loads the requested final week even when the league is archived", async () => {
     const { history, cards } = historicalFixture();
     history.league.lifecycle = "FINAL";

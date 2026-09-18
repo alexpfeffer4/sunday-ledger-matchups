@@ -17,6 +17,7 @@ const navigationState = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => navigationState.pathname,
+  useRouter: () => ({ push: vi.fn() }),
 }));
 
 vi.mock("@/app/(auth)/auth/actions", () => ({
