@@ -12,7 +12,7 @@ do $$ declare f record;begin
   ('api.finish_background_quote_run(uuid)','176d8773b8fe0544e1765bb696237294f0e45c9b7f3f1a03fc654f0d0d5cb801'),
   ('api.get_stored_quote_updates(text,uuid)','2b7592c71c88f8d861e7d3cb6ddfa0eb81b4e600eddd355eafc2e95e0e98f9c3'),
   ('api.next_background_quote_application(uuid)','2659aeec3fc15623d096ff02c624b6fc3565ba7adf38648cdab1acddf19354f8'),
-  ('private.apply_shared_quote_events(uuid,uuid,uuid[],boolean,text[])','c620cdd199f5397d1461c2cccfc132d89391b86a67e5c5b0f3bea96529462ae1'),
+  ('private.apply_shared_quote_events(uuid,uuid,uuid[],boolean,text[])','bd5817e0247c85f341a766cb51a706593e300777759b31fdeda508a5537a11dd'),
   ('private.assert_background_quote_run(uuid)','6f83a247600fdea0a6237c7fd4f43fd1d196634046c8a159f23f7a2c14210db6'),
   ('private.attach_background_quotes_dispatch_hook()','35fd86c4ebeab005d6ed505b2a16da7f8c5610b07e1dbac3da4fc884fc465be9'),
   ('private.background_quote_due()','cda9139cc2bace40ea7dcc1f42cc3dd6649246e3eec16b67350e90093069baf8'),
