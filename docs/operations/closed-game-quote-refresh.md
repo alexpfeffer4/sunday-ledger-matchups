@@ -28,3 +28,13 @@ the tested tree. The hosted migration tool assigns its own version; align the
 repository filename with that ledger while preserving the tested SQL bytes.
 No provider request or live card submission is needed for installation. The owner
 retries through the normal member flow after release.
+
+Production installation succeeded as `20260918002951` after candidate
+`535b6f36c885c5b5da1ad44d8294957651a248db` passed all 2,487 database assertions
+across 60 files, function parity, generated types, native concurrency, and the
+shared-quote desktop/mobile journeys in Acceptance run `35290928158`.
+The filename now matches the hosted ledger; the tested SQL bytes are unchanged.
+The installed function hash is
+`bd5817e0247c85f341a766cb51a706593e300777759b31fdeda508a5537a11dd`.
+Its privileges, security mode, and empty search path remain unchanged. Full
+Acceptance on the aligned PR head remains the merge gate.
