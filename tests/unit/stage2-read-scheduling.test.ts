@@ -73,6 +73,44 @@ it("base page reads retain event/receipt context without requesting prices or pr
   expect(mocks.rpc).toHaveBeenCalledTimes(1);
   expect(mocks.menu).not.toHaveBeenCalled();
 });
+it("quote-only pages retain fresh draft prices and receipts without waiting for the prop catalog", async () => {
+  const state = fixture();
+  const event = state.slate[0]!;
+  event.markets = [
+    {
+      id: "99999999-1111-4111-8111-111111111110",
+      marketType: "MONEYLINE",
+      outcomeKey: "AWAY",
+      proposition: "Away to win",
+      lineMilli: null,
+      americanOdds: 100,
+      qualityStatus: "HEALTHY",
+      observedAt: "2026-09-18T00:00:00Z",
+      payloadHash: "a".repeat(64),
+      maximumStakeCredits: 1000,
+    },
+  ];
+  const currentMarket = {
+    ...event.markets[0]!,
+    id: "99999999-1111-4111-8111-111111111111",
+    americanOdds: -150,
+  };
+  mocks.menu.mockImplementation(() => {
+    throw new Error("Unneeded pending catalog");
+  });
+  mocks.rpc.mockImplementation(async (name) => ({
+    data:
+      name === "get_stage1_state"
+        ? state
+        : [{ eventId: event.id, markets: [currentMarket] }],
+    error: null,
+  }));
+  const result = await getAuthoritativeLeagueState("sunday-ledger", "quotes");
+  expect(result!.slate[0]!.markets).toEqual([currentMarket]);
+  expect(result!.ownerCard).toEqual(state.ownerCard);
+  expect(state.slate[0]!.markets).not.toEqual([currentMarket]);
+  expect(mocks.menu).not.toHaveBeenCalled();
+});
 it.each(["42501", "P0002"])(
   "denied base scope %s never starts enrichment",
   async (code) => {

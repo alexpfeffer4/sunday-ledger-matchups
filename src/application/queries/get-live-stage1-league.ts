@@ -49,7 +49,10 @@ export const getLeagueState = cache(
 );
 
 export const getAuthoritativeLeagueState = cache(
-  async (leagueSlug: string): Promise<Stage1StateDto | null> => {
+  async (
+    leagueSlug: string,
+    projection: "quotes" | "quotes-and-props" = "quotes-and-props",
+  ): Promise<Stage1StateDto | null> => {
     const state = await getLeagueState(leagueSlug);
     if (!state?.week) return state;
     const supabase = await createSupabaseServerClient();
@@ -57,7 +60,11 @@ export const getAuthoritativeLeagueState = cache(
     // Neither one acquires provider data or depends on the other's response.
     const quoteStartedAt = performance.now();
     const [menu, currentQuotes] = await Promise.all([
-      state.week.propsEnabled ? getPlayerPropMenu(leagueSlug) : null,
+      // Matchup/My Card need current prices for draft status, but do not show
+      // the selectable prop catalog. Keep their quote freshness unchanged.
+      projection === "quotes-and-props" && state.week.propsEnabled
+        ? getPlayerPropMenu(leagueSlug)
+        : null,
       (async () => {
         if (
           state.league.mode === "SIMULATION" &&

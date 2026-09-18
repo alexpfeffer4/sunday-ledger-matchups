@@ -2,6 +2,7 @@ import { expect, type Browser } from "@playwright/test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { sql } from "./stage1-baseline";
 import { quoteSql as q } from "./player-props-acceptance.mjs";
+import { queries } from "./release-measurements";
 
 // Runs only after the existing real-worker/submission baseline on its isolated
 // loopback stack. No hosted project, provider response or production actor.
@@ -171,18 +172,21 @@ export async function verifyCurrentStatePerformance({
                 exact: true,
               }),
             ).toBeVisible();
-            for (let run = 1; run <= 5; run++) {
+            for (let run = 1; run <= 10; run++) {
               for (const [label, path, heading] of [
                 ["Make picks", "slate", "Make picks"],
                 ["My Card", "card", "My Week 3 card"],
                 ["League", "league", "League overview"],
                 ["Matchup", "matchup", "Week 3 matchup"],
               ]) {
+                const queryOffset = queries().length;
+                const resourceStart = await page.evaluate(() => performance.now());
                 const started = Date.now();
                 await page
                   .getByRole("link", { name: label, exact: true })
                   .last()
                   .click();
+                const clicked = Date.now();
                 await expect(page).toHaveURL(
                   new RegExp(`/l/${slug}/${path}(?:\\?|$)`),
                 );
@@ -211,12 +215,21 @@ export async function verifyCurrentStatePerformance({
                       ),
                     ),
                 );
+                const completed = Date.now();
+                const calls = queries().slice(queryOffset);
+                if (path !== "slate") expect(calls.some((q) => q.endpoint.endsWith("/get_player_prop_menu"))).toBe(false);
                 measurements.push({
                   version,
                   mobile,
                   run,
                   path,
-                  ms: Date.now() - started,
+                  ms: completed - started,
+                  clickMs: clicked - started,
+                  afterClickMs: completed - clicked,
+                  queries: calls,
+                  resources: await page.evaluate((lower) => performance.getEntriesByType("resource")
+                    .filter((r) => r.startTime >= lower)
+                    .map((r) => ({ path: new URL(r.name).pathname, ms: r.duration })), resourceStart),
                   target,
                   endpoint:
                     "specific final heading + domain content + two frames; not field INP",
@@ -278,7 +291,7 @@ export async function verifyCurrentStatePerformance({
         {
           baseline: "843ecda3",
           conditions:
-            "same candidate app; only SQL changed; loopback Auth/Postgres; mobile Chromium 4xCPU 150ms 1.6Mbps; warm app/database; five repeat samples",
+            "same candidate app; only SQL changed; loopback Auth/Postgres; mobile Chromium 4xCPU 150ms 1.6Mbps; warm app/database; ten repeat browser samples; first observed plus five repeat SQL samples",
           volumes,
           plans,
           measurements,

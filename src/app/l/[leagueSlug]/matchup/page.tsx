@@ -53,7 +53,7 @@ export default async function MatchupPage({
     live: NonNullable<Awaited<ReturnType<typeof getLeagueState>>>,
   ) =>
     Promise.all([
-      getAuthoritativeLeagueState(leagueSlug),
+      getAuthoritativeLeagueState(leagueSlug, "quotes"),
       getLiveWeekOperations(leagueSlug),
       ["PLAYOFFS", "CHAMPION_FINAL", "WEEK_18_EXHIBITION", "FINAL"].includes(
         live.league.lifecycle,

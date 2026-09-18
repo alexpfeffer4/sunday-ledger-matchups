@@ -16,7 +16,7 @@ export default async function CardPage({
 }) {
   const { leagueSlug } = await params;
   const [live, archive] = await Promise.all([
-    getAuthoritativeLeagueState(leagueSlug),
+    getAuthoritativeLeagueState(leagueSlug, "quotes"),
     getSeasonArchive(leagueSlug),
   ]);
   if (archive) return <SeasonArchiveMyCard archive={archive} />;
