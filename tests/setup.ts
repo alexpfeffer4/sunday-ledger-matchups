@@ -1,5 +1,12 @@
-import { afterEach } from "vitest";
+import { afterEach, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
+
+// Shared UI also renders outside Next in unit/static-markup fixtures. Real
+// browser journeys verify routing; those fixtures need a mounted-router stand-in.
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
 
 // JSDOM does not perform layout. Geometry and ResizeObserver behavior are
 // verified by the real Chromium/WebKit member journey, not these unit tests.

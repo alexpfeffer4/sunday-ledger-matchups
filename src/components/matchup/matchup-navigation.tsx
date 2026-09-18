@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import type { LeagueScoreboardItem } from "@/application/queries/project-paired-matchup";
 
 export type MatchupWeekOption = {
@@ -16,6 +18,7 @@ export function MatchupNavigation({
   games: LeagueScoreboardItem[];
   weeks: MatchupWeekOption[];
 }) {
+  const router = useRouter();
   return (
     <nav className="matchup-navigation" aria-label="Browse matchups">
       <label className="min-w-0 text-xs font-semibold">
@@ -26,7 +29,10 @@ export function MatchupNavigation({
           value={
             weeks.find((week) => week.selected ?? week.current)?.href ?? ""
           }
-          onChange={(event) => window.location.assign(event.target.value)}
+          onChange={(event) => {
+            const week = weeks.find((item) => item.href === event.target.value);
+            if (week) router.push(week.href);
+          }}
         >
           {weeks.map((week) => (
             <option key={week.week} value={week.href}>
@@ -44,7 +50,7 @@ export function MatchupNavigation({
           value={games.find((game) => game.selected)?.id ?? ""}
           onChange={(event) => {
             const game = games.find((game) => game.id === event.target.value);
-            if (game?.href) window.location.assign(game.href);
+            if (game?.href) router.push(game.href);
           }}
         >
           {games

@@ -10,6 +10,7 @@ import {
   signIn,
   sql,
 } from "../fixtures/stage1-baseline";
+import { verifyCurrentStatePerformance } from "../fixtures/current-state-performance";
 import { verifyStage2Reads } from "../fixtures/stage2-reads";
 import { observe, sample } from "../fixtures/stage1-measurements";
 import { profileStakeTyping } from "../fixtures/stake-edit-profile";
@@ -312,7 +313,17 @@ for (const pending of [false, true])
             await expect(page).toHaveURL(
               new RegExp(`/l/${slug}/${path}(?:\\?|$)`),
             );
-            await expect(page.locator("main h1").first()).toBeVisible();
+            const heading =
+              path === "slate"
+                ? "Make picks"
+                : path === "card"
+                  ? "My Week 3 card"
+                  : path === "league"
+                    ? "League overview"
+                    : "Week 3 matchup";
+            await expect(
+              page.getByRole("heading", { name: heading, exact: true }),
+            ).toBeVisible();
           });
         }
         await page.goto(`/l/${slug}/slate`);
@@ -583,6 +594,14 @@ for (const pending of [false, true])
         `select private.card_receipt_fingerprint(${q(fixture.card)}::uuid,0);`,
       ),
     ).toBe(priorReceipt);
+    await verifyCurrentStatePerformance({
+      slug,
+      week,
+      owner: fixture.owner,
+      pending,
+      browser,
+      storageState,
+    });
     await rpc(owner, "get_player_prop_menu", { p_league_slug: slug });
     expect(
       (
